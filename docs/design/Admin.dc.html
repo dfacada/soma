@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #F4F3EF; color: #1B1A17; font-family: Figtree, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+    a { color: #2C8A5E; } a:hover { color: #1F6A47; }
+    .d { font-family: "Bricolage Grotesque", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.01em; line-height: 1.05; }
+    .m { font-family: "JetBrains Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+    .eb { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #6E6A62; }
+    .card { background: #FFFFFF; border: 1px solid #DCD9D0; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .stat { background: #FFFFFF; border: 1px solid #DCD9D0; border-radius: 12px; padding: 12px 12px 10px; display: flex; flex-direction: column; gap: 2px; }
+    .row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+    .row + .row { border-top: 1px solid #ECEAE3; }
+    .sm { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+    .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; }
+    .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 56px; color: #8A857B; font-size: 11px; font-weight: 500; }
+    .tab.on { color: #1B1A17; }
+    svg { display: block; }
+  </style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #F4F3EF; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 22px 16px 16px;">
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; padding: 0 4px;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div class="eb">Admin · davidfacada@gmail.com</div>
+        <div class="d" style="font-size: 32px;">Admin</div>
+      </div>
+      <div style="width: 34px; height: 34px; border-radius: 999px; background: #1B1A17; color: #F4F3EF; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">DF</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;">
+      <div class="stat"><span class="d" style="font-size: 26px;">11</span><span class="eb" style="font-size: 9.5px;">Users</span></div>
+      <div class="stat"><span class="d" style="font-size: 26px;">2</span><span class="eb" style="font-size: 9.5px;">Pending</span></div>
+      <div class="stat"><span class="d" style="font-size: 26px;">6</span><span class="eb" style="font-size: 9.5px;">Active 7d</span></div>
+      <div class="stat"><span class="d" style="font-size: 26px;">129</span><span class="eb" style="font-size: 9.5px;">Entries</span></div>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;"><span class="eb" style="color: #1B1A17;">Waiting for approval</span><span style="font-size: 12px; color: #6E6A62;">2</span></div>
+      <div class="row"><div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span style="font-weight: 500;">afacada23@gmail.com</span><span style="font-size: 12px; color: #6E6A62;">Signed up Jun 24 · Round 3</span></div><span class="sm" style="background: #1B1A17; color: #F4F3EF;">Approve</span></div>
+      <div class="row"><div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span style="font-weight: 500;">ncounts90@gmail.com</span><span style="font-size: 12px; color: #6E6A62;">Signed up Sep 11 · Round 3</span></div><span class="sm" style="background: #1B1A17; color: #F4F3EF;">Approve</span></div>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;"><span class="eb" style="color: #1B1A17;">Rounds</span><span style="font-size: 12px; color: #2C8A5E; font-weight: 500;">New round</span></div>
+      <div class="row"><span style="width: 8px; height: 8px; border-radius: 999px; background: #B7692A;"></span><div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span style="font-weight: 500;">Round 3</span><span style="font-size: 12px; color: #6E6A62;">Day 41 of 90 · 8 members · 2 pending</span></div><span class="sm" style="border: 1px solid #DCD9D0;">Manage</span></div>
+      <div class="row"><span style="width: 8px; height: 8px; border-radius: 999px; background: #DCD9D0;"></span><div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span style="font-weight: 500; color: #6E6A62;">Round 2</span><span style="font-size: 12px; color: #6E6A62;">Archived · 6 members · 71% average</span></div></div>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;"><span class="eb" style="color: #1B1A17;">Errors · unresolved</span><span style="font-size: 12px; color: #6E6A62;">3 of 8</span></div>
+      <div class="row" style="align-items: flex-start; padding-top: 6px;"><div style="flex: 1; display: flex; flex-direction: column; gap: 3px;"><div style="display: flex; gap: 8px; align-items: center;"><span class="tag" style="background: #F3DCD7; color: #8E2F24;">transcription_stale</span><span class="m" style="font-size: 11px; color: #6E6A62;">Jul 27 8:31 am</span></div><span style="font-size: 12px; color: #4A4741;">Entry e_1785120548213 stuck in pending since 02:49</span></div><span class="sm" style="border: 1px solid #DCD9D0; height: 30px; padding: 0 10px; font-size: 12px;">Resolve</span></div>
+      <div class="row" style="align-items: flex-start; padding-top: 6px;"><div style="flex: 1; display: flex; flex-direction: column; gap: 3px;"><div style="display: flex; gap: 8px; align-items: center;"><span class="tag" style="background: #F5EBD3; color: #7A5A0E;">ios_mic_track_ended</span><span class="m" style="font-size: 11px; color: #6E6A62;">Jul 19 10:03 pm</span></div><span style="font-size: 12px; color: #4A4741;">MediaStreamTrack ended during recording</span></div><span class="sm" style="border: 1px solid #DCD9D0; height: 30px; padding: 0 10px; font-size: 12px;">Resolve</span></div>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;"><span class="eb" style="color: #1B1A17;">Feedback</span><span style="font-size: 12px; color: #6E6A62;">1 new</span></div>
+      <div class="row" style="align-items: flex-start; padding-top: 6px;"><div style="flex: 1; display: flex; flex-direction: column; gap: 3px;"><span class="m" style="font-size: 11px; color: #6E6A62;">nstazzone · Sep 9</span><span style="font-size: 13px; color: #1B1A17; line-height: 1.45;">Would love to see the push-up target on the same screen as the food log so I don't switch tabs.</span></div><span class="sm" style="border: 1px solid #DCD9D0; height: 30px; padding: 0 10px; font-size: 12px;">Ack</span></div>
+    </div>
+
+  </div>
+
+  <div style="height: 82px; background: #FFFFFF; border-top: 1px solid #DCD9D0; display: flex; align-items: flex-start; padding: 6px 8px 0;">
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path><circle cx="12" cy="15.5" r="1.5" fill="currentColor" stroke="none"></circle></svg><span>Today</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg><span>Journal</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14Z"></path><path d="M5 19l8-8"></path></svg><span>Food</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"></path></svg><span>Activity</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-8 4 3"></path></svg><span>Insights</span></div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #F4F3EF; color: #1B1A17; font-family: Figtree, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+    a { color: #2C8A5E; } a:hover { color: #1F6A47; }
+    .d { font-family: "Bricolage Grotesque", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.01em; line-height: 1.05; }
+    .m { font-family: "JetBrains Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+    .eb { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #6E6A62; }
+    .card { background: #FFFFFF; border: 1px solid #DCD9D0; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .seg { display: flex; align-items: center; justify-content: center; height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 500; color: #6E6A62; }
+    .seg.on { background: #1B1A17; color: #F4F3EF; }
+    .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 56px; color: #8A857B; font-size: 11px; font-weight: 500; }
+    .tab.on { color: #1B1A17; }
+    p { margin: 0; font-size: 14px; line-height: 1.55; }
+    svg { display: block; }
+  </style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #F4F3EF; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 22px 16px 16px;">
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; padding: 0 4px;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div class="eb">Last 30 days · 27 entries</div>
+        <div class="d" style="font-size: 32px;">Insights</div>
+      </div>
+      <div style="display: flex; gap: 2px; background: #FFFFFF; border: 1px solid #DCD9D0; border-radius: 999px; padding: 3px;">
+        <span class="seg">14d</span><span class="seg on">30d</span><span class="seg">90d</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: #5F5BBF;"></span>
+        <span class="eb" style="color: #1B1A17;">Your best-day signal</span>
+      </div>
+      <p>Your <strong>Focused</strong> and <strong>Great</strong> days almost all start the same way: a walk before noon and at least 6h 45m of sleep the night before. On 9 of your 11 best days both were true. You said it yourself on the 13th: <em>"every day I get it in before noon the rest of the day just lines up."</em></p>
+      <p>Push-ups didn't move mood on their own, but on the three days you skipped them you also logged under 90 g of protein and rated the day <strong>Tired</strong>.</p>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <span class="eb" style="color: #1B1A17;">Mood by sleep</span>
+        <span style="font-size: 11px; color: #6E6A62;">Share of days rated Focused, Great, Peaceful or Grateful</span>
+      </div>
+      <svg width="326" height="132" viewBox="0 0 326 132">
+        <line x1="36" y1="12" x2="326" y2="12" stroke="#ECEAE3" stroke-width="1"></line>
+        <line x1="36" y1="52" x2="326" y2="52" stroke="#ECEAE3" stroke-width="1"></line>
+        <line x1="36" y1="92" x2="326" y2="92" stroke="#ECEAE3" stroke-width="1"></line>
+        <text x="30" y="16" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#8A857B">100%</text>
+        <text x="30" y="56" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#8A857B">50%</text>
+        <text x="30" y="96" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#8A857B">0%</text>
+        <rect x="60" y="66" width="56" height="26" rx="3" fill="#C9C7E9"></rect>
+        <rect x="156" y="45" width="56" height="47" rx="3" fill="#8F8CD3"></rect>
+        <rect x="252" y="21" width="56" height="71" rx="3" fill="#5F5BBF"></rect>
+        <text x="88" y="61" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#1B1A17">33%</text>
+        <text x="184" y="40" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#1B1A17">58%</text>
+        <text x="280" y="16" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#1B1A17">89%</text>
+        <text x="88" y="112" text-anchor="middle" font-family="Figtree, sans-serif" font-size="11" fill="#6E6A62">under 6.5h</text>
+        <text x="184" y="112" text-anchor="middle" font-family="Figtree, sans-serif" font-size="11" fill="#6E6A62">6.5 – 7.5h</text>
+        <text x="280" y="112" text-anchor="middle" font-family="Figtree, sans-serif" font-size="11" fill="#6E6A62">over 7.5h</text>
+        <text x="88" y="126" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8A857B">9 nights</text>
+        <text x="184" y="126" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8A857B">12 nights</text>
+        <text x="280" y="126" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8A857B">9 nights</text>
+      </svg>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="width: 8px; height: 8px; border-radius: 999px; background: #B7692A;"></span>
+        <span class="eb" style="color: #1B1A17;">Your hardest-day signal</span>
+      </div>
+      <p>Every <strong>Overwhelmed</strong> day in this window came after a night under six hours, and on four of the five you logged three or more drinks the evening before. Steps on those days averaged 3,100, less than half your usual.</p>
+    </div>
+
+    <div class="card" style="flex-direction: row; align-items: center; gap: 12px; background: #ECEBF8; border-color: #ECEBF8;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3F3C8F" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+      <div style="font-size: 12px; color: #3F3C8F; line-height: 1.45;">Transcripts are decrypted on this phone and sent for analysis once. Nothing is stored on the server in plain text.</div>
+    </div>
+
+  </div>
+
+  <div style="height: 82px; background: #FFFFFF; border-top: 1px solid #DCD9D0; display: flex; align-items: flex-start; padding: 6px 8px 0;">
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path><circle cx="12" cy="15.5" r="1.5" fill="currentColor" stroke="none"></circle></svg><span>Today</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg><span>Journal</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14Z"></path><path d="M5 19l8-8"></path></svg><span>Food</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"></path></svg><span>Activity</span></div>
+    <div class="tab on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-8 4 3"></path></svg><span>Insights</span></div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #F4F3EF; color: #1B1A17; font-family: Figtree, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+    a { color: #2C8A5E; } a:hover { color: #1F6A47; }
+    .d { font-family: "Bricolage Grotesque", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.01em; line-height: 1.05; }
+    .m { font-family: "JetBrains Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+    .eb { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .sky { margin: -18px -16px 0; padding: 18px 16px 18px; border-radius: 0 0 30px 30px; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: background 0.8s ease, color 0.8s ease; box-shadow: 0 14px 30px rgba(27, 26, 23, 0.10); position: relative; overflow: hidden; color: #1B1A17; background: linear-gradient(180deg, #E6EEF3 0%, #F3F1E9 55%, #F4F3EF 100%); }
+    .sky.dawn { background: linear-gradient(180deg, #F6D9C6 0%, #FBEBDC 55%, #F4F3EF 100%); }
+    .sky.dusk { background: linear-gradient(180deg, #F3C9A6 0%, #EBCBCB 50%, #F4F3EF 100%); }
+    .sky.night { background: linear-gradient(180deg, #14130F 0%, #221E19 55%, #2B2620 100%); color: #F4F3EF; }
+    .sky .seg { transition: stroke-dasharray 0.6s ease; }
+    .sky .track { stroke: rgba(255, 255, 255, 0.85); } .sky.dawn .track, .sky.dusk .track { stroke: rgba(255, 255, 255, 0.72); } .sky.night .track { stroke: rgba(255, 255, 255, 0.10); }
+    .sky .tick { fill: #7C8A93; } .sky.dawn .tick { fill: #8A6E5C; } .sky.dusk .tick { fill: #8A6270; } .sky.night .tick { fill: #8A857B; }
+    .sky .star { fill: none; } .sky.night .star { fill: rgba(244, 243, 239, 0.7); }
+    .sky .glow { fill: url(#glowDay); } .sky.dusk .glow { fill: url(#glowDusk); } .sky.night .glow { fill: url(#glowNight); }
+    .sky .sun { fill: #F2B544; stroke: #FFFFFF; } .sky.night .sun { fill: #F4F3EF; stroke: rgba(244, 243, 239, 0.35); }
+    .sky .moon { fill: none; } .sky.night .moon { fill: #1E1B17; }
+    .sky .avatar { background: #1B1A17; color: #F4F3EF; } .sky.night .avatar { background: #F4F3EF; color: #1B1A17; }
+    .sky .sub { font-size: 13.5px; text-align: center; max-width: 280px; text-wrap: balance; opacity: 0.82; }
+    .chainwrap { display: flex; align-items: center; gap: 0; }
+    .chain { width: 14px; height: 14px; border-radius: 999px; background: currentColor; opacity: 0.9; }
+    .chain.miss { background: transparent; border: 1.5px solid currentColor; opacity: 0.35; box-sizing: border-box; }
+    .link { width: 6px; height: 1.5px; background: currentColor; opacity: 0.35; }
+    .chain.today { background: transparent; border: 2px solid #B7692A; opacity: 1; box-sizing: border-box; }
+    .chain.today.closed { background: #B7692A; }
+    .chain.today.open { animation: breathe 2.4s ease-in-out infinite; }
+    @keyframes breathe { 0%, 100% { box-shadow: 0 0 0 0 rgba(183, 105, 42, 0.35); } 50% { box-shadow: 0 0 0 5px rgba(183, 105, 42, 0); } }
+    .row { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; background: #FFFFFF; border: 1px solid #E4E0D6; border-radius: 16px; box-shadow: 0 1px 2px rgba(27, 26, 23, 0.04), 0 8px 22px rgba(27, 26, 23, 0.05); }
+    .rowhead { display: flex; align-items: center; gap: 12px; min-height: 40px; }
+    .rowhead .t { font-weight: 600; font-size: 15px; }
+    .rowhead .s { font-size: 12px; color: #6E6A62; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .med { width: 40px; height: 40px; border-radius: 999px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; border: 1.5px solid #DCD9D0; color: #8A857B; background: #FFFFFF; transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease; }
+    .med.part-j { border-color: #5F5BBF; color: #5F5BBF; background: #F1F0FA; }
+    .med.part-f { border-color: #2C8A5E; color: #2C8A5E; background: #EAF4EE; }
+    .med.part-a { border-color: #B7692A; color: #B7692A; background: #F8EEE3; }
+    .med.done-j { background: #5F5BBF; border-color: #5F5BBF; color: #FFFFFF; box-shadow: 0 6px 14px rgba(95, 91, 191, 0.28); }
+    .med.done-f { background: #2C8A5E; border-color: #2C8A5E; color: #FFFFFF; box-shadow: 0 6px 14px rgba(44, 138, 94, 0.28); }
+    .med.done-a { background: #B7692A; border-color: #B7692A; color: #FFFFFF; box-shadow: 0 6px 14px rgba(183, 105, 42, 0.28); }
+    .mini { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; user-select: none; box-sizing: border-box; border: 1.5px dashed #CFCABF; color: #8A857B; background: #FAF9F6; transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease; }
+    .mini.f-on { background: linear-gradient(180deg, #EAF5EE, #DCEFE3); border: 1.5px solid #CFE6D8; color: #1F5F41; box-shadow: inset 0 1px 0 #FFFFFF; }
+    .mini.a-on { background: linear-gradient(180deg, #F9EEE2, #F3E1CB); border: 1.5px solid #EBD5BC; color: #7D451A; box-shadow: inset 0 1px 0 #FFFFFF; }
+    .mini.a-due { border: 2px solid #B7692A; color: #B7692A; background: #FFFFFF; }
+    .chip { display: inline-flex; align-items: center; height: 34px; padding: 0 13px; border-radius: 999px; border: 1px solid #DCD9D0; background: #FFFFFF; font-size: 13.5px; font-weight: 500; color: #1B1A17; white-space: nowrap; cursor: pointer; user-select: none; }
+    .chip.on { background: #5F5BBF; border-color: #5F5BBF; color: #FFFFFF; box-shadow: 0 4px 12px rgba(95, 91, 191, 0.28); }
+    .chip.hab { height: 30px; font-size: 12.5px; }
+    .chip.hab.on { background: #ECEBF8; border-color: #ECEBF8; color: #3F3C8F; box-shadow: none; }
+    .lnk { font-size: 12px; font-weight: 500; color: #6E6A62; cursor: pointer; white-space: nowrap; }
+    .mic { width: 66px; height: 66px; border-radius: 999px; background: linear-gradient(160deg, #7A76D6 0%, #5F5BBF 60%, #4E4AA8 100%); box-shadow: 0 10px 24px rgba(95, 91, 191, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.35); display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; }
+    .mic.rec { background: linear-gradient(160deg, #C9564A 0%, #B0392E 60%, #8E2F24 100%); box-shadow: 0 10px 24px rgba(176, 57, 46, 0.38); animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+    @media (prefers-reduced-motion: reduce) { .mic.rec, .chain.today.open { animation: none; } .sky, .sky .seg, .med, .mini { transition: none; } }
+    .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 56px; color: #8A857B; font-size: 11px; font-weight: 500; }
+    .tab.on { color: #1B1A17; }
+    svg { display: block; }
+  </style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #F4F3EF; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+
+  <div style="flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 18px 16px 96px;">
+
+    <div class="sky {{ skyCls }}">
+      <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 4px 6px;">
+        <div class="d" style="font-size: 17px; letter-spacing: 0.02em;">Soma</div>
+        <div class="avatar" style="width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">DF</div>
+      </div>
+      <div style="position: relative; width: 320px; height: 192px;">
+        <svg width="320" height="192" viewBox="0 0 320 192">
+          <defs>
+            <radialGradient id="glowDay" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#F2B544" stop-opacity="0.55"></stop><stop offset="100%" stop-color="#F2B544" stop-opacity="0"></stop></radialGradient>
+            <radialGradient id="glowDusk" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#E8944D" stop-opacity="0.55"></stop><stop offset="100%" stop-color="#E8944D" stop-opacity="0"></stop></radialGradient>
+            <radialGradient id="glowNight" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#F4F3EF" stop-opacity="0.35"></stop><stop offset="100%" stop-color="#F4F3EF" stop-opacity="0"></stop></radialGradient>
+          </defs>
+          <circle class="star" cx="52" cy="26" r="1.2"></circle><circle class="star" cx="118" cy="14" r="0.9"></circle><circle class="star" cx="212" cy="18" r="1.3"></circle><circle class="star" cx="276" cy="34" r="0.9"></circle><circle class="star" cx="300" cy="96" r="1.1"></circle><circle class="star" cx="18" cy="118" r="1"></circle><circle class="star" cx="150" cy="8" r="0.8"></circle><circle class="star" cx="245" cy="52" r="0.8"></circle>
+          <path class="track" d="M30 170 A130 130 0 0 1 290 170" fill="none" stroke-width="14" stroke-linecap="round"></path>
+          <path class="seg" d="M30.2 163.2 A130 130 0 0 1 63.4 83" fill="none" stroke="#5F5BBF" stroke-width="14" stroke-linecap="butt" stroke-dasharray="{{ dashCheckin }} 200"></path>
+          <path class="seg" d="M73 73.4 A130 130 0 0 1 153.2 40.2" fill="none" stroke="#8F8CD3" stroke-width="14" stroke-linecap="butt" stroke-dasharray="{{ dashJournal }} 200"></path>
+          <path class="seg" d="M166.8 40.2 A130 130 0 0 1 247 73.4" fill="none" stroke="#2C8A5E" stroke-width="14" stroke-linecap="butt" stroke-dasharray="{{ dashFood }} 200"></path>
+          <path class="seg" d="M256.6 83 A130 130 0 0 1 289.8 163.2" fill="none" stroke="#B7692A" stroke-width="14" stroke-linecap="butt" stroke-dasharray="{{ dashActivity }} 200"></path>
+          <text class="tick" x="26" y="101" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9">9</text>
+          <text class="tick" x="95" y="36" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9">12</text>
+          <text class="tick" x="190" y="24" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9">15</text>
+          <text class="tick" x="274" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9">18</text>
+          <circle class="glow" cx="{{ sunX }}" cy="{{ sunY }}" r="30"></circle>
+          <circle class="sun" cx="{{ sunX }}" cy="{{ sunY }}" r="10" stroke-width="3"></circle>
+          <circle class="moon" cx="{{ moonX }}" cy="{{ moonY }}" r="8"></circle>
+          <text class="tick" x="30" y="190" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9">6:40</text>
+          <text class="tick" x="160" y="190" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9">{{ nowLabel }}</text>
+          <text class="tick" x="290" y="190" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9">21:30</text>
+        </svg>
+        <div style="position: absolute; left: 0; right: 0; top: 86px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+          <span class="d" style="font-size: 42px;">{{ heroBig }}</span>
+          <span class="sub">{{ heroSub }}</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; align-items: center; width: 100%; padding-top: 6px;">
+        <div class="chainwrap">
+          <span class="chain"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain miss"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain"></span><span class="link"></span><span class="chain today {{ todayChainCls }}"></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; width: 100%; font-size: 12px; opacity: 0.82;"><span><span class="m" style="font-weight: 500;">{{ chainCount }}</span> days closed in a row</span><span>Best chain <span class="m">19</span></span></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="rowhead">
+        <span class="med {{ chkCheckin }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg></span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;"><span class="t">Check-in</span><span class="s">{{ checkinStatus }}</span></div>
+        <span class="lnk" onClick="{{ toggleCheckin }}">{{ checkinLink }}</span>
+      </div>
+      <sc-if value="{{ checkinOpen }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <span class="chip {{ moodDown }}" onClick="{{ pickDown }}">Down</span>
+            <span class="chip {{ moodTired }}" onClick="{{ pickTired }}">Tired</span>
+            <span class="chip {{ moodNormal }}" onClick="{{ pickNormal }}">Normal</span>
+            <span class="chip {{ moodFocused }}" onClick="{{ pickFocused }}">Focused</span>
+            <span class="chip {{ moodPeaceful }}" onClick="{{ pickPeaceful }}">Peaceful</span>
+            <span class="chip {{ moodGreat }}" onClick="{{ pickGreat }}">Great</span>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <span class="chip hab {{ habMeditate }}" onClick="{{ toggleMeditate }}">Meditate</span>
+            <span class="chip hab" onClick="{{ addDrink }}">Drinks <span class="m" style="margin-left: 6px; color: #6E6A62;">{{ drinksLabel }}</span></span>
+            <span class="chip hab {{ habRead }}" onClick="{{ toggleRead }}">Read</span>
+            <span class="chip hab {{ habEarly }}" onClick="{{ toggleEarly }}">Early night</span>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <div class="row">
+      <div class="rowhead">
+        <span class="med {{ chkJournal }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg></span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;"><span class="t">Journal</span><span class="s">{{ journalStatus }}</span></div>
+        <span class="lnk">{{ journalLink }}</span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="rowhead">
+        <span class="med {{ chkFood }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14Z"></path><path d="M5 19l8-8"></path></svg></span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;"><span class="t">Food</span><span class="s">{{ foodStatus }}</span></div>
+        <div style="display: flex; gap: 6px;">
+          <span class="mini {{ miniBreakfast }}" onClick="{{ tapBreakfast }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h16"></path><path d="M8 13a4 4 0 0 1 8 0"></path><path d="M12 5v2M6 8l1.5 1.5M18 8l-1.5 1.5"></path></svg></span>
+          <span class="mini {{ miniLunch }}" onClick="{{ tapLunch }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18c0 4-3 8-9 8s-9-4-9-8z"></path><path d="M9 8c0-2 1-2 1-4M14 8c0-2 1-2 1-4"></path></svg></span>
+          <span class="mini {{ miniSnack }}" onClick="{{ tapSnack }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c-3-3-8-1-8 4 0 5 4 9 8 9s8-4 8-9c0-5-5-7-8-4z"></path><path d="M12 8V5"></path><path d="M12 5c1-1.5 3-1.5 4-1"></path></svg></span>
+          <span class="mini {{ miniDinner }}" onClick="{{ tapDinner }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4.5"></circle></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="rowhead">
+        <span class="med {{ chkActivity }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"></path></svg></span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;"><span class="t">Activity</span><span class="s">{{ activityStatus }}</span></div>
+        <div style="display: flex; gap: 6px;">
+          <span class="mini {{ miniPushups }}" onClick="{{ tapPushups }}"><span class="d" style="font-size: 15px;">53</span></span>
+          <span class="mini {{ miniWalk }}" onClick="{{ tapWalk }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5z"></path><path d="M16 11c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5z"></path></svg></span>
+          <span class="mini {{ miniGym }}" onClick="{{ tapGym }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"></path></svg></span>
+          <span class="mini {{ miniRun }}" onClick="{{ tapRun }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"></circle><path d="M12 13V9M10 3h4"></path></svg></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 96px; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;">
+    <sc-if value="{{ recording }}" hint-placeholder-val="{{ false }}">
+      <span class="m" style="font-size: 12px; background: #1B1A17; color: #F4F3EF; padding: 4px 10px; border-radius: 999px;">Recording · {{ recClock }} · tap to stop</span>
+    </sc-if>
+    <div class="mic {{ micCls }}" onClick="{{ toggleRec }}">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg>
+    </div>
+  </div>
+
+  <div style="height: 82px; background: #FFFFFF; border-top: 1px solid #DCD9D0; display: flex; align-items: flex-start; padding: 6px 8px 0;">
+    <div class="tab on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path><circle cx="12" cy="15.5" r="1.5" fill="currentColor" stroke="none"></circle></svg><span>Today</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg><span>Journal</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14Z"></path><path d="M5 19l8-8"></path></svg><span>Food</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"></path></svg><span>Activity</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-8 4 3"></path></svg><span>Insights</span></div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  defaults() {
+    return {
+      mood: null, checkinOpen: true,
+      meditate: false, read: false, early: false, drinks: 0,
+      recording: false, recSec: 0, recorded: 0,
+      eaten: { breakfast: true, lunch: true, snack: true, dinner: false },
+      pushups: false, walk: true, gym: false, run: false,
+      tick: 0
+    };
+  }
+
+  cur() { return Object.assign({}, this.defaults(), this.state || {}); }
+
+  componentDidMount() { this.clockTimer = setInterval(() => this.setState({ tick: Date.now() }), 60000); }
+  componentWillUnmount() { if (this.timer) clearInterval(this.timer); if (this.clockTimer) clearInterval(this.clockTimer); }
+
+  pickMood(m) { const s = this.cur(); const next = s.mood === m ? null : m; this.setState({ mood: next, checkinOpen: next === null }); }
+  toggle(key) { const s = this.cur(); const patch = {}; patch[key] = !s[key]; this.setState(patch); }
+
+  toggleRec() {
+    const s = this.cur();
+    if (s.recording) {
+      if (this.timer) clearInterval(this.timer);
+      this.timer = null;
+      this.setState({ recording: false, recorded: s.recSec });
+    } else {
+      this.setState({ recording: true, recSec: 0 });
+      this.timer = setInterval(() => { const n = this.cur(); this.setState({ recSec: n.recSec + 1 }); }, 1000);
+    }
+  }
+
+  tapMeal(name) { const s = this.cur(); const eaten = Object.assign({}, s.eaten); eaten[name] = !eaten[name]; this.setState({ eaten: eaten }); }
+
+  clock(sec) { const m = Math.floor(sec / 60); const r = sec % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+
+  arcPoint(theta) { const rad = theta * Math.PI / 180; return { x: 160 + 130 * Math.cos(rad), y: 170 - 130 * Math.sin(rad) }; }
+
+  skyPhase(t, night) {
+    if (night) return 'night';
+    if (t < 0.18) return 'dawn';
+    if (t < 0.72) return 'day';
+    return 'dusk';
+  }
+
+  renderVals() {
+    const s = this.cur();
+    const SEG = 88.5;
+    const plan = { breakfast: 470, lunch: 640, snack: 370, dinner: 620 };
+    const mealNames = ['breakfast', 'lunch', 'snack', 'dinner'];
+    const eatenList = mealNames.filter(n => s.eaten[n]);
+    const kcal = eatenList.reduce((a, n) => a + plan[n], 0);
+    const leftMeals = mealNames.filter(n => !s.eaten[n]);
+
+    const checkinDone = s.mood !== null;
+    const journalDone = s.recorded > 0;
+    const foodDone = leftMeals.length === 0;
+    const activityDone = s.pushups;
+    const otherAct = [s.walk, s.gym, s.run].filter(Boolean).length;
+    const doneCount = [checkinDone, journalDone, foodDone, activityDone].filter(Boolean).length;
+    const closed = doneCount === 4;
+
+    const foodFrac = eatenList.length / 4;
+    const actFrac = s.pushups ? 1 : (otherAct > 0 ? 0.35 : 0);
+
+    const now = new Date();
+    const mins = now.getHours() * 60 + now.getMinutes();
+    let t = (mins - 400) / (1290 - 400);
+    if (t < 0) t = 0; if (t > 1) t = 1;
+    const night = closed || mins >= 1290 || mins < 400;
+    const theta = 180 - 180 * (night && !closed ? 1 : t);
+    const p = this.arcPoint(closed ? 0 : theta);
+    const nowLabel = (now.getHours() < 10 ? '0' : '') + now.getHours() + ':' + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
+    const skyCls = this.skyPhase(t, night);
+
+    const need = [];
+    if (!checkinDone) need.push('a check-in');
+    if (!journalDone) need.push('a journal entry');
+    if (!foodDone) need.push(leftMeals.length === 1 ? leftMeals[0] : leftMeals.length + ' meals');
+    if (!activityDone) need.push('the push-ups');
+    let sentence = '';
+    if (need.length === 1) sentence = need[0];
+    else if (need.length === 2) sentence = need[0] + ' and ' + need[1];
+    else if (need.length > 2) sentence = need.slice(0, -1).join(', ') + ' and ' + need[need.length - 1];
+    if (sentence) sentence = sentence.charAt(0).toUpperCase() + sentence.slice(1);
+
+    let heroBig, heroSub;
+    if (closed) { heroBig = 'Day closed'; heroSub = 'Day 41 in the books. Chain is now 10.'; }
+    else if (doneCount === 0) { heroBig = '0 of 4'; heroSub = 'Good morning. Four taps close the day.'; }
+    else {
+      heroBig = doneCount + ' of 4';
+      const plural = need.length === 1 && (need[0] === 'the push-ups' || need[0].indexOf('meals') >= 0);
+      heroSub = sentence + (need.length === 1 ? (plural ? ' close the day.' : ' closes the day.') : ' to close the day.');
+    }
+
+    const moodCls = (m) => s.mood === m ? 'on' : '';
+    const chk = (done, part, k) => done ? 'done-' + k : (part ? 'part-' + k : '');
+    const foodStatus = foodDone ? kcal.toLocaleString('en-US') + ' of 2,100 kcal · all four eaten'
+      : (leftMeals.length === 1 && leftMeals[0] === 'dinner' ? 'Dinner left: salmon & rice · ' + kcal.toLocaleString('en-US') + ' kcal so far'
+      : leftMeals.length + ' meals left · ' + kcal.toLocaleString('en-US') + ' kcal so far');
+    const activityStatus = activityDone ? '53 push-ups done' + (otherAct ? ' · ' + otherAct + ' more logged' : '')
+      : '53 push-ups due · 3 × 18' + (s.walk ? ' · walk done' : '');
+
+    return {
+      skyCls,
+      dashCheckin: (checkinDone ? SEG : 0), dashJournal: (journalDone ? SEG : 0),
+      dashFood: Math.round(foodFrac * SEG * 10) / 10, dashActivity: Math.round(actFrac * SEG * 10) / 10,
+      sunX: Math.round(p.x * 10) / 10, sunY: Math.round(p.y * 10) / 10,
+      moonX: Math.round((p.x + 5) * 10) / 10, moonY: Math.round((p.y - 3) * 10) / 10,
+      nowLabel: closed ? 'closed' : nowLabel,
+      heroBig, heroSub,
+      chainCount: closed ? 10 : 9, todayChainCls: closed ? 'closed' : 'open',
+      checkinDone, checkinOpen: s.checkinOpen || !checkinDone,
+      chkCheckin: chk(checkinDone, false, 'j'),
+      checkinStatus: checkinDone ? 'Feeling ' + s.mood.toLowerCase() + (s.meditate || s.read || s.early || s.drinks ? ' · ' + [s.meditate ? 'Meditate' : '', s.read ? 'Read' : '', s.early ? 'Early night' : '', s.drinks ? 'Drinks ×' + s.drinks : ''].filter(Boolean).join(', ') : '') : "How's today?",
+      checkinLink: checkinDone ? (s.checkinOpen ? 'Done' : 'Change') : '',
+      toggleCheckin: () => this.setState({ checkinOpen: !s.checkinOpen }),
+      moodDown: moodCls('Down'), moodTired: moodCls('Tired'), moodNormal: moodCls('Normal'),
+      moodFocused: moodCls('Focused'), moodPeaceful: moodCls('Peaceful'), moodGreat: moodCls('Great'),
+      pickDown: () => this.pickMood('Down'), pickTired: () => this.pickMood('Tired'), pickNormal: () => this.pickMood('Normal'),
+      pickFocused: () => this.pickMood('Focused'), pickPeaceful: () => this.pickMood('Peaceful'), pickGreat: () => this.pickMood('Great'),
+      habMeditate: s.meditate ? 'on' : '', habRead: s.read ? 'on' : '', habEarly: s.early ? 'on' : '',
+      toggleMeditate: () => this.toggle('meditate'), toggleRead: () => this.toggle('read'), toggleEarly: () => this.toggle('early'),
+      drinksLabel: '×' + s.drinks, addDrink: () => this.setState({ drinks: (s.drinks + 1) % 6 }),
+      journalDone, chkJournal: chk(journalDone, s.recording, 'j'),
+      journalStatus: s.recording ? 'Listening. Tap the mic again when you are done.' : (journalDone ? 'Recorded · ' + this.clock(s.recorded) + ' · encrypted' : 'Tap the mic. Two minutes is plenty.'),
+      journalLink: journalDone ? 'Add another' : '',
+      recording: s.recording, recClock: this.clock(s.recSec), micCls: s.recording ? 'rec' : '',
+      toggleRec: () => this.toggleRec(),
+      foodDone, chkFood: chk(foodDone, eatenList.length > 0, 'f'),
+      foodStatus,
+      miniBreakfast: s.eaten.breakfast ? 'f-on' : '', miniLunch: s.eaten.lunch ? 'f-on' : '', miniSnack: s.eaten.snack ? 'f-on' : '', miniDinner: s.eaten.dinner ? 'f-on' : '',
+      tapBreakfast: () => this.tapMeal('breakfast'), tapLunch: () => this.tapMeal('lunch'), tapSnack: () => this.tapMeal('snack'), tapDinner: () => this.tapMeal('dinner'),
+      activityDone, chkActivity: chk(activityDone, otherAct > 0, 'a'),
+      activityStatus,
+      miniPushups: s.pushups ? 'a-on' : 'a-due', miniWalk: s.walk ? 'a-on' : '', miniGym: s.gym ? 'a-on' : '', miniRun: s.run ? 'a-on' : '',
+      tapPushups: () => this.toggle('pushups'), tapWalk: () => this.toggle('walk'), tapGym: () => this.toggle('gym'), tapRun: () => this.toggle('run')
+    };
+  }
+}
+</script>
+</body>
+</html>

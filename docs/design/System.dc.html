@@ -1,0 +1,170 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #F4F3EF; color: #1B1A17; font-family: Figtree, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+    a { color: #2C8A5E; } a:hover { color: #1F6A47; }
+    .d { font-family: "Bricolage Grotesque", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.01em; line-height: 1.05; }
+    .m { font-family: "JetBrains Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+    .eb { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #6E6A62; }
+    .sec { display: flex; flex-direction: column; gap: 14px; padding-top: 24px; border-top: 1px solid #DCD9D0; }
+    .sw { display: flex; flex-direction: column; gap: 6px; }
+    .sw .b { height: 56px; border-radius: 10px; border: 1px solid rgba(27, 26, 23, 0.08); }
+    .sw .n { font-size: 12px; font-weight: 500; }
+    .sw .h { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: #6E6A62; }
+    .chip { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid #DCD9D0; background: #FFFFFF; font-size: 14px; font-weight: 500; }
+    .note { font-size: 13px; color: #4A4741; line-height: 1.5; max-width: 560px; }
+    svg { display: block; }
+  </style>
+</helmet>
+<div style="width: 1000px; background: #F4F3EF; padding: 40px 48px 56px; display: flex; flex-direction: column; gap: 28px; box-sizing: border-box;">
+
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 40px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="eb">Visual system · direction A</div>
+      <div class="d" style="font-size: 64px; letter-spacing: -0.02em;">Soma</div>
+      <div class="note">One day, one page. Three domains share one quiet surface and are told apart by a single hue each, used only where it carries information: a dot, a ring, a number. Everything else is ink on bone.</div>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px;"><span style="width: 10px; height: 10px; border-radius: 999px; background: #5F5BBF;"></span>Journal</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px;"><span style="width: 10px; height: 10px; border-radius: 999px; background: #2C8A5E;"></span>Food</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px;"><span style="width: 10px; height: 10px; border-radius: 999px; background: #B7692A;"></span>Activity</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="eb">Color</div>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px;">
+      <div class="sw"><div class="b" style="background: #F4F3EF;"></div><span class="n">Bone</span><span class="h">#F4F3EF · page</span></div>
+      <div class="sw"><div class="b" style="background: #FFFFFF;"></div><span class="n">Surface</span><span class="h">#FFFFFF · cards</span></div>
+      <div class="sw"><div class="b" style="background: #ECEAE3;"></div><span class="n">Surface 2</span><span class="h">#ECEAE3 · tracks, rest</span></div>
+      <div class="sw"><div class="b" style="background: #DCD9D0;"></div><span class="n">Hairline</span><span class="h">#DCD9D0 · borders</span></div>
+      <div class="sw"><div class="b" style="background: #6E6A62;"></div><span class="n">Muted</span><span class="h">#6E6A62 · labels</span></div>
+      <div class="sw"><div class="b" style="background: #1B1A17;"></div><span class="n">Ink</span><span class="h">#1B1A17 · text, primary</span></div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px;">
+      <div class="sw"><div class="b" style="background: #5F5BBF;"></div><span class="n">Journal</span><span class="h">#5F5BBF · tint #ECEBF8</span></div>
+      <div class="sw"><div class="b" style="background: #2C8A5E;"></div><span class="n">Food</span><span class="h">#2C8A5E · bars #8BC4A6</span></div>
+      <div class="sw"><div class="b" style="background: #B7692A;"></div><span class="n">Activity</span><span class="h">#B7692A · tint #F6EBDF</span></div>
+      <div class="sw"><div class="b" style="background: #8BC4A6;"></div><span class="n">Secondary bar</span><span class="h">#8BC4A6 · carbs, fat</span></div>
+      <div class="sw"><div class="b" style="background: #F5EBD3; display: flex; align-items: center; justify-content: center; color: #7A5A0E; font-family: JetBrains Mono, monospace; font-size: 11px;">warning</div><span class="n">Warning</span><span class="h">#7A5A0E on #F5EBD3 · admin</span></div>
+      <div class="sw"><div class="b" style="background: #F3DCD7; display: flex; align-items: center; justify-content: center; color: #8E2F24; font-family: JetBrains Mono, monospace; font-size: 11px;">critical</div><span class="n">Critical</span><span class="h">#8E2F24 on #F3DCD7 · admin</span></div>
+    </div>
+    <div class="note">The three domain hues sit at the same lightness and chroma, so none of them reads as "the" brand color. Status colors are a separate set and never appear on the daily screens.</div>
+  </div>
+
+  <div class="sec">
+    <div class="eb">Type</div>
+    <div style="display: grid; grid-template-columns: 220px 1fr; gap: 12px 32px; align-items: baseline;">
+      <span class="h eb">Display · Bricolage Grotesque 600</span><span class="d" style="font-size: 36px;">September 14</span>
+      <span class="h eb">Big number · 56 / 40</span><span class="d" style="font-size: 56px;">53 <span style="font-size: 40px; color: #6E6A62;">1,480</span></span>
+      <span class="h eb">Title · 32</span><span class="d" style="font-size: 32px;">Journal</span>
+      <span class="h eb">Body · Figtree 400 / 14–16</span><span style="font-size: 15px; line-height: 1.55; max-width: 520px;">Every day I get it in before noon the rest of the day just lines up. I said this last week too and then didn't do it.</span>
+      <span class="h eb">Label · JetBrains Mono 11 caps</span><span class="eb" style="color: #1B1A17;">Tuesday · Day 41 of Round 3</span>
+      <span class="h eb">Data · JetBrains Mono 12–14</span><span class="m" style="font-size: 14px;">112 / 160 g · 6h 52m · 33 / 35 · 94%</span>
+    </div>
+    <div class="note">Numbers are always mono and tabular so columns line up and a value that changes by one digit doesn't shift the row. The display face is used for dates, titles and the one number a screen is about, never for body copy.</div>
+  </div>
+
+  <div class="sec">
+    <div class="eb">Components</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="h eb">Buttons · 44 / 48</span>
+        <div style="display: flex; gap: 8px;">
+          <span style="height: 44px; padding: 0 18px; border-radius: 12px; background: #1B1A17; color: #F4F3EF; display: inline-flex; align-items: center; font-weight: 600; font-size: 15px;">Add</span>
+          <span style="height: 44px; padding: 0 18px; border-radius: 12px; background: #B7692A; color: #FFFFFF; display: inline-flex; align-items: center; font-weight: 600; font-size: 15px;">Did 53</span>
+          <span style="height: 44px; padding: 0 18px; border-radius: 12px; border: 1px solid #DCD9D0; background: #FFFFFF; display: inline-flex; align-items: center; font-weight: 600; font-size: 15px;">Other number</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="h eb">Chips · 36 mood, 32 habit</span>
+        <div style="display: flex; gap: 8px;">
+          <span class="chip">Normal</span>
+          <span class="chip" style="background: #5F5BBF; border-color: #5F5BBF; color: #FFFFFF;">Focused</span>
+          <span class="chip" style="height: 32px; font-size: 13px; background: #ECEBF8; border-color: #ECEBF8; color: #3F3C8F;">Walk</span>
+          <span class="chip" style="height: 32px; font-size: 13px;">Drinks <span class="m" style="margin-left: 6px; color: #6E6A62;">×0</span></span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="h eb">Tap tiles · 96 tall, four across</span>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 344px;">
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 96px; border-radius: 12px; background: #E6F2EB; color: #1F5F41; text-align: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h16"></path><path d="M8 13a4 4 0 0 1 8 0"></path><path d="M12 5v2M6 8l1.5 1.5M18 8l-1.5 1.5"></path></svg><span style="font-size: 12px; font-weight: 500;">Breakfast</span><span style="font-size: 10.5px; color: #2F6E50;">Eggs &amp; toast</span><span class="m" style="font-size: 10.5px; color: #2C8A5E;">470 · eaten</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 96px; border-radius: 12px; border: 1px solid #DCD9D0; background: #FFFFFF; color: #1B1A17; text-align: center; box-sizing: border-box;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4.5"></circle></svg><span style="font-size: 12px; font-weight: 500;">Dinner</span><span style="font-size: 10.5px; color: #6E6A62;">Salmon &amp; rice</span><span class="m" style="font-size: 10.5px; color: #6E6A62;">620 · tap when eaten</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 96px; border-radius: 12px; border: 2px solid #B7692A; background: #FFFFFF; text-align: center; box-sizing: border-box;"><span class="d" style="font-size: 24px; line-height: 1; color: #B7692A;">53</span><span style="font-size: 12px; font-weight: 500;">Push-ups</span><span class="m" style="font-size: 10.5px; color: #6E6A62;">tap when done</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 96px; border-radius: 12px; background: #F6EBDF; color: #7D451A; text-align: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5z"></path><path d="M16 11c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5z"></path></svg><span style="font-size: 12px; font-weight: 500;">Walk</span><span class="m" style="font-size: 10.5px; color: #B7692A;">32 min</span></div>
+        </div>
+        <span style="font-size: 11px; color: #6E6A62;">eaten · planned · due today · done. A tile is a one-tap "done"; changing what is planned happens on the Food or Activity screen.</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="h eb">Record</span>
+        <div style="width: 56px; height: 56px; border-radius: 999px; background: #5F5BBF; display: flex; align-items: center; justify-content: center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg></div>
+      </div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="h eb">Ring · 72 and 96</span>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <div style="position: relative; width: 72px; height: 72px;"><svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="#ECEAE3" stroke-width="7"></circle><circle cx="36" cy="36" r="30" fill="none" stroke="#2C8A5E" stroke-width="7" stroke-linecap="round" stroke-dasharray="133 188.5" transform="rotate(-90 36 36)"></circle></svg><div class="m" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500;">70%</div></div>
+          <div style="position: relative; width: 72px; height: 72px;"><svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="#ECEAE3" stroke-width="7"></circle><circle cx="36" cy="36" r="30" fill="none" stroke="#B7692A" stroke-width="7" stroke-linecap="round" stroke-dasharray="86 188.5" transform="rotate(-90 36 36)"></circle></svg><div class="m" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500;">46%</div></div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; width: 240px;">
+        <span class="h eb">Bar · 5–6 px</span>
+        <div style="display: flex; flex-direction: column; gap: 3px;"><div style="display: flex; justify-content: space-between; font-size: 12px;"><span>Protein</span><span class="m" style="color: #6E6A62;">112 / 160 g</span></div><div style="height: 6px; border-radius: 999px; background: #ECEAE3;"><div style="width: 70%; height: 6px; border-radius: 999px; background: #2C8A5E;"></div></div></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="h eb">Day cells · 90-day grid</span>
+        <div style="display: flex; gap: 4px;">
+          <span style="width: 18px; height: 18px; border-radius: 4px; background: #B7692A;"></span>
+          <span style="width: 18px; height: 18px; border-radius: 4px; background: #FFFFFF; border: 1px solid #DCD9D0; box-sizing: border-box;"></span>
+          <span style="width: 18px; height: 18px; border-radius: 4px; background: #ECEAE3;"></span>
+          <span style="width: 18px; height: 18px; border-radius: 4px; background: #FFFFFF; border: 2px solid #B7692A; box-sizing: border-box;"></span>
+          <span style="width: 18px; height: 18px; border-radius: 4px; background: #F4F3EF; border: 1px solid #ECEAE3; box-sizing: border-box;"></span>
+        </div>
+        <span style="font-size: 11px; color: #6E6A62;">hit · missed · rest · today · future</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="h eb">Card</span>
+        <div style="width: 220px; background: #FFFFFF; border: 1px solid #DCD9D0; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;"><span style="width: 8px; height: 8px; border-radius: 999px; background: #2C8A5E;"></span><span class="eb" style="color: #1B1A17;">Food</span><span class="eb" style="margin-left: auto;">3 meals</span></div>
+          <span style="font-size: 13px; color: #6E6A62;">14 radius · 1 px hairline · 16 padding · no shadow</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="eb">Icons · 22 px, 1.75 stroke, round caps</div>
+    <div style="display: flex; gap: 28px; align-items: center; color: #1B1A17;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path><circle cx="12" cy="15.5" r="1.5" fill="currentColor" stroke="none"></circle></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14Z"></path><path d="M5 19l8-8"></path></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"></path></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-8 4 3"></path></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 15l5-5 4 4 3-3 6 6"></path><circle cx="16" cy="9" r="1.5"></circle></svg>
+      <span style="font-size: 12px; color: #6E6A62; margin-left: 8px;">today · journal · food · activity · insights · vault · photo</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="eb">Rules</div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;">
+      <div class="note"><strong>Spacing.</strong> 16 px page gutter, 12 px between cards, 8 px between chips. Touch targets 44 px or taller; habit chips are the one 32 px exception because they sit inside a card, never alone.</div>
+      <div class="note"><strong>Hierarchy.</strong> Each screen has one display-size number or date. Domain color goes on at most three things per card: the dot, the fill, one number.</div>
+      <div class="note"><strong>Privacy is visible.</strong> The lock icon and the word "Encrypted" appear wherever journal text is shown. Insights say in one sentence what leaves the phone.</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

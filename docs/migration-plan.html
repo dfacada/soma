@@ -1,0 +1,330 @@
+<title>Glimpse on Catalyst</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Epilogue:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F7F2E8; --bg-2:#EFE7D8; --ink:#2A2420; --ink-2:#5C534A; --mute:#8A7E72;
+  --line:#DDD3C2; --accent:#B5502E; --accent-ink:#8F3E22;
+  --ok:#3F7D5A; --warn:#B7791F; --crit:#A83A2C;
+  --ok-bg:#E4EEE6; --warn-bg:#F5EBD3; --crit-bg:#F3DCD7;
+  --code-bg:#EFE8DA;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1B1916; --bg-2:#242019; --ink:#EDE6DA; --ink-2:#C4B9A9; --mute:#8F8577;
+    --line:#3A342C; --accent:#E0865F; --accent-ink:#F0A987;
+    --ok:#7FC49A; --warn:#E2B15C; --crit:#E58A7C;
+    --ok-bg:#1F2E25; --warn-bg:#332A15; --crit-bg:#3A2320;
+    --code-bg:#262119;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1B1916; --bg-2:#242019; --ink:#EDE6DA; --ink-2:#C4B9A9; --mute:#8F8577;
+  --line:#3A342C; --accent:#E0865F; --accent-ink:#F0A987;
+  --ok:#7FC49A; --warn:#E2B15C; --crit:#E58A7C;
+  --ok-bg:#1F2E25; --warn-bg:#332A15; --crit-bg:#3A2320;
+  --code-bg:#262119;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Epilogue,system-ui,sans-serif;font-size:16px;line-height:1.6;padding-inline:20px;padding-block:48px 96px}
+.wrap{max-width:1040px;margin:0 auto}
+.prose{max-width:720px}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;font-weight:600;line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:clamp(34px,5vw,48px);letter-spacing:-.01em}
+h2{font-size:26px;margin-top:64px;padding-top:20px;border-top:1px solid var(--line)}
+h3{font-size:19px;margin-top:32px}
+p{margin:12px 0}
+.eyebrow{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.lede{font-size:18px;color:var(--ink-2);max-width:680px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:20px;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;color:var(--ink-2)}
+code,pre{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.88em}
+code{background:var(--code-bg);padding:1px 5px;border-radius:3px}
+pre{background:var(--code-bg);padding:14px 16px;border-radius:6px;overflow-x:auto;line-height:1.5;margin:14px 0}
+pre code{background:none;padding:0}
+ul,ol{padding-left:22px;margin:10px 0}
+li{margin:6px 0}
+li::marker{color:var(--mute)}
+strong{font-weight:600}
+a{color:var(--accent-ink)}
+.verdict{margin-top:36px;padding:20px 24px;border-left:3px solid var(--accent);background:var(--bg-2)}
+.verdict p{margin:8px 0}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:20px}
+.col h3{margin-top:0}
+.col ul{margin-top:8px}
+.tag{display:inline-block;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;letter-spacing:.04em;padding:2px 8px;border-radius:3px;vertical-align:middle;white-space:nowrap}
+.tag.ok{background:var(--ok-bg);color:var(--ok)}
+.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.tag.crit{background:var(--crit-bg);color:var(--crit)}
+.tag.info{background:var(--bg-2);color:var(--ink-2);border:1px solid var(--line)}
+.blockers{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:20px}
+.blocker{padding:18px 20px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.blocker .eyebrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.blocker h3{margin-top:8px;font-size:18px}
+.blocker p{margin:8px 0 0;color:var(--ink-2);font-size:15px}
+.tablewrap{overflow-x:auto;margin-top:18px;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:14.5px}
+th{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);text-align:left;padding:12px 14px;background:var(--bg-2);border-bottom:1px solid var(--line)}
+td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.k{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;white-space:nowrap}
+td.n{color:var(--ink-2)}
+.phase{display:grid;grid-template-columns:120px 1fr;gap:20px;padding:24px 0;border-bottom:1px solid var(--line)}
+.phase:last-of-type{border-bottom:none}
+.phase .idx{font-family:Fraunces,Georgia,serif;font-size:30px;font-weight:500;line-height:1;color:var(--accent)}
+.phase .idx small{display:block;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;color:var(--mute);margin-top:8px;letter-spacing:.04em}
+.phase h3{margin-top:0}
+.phase .exit{margin-top:12px;padding:10px 14px;background:var(--bg-2);border-radius:4px;font-size:14.5px}
+.phase .exit b{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-right:8px}
+@media (max-width:560px){.phase{grid-template-columns:1fr;gap:8px}}
+.mermaid{background:var(--bg-2);border-radius:6px;padding:12px;overflow-x:auto;margin-top:18px}
+.q{padding:14px 18px;border:1px dashed var(--line);border-radius:6px;margin-top:12px}
+.q .eyebrow{margin-bottom:4px}
+.foot{margin-top:72px;padding-top:20px;border-top:1px solid var(--line);font-size:13.5px;color:var(--mute)}
+.foot a{color:var(--mute)}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Migration plan · September 2026</div>
+  <h1 style="margin-top:10px">Glimpse on Catalyst</h1>
+  <p class="lede">Moving the whole stack off Vercel and Supabase onto Zoho Catalyst: the app, eight edge functions, nine tables, three storage buckets, one cron job, and eight users' encrypted vaults.</p>
+  <div class="meta">
+    <span>repo: dfacada/glimpse</span>
+    <span>app: 8,559-line single HTML</span>
+    <span>users: 8 · entries: 129</span>
+  </div>
+
+  <div class="verdict prose">
+    <p><strong>Verdict: doable, but it is a re-architecture, not a lift-and-shift.</strong> Catalyst has no row-level security and caps HTTP functions at 30 seconds. That forces two changes the current app was built to avoid: every database call has to go through an API layer instead of the browser talking to tables directly, and transcription has to become an async job. Plan for roughly <strong>4 weeks of focused work</strong> across six phases, with a spike first to confirm four things the docs don't state.</p>
+    <p>The end-to-end encryption design is the reason this is survivable: ciphertext and the vault salt move byte-for-byte, so nobody has to re-enter a passphrase or loses an entry.</p>
+  </div>
+
+  <h2>What runs today</h2>
+  <div class="cols">
+    <div class="col">
+      <h3>Vercel</h3>
+      <ul>
+        <li>Static hosting for <code>glimpse-secure.html</code>, the Whisper worker, icons, manifest, walkthrough</li>
+        <li>One rewrite: <code>/</code> → <code>glimpse-secure.html</code></li>
+        <li>One header: manifest <code>Content-Type</code></li>
+        <li>Auto-deploy from <code>master</code></li>
+        <li>Origin <code>glimpse-seven-livid.vercel.app</code> is hard-coded in every function's CORS allowlist and in the Fitbit OAuth app</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>Supabase</h3>
+      <ul>
+        <li><strong>Auth</strong>: email + password, JWT sessions, <code>refreshSession</code></li>
+        <li><strong>Postgres</strong>: <code>entries</code>, <code>vault_meta</code>, <code>vault_tokens</code>, <code>fitbit_daily</code>, <code>checkins</code>, <code>user_prefs</code>, <code>errors</code>, <code>feedback</code>; RLS on every table, explicit grants</li>
+        <li><strong>Storage</strong>: <code>audio</code>, <code>photos</code>, <code>audio-drafts</code> (200 ms chunks streamed during recording)</li>
+        <li><strong>Edge functions</strong> (Deno): transcribe-cloud → Groq · analyze-patterns and analyze-entry → Anthropic · fitbit-oauth-exchange, fitbit-sync → Fitbit · admin-stats, am-i-admin, ack-feedback, admin-clear-errors</li>
+        <li><strong>pg_cron</strong>: nightly prune of <code>errors</code> older than 30 days</li>
+      </ul>
+    </div>
+  </div>
+  <p class="prose" style="margin-top:20px">Unaffected: the Whisper worker loads <code>@xenova/transformers</code> from jsdelivr, the Orbit bridge talks to <code>localhost:4747</code>, and the vault key never leaves the browser.</p>
+
+  <h2>Four things that change the architecture</h2>
+  <p class="prose">Verified against the Catalyst docs this week. Each one is a design decision, not a config toggle.</p>
+  <div class="blockers">
+    <div class="blocker">
+      <div class="eyebrow"><span>Data Store</span><span class="tag crit">re-architect</span></div>
+      <h3>No row-level security</h3>
+      <p>Permissions are per table and per role: select, insert, update, delete. Nothing filters rows by owner. Today the browser calls <code>SB.from('entries')</code> directly and RLS keeps users apart. On Catalyst every read and write must go through a function that checks the caller and adds <code>where user_id = ?</code> itself.</p>
+    </div>
+    <div class="blocker">
+      <div class="eyebrow"><span>Functions</span><span class="tag crit">re-architect</span></div>
+      <h3>30-second HTTP timeout</h3>
+      <p>Advanced I/O functions hard-stop at 30 s. Groq takes up to 90 s on a 25 MB file, and the pattern analysis call to Claude runs 10 to 25 s. Both become jobs: the client submits, a background function (900 s budget for Cron/Event types) does the work, the client polls.</p>
+    </div>
+    <div class="blocker">
+      <div class="eyebrow"><span>Data Store</span><span class="tag warn">reshape</span></div>
+      <h3>Text columns cap at 10,000 characters</h3>
+      <p>An entry's ciphertext is stored today as a JSON integer array in a Postgres column, often 50 to 200 KB. It cannot live in a Data Store column. Move entry ciphertext to Stratus as a binary object, exactly the format audio already uses, and keep only metadata in the table.</p>
+    </div>
+    <div class="blocker">
+      <div class="eyebrow"><span>Auth</span><span class="tag warn">reshape</span></div>
+      <h3>Passwords don't migrate, sessions are Catalyst's</h3>
+      <p>Catalyst issues its own user IDs (numeric) and manages sessions via its web SDK. Supabase password hashes cannot be imported. All eight users get an invite and set a new login password. Their vault passphrase is unchanged, so their data decrypts as before.</p>
+    </div>
+  </div>
+
+  <h2>Service mapping</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Today</th><th>On Catalyst</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Vercel static hosting</td><td>Slate (Git auto-deploy, custom domain, free SSL)</td><td><span class="tag warn">verify</span></td><td class="n">Classic Web Client Hosting only serves from the Development environment, so Slate is the production path. Confirm Slate accepts a no-build static site and how it serves <code>/</code> and the manifest MIME type.</td></tr>
+        <tr><td class="k">Supabase Auth</td><td>Catalyst Authentication, embedded email + password</td><td><span class="tag warn">verify</span></td><td class="n">Custom User Validation can allow-list sign-ups. Confirm the session model works from a Slate-hosted page and that a function can identify the caller from the request.</td></tr>
+        <tr><td class="k">entries (row + ciphertext)</td><td>Data Store <code>entries</code> for metadata; Stratus object <code>entries/{uid}/{id}.enc</code> for ciphertext</td><td><span class="tag ok">clear</span></td><td class="n">Reuse the binary <code>[0x01][iv][ct]</code> format from <code>encAudioBin</code>. Listing 129 entries becomes 1 table query plus lazy object fetches; cache decrypted entries in IDB as today.</td></tr>
+        <tr><td class="k">vault_meta, vault_tokens, user_prefs, checkins, fitbit_daily</td><td>Data Store tables, ciphertext base64 in Text columns</td><td><span class="tag ok">clear</span></td><td class="n">All well under 10,000 chars. Keep the same column names; <code>user_id</code> becomes BigInt.</td></tr>
+        <tr><td class="k">errors, feedback</td><td>Data Store tables</td><td><span class="tag ok">clear</span></td><td class="n">Truncate <code>stack</code> to 10,000 chars on insert. Keep <code>resolved_at</code> / <code>resolved_by</code>.</td></tr>
+        <tr><td class="k">Storage: audio, photos</td><td>Stratus buckets, pre-signed upload and download URLs minted by the API</td><td><span class="tag warn">verify</span></td><td class="n">Signed URLs keep 20 MB uploads out of the 30 s function path. Confirm pre-signed URL support, expiry, and bucket CORS in the console.</td></tr>
+        <tr><td class="k">Storage: audio-drafts (Tier 3b)</td><td>Stratus bucket, URLs signed in batches</td><td><span class="tag warn">design</span></td><td class="n">A chunk every 200 ms is 300 PUTs a minute. Sign 100 URLs per request, or move to 1 s chunks. Decide in the spike.</td></tr>
+        <tr><td class="k">transcribe-cloud</td><td>API endpoint that enqueues a job; job function calls Groq, writes the transcript ciphertext back</td><td><span class="tag crit">re-architect</span></td><td class="n">Client polls <code>/jobs/{id}</code>. This also retires the stuck-in-pending bug class for good. Groq key moves to a Catalyst environment variable.</td></tr>
+        <tr><td class="k">analyze-patterns, analyze-entry</td><td>Same job pattern, Anthropic key in env</td><td><span class="tag crit">re-architect</span></td><td class="n"><strong>analyze-entry has no source in the repo.</strong> Export it from the Supabase dashboard before anything else.</td></tr>
+        <tr><td class="k">fitbit-oauth-exchange, fitbit-sync</td><td>Express routes in the API function</td><td><span class="tag ok">clear</span></td><td class="n">Both finish in a few seconds. Register the new redirect URI at dev.fitbit.com.</td></tr>
+        <tr><td class="k">admin-stats, am-i-admin, ack-feedback, admin-clear-errors</td><td>Express routes; admin check via Catalyst roles instead of an email list</td><td><span class="tag ok">clear</span></td><td class="n">Catalyst does not track last-seen. Add a <code>last_seen</code> column to <code>user_prefs</code>, updated on vault unlock.</td></tr>
+        <tr><td class="k">pg_cron errors prune</td><td>Catalyst Cron → cron function running a ZCQL delete</td><td><span class="tag ok">clear</span></td><td class="n">Daily schedule set in the console.</td></tr>
+        <tr><td class="k">Deno edge runtime</td><td>Node.js Advanced I/O (Express) plus Cron/Event functions</td><td><span class="tag ok">clear</span></td><td class="n">Straight port. <code>Deno.env.get</code> → <code>process.env</code>. Functions run same-origin behind the hosted app, so the CORS allowlists go away.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Target shape</h2>
+  <p class="prose">One Express function fronts everything the browser needs. Large binaries never pass through a function.</p>
+  <pre class="mermaid">
+flowchart LR
+  B[Browser<br/>glimpse-secure.html<br/>AES-GCM in page] -->|session| A[Catalyst Auth]
+  B -->|JSON, same origin| API[Advanced I/O: glimpse_api<br/>Express, checks caller, scopes by user_id]
+  API --> DS[(Data Store<br/>metadata tables)]
+  API -->|mint signed URLs| ST[(Stratus<br/>entries · audio · photos · drafts)]
+  B -->|PUT / GET ciphertext via signed URL| ST
+  API -->|enqueue| J[Job: transcribe / analyze<br/>Groq · Anthropic]
+  J --> DS
+  J --> ST
+  C[Cron: nightly] --> DS
+  </pre>
+
+  <h2>Phases</h2>
+  <p class="prose">Sequenced so nothing on the live site changes until phase 5. Estimates assume one person working with Claude and a normal amount of console poking.</p>
+
+  <div class="phase">
+    <div class="idx">0<small>2–3 days</small></div>
+    <div>
+      <h3>Spike: prove the four unknowns</h3>
+      <ul>
+        <li>Create the Catalyst project. Deploy a hello-world Slate site from a branch with no build step and confirm <code>/</code> serves the HTML and <code>.webmanifest</code> gets the right type.</li>
+        <li>Wire embedded email sign-up and sign-in on that page. Confirm an Advanced I/O function can read the caller's user ID and email from the request.</li>
+        <li>Stratus: upload a 25 MB object from the browser via a pre-signed URL with bucket CORS on. Download it the same way. Note the expiry options.</li>
+        <li>Submit a job from the API function that sleeps 60 s, then writes a row. Confirm the timeout budget for whatever job type Catalyst gives you (Job Scheduling if it is available to the account, otherwise an Event function).</li>
+        <li>Export <code>analyze-entry</code> from the Supabase dashboard into <code>supabase/functions/</code> and commit it.</li>
+      </ul>
+      <div class="exit"><b>Exit</b>All four work, or you have a concrete workaround for the one that doesn't. If pre-signed uploads or the job budget fail, stop and revisit the plan before writing more code.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="idx">1<small>5–7 days</small></div>
+    <div>
+      <h3>Backend: the API function, jobs, and cron</h3>
+      <ul>
+        <li>New folder <code>catalyst/functions/glimpse_api</code> (Express). Routes mirror today's client calls: <code>/entries</code> list/upsert/delete, <code>/vault-meta</code>, <code>/vault-tokens</code>, <code>/prefs</code>, <code>/checkins</code>, <code>/fitbit-daily</code>, <code>/errors</code>, <code>/feedback</code>, <code>/sign</code> (batch pre-signed URLs), <code>/jobs</code>.</li>
+        <li>Every route resolves the caller first and scopes every query by <code>user_id</code>. Admin routes check a Catalyst role.</li>
+        <li>Port the eight Deno functions to Express handlers or job functions. Secrets go in the function's environment variables, with separate dev and production values.</li>
+        <li>Job function <code>glimpse_jobs</code>: transcribe (Groq) and analyze (Anthropic). Writes results to a <code>jobs</code> table the client polls.</li>
+        <li>Cron function <code>glimpse_nightly</code>: prune errors older than 30 days.</li>
+        <li>Data Store tables created from a checked-in schema script; column notes in <code>catalyst/SCHEMA.md</code>.</li>
+      </ul>
+      <div class="exit"><b>Exit</b>Every route exercised with curl in the Development environment. A 20-minute audio file transcribes end to end through the job path.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="idx">2<small>5–7 days</small></div>
+    <div>
+      <h3>Client: swap the data layer, keep the crypto</h3>
+      <ul>
+        <li>Introduce a small <code>api</code> object in the HTML that wraps <code>fetch</code> to the same-origin function, and replace the 20-odd <code>SB.from(...)</code>, <code>SB.storage</code>, and <code>SB.auth</code> call sites with it. <code>enc</code>, <code>dec</code>, <code>encAudioBin</code>, <code>decAudioBin</code>, and the vault unlock flow do not change.</li>
+        <li>Entry save: encrypt as today, PUT ciphertext to Stratus via signed URL, then upsert metadata. Entry load: one metadata query, then fetch and decrypt objects, cached in IDB.</li>
+        <li>Transcription: submit job, poll. Keep local Whisper as the fallback exactly as it is now. Delete the <code>transcript_status = 'pending'</code> watchdog; a job either completes or fails with a reason.</li>
+        <li>Tier 3a (IDB) untouched. Tier 3b: batch-signed draft chunk uploads.</li>
+        <li>Rename the file to <code>index.html</code> so no rewrite is needed. Remove the Supabase JS CDN script.</li>
+      </ul>
+      <div class="exit"><b>Exit</b>Full walkthrough on desktop and iPhone against the Development environment: sign up, create vault, record, lock screen, sync, photo, Fitbit connect, admin panel, second-device unlock.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="idx">3<small>2–3 days</small></div>
+    <div>
+      <h3>Data migration script, rehearsed against dev</h3>
+      <ul>
+        <li>Export from Supabase with the service role key: every table to JSON, every storage object to disk, <code>auth.users</code> to a list of <code>uuid → email</code>.</li>
+        <li>Create the eight users in Catalyst by email. Build the <code>uuid → catalyst_user_id</code> map.</li>
+        <li>Transform: rewrite <code>user_id</code> everywhere, convert <code>entries.iv/ct</code> integer arrays into the binary object format, base64 the small ciphertext columns, rename storage paths to the new user IDs.</li>
+        <li>Import: table rows through the Node SDK bulk write, objects into Stratus. Idempotent, so it can be re-run.</li>
+        <li>Verify: for one test account, unlock on the new site with the real passphrase and confirm entry count, a transcript, an audio playback, and a photo.</li>
+      </ul>
+      <div class="exit"><b>Exit</b>Script runs clean twice in a row against dev. Row and object counts match the Supabase totals.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="idx">4<small>1 day</small></div>
+    <div>
+      <h3>Pre-cutover checklist</h3>
+      <ul>
+        <li>Ask every user to open the current app once on each device so IndexedDB recovery buffers drain. Those buffers are per-origin and will not follow them.</li>
+        <li>Deploy the client and functions to Catalyst Production. Set production secrets.</li>
+        <li>Register the new redirect URI in the Fitbit developer app. Users will reconnect Fitbit once.</li>
+        <li>Send invites from Catalyst so users set their login password ahead of time.</li>
+        <li>Put the current Vercel site into read-only mode with a banner pointing at the new address.</li>
+      </ul>
+      <div class="exit"><b>Exit</b>No pending uploads on any device. Everyone has a working Catalyst login.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="idx">5<small>1 day</small></div>
+    <div>
+      <h3>Cutover</h3>
+      <ul>
+        <li>Run the migration script against production.</li>
+        <li>Unlock on the new site with your own vault. Check the admin panel totals.</li>
+        <li>Point the custom domain, if you use one, at Slate. Otherwise share the new Catalyst address; the installed PWA on each phone needs to be reinstalled from the new origin.</li>
+        <li>Keep Supabase alive, untouched, for 30 days as the rollback.</li>
+      </ul>
+      <div class="exit"><b>Exit</b>Every user has unlocked once on the new site. Errors table quiet for 48 hours.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="idx">6<small>½ day</small></div>
+    <div>
+      <h3>Decommission</h3>
+      <ul>
+        <li>Delete the Vercel project. Pause, then delete the Supabase project after the 30-day window.</li>
+        <li>Rotate the Groq, Anthropic, and Fitbit secrets so nothing from the old platform remains valid.</li>
+        <li>Remove <code>supabase/</code> and <code>vercel.json</code> from the repo; update the README.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Risks</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Pre-signed Stratus uploads not available or blocked by CORS from the browser</td><td><span class="tag crit">high</span></td><td class="n">Spike item. Fallback is uploading through the API function in 4 MB parts and assembling server-side, which fits under 30 s per part.</td></tr>
+        <tr><td>Job budget is shorter than 90 s on the account's plan</td><td><span class="tag crit">high</span></td><td class="n">Spike item. Fallback is the 900 s Event function path, triggered by a Data Store insert.</td></tr>
+        <tr><td>Lost recordings during cutover from un-drained IDB buffers</td><td><span class="tag warn">medium</span></td><td class="n">Phase 4 drain step, plus a read-only banner on the old site so nobody records into it after export.</td></tr>
+        <tr><td>Draft-chunk PUT volume costs money or hits rate limits</td><td><span class="tag warn">medium</span></td><td class="n">Batch signing and 1 s chunks. Tier 3a in IDB already covers the tab-crash case locally.</td></tr>
+        <tr><td>Users mix up the new login password with the vault passphrase</td><td><span class="tag warn">medium</span></td><td class="n">Invite email and unlock screen both say plainly: new sign-in password, same vault passphrase.</td></tr>
+        <tr><td>A route forgets to scope by user and leaks metadata</td><td><span class="tag warn">medium</span></td><td class="n">Single <code>withUser</code> middleware that injects <code>user_id</code> into every query builder; no raw ZCQL in route handlers. Entry contents are ciphertext regardless.</td></tr>
+        <tr><td>Slate serves a stale build after push</td><td><span class="tag info">low</span></td><td class="n">Each deploy gets its own preview URL; verify before promoting.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Confirm in the Catalyst console before phase 1</h2>
+  <p class="prose">These are the specifics the public docs did not state. Each maps to a spike task.</p>
+  <div class="q"><div class="eyebrow">Hosting</div>Does Slate deploy a repository with no build command, and can it serve <code>index.html</code> at <code>/</code> with correct MIME types for <code>.webmanifest</code> and <code>.js</code> workers?</div>
+  <div class="q"><div class="eyebrow">Auth</div>Does the embedded login session carry to Advanced I/O functions on a Slate-hosted app, and does a custom domain change that? Is Custom User Validation the right place for a sign-up allow-list?</div>
+  <div class="q"><div class="eyebrow">Stratus</div>Pre-signed PUT and GET URL support, maximum expiry, per-object size cap, bucket CORS from the app origin, and whether the account has Stratus enabled or needs an early-access request.</div>
+  <div class="q"><div class="eyebrow">Jobs</div>Is Job Scheduling available on the account, what is its execution budget, and what does a job cost per run versus an Event function?</div>
+  <div class="q"><div class="eyebrow">Billing</div>Free tier renews monthly; once exceeded there is a minimum charge per project. Compare against what Supabase and Vercel cost you today before committing.</div>
+
+  <h2>What you get out of it</h2>
+  <div class="prose">
+    <ul>
+      <li><strong>One vendor, one console, one bill.</strong> Hosting, auth, data, storage, functions, cron.</li>
+      <li><strong>Transcription that cannot get stuck.</strong> The job model replaces the pending-state watchdog and the local-Whisper fallback dance.</li>
+      <li><strong>No CORS allowlists</strong> and no service-role key. Functions run behind the app's own origin.</li>
+      <li><strong>Encryption model unchanged.</strong> Catalyst holds ciphertext and a salt, same as Supabase did.</li>
+    </ul>
+    <p>What you give up: direct browser-to-database calls, and 90-second synchronous functions. Both are replaced with patterns that are arguably better, at the cost of about four weeks.</p>
+  </div>
+
+  <div class="foot">Sources checked 14 Sep 2026: Catalyst <a href="https://forums.catalyst.zoho.com/portal/en/kb/articles/catalyst-functions-and-timeout">function timeouts</a>, <a href="https://docs.catalyst.zoho.com/en/cloud-scale/help/data-store/columns/">Data Store columns</a>, <a href="https://docs.catalyst.zoho.com/en/cloud-scale/help/data-store/scopes-and-permissions/">scopes and permissions</a>, <a href="https://docs.catalyst.zoho.com/en/cloud-scale/help/stratus/introduction/">Stratus</a>, <a href="https://docs.catalyst.zoho.com/en/serverless/help/functions/implementation/">environment variables</a>, <a href="https://docs.catalyst.zoho.com/en/slate/help/introduction">Slate</a>, <a href="https://docs.catalyst.zoho.com/en/cloud-scale/help/web-client-hosting/introduction/">Web Client Hosting</a>, <a href="https://catalyst.zoho.com/zia-services.html">Zia services</a>, <a href="https://docs.catalyst.zoho.com/en/deployment-and-billing/billing/free-tier/">free tier</a>.</div>
+</div>

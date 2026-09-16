@@ -1,0 +1,34 @@
+const fs = require('fs');
+const src = fs.readFileSync(process.argv[2], 'utf8');
+const script = src.match(/<script>([\s\S]*?)<\/script>\s*$/)[1];
+const handlers = {}; const els = {};
+function el(id) { return els[id] || (els[id] = { id, innerHTML: '', scrollTop: 0, textContent: '', value: '', checked: false, min: '', max: '', style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {} }, querySelector() { return null; }, previousElementSibling: { querySelector() { return null; } } }); }
+const store = {};
+global.window = global; global.addEventListener = () => {}; global.matchMedia = () => ({ matches: true });
+global.document = { getElementById: el, addEventListener(type, fn) { handlers[type] = fn; } };
+global.localStorage = { getItem: (k) => store[k] === undefined ? null : store[k], setItem: (k, v) => { store[k] = v; } };
+global.confirm = () => true; global.setInterval = () => 0; global.clearInterval = () => {}; global.setTimeout = (fn) => { fn(); return 0; }; global.clearTimeout = () => {};
+new Function(script)();
+const click = (a, x) => handlers.click({ target: { closest: (sel) => sel === '[data-a]' ? { dataset: { a, x } } : null } });
+const change = (path, value, type) => handlers.change({ target: { closest: (sel) => sel === '[data-set]' ? { dataset: { set: path, type }, value, min: '', max: '', checked: false } : null } });
+const html = () => el('app').innerHTML;
+let fails = 0; const must = (c, m) => { if (!c) { fails++; console.log('FAIL:', m); } else console.log('ok:', m); };
+
+must(el('side').innerHTML.indexOf('Phone preview') > 0 && el('side').innerHTML.indexOf('Settings') > 0, 'desktop sidebar renders');
+click('tab', 'settings'); must(html().indexOf('Account &amp; appearance') > 0 || html().indexOf('Account & appearance') > 0, 'desktop settings opens on Account');
+['checkin', 'journal', 'food', 'activity', 'integrations', 'notify', 'data', 'admin'].forEach(s => { click('setsec', s); must(html().length > 2000 && html().indexOf('setrail') > 0, 'section renders: ' + s); });
+click('setsec', 'checkin'); click('mood-on', 'great'); must(html().indexOf('data-x="great"') > 0, 'mood toggle handled');
+el('hab-new').value = 'Stretch'; click('hab-add'); must(html().indexOf('Stretch') > 0, 'habit added');
+click('hab-type', '5'); must(/data-a="hab-dir" data-x="5"/.test(html()), 'habit switched to counter');
+click('setsec', 'food'); click('kcal-preset', '2400'); must(html().indexOf('value="2400"') > 0, 'kcal preset applied');
+change('goals.kcal', '1800', 'num'); must(html().indexOf('value="1800"') > 0 && html().indexOf('value="137"') > 0, 'typing 1800 kcal rescales protein 183 -> 137');
+change('goals.steps', '10000', 'num'); must(html().indexOf('value="10000"') > 0, 'steps floor saved via change');
+click('setsec', 'activity'); el('act-new').value = 'Swim'; click('act-add'); must(html().indexOf('Swim') > 0, 'activity type added');
+click('rest', '2'); must(/data-x="2" title="Day 2: rest"/.test(html()), 'rest day flipped');
+change('round.goal', '120', 'num'); must(html().indexOf('value="120"') > 0, 'daily target changed');
+click('setsec', 'admin'); click('member-role', '0'); must(html().indexOf('Make member') > 0, 'member promoted to admin');
+click('tab', 'today'); must(html().indexOf('title="Swim"') > 0 && html().indexOf('Stretch') > 0 && html().indexOf('120') > 0, 'Today reflects new activity type, habit and target');
+must(html().indexOf('of 5 logged') > 0 || html().indexOf('Nothing yet') > 0, 'activity total counts four types plus push-ups');
+click('tab', 'activity'); must(html().indexOf('Swim') > 0, 'Activity screen lists the new type');
+console.log(fails ? 'FAILURES: ' + fails : 'all desktop checks passed');
+process.exitCode = fails ? 1 : 0;

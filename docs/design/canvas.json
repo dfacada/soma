@@ -1,0 +1,30 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Screens · direction A" },
+    { "id": "page-3", "name": "Today · explored (A chosen)" },
+    { "id": "page-2", "name": "Directions B and C" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Today · interactive", "x": 0, "y": 0, "w": 390, "h": 844, "page": "page-1", "is_interactive": true },
+    { "file": "Journal.dc.html", "title": "Journal", "x": 490, "y": 0, "w": 390, "h": 844, "page": "page-1" },
+    { "file": "Nutrition.dc.html", "title": "Food", "x": 980, "y": 0, "w": 390, "h": 844, "page": "page-1" },
+    { "file": "Activity.dc.html", "title": "Activity", "x": 1470, "y": 0, "w": 390, "h": 844, "page": "page-1" },
+    { "file": "Insights.dc.html", "title": "Insights", "x": 1960, "y": 0, "w": 390, "h": 844, "page": "page-1" },
+    { "file": "Admin.dc.html", "title": "Admin", "x": 2450, "y": 0, "w": 390, "h": 844, "page": "page-1" },
+    { "file": "System.dc.html", "title": "Visual system", "x": 0, "y": 1000, "w": 1000, "h": 1620, "page": "page-1", "print": "flow" },
+    { "file": "GamifyA.dc.html", "title": "A · Close the day", "x": 0, "y": 0, "w": 390, "h": 844, "page": "page-3" },
+    { "file": "GamifyB.dc.html", "title": "B · Light the body", "x": 490, "y": 0, "w": 390, "h": 844, "page": "page-3" },
+    { "file": "GamifyC.dc.html", "title": "C · Momentum", "x": 980, "y": 0, "w": 390, "h": 844, "page": "page-3" },
+    { "file": "DirectionB.dc.html", "title": "B · Instrument panel", "x": 0, "y": 0, "w": 390, "h": 844, "page": "page-2" },
+    { "file": "DirectionC.dc.html", "title": "C · Ledger", "x": 490, "y": 0, "w": 390, "h": 844, "page": "page-2" }
+  ],
+  "annotations": [
+    { "id": "a-note", "x": 1100, "y": 1000, "w": 420, "page": "page-1", "text": "Direction A · Day sheet\nBuilt out across all six screens. One calm surface, three domain hues used only where they carry information. Every figure on these screens is sample data.\n\nToday is the interactive one. The sun on the arc follows the real clock (6:40 to 21:30); each quarter fills as its task completes, meals fill Food's quarter one at a time; four of four turns the card to night and adds a link to the chain." },
+    { "id": "g-a", "x": 0, "y": -330, "w": 390, "page": "page-3", "text": "A · Close the day\nThe day is an arc from sunrise to sunset. Each of the four tasks is a quarter of it; the marker moves along as you tap. All four filled = the day is closed, and closed days form a chain underneath. The motivator is the unbroken chain, not points.\n\nWhy it fits: the whole app is keyed to the day, and the arc gives the screen one big, warm shape.\nTradeoff: a 3-of-4 day still breaks the chain, which is strict. Could soften to 'closed' at 3 of 4." },
+    { "id": "g-b", "x": 490, "y": -330, "w": 390, "page": "page-3", "text": "B · Light the body\nSoma means body. A figure lights up region by region: head for journal, heart for check-in, core for food, limbs for activity. Finish everything and the figure is whole. The week is a row of small figures.\n\nWhy it fits: it is the only concept that could not belong to another app; the name and the mechanic are the same idea.\nTradeoff: figure illustration risks looking childish or medical. Kept abstract and geometric here; needs a careful final drawing." },
+    { "id": "g-c", "x": 980, "y": -330, "w": 390, "page": "page-3", "text": "C · Momentum\nEvery action earns points toward 100 a day; the bar stacks by domain so you can see what is missing; tiers (Ember, Steady, Flow) unlock with consecutive full days, and the week is seven bars.\n\nWhy it fits: most legible and most familiar; the 'X points from a full day' line is a strong nudge.\nTradeoff: points on a private journal can feel like being graded, and it is the most 'like every other habit app' of the three." },
+    { "id": "b-note", "x": 0, "y": -300, "w": 390, "page": "page-2", "text": "B · Instrument panel\nDark, dense, numbers first. Reads the whole day in one glance without scrolling; suits a phone checked twenty times a day.\n\nTradeoff: journal text and insights, which are prose, fight the tile grid. The record button becomes just another tile." },
+    { "id": "c-note", "x": 490, "y": -300, "w": 390, "page": "page-2", "text": "C · Ledger\nThe day as a running log in a serif, timestamps in the margin. Closest to Glimpse's current warmth and the most 'journal' of the three.\n\nTradeoff: leaderboard, macro bars and the 90-day grid have no natural home in a ledger; the Activity screen would need its own visual language." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

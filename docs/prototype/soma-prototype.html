@@ -1,0 +1,933 @@
+<title>Soma Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root { color-scheme: light; --inset-top: env(safe-area-inset-top, 0px); --inset-bottom: env(safe-area-inset-bottom, 0px); }
+  html, body { height: 100%; }
+  body { margin: 0; background: #E9E6DE; color: #1B1A17; font-family: Figtree, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overscroll-behavior: none; touch-action: manipulation; }
+  * { box-sizing: border-box; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:focus-visible, input:focus-visible { outline: 2px solid #1B1A17; outline-offset: 2px; }
+  .d { font-family: "Bricolage Grotesque", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.01em; line-height: 1.05; }
+  .m { font-family: "JetBrains Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .eb { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #6E6A62; }
+  .shell { display: flex; justify-content: center; min-height: 100dvh; position: relative; }
+  .side { display: none; }
+  .backdesk { display: none; position: fixed; top: 16px; left: 16px; z-index: 20; height: 40px; padding: 0 14px; border-radius: 999px; background: #1B1A17; color: #F4F3EF; font-weight: 600; font-size: 13px; box-shadow: 0 6px 18px rgba(27, 26, 23, 0.25); }
+  .shell.preview .backdesk { display: inline-flex; align-items: center; }
+  .phone { width: 100%; max-width: 402px; height: 100dvh; max-height: 100dvh; margin: 0 auto; background: #F4F3EF; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  .island, .homebar { display: none; }
+  /* Tablet and phone-preview: iPhone 17 Pro frame, 402 × 874 points, with the island and home-indicator insets the real device has. */
+  @media (min-width: 480px) and (min-height: 940px) {
+    .shell:not(.desktop) .phone, .shell.preview .phone { --inset-top: 59px; --inset-bottom: 34px; width: 402px; max-width: 402px; height: 874px; max-height: none; margin-top: 24px; border-radius: 55px; box-shadow: 0 0 0 10px #1A1917, 0 0 0 12px #3A3733, 0 30px 80px rgba(27, 26, 23, 0.35); }
+    .shell:not(.desktop) .island, .shell.preview .island { display: block; position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 126px; height: 37px; border-radius: 20px; background: #000; z-index: 4; }
+    .shell:not(.desktop) .homebar, .shell.preview .homebar { display: block; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 139px; height: 5px; border-radius: 3px; background: #1B1A17; opacity: 0.85; z-index: 4; }
+  }
+  /* Desktop: sidebar + wide content. The phone chrome (tab bar, floating mic, full-bleed hero) steps aside. */
+  .shell.desktop:not(.preview) { justify-content: stretch; }
+  .shell.desktop:not(.preview) .side { display: flex; flex-direction: column; width: 232px; flex-shrink: 0; padding: 28px 16px 20px; gap: 6px; background: #EFECE4; border-right: 1px solid #DCD9D0; position: sticky; top: 0; height: 100dvh; }
+  .shell.desktop:not(.preview) .phone { max-width: none; flex: 1; margin: 0; height: 100dvh; max-height: 100dvh; background: #F4F3EF; }
+  .shell.desktop:not(.preview) .tabbar, .shell.desktop:not(.preview) .fab { display: none; }
+  .shell.desktop:not(.preview) .scroll { padding: 36px 40px 64px; }
+  .shell.desktop:not(.preview) .scroll > * { width: 100%; max-width: 760px; margin-left: auto; margin-right: auto; }
+  .shell.desktop:not(.preview) .scroll > .wide { max-width: 1080px; }
+  .shell.desktop:not(.preview) .hero { margin: 0 auto; border-radius: 22px; padding: 24px 28px; }
+  .shell.desktop:not(.preview) .toast { bottom: 40px; }
+  .shell.desktop:not(.preview) .sheet-bg { align-items: center; justify-content: center; }
+  .shell.desktop:not(.preview) .sheet { width: 520px; border-radius: 22px; max-height: 80%; }
+  .nav { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 12px; color: #4A4741; font-weight: 500; font-size: 14px; width: 100%; text-align: left; }
+  .nav:hover { background: rgba(27, 26, 23, 0.05); }
+  .nav.on { background: #FFFFFF; color: #1B1A17; box-shadow: 0 1px 2px rgba(27, 26, 23, 0.06); }
+  .nav svg { flex-shrink: 0; }
+  .sidefoot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+  .sidebtn { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-radius: 12px; background: #5F5BBF; color: #FFFFFF; font-weight: 600; font-size: 14px; justify-content: center; }
+  .sidebtn.rec { background: #B0392E; }
+  .sidebtn.ghost { background: transparent; border: 1px solid #DCD9D0; color: #4A4741; font-weight: 500; }
+  /* Settings on desktop: section rail + content */
+  .setgrid { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .setrail { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; }
+  .setrail button { display: flex; align-items: center; height: 38px; padding: 0 12px; border-radius: 10px; font-size: 13.5px; font-weight: 500; color: #4A4741; text-align: left; width: 100%; }
+  .setrail button.on { background: #FFFFFF; color: #1B1A17; box-shadow: 0 1px 2px rgba(27, 26, 23, 0.06); }
+  .setrail button:hover { background: rgba(27, 26, 23, 0.05); }
+  .field { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 8px 0; }
+  .field + .field { border-top: 1px solid #ECEAE3; }
+  .field .fl { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .field .fl .fn { font-weight: 500; font-size: 14px; }
+  .field .fl .fd { font-size: 12px; color: #6E6A62; line-height: 1.4; }
+  .field .inp { width: 140px; height: 38px; font-size: 14px; text-align: right; }
+  .field select.inp { text-align: left; padding-right: 28px; background-image: none; }
+  .sw { position: relative; width: 44px; height: 26px; border-radius: 999px; background: #DCD9D0; flex-shrink: 0; transition: background 0.2s ease; }
+  .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); transition: left 0.2s ease; }
+  .sw.on { background: #2C8A5E; } .sw.on::after { left: 21px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 12px; border-radius: 999px; background: #F4F3EF; border: 1px solid #DCD9D0; font-size: 13px; }
+  .pill .x { width: 18px; height: 18px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; color: #6E6A62; font-size: 14px; line-height: 1; }
+  .pill .x:hover { background: #E4E0D6; color: #1B1A17; }
+  .scroll { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 12px; padding: calc(18px + var(--inset-top)) 16px calc(116px + var(--inset-bottom)); }
+  .card { background: #FFFFFF; border: 1px solid #E4E0D6; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 2px rgba(27, 26, 23, 0.04), 0 8px 22px rgba(27, 26, 23, 0.05); }
+  .h1 { display: flex; justify-content: space-between; align-items: flex-end; padding: 4px 4px 0; gap: 12px; }
+  .h1 .title { font-size: 32px; }
+  .chip { display: inline-flex; align-items: center; height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid #DCD9D0; background: #FFFFFF; font-size: 13.5px; font-weight: 500; color: #1B1A17; white-space: nowrap; user-select: none; }
+  .chip.on { background: #5F5BBF; border-color: #5F5BBF; color: #FFFFFF; box-shadow: 0 4px 12px rgba(95, 91, 191, 0.28); }
+  .chip.hab { height: 30px; font-size: 12.5px; } .chip.hab.on { background: #ECEBF8; border-color: #ECEBF8; color: #3F3C8F; box-shadow: none; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 18px; border-radius: 12px; background: #1B1A17; color: #F4F3EF; font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .btn.sec { background: #FFFFFF; color: #1B1A17; border: 1px solid #DCD9D0; }
+  .btn.amber { background: #B7692A; color: #FFFFFF; } .btn.green { background: #2C8A5E; color: #FFFFFF; } .btn.sm { height: 36px; padding: 0 14px; font-size: 13px; border-radius: 10px; }
+  .inp { width: 100%; height: 44px; border-radius: 12px; border: 1px solid #DCD9D0; background: #FAF9F6; padding: 0 14px; font: inherit; font-size: 16px; color: #1B1A17; -webkit-appearance: none; appearance: none; }
+  .lnk { font-size: 12px; font-weight: 500; color: #6E6A62; white-space: nowrap; }
+  .hero { margin: -18px -16px 0; padding: calc(18px + var(--inset-top)) 16px 18px; border-radius: 0 0 30px 30px; display: flex; flex-direction: column; gap: 14px; background: linear-gradient(180deg, #FFFFFF 0%, #F7F5EF 100%); color: #1B1A17; box-shadow: 0 14px 30px rgba(27, 26, 23, 0.10); transition: background 0.6s ease, color 0.6s ease; }
+  .hero.closed { background: linear-gradient(180deg, #1B1A17 0%, #2A2620 100%); color: #F4F3EF; }
+  .hero .seg { transition: stroke-dasharray 0.5s ease; }
+  .hero .ringtrack { stroke: #ECEAE3; } .hero.closed .ringtrack { stroke: rgba(255, 255, 255, 0.12); }
+  .hero .muted { color: #6E6A62; } .hero.closed .muted { color: #B8B1A4; }
+  .hero .avatar { background: #1B1A17; color: #F4F3EF; } .hero.closed .avatar { background: #F4F3EF; color: #1B1A17; }
+  .todo { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 8px; border-radius: 999px; font-size: 12.5px; font-weight: 500; background: #F4F3EF; color: #1B1A17; }
+  .hero.closed .todo { background: rgba(255, 255, 255, 0.1); color: #F4F3EF; }
+  .todo .dotc { width: 8px; height: 8px; border-radius: 999px; }
+  .wk { display: flex; justify-content: space-between; align-items: flex-end; gap: 4px; }
+  .wk .dd { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 40px; }
+  .wk .dd .lbl { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+  .wk .dd.today .lbl { opacity: 1; font-weight: 600; }
+  .rowhead { display: flex; align-items: center; gap: 12px; min-height: 40px; }
+  .rowhead .t { font-weight: 600; font-size: 15px; }
+  .rowhead .s { font-size: 12px; color: #6E6A62; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .med { width: 40px; height: 40px; border-radius: 999px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1.5px solid #DCD9D0; color: #8A857B; background: #FFFFFF; transition: all 0.3s ease; }
+  .med.part-j { border-color: #5F5BBF; color: #5F5BBF; background: #F1F0FA; } .med.part-f { border-color: #2C8A5E; color: #2C8A5E; background: #EAF4EE; } .med.part-a { border-color: #B7692A; color: #B7692A; background: #F8EEE3; }
+  .med.done-j { background: #5F5BBF; border-color: #5F5BBF; color: #FFFFFF; box-shadow: 0 6px 14px rgba(95, 91, 191, 0.28); }
+  .med.done-f { background: #2C8A5E; border-color: #2C8A5E; color: #FFFFFF; box-shadow: 0 6px 14px rgba(44, 138, 94, 0.28); }
+  .med.done-a { background: #B7692A; border-color: #B7692A; color: #FFFFFF; box-shadow: 0 6px 14px rgba(183, 105, 42, 0.28); }
+  .med.rec { background: #B0392E; border-color: #B0392E; color: #FFFFFF; box-shadow: 0 6px 14px rgba(176, 57, 46, 0.32); animation: pulse 1.2s ease-in-out infinite; }
+  .card.tap { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .card.tap:active { transform: scale(0.99); }
+  .card.recording { border-color: #E8B4AE; background: #FFF7F6; }
+  .mini { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1.5px dashed #CFCABF; color: #8A857B; background: #FAF9F6; transition: all 0.25s ease; }
+  .mini.f-on { background: linear-gradient(180deg, #EAF5EE, #DCEFE3); border: 1.5px solid #CFE6D8; color: #1F5F41; }
+  .mini.a-on { background: linear-gradient(180deg, #F9EEE2, #F3E1CB); border: 1.5px solid #EBD5BC; color: #7D451A; }
+  .mini.a-due { border: 2px solid #B7692A; color: #B7692A; background: #FFFFFF; }
+  .fab { position: absolute; left: 0; right: 0; bottom: calc(78px + var(--inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+  .mic { width: 66px; height: 66px; border-radius: 999px; background: linear-gradient(160deg, #7A76D6 0%, #5F5BBF 60%, #4E4AA8 100%); box-shadow: 0 10px 24px rgba(95, 91, 191, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.35); display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+  .mic.rec { background: linear-gradient(160deg, #C9564A 0%, #B0392E 60%, #8E2F24 100%); box-shadow: 0 10px 24px rgba(176, 57, 46, 0.38); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(64px + var(--inset-bottom)); background: rgba(255, 255, 255, 0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-top: 1px solid #DCD9D0; display: flex; align-items: flex-start; padding: 6px 8px var(--inset-bottom); }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 56px; color: #8A857B; font-size: 11px; font-weight: 500; }
+  .tab.on { color: #1B1A17; }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 96px; border-radius: 12px; border: 1px solid #DCD9D0; background: #FFFFFF; padding: 8px 4px; text-align: center; color: #1B1A17; }
+  .tile .n { font-size: 12px; font-weight: 500; line-height: 1.1; } .tile .p { font-size: 10.5px; color: #6E6A62; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .tile .s { font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; color: #6E6A62; }
+  .tile.food-done { background: #E6F2EB; border-color: #E6F2EB; color: #1F5F41; } .tile.food-done .p { color: #2F6E50; } .tile.food-done .s { color: #2C8A5E; }
+  .day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 56px; justify-content: center; border-radius: 10px; }
+  .day .n { font-family: "JetBrains Mono", Consolas, monospace; font-size: 14px; font-weight: 500; } .day .w { font-size: 10px; color: #6E6A62; letter-spacing: 0.06em; text-transform: uppercase; }
+  .day.on { background: #1B1A17; color: #F4F3EF; } .day.on .w { color: #C9C4B8; }
+  .dot { width: 5px; height: 5px; border-radius: 999px; background: #5F5BBF; } .dot.none { background: transparent; }
+  .play { width: 40px; height: 40px; border-radius: 999px; border: 1px solid #DCD9D0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .row { display: flex; align-items: center; gap: 10px; min-height: 44px; } .row + .row { border-top: 1px solid #ECEAE3; }
+  .row .name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; } .row .sub { font-size: 12px; color: #6E6A62; } .row .kcal { font-family: "JetBrains Mono", Consolas, monospace; font-size: 13px; }
+  .g { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 4px; }
+  .c { aspect-ratio: 1; border-radius: 4px; background: #B7692A; } .c.x { background: #FFFFFF; border: 1px solid #DCD9D0; } .c.r { background: #ECEAE3; } .c.t { background: #FFFFFF; border: 2px solid #B7692A; } .c.f { background: #F4F3EF; border: 1px solid #ECEAE3; } .c.fr { background: #ECEAE3; opacity: 0.6; }
+  .lb { display: flex; align-items: center; gap: 10px; min-height: 40px; } .lb .rk { width: 20px; font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; color: #6E6A62; } .lb .nm { flex: 1; font-weight: 500; } .lb .st { font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; color: #6E6A62; } .lb .pc { font-family: "JetBrains Mono", Consolas, monospace; font-size: 13px; width: 40px; text-align: right; }
+  .lb.you { background: #F6EBDF; margin: 0 -16px; padding: 0 16px; color: #7D451A; } .lb.you .rk, .lb.you .st, .lb.you .pc { color: #7D451A; }
+  .seg { display: flex; align-items: center; justify-content: center; height: 34px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 500; color: #6E6A62; } .seg.on { background: #1B1A17; color: #F4F3EF; }
+  .stat { background: #FFFFFF; border: 1px solid #DCD9D0; border-radius: 12px; padding: 12px 12px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; }
+  .toast { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(164px + var(--inset-bottom)); background: #1B1A17; color: #F4F3EF; padding: 8px 14px; border-radius: 999px; font-size: 13px; opacity: 0; transition: opacity 0.25s ease; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+  .sheet-bg { position: absolute; inset: 0; background: rgba(27, 26, 23, 0.35); display: flex; align-items: flex-end; z-index: 5; }
+  .sheet { width: 100%; background: #F4F3EF; border-radius: 22px 22px 0 0; padding: 18px 16px calc(28px + var(--inset-bottom)); display: flex; flex-direction: column; gap: 12px; max-height: 80%; overflow: auto; }
+  .range { width: 100%; accent-color: #B7692A; }
+  p { margin: 0; }
+  @media (prefers-reduced-motion: reduce) { .mic.rec, .chain.today.open { animation: none; } .sky, .sky .seg, .med, .mini { transition: none; } }
+</style>
+
+<div class="shell" id="shell">
+  <button class="backdesk" id="backdesk" data-a="preview">← Back to desktop view</button>
+  <nav class="side" id="side" aria-label="Sections"></nav>
+  <div class="phone" id="phone">
+    <div class="island" aria-hidden="true"></div>
+    <div class="homebar" aria-hidden="true"></div>
+    <div class="scroll" id="app"></div>
+    <div class="fab" id="fab"></div>
+    <div class="toast" id="toast"></div>
+    <nav class="tabbar" id="tabbar"></nav>
+    <div id="sheet"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ───────────────────────── helpers ─────────────────────────
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => (n < 10 ? '0' : '') + n;
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmtK = (n) => n.toLocaleString('en-US');
+  const clock = (sec) => Math.floor(sec / 60) + ':' + pad(sec % 60);
+  const DAY = 86400000;
+  const dkey = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const fromKey = (k) => { const p = k.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2], 12, 0, 0); };
+  const addDays = (d, n) => new Date(d.getTime() + n * DAY);
+  const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MONL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const ICON = {
+    today: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path><circle cx="12" cy="15.5" r="1.5" fill="currentColor" stroke="none"></circle></svg>',
+    mic: (s) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg>',
+    leaf: (s) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14Z"></path><path d="M5 19l8-8"></path></svg>',
+    bell: (s) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"></path></svg>',
+    spark: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-8 4 3"></path></svg>',
+    heart: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg>',
+    check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>',
+    play: '<svg width="16" height="16" viewBox="0 0 24 24" fill="#1B1A17"><path d="M8 5v14l11-7z"></path></svg>',
+    pause: '<svg width="16" height="16" viewBox="0 0 24 24" fill="#1B1A17"><path d="M6 5h4v14H6zM14 5h4v14h-4z"></path></svg>',
+    lock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>',
+    breakfast: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h16"></path><path d="M8 13a4 4 0 0 1 8 0"></path><path d="M12 5v2M6 8l1.5 1.5M18 8l-1.5 1.5"></path></svg>',
+    lunch: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18c0 4-3 8-9 8s-9-4-9-8z"></path><path d="M9 8c0-2 1-2 1-4M14 8c0-2 1-2 1-4"></path></svg>',
+    snack: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c-3-3-8-1-8 4 0 5 4 9 8 9s8-4 8-9c0-5-5-7-8-4z"></path><path d="M12 8V5"></path><path d="M12 5c1-1.5 3-1.5 4-1"></path></svg>',
+    dinner: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4.5"></circle></svg>',
+    walk: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5z"></path><path d="M16 11c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5z"></path></svg>',
+    run: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"></circle><path d="M12 13V9M10 3h4"></path></svg>',
+    gear: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>'
+  };
+
+  // ───────────────────────── seed data ─────────────────────────
+  function moodsOn() { return S.settings.moods.filter(m => m.on).map(m => m.label); }
+  const GOOD = { Focused: 1, Peaceful: 1, Great: 1, Grateful: 1 };
+  function habitList() { return S.settings.habits; }
+  const RECIPES = [
+    { name: 'Eggs & toast', kcal: 470, protein: 22 }, { name: 'Overnight oats', kcal: 390, protein: 18 }, { name: 'Greek yogurt bowl', kcal: 320, protein: 26 },
+    { name: 'Chicken burrito bowl', kcal: 640, protein: 52 }, { name: 'Turkey sandwich', kcal: 520, protein: 34 }, { name: 'Lentil soup & bread', kcal: 480, protein: 24 },
+    { name: 'Yogurt & berries', kcal: 370, protein: 24 }, { name: 'Apple & almonds', kcal: 260, protein: 7 }, { name: 'Protein shake', kcal: 220, protein: 30 },
+    { name: 'Salmon, rice & greens', kcal: 620, protein: 44 }, { name: 'Steak & sweet potato', kcal: 720, protein: 56 }, { name: 'Veg stir-fry & tofu', kcal: 540, protein: 30 }
+  ];
+  const SAMPLE_TRANSCRIPTS = [
+    'The thing I keep coming back to is the walk. Every day I get it in before noon the rest of the day just lines up. I said this last week too and then didn\'t do it, so this is me saying it again on the record.',
+    'Slept badly, under six hours. Not going to make decisions today, just going to do the push-ups and eat properly and see how tomorrow looks.',
+    'Good day. The round is getting hard now, fifty-plus is a different thing than thirty, but the sets trick works. Three sets and it\'s done before I think about it.',
+    'Quiet one. Nothing to report except that I noticed I reach for my phone the second I sit down, and that I don\'t like that.'
+  ];
+
+  function defaultSettings() {
+    return {
+      displayName: 'David', timezone: 'America/New_York', units: 'imperial', energy: 'kcal', themeMode: 'light', palette: 'behance',
+      moods: [
+        { id: 'down', label: 'Down', on: true }, { id: 'tired', label: 'Tired', on: true }, { id: 'normal', label: 'Normal', on: true }, { id: 'great', label: 'Great', on: true },
+        { id: 'anxious', label: 'Anxious', on: false }, { id: 'focused', label: 'Focused', on: true }, { id: 'peaceful', label: 'Peaceful', on: true }, { id: 'excited', label: 'Excited', on: false },
+        { id: 'overwhelmed', label: 'Overwhelmed', on: false }, { id: 'grateful', label: 'Grateful', on: false }
+      ],
+      habits: [
+        { id: 'meditate', label: 'Meditate', type: 'daily' }, { id: 'read', label: 'Read', type: 'daily' }, { id: 'early', label: 'Early night', type: 'daily' },
+        { id: 'water', label: 'Water', type: 'daily' }, { id: 'drinks', label: 'Drinks', type: 'counter', goal: 4, dir: 'at_most' }
+      ],
+      habitsCollapsed: false,
+      promptCats: { 'Mind Dump': true, 'Check-In': true, 'Avoidance': true, 'Reflection': true, 'Energy': true, 'Gratitude': true, 'Reframe': true, 'Self-Care': true, 'Hyperfocus': false, 'Perfectionism': false, 'Task Initiation': false },
+      cloudTranscription: true, cloudConsent: true, patternsConsent: true, askClaude: true, estimator: true, orbit: false,
+      plan: 'standard', bowl: 'beef-rice',
+      snacks: [{ name: 'Beef stick', kcal: 100 }, { name: 'Coffee, black', kcal: 5 }, { name: 'Coffee with creamer', kcal: 40 }, { name: 'Spindrift', kcal: 10 }],
+      activityTypes: [{ key: 'walk', name: 'Walk' }, { key: 'gym', name: 'Gym' }, { key: 'run', name: 'Run' }],
+      catchupDays: 7, behindThreshold: 2,
+      fitbit: { connected: true, timeframe: 14, refreshMin: 30, backfillDays: 90 },
+      notify: { enabled: false, reminderTime: '20:30', streakNudge: true, roundReminder: true },
+      webhook: { url: '', secret: '', from: 'Soma <onboarding@resend.dev>', adminEmail: 'davidfacada@gmail.com' },
+      retentionDays: 0
+    };
+  }
+  function makeSeed() {
+    const today = new Date(); today.setHours(12, 0, 0, 0);
+    const roundStart = addDays(today, -40); // today is day 41
+    const s = {
+      v: 4, offset: 0, clockOverride: null, tab: 'today', bestStreak: 19,
+      profile: { name: 'David', initials: 'DF', email: 'davidfacada@gmail.com', admin: true, vault: true },
+      round: { name: 'Round 3', start: dkey(roundStart), test: 20, goal: 100, length: 90, rest: [7, 14, 21, 28, 35, 42, 46, 49, 53, 56, 60, 63, 67, 70, 74, 77, 81, 84, 88], bonusHit: 30, bonusStreak: 10, badgeStreak: 7, badgeHits: 30, joinOpen: false, archived: false, startDay: 1 },
+      plan: { breakfast: RECIPES[0], lunch: RECIPES[3], snack: RECIPES[6], dinner: RECIPES[9] },
+      goals: { kcal: 2100, protein: 160, carbs: 220, fat: 70, steps: 8000 },
+      settings: defaultSettings(),
+      checkins: {}, eaten: {}, extras: {}, weight: {}, activity: {}, journal: [], closed: {}, sleep: {}, steps: {},
+      members: [
+        { name: 'Nate', hit: 0.99, email: 'nstazzone@gmail.com', role: 'member', status: 'active', seen: 'today' }, { name: 'Johanna', hit: 0.96, email: 'johanna.facada@gmail.com', role: 'member', status: 'active', seen: 'yesterday' },
+        { name: 'James', hit: 0.88, email: 'jamesmckenna310@gmail.com', role: 'member', status: 'active', seen: '3 days ago' }, { name: 'Mike', hit: 0.77, email: 'mikeajerdak@gmail.com', role: 'member', status: 'active', seen: 'today' },
+        { name: 'Nick', hit: 0.72, email: 'nick@example.com', role: 'member', status: 'active', seen: '6 days ago' }, { name: 'Alex', hit: 0.61, email: 'alex@example.com', role: 'member', status: 'disabled', seen: '2 months ago' },
+        { name: 'Sam', hit: 0.5, email: 'sam@example.com', role: 'member', status: 'active', seen: 'yesterday' }
+      ],
+      pending: [{ email: 'afacada23@gmail.com', since: 'Jun 24' }, { email: 'ncounts90@gmail.com', since: 'Sep 11' }],
+      errors: [{ ctx: 'transcription_stale', when: 'Jul 27 8:31 am', msg: 'Entry e_1785120548213 stuck in pending since 02:49', open: true }, { ctx: 'ios_mic_track_ended', when: 'Jul 19 10:03 pm', msg: 'MediaStreamTrack ended during recording', open: true }],
+      feedback: [{ who: 'nstazzone', when: 'Sep 9', text: 'Would love to see the push-up target on the same screen as the food log so I don\'t switch tabs.', ack: false }]
+    };
+    // 40 days of history (check-ins use counts.drinks for the Drinks counter habit)
+    const moodsSeq = ['Focused', 'Normal', 'Great', 'Tired', 'Focused', 'Peaceful', 'Normal', 'Down', 'Focused', 'Great', 'Grateful', 'Normal', 'Tired', 'Focused', 'Anxious', 'Normal', 'Great', 'Focused', 'Peaceful', 'Normal', 'Tired', 'Overwhelmed', 'Normal', 'Focused', 'Great', 'Normal', 'Focused', 'Tired', 'Normal', 'Great', 'Focused', 'Peaceful', 'Normal', 'Focused', 'Great', 'Normal', 'Tired', 'Focused', 'Grateful', 'Focused'];
+    let w = 184.5;
+    for (let i = 40; i >= 1; i--) {
+      const d = addDays(today, -i); const k = dkey(d); const day = 41 - i;
+      const mood = moodsSeq[(40 - i) % moodsSeq.length];
+      s.checkins[k] = { mood: mood, habits: { Meditate: i % 3 === 0, Read: i % 4 === 0, 'Early night': i % 5 === 0 }, counts: { drinks: i % 9 === 0 ? 3 : (i % 6 === 0 ? 1 : 0) } };
+      const sleepMin = GOOD[mood] ? 415 + (i % 5) * 12 : (mood === 'Tired' || mood === 'Overwhelmed' ? 330 + (i % 4) * 10 : 390 + (i % 6) * 8);
+      s.sleep[k] = sleepMin; s.steps[k] = GOOD[mood] ? 7800 + (i % 7) * 400 : 3800 + (i % 5) * 500;
+      s.eaten[k] = { breakfast: true, lunch: true, snack: i % 4 !== 0, dinner: true };
+      w -= 0.05 + (i % 3) * 0.02; s.weight[k] = Math.round(w * 10) / 10;
+      const rest = s.round.rest.indexOf(day) >= 0;
+      const miss = day === 12 || day === 27;
+      s.activity[k] = { pushups: rest ? null : !miss, walk: i % 2 === 0, gym: i % 3 === 1, run: i % 5 === 2 };
+      if (i <= 9) s.closed[k] = true;
+      if (i === 10) s.closed[k] = false;
+      if (i > 10) s.closed[k] = i % 4 !== 0;
+    }
+    const y = dkey(addDays(today, -1)); const y2 = dkey(addDays(today, -2));
+    s.journal = [
+      { id: 'j1', date: y, time: '9:41 pm', dur: 252, mood: 'Focused', text: SAMPLE_TRANSCRIPTS[0], status: 'done', enhanced: true },
+      { id: 'j2', date: y, time: '7:02 am', dur: 98, mood: 'Tired', text: SAMPLE_TRANSCRIPTS[1], status: 'done' },
+      { id: 'j3', date: y2, time: '6:15 pm', dur: 707, mood: 'Grateful', text: SAMPLE_TRANSCRIPTS[2], status: 'done', photo: true }
+    ];
+    // today
+    const tk = dkey(today);
+    s.eaten[tk] = { breakfast: true, lunch: true, snack: true, dinner: false };
+    s.activity[tk] = { pushups: 0, walk: true, gym: false, run: false };
+    s.sleep[tk] = 412; s.steps[tk] = 4120; s.weight[tk] = 182.4;
+    return s;
+  }
+
+  // ───────────────────────── state ─────────────────────────
+  const KEY = 'soma-proto-v1';
+  let S = null;
+  try { const raw = localStorage.getItem(KEY); if (raw) S = JSON.parse(raw); } catch (e) { S = null; }
+  if (!S || S.v !== 4) S = makeSeed();
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* private mode etc. */ } }
+
+  const UI = { recording: false, recSec: 0, recTimer: null, playing: null, playTimer: null, checkinOpen: null, sheet: null, insightRange: 30, preview: false, setSection: 'account' };
+  try { UI.preview = localStorage.getItem('soma-proto-preview') === '1'; } catch (e) { /* ignore */ }
+  function isDesktop() { return window.matchMedia && window.matchMedia('(min-width: 900px)').matches && !UI.preview; }
+  function layout() {
+    const sh = $('shell'); if (!sh) return;
+    const wide = window.matchMedia && window.matchMedia('(min-width: 900px)').matches;
+    sh.classList.toggle('desktop', !!wide);
+    sh.classList.toggle('preview', !!(wide && UI.preview));
+  }
+
+  // ───────────────────────── derived ─────────────────────────
+  function today() { const d = new Date(); d.setHours(12, 0, 0, 0); return addDays(d, S.offset); }
+  function tkey() { return dkey(today()); }
+  function nowMins() { if (S.clockOverride !== null) return S.clockOverride; const n = new Date(); return n.getHours() * 60 + n.getMinutes(); }
+  function roundDay(d) { return Math.round((fromKey(dkey(d || today())) - fromKey(S.round.start)) / DAY) + 1; }
+  function target(day) { return S.round.goal; }
+  function setsReps(t) { const sets = Math.max(2, Math.round(t / 18)); return { sets: sets, reps: Math.round(t / sets) }; }
+  function isRest(day) { return S.round.rest.indexOf(day) >= 0; }
+  function get(obj, k, def) { return obj[k] === undefined ? def : obj[k]; }
+  function ci(k) { return S.checkins[k] || null; }
+  function eatenOf(k) { return S.eaten[k] || { breakfast: false, lunch: false, snack: false, dinner: false }; }
+  function actOf(k) { return S.activity[k] || { pushups: false, walk: false, gym: false, run: false }; }
+  function extrasOf(k) { return S.extras[k] || []; }
+  function pushCount(k) { const v = actOf(k).pushups; if (v === true) return target(roundDay(fromKey(k))); return typeof v === 'number' ? v : 0; }
+  function pushHit(k) { return pushCount(k) >= target(roundDay(fromKey(k))); }
+  function actsDone(k) { const a = actOf(k); return (pushCount(k) > 0 ? 1 : 0) + S.settings.activityTypes.filter(t => a[t.key]).length; }
+  function actTotal() { return 1 + S.settings.activityTypes.length; }
+  function kcalOf(k) { const e = eatenOf(k); let t = 0; ['breakfast', 'lunch', 'snack', 'dinner'].forEach(m => { if (e[m]) t += S.plan[m].kcal; }); extrasOf(k).forEach(x => t += x.kcal); return t; }
+  function proteinOf(k) { const e = eatenOf(k); let t = 0; ['breakfast', 'lunch', 'snack', 'dinner'].forEach(m => { if (e[m]) t += S.plan[m].protein; }); extrasOf(k).forEach(x => t += x.protein || 0); return t; }
+  function dayStatus(k) {
+    const e = eatenOf(k); const a = actOf(k); const day = roundDay(fromKey(k));
+    const meals = ['breakfast', 'lunch', 'snack', 'dinner'].filter(m => e[m]).length;
+    const checkinDone = !!ciValid(k);
+    const journalDone = S.journal.some(j => j.date === k);
+    const foodDone = meals === 4;
+    const acts = actsDone(k);
+    const activityDone = acts > 0;
+    const doneCount = [checkinDone, journalDone, foodDone, activityDone].filter(Boolean).length;
+    return { checkinDone, journalDone, foodDone, activityDone, meals, acts, doneCount, closed: doneCount === 4, day };
+  }
+  function dayDone(k) { if (S.closed[k] === true) return 4; return dayStatus(k).doneCount; }
+  function fullDay(k) { return dayDone(k) === 4; }
+  function streakInfo() {
+    const t = today(); let now = 0;
+    if (dayStatus(tkey()).closed) now++;
+    for (let i = 1; i < 400; i++) { if (fullDay(dkey(addDays(t, -i)))) now++; else break; }
+    // best: scan the last 400 days for the longest run
+    let best = 0, run = 0;
+    for (let i = 399; i >= 1; i--) { if (fullDay(dkey(addDays(t, -i)))) { run++; if (run > best) best = run; } else run = 0; }
+    if (dayStatus(tkey()).closed) { run++; if (run > best) best = run; }
+    best = Math.max(best, S.bestStreak || 0, now);
+    S.bestStreak = best;
+    return { now: now, best: best };
+  }
+  function getPath(o, p) { return p.split('.').reduce((a, k) => (a == null ? undefined : a[k]), o); }
+  function setPath(o, p, v) { const ks = p.split('.'); let t = o; for (let i = 0; i < ks.length - 1; i++) { if (t[ks[i]] == null) t[ks[i]] = {}; t = t[ks[i]]; } t[ks[ks.length - 1]] = v; }
+  function defaultRestDays(len) { const out = []; for (let d = 1; d <= len; d++) { if (d % 7 === 0 || (d > 42 && d % 7 === 4)) out.push(d); } return out; }
+  function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || ('x' + Date.now()); }
+  function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 1800); }
+
+  // ───────────────────────── Today ─────────────────────────
+  function arcPoint(theta) { const rad = theta * Math.PI / 180; return { x: 160 + 130 * Math.cos(rad), y: 170 - 130 * Math.sin(rad) }; }
+  function viewToday() {
+    const k = tkey(); const st = dayStatus(k); const e = eatenOf(k); const a = actOf(k); const c = ciValid(k); const raw = S.checkins[k] || { mood: null, habits: {}, drinks: 0 };
+    const day = st.day; const tgt = target(day); const sr = setsReps(tgt); const rest = isRest(day);
+    const mins = nowMins();
+    const leftMeals = ['breakfast', 'lunch', 'snack', 'dinner'].filter(m => !e[m]);
+    const other = S.settings.activityTypes.filter(t => a[t.key]).length;
+    const pc = pushCount(k);
+    const foodFrac = st.meals / 4; const actFrac = st.acts / actTotal();
+    // overall progress: each task is a quarter; food and activity count partial
+    const progress = ((st.checkinDone ? 1 : 0) + (st.journalDone ? 1 : 0) + foodFrac + actFrac) / 4;
+    const pct = Math.round(progress * 100);
+    const todos = [];
+    if (!st.checkinDone) todos.push({ t: 'Check in', col: '#5F5BBF' });
+    if (!st.journalDone) todos.push({ t: 'Journal', col: '#8F8CD3' });
+    if (!st.foodDone) todos.push({ t: leftMeals.length === 1 ? cap(leftMeals[0]) : leftMeals.length + ' meals', col: '#2C8A5E' });
+    if (!st.activityDone) todos.push({ t: 'Any activity', col: '#B7692A' });
+    const streak = streakInfo();
+    let big, sub;
+    if (st.closed) { big = 'Day closed'; sub = 'Day ' + day + ' in the books. ' + (streak.now === 1 ? 'First full day of a new run.' : streak.now + ' full days in a row.'); }
+    else if (progress === 0) { big = 'Fresh day'; sub = (mins < 720 ? 'Good morning. ' : mins < 1020 ? 'Good afternoon. ' : 'Good evening. ') + 'Four things close it.'; }
+    else if (todos.length === 1) { big = 'One to go'; sub = todos[0].t + ' closes the day.'; }
+    else { big = todos.length + ' to go'; sub = 'Tap them below or right here.'; }
+    // 4-segment ring, r=48, circumference 301.6, quarter 75.4, gap 6 → 69.4 per segment
+    const R = 48, SEGL = 69.4;
+    const seg = (i, frac, color) => '<circle class="seg" cx="60" cy="60" r="' + R + '" fill="none" stroke="' + color + '" stroke-width="10" stroke-linecap="butt" stroke-dasharray="' + (frac * SEGL).toFixed(1) + ' 400" transform="rotate(' + (-90 + i * 90 + 3.6) + ' 60 60)"></circle>';
+    const ring = '<svg width="120" height="120" viewBox="0 0 120 120"><circle class="ringtrack" cx="60" cy="60" r="' + R + '" fill="none" stroke-width="10"></circle>' +
+      seg(0, st.checkinDone ? 1 : 0, '#5F5BBF') + seg(1, st.journalDone ? 1 : 0, '#8F8CD3') + seg(2, foodFrac, '#2C8A5E') + seg(3, actFrac, '#B7692A') + '</svg>';
+    // week strip: last 6 days + today, each a mini ring of that day's completion
+    let wk = '';
+    for (let i = 6; i >= 0; i--) {
+      const d = addDays(today(), -i); const kk = dkey(d); const dc = i === 0 ? st.doneCount : dayDone(kk); const full = dc === 4;
+      const isT = i === 0;
+      let glyph;
+      if (full) glyph = '<svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="13" fill="#B7692A"></circle><path d="M8 14l4 4 8-9" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+      else glyph = '<svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="11" fill="none" stroke="' + (isT ? '#B7692A' : 'currentColor') + '" stroke-opacity="' + (isT ? '0.35' : '0.18') + '" stroke-width="4"></circle><circle cx="14" cy="14" r="11" fill="none" stroke="' + (isT ? '#B7692A' : 'currentColor') + '" stroke-width="4" stroke-linecap="round" stroke-dasharray="' + (dc / 4 * 69.1).toFixed(1) + ' 100" transform="rotate(-90 14 14)"></circle></svg>';
+      wk += '<div class="dd ' + (isT ? 'today' : '') + '">' + glyph + '<span class="lbl">' + (isT ? 'Today' : WD[d.getDay()]) + '</span></div>';
+    }
+    const checkinOpen = UI.checkinOpen === null ? !st.checkinDone : UI.checkinOpen;
+    const habitsOn = c ? Object.keys(c.habits).filter(h => c.habits[h]) : [];
+    const counts = Object.keys(c && c.counts || {}).filter(id => c.counts[id]).map(id => { const h = habitList().filter(x => x.id === id)[0]; return (h ? h.label : id) + ' ×' + c.counts[id]; });
+    const checkinStatus = c ? 'Feeling ' + c.mood.toLowerCase() + (habitsOn.length || counts.length ? ' · ' + habitsOn.concat(counts).join(', ') : '') : "How's today?";
+    const foodStatus = st.foodDone ? fmtK(kcalOf(k)) + ' of ' + fmtK(S.goals.kcal) + ' kcal · all four eaten'
+      : (leftMeals.length === 1 ? cap(leftMeals[0]) + ' left: ' + S.plan[leftMeals[0]].name + ' · ' + fmtK(kcalOf(k)) + ' kcal so far' : leftMeals.length + ' meals left · ' + fmtK(kcalOf(k)) + ' kcal so far');
+    const pushLine = rest ? 'rest day for push-ups' : (pc >= tgt ? pc + ' push-ups, target hit' : pc > 0 ? pc + ' of ' + tgt + ' push-ups' : tgt + ' push-ups to do');
+    const activityStatus = (st.acts ? st.acts + ' of ' + actTotal() + ' logged · ' : 'Nothing yet · ') + pushLine;
+    const tJ = S.journal.filter(j => j.date === k);
+    const journalStatus = UI.recording ? 'Listening. Tap again when you are done.' : (tJ.length ? 'Recorded · ' + clock(tJ[0].dur) + (tJ.length > 1 ? ' · ' + tJ.length + ' entries' : '') + ' · tap to add another' : 'Tap here to record. Two minutes is plenty.');
+    return '' +
+      '<div class="hero ' + (st.closed ? 'closed' : '') + '">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px;">' +
+          '<div class="d" style="font-size:17px;letter-spacing:.02em;">Soma</div>' +
+          '<button class="avatar" data-a="tab" data-x="settings" style="width:32px;height:32px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">' + esc(S.profile.initials) + '</button>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:16px;">' +
+          '<div style="position:relative;width:120px;height:120px;flex-shrink:0;">' + ring + '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;"><span class="d" style="font-size:30px;">' + (st.closed ? '4/4' : pct + '%') + '</span><span class="m muted" style="font-size:10px;margin-top:4px;">' + (st.closed ? 'closed' : 'of the day') + '</span></div></div>' +
+          '<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">' +
+            '<div style="display:flex;flex-direction:column;gap:3px;"><span class="d" style="font-size:26px;">' + big + '</span><span class="muted" style="font-size:13px;line-height:1.4;">' + sub + '</span></div>' +
+            (todos.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + todos.map(t => '<span class="todo"><span class="dotc" style="background:' + t.col + ';"></span>' + esc(t.t) + '</span>').join('') + '</div>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;border-top:1px solid ' + (st.closed ? 'rgba(255,255,255,0.12)' : '#ECEAE3') + ';">' +
+          '<div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:8px;"><span style="font-size:14px;"><span class="d" style="font-size:22px;">' + streak.now + '</span> <span class="muted">full day' + (streak.now === 1 ? '' : 's') + ' in a row</span></span><span class="muted" style="font-size:12px;">Best <span class="m">' + streak.best + '</span></span></div>' +
+          '<div class="wk">' + wk + '</div>' +
+        '</div>' +
+      '</div>' +
+      // check-in
+      '<div class="card"><div class="rowhead"><span class="med ' + (st.checkinDone ? 'done-j' : '') + '">' + ICON.heart + '</span>' +
+        '<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;"><span class="t">Check-in</span><span class="s">' + esc(checkinStatus) + '</span></div>' +
+        (st.checkinDone ? '<button class="lnk" data-a="checkin-toggle">' + (checkinOpen ? 'Done' : 'Change') + '</button>' : '') + '</div>' +
+        (checkinOpen ? '<div style="display:flex;flex-direction:column;gap:8px;"><div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+          moodsOn().map(mo => '<button class="chip ' + (raw.mood === mo ? 'on' : '') + '" data-a="mood" data-x="' + mo + '">' + mo + '</button>').join('') + '</div>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + habitList().map(h => h.type === 'counter'
+            ? '<button class="chip hab" data-a="count" data-x="' + h.id + '">' + esc(h.label) + ' <span class="m" style="margin-left:6px;color:#6E6A62;">×' + ((raw.counts || {})[h.id] || 0) + (h.goal ? (h.dir === 'at_most' ? ' ≤' : ' ≥') + h.goal : '') + '</span></button>'
+            : '<button class="chip hab ' + (raw.habits[h.label] ? 'on' : '') + '" data-a="habit" data-x="' + esc(h.label) + '">' + esc(h.label) + '</button>').join('') + '</div>' +
+          (c ? '' : '<div style="font-size:12px;color:#6E6A62;">Pick a mood to check in. Habits and drinks are optional.</div>') + '</div>' : '') +
+      '</div>' +
+      // journal
+      '<div class="card tap ' + (UI.recording ? 'recording' : '') + '" data-a="rec" role="button" tabindex="0" aria-label="' + (UI.recording ? 'Stop recording' : 'Record a journal entry') + '"><div class="rowhead"><span class="med ' + (UI.recording ? 'rec' : (st.journalDone ? 'done-j' : '')) + '">' + ICON.mic(18) + '</span>' +
+        '<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;"><span class="t">Journal</span><span class="s">' + esc(journalStatus) + '</span></div>' +
+        (UI.recording ? '<span class="m" style="font-size:13px;color:#B0392E;font-weight:500;">' + clock(UI.recSec) + '</span>' : (st.journalDone ? '<button class="lnk" data-a="tab" data-x="journal">Open</button>' : '<span class="lnk" style="color:#5F5BBF;">Record</span>')) + '</div></div>' +
+      // food
+      '<div class="card"><div class="rowhead"><span class="med ' + (st.foodDone ? 'done-f' : (st.meals ? 'part-f' : '')) + '">' + ICON.leaf(18) + '</span>' +
+        '<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;"><span class="t">Food</span><span class="s">' + esc(foodStatus) + '</span></div>' +
+        '<div style="display:flex;gap:6px;">' + ['breakfast', 'lunch', 'snack', 'dinner'].map(m => '<button class="mini ' + (e[m] ? 'f-on' : '') + '" data-a="meal" data-x="' + m + '" aria-label="' + m + '">' + ICON[m] + '</button>').join('') + '</div></div></div>' +
+      // activity
+      '<div class="card"><div class="rowhead"><span class="med ' + (st.acts === actTotal() ? 'done-a' : (st.acts ? 'part-a' : '')) + '">' + ICON.bell(18) + '</span>' +
+        '<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;"><span class="t">Activity</span><span class="s">' + esc(activityStatus) + '</span></div>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<button class="mini ' + (pc > 0 ? 'a-on' : (rest ? '' : 'a-due')) + '" data-a="push-open" aria-label="push-ups"><span class="d" style="font-size:' + (pc > 99 ? '12' : '15') + 'px;">' + (pc > 0 ? pc : (rest ? '—' : tgt)) + '</span></button>' +
+          S.settings.activityTypes.map(t => '<button class="mini ' + (a[t.key] ? 'a-on' : '') + '" data-a="act" data-x="' + esc(t.key) + '" aria-label="' + esc(t.name) + '" title="' + esc(t.name) + '">' + actIcon(t.key) + '</button>').join('') +
+        '</div></div></div>';
+  }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function actIcon(key) { if (key === 'walk') return ICON.walk; if (key === 'gym') return ICON.bell(18); if (key === 'run') return ICON.run; return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"></path></svg>'; }
+
+  // ───────────────────────── Journal ─────────────────────────
+  function viewJournal() {
+    const t = today(); const k = tkey();
+    let strip = '';
+    for (let i = 6; i >= 0; i--) { const d = addDays(t, -i); const kk = dkey(d); const has = S.journal.some(j => j.date === kk); strip += '<div class="day ' + (i === 0 ? 'on' : '') + '"><span class="w">' + WD[d.getDay()] + '</span><span class="n">' + d.getDate() + '</span><span class="dot ' + (has ? '' : 'none') + '"></span></div>'; }
+    const groups = {};
+    S.journal.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).forEach(j => { (groups[j.date] = groups[j.date] || []).push(j); });
+    const keys = Object.keys(groups).sort().reverse();
+    let list = '';
+    if (!keys.length) list = '<div class="card" style="align-items:center;text-align:center;padding:28px 16px;color:#6E6A62;">No entries yet. Tap the mic to record your first.</div>';
+    keys.forEach(kk => {
+      const d = fromKey(kk); const label = kk === k ? 'Today' : kk === dkey(addDays(t, -1)) ? 'Yesterday' : WDL[d.getDay()];
+      list += '<div class="eb" style="padding:6px 4px 0;">' + label + ' · ' + MON[d.getMonth()] + ' ' + d.getDate() + '</div>';
+      groups[kk].forEach(j => {
+        const playing = UI.playing === j.id;
+        list += '<div class="card"><div style="display:flex;align-items:center;gap:10px;"><span class="m" style="font-size:12px;color:#6E6A62;">' + esc(j.time) + ' · ' + clock(j.dur) + '</span>' +
+          (j.mood ? '<span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;background:' + (GOOD[j.mood] ? '#ECEBF8;color:#3F3C8F' : '#ECEAE3;color:#4A4741') + ';font-size:11px;font-weight:600;">' + esc(j.mood) + '</span>' : '') +
+          (j.status === 'transcribing' ? '<span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#B7692A;"><span style="width:6px;height:6px;border-radius:999px;background:#B7692A;"></span>Transcribing</span>' : (j.enhanced ? '<span style="margin-left:auto;font-size:11px;color:#6E6A62;">Enhanced</span>' : '')) + '</div>' +
+          '<div style="display:flex;gap:12px;align-items:flex-start;">' + (j.photo ? '<div style="width:56px;height:56px;border-radius:10px;background:#ECEAE3;flex-shrink:0;"></div>' : '') +
+          '<div style="flex:1;font-size:14px;line-height:1.5;' + (j.status === 'transcribing' ? 'color:#6E6A62;' : '') + '">' + (j.status === 'transcribing' ? 'Transcript on its way. The audio is already saved and encrypted.' : esc(j.text)) + '</div>' +
+          '<button class="play" data-a="play" data-x="' + j.id + '" aria-label="play">' + (playing ? ICON.pause : ICON.play) + '</button></div>' +
+          (playing ? '<div style="height:4px;border-radius:999px;background:#ECEAE3;"><div id="pbar" style="height:4px;border-radius:999px;background:#5F5BBF;width:0%;transition:width .9s linear;"></div></div>' : '') +
+          '<div style="display:flex;gap:12px;"><button class="lnk" data-a="del-journal" data-x="' + j.id + '">Delete</button></div></div>';
+      });
+    });
+    return '<div class="h1"><div><div class="eb">' + S.journal.length + ' entries · vault ' + (S.profile.vault ? 'unlocked' : 'locked') + '</div><div class="d title">Journal</div></div><div style="display:flex;align-items:center;gap:6px;color:#6E6A62;font-size:13px;padding-bottom:6px;">' + ICON.lock + '<span>Encrypted</span></div></div>' +
+      '<div style="display:flex;gap:4px;background:#FFFFFF;border:1px solid #DCD9D0;border-radius:14px;padding:6px;">' + strip + '</div>' + list;
+  }
+
+  // ───────────────────────── Food ─────────────────────────
+  function viewFood() {
+    const k = tkey(); const e = eatenOf(k); const kcal = kcalOf(k); const prot = proteinOf(k); const d = today();
+    const ring = (v, max, r, w, color) => { const c = 2 * Math.PI * r; const f = Math.min(1, v / max); return '<circle cx="48" cy="48" r="' + r + '" fill="none" stroke="#ECEAE3" stroke-width="' + w + '"></circle><circle cx="48" cy="48" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="' + w + '" stroke-linecap="round" stroke-dasharray="' + (f * c).toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 48 48)"></circle>'; };
+    const bar = (label, v, max, color) => '<div style="display:flex;flex-direction:column;gap:3px;"><div style="display:flex;justify-content:space-between;font-size:12px;"><span>' + label + '</span><span class="m" style="color:#6E6A62;">' + v + ' / ' + max + ' g</span></div><div style="height:6px;border-radius:999px;background:#ECEAE3;"><div style="width:' + Math.min(100, Math.round(v / max * 100)) + '%;height:6px;border-radius:999px;background:' + color + ';"></div></div></div>';
+    const meals = ['breakfast', 'lunch', 'snack', 'dinner'].map(m => {
+      const p = S.plan[m];
+      return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;"><span class="eb" style="color:#1B1A17;">' + cap(m) + '</span><span class="m" style="font-size:12px;color:' + (e[m] ? '#2C8A5E' : '#6E6A62') + ';">' + p.kcal + ' kcal · ' + (e[m] ? 'eaten' : 'planned') + '</span></div>' +
+        '<div class="row"><div class="name"><span>' + esc(p.name) + '</span><span class="sub">' + p.protein + ' g protein</span></div><span class="kcal" style="color:' + (e[m] ? '#1B1A17' : '#6E6A62') + ';">' + p.kcal + '</span></div>' +
+        '<div style="display:flex;gap:8px;"><button class="btn sm ' + (e[m] ? 'sec' : 'green') + '" data-a="meal" data-x="' + m + '">' + (e[m] ? 'Undo' : 'Mark eaten') + '</button><button class="btn sm sec" data-a="swap" data-x="' + m + '">Swap meal</button></div></div>';
+    }).join('');
+    const extras = extrasOf(k);
+    const extraHtml = '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;"><span class="eb" style="color:#1B1A17;">Something else</span><span class="m" style="font-size:12px;color:#6E6A62;">' + (extras.length ? extras.reduce((a, x) => a + x.kcal, 0) + ' kcal' : 'off-plan items') + '</span></div>' +
+      extras.map((x, i) => '<div class="row"><div class="name"><span>' + esc(x.name) + '</span><span class="sub"><span style="color:#2C8A5E;">AI estimate</span> · ' + (x.protein || 0) + ' g protein</span></div><span class="kcal">' + x.kcal + '</span><button class="lnk" data-a="del-extra" data-x="' + i + '">Remove</button></div>').join('') +
+      '<div style="display:flex;gap:8px;"><input class="inp" id="extra-inp" placeholder="Describe what you ate…" data-enter="add-extra"><button class="btn" data-a="add-extra">Add</button></div><div style="font-size:11px;color:#6E6A62;">Calories are estimated from the description in this prototype. Production uses the Claude estimator.</div></div>';
+    // weight
+    const keys = []; for (let i = 29; i >= 0; i--) keys.push(dkey(addDays(d, -i)));
+    const ws = keys.map(kk => S.weight[kk]).filter(v => v !== undefined);
+    const wMin = Math.min.apply(null, ws), wMax = Math.max.apply(null, ws); const span = Math.max(1, wMax - wMin);
+    let pts = ''; keys.forEach((kk, i) => { const v = S.weight[kk]; if (v === undefined) return; const x = (i / 29 * 326).toFixed(1); const y = (48 - (v - wMin) / span * 40).toFixed(1); pts += (pts ? ' ' : '') + x + ',' + y; });
+    const cur = S.weight[k]; const first = ws[0];
+    const weightHtml = '<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;"><span class="eb" style="color:#1B1A17;">Weight · 30 days</span><span class="m" style="font-size:13px;">' + (cur !== undefined ? '<span style="font-weight:500;">' + cur + ' lb</span><span style="color:#6E6A62;"> · ' + (cur - first <= 0 ? '↓' : '↑') + Math.abs(cur - first).toFixed(1) + '</span>' : '<span style="color:#6E6A62;">not logged today</span>') + '</span></div>' +
+      '<svg width="326" height="56" viewBox="0 0 326 56" style="max-width:100%;"><path d="M0 48 L326 48" stroke="#ECEAE3"></path><path d="M0 8 L326 8" stroke="#ECEAE3"></path><polyline fill="none" stroke="#2C8A5E" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="' + pts + '"></polyline></svg>' +
+      '<div style="display:flex;gap:8px;"><input class="inp" id="w-inp" type="number" step="0.1" inputmode="decimal" placeholder="' + (cur !== undefined ? cur : '182.0') + '" data-enter="weight"><button class="btn" data-a="weight">Log weight</button></div></div>';
+    return '<div class="h1"><div><div class="eb">' + WDL[d.getDay()] + ' · ' + MON[d.getMonth()] + ' ' + d.getDate() + '</div><div class="d title">Food</div></div></div>' +
+      '<div class="card" style="flex-direction:row;align-items:center;gap:16px;"><div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;"><div style="position:relative;width:96px;height:96px;"><svg width="96" height="96" viewBox="0 0 96 96">' + ring(kcal, S.goals.kcal, 40, 9, '#2C8A5E') + '</svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><span class="d" style="font-size:' + (kcal >= 1000 ? 20 : 24) + 'px;">' + fmtK(kcal) + '</span></div></div><span class="m" style="font-size:10.5px;color:#6E6A62;">of ' + fmtK(S.goals.kcal) + ' kcal</span></div>' +
+      '<div style="flex:1;display:flex;flex-direction:column;gap:9px;">' + bar('Protein', prot, S.goals.protein, '#2C8A5E') + bar('Carbs', Math.round(kcal * 0.095), 220, '#8BC4A6') + bar('Fat', Math.round(kcal * 0.032), 70, '#8BC4A6') + '</div></div>' +
+      meals + extraHtml + weightHtml;
+  }
+
+  // ───────────────────────── Activity ─────────────────────────
+  function viewActivity() {
+    const k = tkey(); const a = actOf(k); const day = roundDay(); const tgt = target(day); const sr = setsReps(tgt); const rest = isRest(day);
+    const pc = pushCount(k); const st = dayStatus(k);
+    const chain = streakInfo().now;
+    // grid
+    let cells = ''; let hit = 0, scored = 0;
+    for (let dd = 1; dd <= S.round.length; dd++) {
+      const kk = dkey(addDays(fromKey(S.round.start), dd - 1)); const r = isRest(dd);
+      let cls;
+      if (dd < day) { if (r) cls = 'r'; else { scored++; if (pushHit(kk)) { hit++; cls = ''; } else cls = 'x'; } }
+      else if (dd === day) { cls = r ? 'r' : 't'; if (!r && pushHit(kk)) { cls = ''; } }
+      else cls = r ? 'fr' : 'f';
+      cells += '<div class="c ' + cls + '" title="Day ' + dd + '"></div>';
+    }
+    if (!rest && pushHit(k)) { hit++; scored++; }
+    const pct = scored ? Math.round(hit / scored * 100) : 0;
+    const rows = [{ key: 'pushups', name: 'Push-ups', sub: (pc > 0 ? pc + ' logged · ' : '') + (rest ? 'rest day, no target' : 'target ' + tgt + ' a day, any number of sets'), done: pc > 0, cta: 'Log count', amber: !rest, push: true }]
+      .concat(S.settings.activityTypes.map(t => ({ key: t.key, name: t.name, sub: a[t.key] ? 'Logged' : 'Any amount counts', done: !!a[t.key] })));
+    const list = rows.map(r => '<div style="display:flex;align-items:center;gap:12px;min-height:52px;' + (r.key !== 'pushups' ? 'border-top:1px solid #ECEAE3;' : '') + '"><span style="width:8px;height:8px;border-radius:999px;background:' + (r.done ? '#B7692A' : '#DCD9D0') + ';flex-shrink:0;"></span><div style="flex:1;display:flex;flex-direction:column;gap:1px;"><span style="font-weight:500;font-size:15px;">' + r.name + '</span><span style="font-size:12px;color:#6E6A62;">' + r.sub + '</span></div>' +
+      (r.push ? '<button class="btn sm ' + (r.done ? 'sec' : (r.amber ? 'amber' : 'sec')) + '" data-a="push-open">' + (r.done ? 'Change' : r.cta) + '</button>' : (r.done ? '<button class="lnk" data-a="act" data-x="' + r.key + '">Undo</button>' : '<button class="btn sm sec" data-a="act" data-x="' + r.key + '">Log</button>')) + '</div>').join('');
+    const steps = S.steps[k] || 0;
+    // leaderboard
+    const scoredDays = scored;
+    const board = S.members.map(m => ({ name: m.name, hit: Math.round(m.hit * scoredDays), you: false })).concat([{ name: 'You', hit: hit, you: true }]).sort((x, y) => y.hit - x.hit);
+    const lb = board.slice(0, 5).map((m, i) => '<div class="lb ' + (m.you ? 'you' : '') + '" style="' + (i ? 'border-top:1px solid #ECEAE3;' : '') + '"><span class="rk">' + (i + 1) + '</span><span class="nm">' + esc(m.name) + '</span><span class="st">' + m.hit + ' / ' + scoredDays + '</span><span class="pc">' + (scoredDays ? Math.round(m.hit / scoredDays * 100) : 0) + '%</span></div>').join('');
+    const nextRest = S.round.rest.filter(r => r > day)[0];
+    return '<div class="h1"><div><div class="eb">' + st.acts + ' of ' + actTotal() + ' logged today · ' + (chain ? chain + ' full day' + (chain === 1 ? '' : 's') + ' in a row' : 'a full day starts the run') + '</div><div class="d title">Activity</div></div></div>' +
+      '<div class="card" style="gap:0;">' + list + '<div style="display:flex;flex-direction:column;gap:5px;padding-top:12px;border-top:1px solid #ECEAE3;"><div style="display:flex;justify-content:space-between;font-size:12px;"><span>Steps</span><span class="m" style="color:#6E6A62;">' + fmtK(steps) + ' / ' + fmtK(S.goals.steps) + '</span></div><div style="height:6px;border-radius:999px;background:#ECEAE3;"><div style="width:' + Math.min(100, Math.round(steps / S.goals.steps * 100)) + '%;height:6px;border-radius:999px;background:#B7692A;"></div></div></div></div>' +
+      '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;"><span class="eb" style="color:#1B1A17;">' + S.round.goal + ' push-ups · ' + esc(S.round.name) + '</span><span class="m" style="font-size:12px;color:#6E6A62;">Day ' + Math.min(day, S.round.length) + ' of ' + S.round.length + '</span></div>' +
+      '<div style="display:flex;align-items:center;gap:14px;"><div style="flex:1;font-size:13px;color:#6E6A62;line-height:1.5;">' + S.round.goal + ' push-ups a day for ' + S.round.length + ' days, in as many sets as you like. Your target; others set their own.' + (nextRest ? ' Next rest day: day ' + nextRest + (nextRest === day + 1 ? ', tomorrow.' : '.') : '') + '</div>' +
+      '<div style="position:relative;width:64px;height:64px;flex-shrink:0;"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#ECEAE3" stroke-width="6"></circle><circle cx="32" cy="32" r="26" fill="none" stroke="#B7692A" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + (Math.min(1, day / S.round.length) * 163.4).toFixed(1) + ' 163.4" transform="rotate(-90 32 32)"></circle></svg><div class="m" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:500;line-height:1.1;"><span>' + Math.round(day / S.round.length * 100) + '%</span><span style="font-size:8px;color:#6E6A62;">of round</span></div></div></div>' +
+      '<div class="g">' + cells + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#6E6A62;"><span>' + hit + ' of ' + scored + ' targets hit · <span class="m">' + pct + '%</span></span><div style="display:flex;gap:10px;font-size:11px;align-items:center;"><span style="display:inline-flex;align-items:center;gap:4px;"><span class="c" style="width:10px;height:10px;"></span>Hit</span><span style="display:inline-flex;align-items:center;gap:4px;"><span class="c x" style="width:10px;height:10px;"></span>Missed</span><span style="display:inline-flex;align-items:center;gap:4px;"><span class="c r" style="width:10px;height:10px;"></span>Rest</span></div></div></div>' +
+      '<div class="card" style="gap:2px;"><div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;"><span class="eb" style="color:#1B1A17;">Leaderboard · ' + (S.members.length + 1) + ' members</span><span style="font-size:12px;color:#6E6A62;">Against your own target</span></div>' + lb + '</div>';
+  }
+
+  // ───────────────────────── Insights ─────────────────────────
+  function viewInsights() {
+    const n = UI.insightRange; const t = today(); const keys = []; for (let i = n - 1; i >= 0; i--) keys.push(dkey(addDays(t, -i)));
+    const buckets = [{ label: 'under 6.5h', good: 0, tot: 0 }, { label: '6.5 – 7.5h', good: 0, tot: 0 }, { label: 'over 7.5h', good: 0, tot: 0 }];
+    let bestDays = 0, walkBest = 0, entries = 0, hard = 0, hardLowSleep = 0, hardDrinks = 0, skipProt = 0, skipped = 0;
+    keys.forEach(kk => {
+      const c = ciValid(kk); const sl = S.sleep[kk]; entries += S.journal.filter(j => j.date === kk).length;
+      if (!c || sl === undefined) return;
+      const b = sl < 390 ? 0 : sl <= 450 ? 1 : 2; buckets[b].tot++; if (GOOD[c.mood]) buckets[b].good++;
+      if (GOOD[c.mood]) { bestDays++; if ((S.activity[kk] || {}).walk) walkBest++; }
+      if (c.mood === 'Down' || c.mood === 'Overwhelmed' || c.mood === 'Anxious') { hard++; if (sl < 360) hardLowSleep++; if (((c.counts || {}).drinks || 0) >= 3) hardDrinks++; }
+      if (!isRest(roundDay(fromKey(kk))) && pushCount(kk) === 0) { skipped++; if (proteinOf(kk) < 90) skipProt++; }
+    });
+    const pctOf = (b) => b.tot ? Math.round(b.good / b.tot * 100) : 0;
+    const bars = buckets.map((b, i) => { const p = pctOf(b); const h = Math.round(p / 100 * 80); const x = 60 + i * 96; return '<rect x="' + x + '" y="' + (92 - h) + '" width="56" height="' + h + '" rx="3" fill="' + ['#C9C7E9', '#8F8CD3', '#5F5BBF'][i] + '"></rect><text x="' + (x + 28) + '" y="' + (86 - h) + '" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#1B1A17">' + p + '%</text><text x="' + (x + 28) + '" y="112" text-anchor="middle" font-family="Figtree, sans-serif" font-size="11" fill="#6E6A62">' + b.label + '</text><text x="' + (x + 28) + '" y="126" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8A857B">' + b.tot + ' nights</text>'; }).join('');
+    const segs = [14, 30, 90].map(v => '<button class="seg ' + (n === v ? 'on' : '') + '" data-a="range" data-x="' + v + '">' + v + 'd</button>').join('');
+    return '<div class="h1"><div><div class="eb">Last ' + n + ' days · ' + entries + ' entries</div><div class="d title">Insights</div></div><div style="display:flex;gap:2px;background:#FFFFFF;border:1px solid #DCD9D0;border-radius:999px;padding:3px;margin-bottom:4px;">' + segs + '</div></div>' +
+      '<div class="card"><div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:999px;background:#5F5BBF;"></span><span class="eb" style="color:#1B1A17;">Your best-day signal</span></div>' +
+      '<p style="font-size:14px;line-height:1.55;">Your <strong>Focused</strong>, <strong>Great</strong> and <strong>Peaceful</strong> days mostly start the same way: a walk and a decent night before. On ' + walkBest + ' of your ' + bestDays + ' best days in this window you had logged a walk. You said it yourself: <em>"every day I get it in before noon the rest of the day just lines up."</em></p>' +
+      '<p style="font-size:14px;line-height:1.55;">' + (skipped ? 'On the ' + skipped + ' day' + (skipped > 1 ? 's' : '') + ' you skipped the push-ups, ' + skipProt + ' also came in under 90 g of protein.' : 'You have not skipped the push-ups in this window.') + '</p></div>' +
+      '<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;"><span class="eb" style="color:#1B1A17;">Mood by sleep</span><span style="font-size:11px;color:#6E6A62;">Share of days rated Focused, Great, Peaceful or Grateful</span></div>' +
+      '<svg width="326" height="132" viewBox="0 0 326 132" style="max-width:100%;"><line x1="36" y1="12" x2="326" y2="12" stroke="#ECEAE3"></line><line x1="36" y1="52" x2="326" y2="52" stroke="#ECEAE3"></line><line x1="36" y1="92" x2="326" y2="92" stroke="#ECEAE3"></line><text x="30" y="16" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#8A857B">100%</text><text x="30" y="56" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#8A857B">50%</text><text x="30" y="96" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#8A857B">0%</text>' + bars + '</svg></div>' +
+      '<div class="card"><div style="display:flex;align-items:center;gap:8px;"><span style="width:8px;height:8px;border-radius:999px;background:#B7692A;"></span><span class="eb" style="color:#1B1A17;">Your hardest-day signal</span></div>' +
+      '<p style="font-size:14px;line-height:1.55;">' + (hard ? hardLowSleep + ' of your ' + hard + ' hard days came after a night under six hours' + (hardDrinks ? ', and on ' + hardDrinks + ' you had logged three or more drinks the evening before.' : '.') : 'No days rated Down, Anxious or Overwhelmed in this window.') + '</p></div>' +
+      '<div class="card" style="flex-direction:row;align-items:center;gap:12px;background:#ECEBF8;border-color:#ECEBF8;box-shadow:none;"><span style="color:#3F3C8F;">' + ICON.lock + '</span><div style="font-size:12px;color:#3F3C8F;line-height:1.45;">Transcripts are decrypted on this phone and sent for analysis once. Nothing is stored on the server in plain text.</div></div>';
+  }
+
+  // ───────────────────────── Settings / Admin ─────────────────────────
+  function fText(label, desc, path, ph) { return '<div class="field"><div class="fl"><span class="fn">' + label + '</span>' + (desc ? '<span class="fd">' + desc + '</span>' : '') + '</div><input class="inp" type="text" value="' + esc(getPath(S, path) == null ? '' : getPath(S, path)) + '" placeholder="' + esc(ph || '') + '" data-set="' + path + '" style="width:220px;text-align:left;"></div>'; }
+  function fNum(label, desc, path, min, max, step, unit) { return '<div class="field"><div class="fl"><span class="fn">' + label + '</span>' + (desc ? '<span class="fd">' + desc + '</span>' : '') + '</div><div style="display:flex;align-items:center;gap:8px;"><input class="inp" type="number" inputmode="decimal" value="' + getPath(S, path) + '" min="' + (min == null ? '' : min) + '" max="' + (max == null ? '' : max) + '" step="' + (step || 1) + '" data-set="' + path + '" data-type="num" style="width:110px;">' + (unit ? '<span class="m" style="font-size:12px;color:#6E6A62;width:34px;">' + unit + '</span>' : '') + '</div></div>'; }
+  function fSel(label, desc, path, opts) { const cur = getPath(S, path); return '<div class="field"><div class="fl"><span class="fn">' + label + '</span>' + (desc ? '<span class="fd">' + desc + '</span>' : '') + '</div><select class="inp" data-set="' + path + '" style="width:200px;">' + opts.map(o => '<option value="' + esc(o[0]) + '"' + (String(cur) === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select></div>'; }
+  function fTog(label, desc, path) { const on = !!getPath(S, path); return '<div class="field"><div class="fl"><span class="fn">' + label + '</span>' + (desc ? '<span class="fd">' + desc + '</span>' : '') + '</div><button class="sw ' + (on ? 'on' : '') + '" role="switch" aria-checked="' + on + '" aria-label="' + esc(label) + '" data-a="tog" data-x="' + path + '"></button></div>'; }
+  function fBtn(label, desc, btn, action, x, cls) { return '<div class="field"><div class="fl"><span class="fn">' + label + '</span>' + (desc ? '<span class="fd">' + desc + '</span>' : '') + '</div><button class="btn sm ' + (cls || 'sec') + '" data-a="' + action + '"' + (x != null ? ' data-x="' + esc(x) + '"' : '') + '>' + btn + '</button></div>'; }
+  function fNote(t, tag) { return '<div style="font-size:12px;color:#6E6A62;line-height:1.5;padding:4px 0 2px;">' + (tag ? '<span class="tag" style="background:#ECEBF8;color:#3F3C8F;margin-right:6px;">' + tag + '</span>' : '') + t + '</div>'; }
+  function secTitle(t, d) { return '<div style="display:flex;flex-direction:column;gap:4px;padding:0 0 6px;"><span class="d" style="font-size:24px;">' + t + '</span>' + (d ? '<span style="font-size:13px;color:#6E6A62;line-height:1.5;max-width:560px;">' + d + '</span>' : '') + '</div>'; }
+  function card(inner, title) { return '<div class="card" style="gap:2px;">' + (title ? '<span class="eb" style="color:#1B1A17;padding-bottom:6px;">' + title + '</span>' : '') + inner + '</div>'; }
+
+  const SECTIONS = [['account', 'Account & appearance'], ['checkin', 'Check-in'], ['journal', 'Journal & vault'], ['food', 'Food & targets'], ['activity', 'Activity & round'], ['integrations', 'Integrations & AI'], ['notify', 'Notifications'], ['data', 'Data & privacy'], ['admin', 'Admin']];
+
+  function secAccount() {
+    const st = S.settings;
+    return secTitle('Account & appearance', 'Who you are in Soma and how it looks. Theme and palette come across from Glimpse and Macros; units and time zone are new in Soma.') +
+      card(fText('Display name', 'Shown on the leaderboard and in admin lists. Neither Macros nor Push-Ups had a place to edit this.', 'settings.displayName', 'Your name') +
+        '<div class="field"><div class="fl"><span class="fn">Email</span><span class="fd">Sign-in identity. Changing it is an account action in production.</span></div><span class="m" style="font-size:13px;">' + esc(S.profile.email) + '</span></div>' +
+        fText('Time zone', 'Days roll over at midnight here. Push-Ups kept this per round; Soma keeps one for you.', 'settings.timezone', 'America/New_York') +
+        fBtn('Vault passphrase', 'Separate from your password. Journal entries are encrypted with it and it cannot be recovered if lost.', 'Change passphrase', 'passphrase') +
+        fBtn('Session', 'Signs out on this device and clears the cached vault key.', 'Sign out', 'signout'), 'Account') +
+      card(fSel('Theme', 'Glimpse had light and dark.', 'settings.themeMode', [['light', 'Light'], ['dark', 'Dark'], ['system', 'Follow system']]) +
+        fSel('Accent palette', 'Macros shipped six palettes; the accent, tint and alarm colours change, nothing else.', 'settings.palette', [['organic', 'Organic · warm cream, muted sage'], ['macrofactor', 'MacroFactor · whisper white, Malibu blue'], ['balance', 'Balance · sea glass, deep teal'], ['basecamp', 'Basecamp · paper white, honey yellow'], ['bear', 'Bear · warm paper, clay red'], ['behance', 'Behance · gallery white, electric blue']]) +
+        fSel('Units', 'Everything was hard-coded to pounds and kcal before.', 'settings.units', [['imperial', 'Pounds, miles'], ['metric', 'Kilograms, kilometres']]) +
+        fSel('Energy', '', 'settings.energy', [['kcal', 'Calories (kcal)'], ['kj', 'Kilojoules (kJ)']]) +
+        fNote('Theme, palette and units are stored in the prototype but only the data layer reacts to them; the visual switch is a production task.'), 'Appearance');
+  }
+  function secCheckin() {
+    const st = S.settings;
+    const moods = st.moods.map(m => '<div class="field"><div class="fl"><span class="fn">' + esc(m.label) + '</span></div><button class="sw ' + (m.on ? 'on' : '') + '" role="switch" aria-checked="' + m.on + '" aria-label="' + esc(m.label) + '" data-a="mood-on" data-x="' + m.id + '"></button></div>').join('');
+    const habits = st.habits.map((h, i) => '<div class="field" style="gap:10px;"><div class="fl" style="flex:1;"><input class="inp" type="text" value="' + esc(h.label) + '" data-set="settings.habits.' + i + '.label" style="width:100%;text-align:left;height:36px;font-size:14px;" aria-label="Habit name"></div>' +
+      '<button class="btn sm sec" data-a="hab-type" data-x="' + i + '" title="Daily is a yes/no; Counter tracks how many">' + (h.type === 'counter' ? 'Counter' : 'Daily') + '</button>' +
+      (h.type === 'counter' ? '<button class="btn sm sec" data-a="hab-dir" data-x="' + i + '" title="At least or at most">' + (h.dir === 'at_most' ? '≤' : '≥') + '</button><input class="inp" type="number" min="0" max="999" value="' + (h.goal == null ? '' : h.goal) + '" placeholder="goal" data-set="settings.habits.' + i + '.goal" data-type="num" style="width:76px;height:36px;font-size:14px;">' : '') +
+      '<button class="lnk" data-a="hab-del" data-x="' + i + '" aria-label="Remove habit">Remove</button></div>').join('');
+    return secTitle('Check-in', 'Moods and habits that appear on Today. Carried over from Glimpse, which allowed up to twelve habits and at least one mood.') +
+      card(moods + fNote('Fixed library of ten moods from Glimpse; you choose which show. At least one stays on.'), 'Moods shown on Today') +
+      card(habits + '<div style="display:flex;gap:8px;padding-top:10px;"><input class="inp" id="hab-new" type="text" placeholder="e.g. Meditate, Called mom, Stretched…" maxlength="40" data-enter="hab-add" style="flex:1;"><button class="btn" data-a="hab-add">Add habit</button></div>' +
+        fNote('Daily habits are a yes or no. Counters count taps, with an optional goal that is either "at least" or "at most", the way Glimpse tracked drinks. Max 12.') +
+        fTog('Start habits collapsed', 'Glimpse remembered whether you folded the habits row away.', 'settings.habitsCollapsed'), 'Habits');
+  }
+  function secJournal() {
+    const st = S.settings;
+    const cats = Object.keys(st.promptCats).map(c => '<button class="chip hab ' + (st.promptCats[c] ? 'on' : '') + '" data-a="tog" data-x="settings.promptCats.' + c + '">' + esc(c) + '</button>').join('');
+    return secTitle('Journal & vault', 'Recording, transcription, prompts and the encrypted vault. Everything here maps to Glimpse.') +
+      card(fTog('Cloud transcription', 'Groq Whisper Large v3 Turbo transcribes new recordings. Off means on-device Whisper only, which is slower and English-only.', 'settings.cloudTranscription') +
+        '<div class="field"><div class="fl"><span class="fn">On-device model</span><span class="fd">Chosen by device: whisper-base.en on phones (75 MB), whisper-small.en on desktop. Glimpse fixed this because iOS tabs cap memory.</span></div><span class="m" style="font-size:12px;color:#6E6A62;">automatic</span></div>' +
+        fBtn('Stuck transcriptions', 'Re-run any entry still waiting for a transcript.', 'Retry all', 'retry-all'), 'Transcription') +
+      card('<div style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 0;">' + cats + '</div>' + fNote('Glimpse rotated one of twenty prompts at random. Soma lets you switch categories off so the rotation fits you.', 'New'), 'Prompt categories') +
+      card(fBtn('Change passphrase', 'Re-encrypts the vault key on this device. Glimpse had no way to do this.', 'Change…', 'passphrase') +
+        fBtn('Lock vault', 'Requires the passphrase next time, without signing out.', 'Lock now', 'vault') +
+        '<div class="field"><div class="fl"><span class="fn">Vault status</span><span class="fd">Key is cached per tab and never sent anywhere.</span></div><span class="m" style="font-size:12px;color:' + (S.profile.vault ? '#2C8A5E' : '#B0392E') + ';">' + (S.profile.vault ? 'unlocked on this device' : 'locked') + '</span></div>', 'Vault') +
+      card(fBtn('Markdown', 'For Obsidian or Notion. Decrypted on this device; nothing leaves the browser.', 'Export .md', 'export', 'markdown') +
+        fBtn('Plain text', 'Structured report, ready for NotebookLM.', 'Export .txt', 'export', 'text') +
+        fBtn('All audio', 'Every recording, decrypted one by one.', 'Export audio', 'export', 'audio') +
+        fBtn('JSON backup', 'Everything, machine-readable.', 'Export .json', 'export', 'json'), 'Export journal');
+  }
+  function secFood() {
+    const st = S.settings; const g = S.goals;
+    const chips = [1800, 2000, 2100, 2200, 2400, 2600].map(n => '<button class="chip hab ' + (g.kcal === n ? 'on' : '') + '" data-a="kcal-preset" data-x="' + n + '">' + fmtK(n) + '</button>').join('');
+    const meals = ['breakfast', 'lunch', 'snack', 'dinner'].map(m => '<div class="field"><div class="fl"><span class="fn">' + cap(m) + '</span><span class="fd">' + esc(S.plan[m].name) + ' · ' + S.plan[m].kcal + ' kcal · ' + S.plan[m].protein + ' g protein</span></div><button class="btn sm sec" data-a="swap" data-x="' + m + '">Swap</button></div>').join('');
+    const snacks = st.snacks.map((sn, i) => '<div class="field"><div class="fl"><span class="fn">' + esc(sn.name) + '</span></div><div style="display:flex;align-items:center;gap:10px;"><span class="m" style="font-size:13px;">' + sn.kcal + ' kcal</span><button class="lnk" data-a="snack-del" data-x="' + i + '">Remove</button></div></div>').join('');
+    return secTitle('Food & targets', 'Plans, daily targets and the meal template from Macros, plus the two numbers Macros had hard-coded.') +
+      card(fSel('Meal plan', 'Sets default targets and the meal template.', 'settings.plan', [['standard', 'Standard'], ['paleo', 'Paleo'], ['keto', 'Keto']]) +
+        (st.plan === 'standard' ? fSel('Bowl style', 'Standard plan only.', 'settings.bowl', [['beef-rice', 'Beef & rice'], ['turkey-cabbage', 'Turkey & cabbage']]) : '') +
+        fBtn('Plan defaults', 'Puts the four targets back to this plan\'s numbers. Logs are kept.', 'Reset targets', 'plan-defaults'), 'Plan') +
+      card('<div style="display:flex;gap:6px;flex-wrap:wrap;padding:6px 0 10px;">' + chips + '</div>' +
+        fNum('Calories', 'Picking a quick-set chip rescales the three macros in proportion.', 'goals.kcal', 800, 6000, 10, 'kcal') +
+        fNum('Protein', '', 'goals.protein', 0, 500, 5, 'g') + fNum('Carbs', '', 'goals.carbs', 0, 800, 5, 'g') + fNum('Fat', '', 'goals.fat', 0, 400, 5, 'g') +
+        fNum('Steps floor', 'Macros fixed this at 12,000. It is yours now.', 'goals.steps', 1000, 40000, 500, 'steps'), 'Daily targets') +
+      card(meals + fNote('One-tap tiles on Today come from these. Custom or off-plan food goes through the Food screen.'), 'Meal template') +
+      card(snacks + '<div style="display:flex;gap:8px;padding-top:10px;"><input class="inp" id="snack-new" type="text" placeholder="Snack name" style="flex:1;"><input class="inp" id="snack-kcal" type="number" placeholder="kcal" style="width:90px;" data-enter="snack-add"><button class="btn" data-a="snack-add">Add</button></div>' +
+        fNote('Macros had four fixed one-tap snacks. Edit the list here.', 'New'), 'Quick snacks') +
+      card('<div class="field"><div class="fl"><span class="fn">Saved recipes</span><span class="fd">' + RECIPES.length + ' recipes · name, slot, servings, plan bucket, meal-prep or off-rotation, per-serving macros, ingredients, method, notes.</span></div><button class="btn sm sec" data-a="tab" data-x="food">Manage in Food</button></div>' +
+        fTog('AI portion estimate', 'Describe a meal in words and Claude Haiku estimates the macros for review. Off means manual numbers only.', 'settings.estimator'), 'Recipes & estimates');
+  }
+  function secActivity() {
+    const st = S.settings; const r = S.round;
+    const types = st.activityTypes.map((t, i) => '<div class="field" style="gap:10px;"><span class="mini" style="width:34px;height:34px;border-style:solid;">' + actIcon(t.key) + '</span><div class="fl" style="flex:1;"><input class="inp" type="text" value="' + esc(t.name) + '" data-set="settings.activityTypes.' + i + '.name" style="width:100%;text-align:left;height:36px;font-size:14px;" aria-label="Activity name"></div><button class="lnk" data-a="act-del" data-x="' + i + '">Remove</button></div>').join('');
+    let grid = ''; for (let d = 1; d <= r.length; d++) { const isR = r.rest.indexOf(d) >= 0; grid += '<button class="c ' + (isR ? 'r' : 'x') + '" style="aspect-ratio:1;border-radius:4px;min-width:0;font-family:JetBrains Mono,monospace;font-size:9px;color:' + (isR ? '#6E6A62' : '#B7692A') + ';" data-a="rest" data-x="' + d + '" title="Day ' + d + ': ' + (isR ? 'rest' : 'train') + '" aria-pressed="' + isR + '">' + d + '</button>'; }
+    return secTitle('Activity & round', 'The activity types you log on Today, and the push-up round that used to live in the Push-Ups app.') +
+      card(types + '<div style="display:flex;gap:8px;padding-top:10px;"><input class="inp" id="act-new" type="text" placeholder="e.g. Swim, Yoga, Cycle" maxlength="30" data-enter="act-add" style="flex:1;"><button class="btn" data-a="act-add">Add activity</button></div>' +
+        fNote('Push-ups are always the first tile. Each type here becomes a one-tap tile; Activity is satisfied once anything is logged.', 'New'), 'Activity types') +
+      card(fText('Round name', '', 'round.name', 'Round 3') +
+        '<div class="field"><div class="fl"><span class="fn">Start date</span><span class="fd">Day 1 of the round. Today is day ' + roundDay() + '.</span></div><input class="inp" type="date" value="' + r.start + '" data-set="round.start" style="width:170px;"></div>' +
+        fNum('Length', 'Days in the round. Shortening below a day that already has logs is refused in production.', 'round.length', 7, 366, 1, 'days') +
+        fNum('Your daily target', 'Push-ups a day, yours alone. Everyone picks their own; the leaderboard scores each person against their own number.', 'round.goal', 1, 1000, 5, 'reps') +
+        fNum('Your test number', 'Max in one set. Locked once you have logged a day in the round.', 'round.test', 1, 500, 1, 'reps') +
+        fNum('Your start day', 'Days before this are not counted against you.', 'round.startDay', 1, 366, 1, 'day') +
+        fTog('Members can join themselves', 'Off means an admin adds people to the roster.', 'round.joinOpen') +
+        fBtn(r.archived ? 'Archived' : 'Archive', r.archived ? 'Logs are read-only. Un-archive to resume.' : 'Freezes logs and the leaderboard; history stays.', r.archived ? 'Un-archive' : 'Archive round', 'round-archive'), esc(r.name) + ' · settings') +
+      card('<div style="display:grid;grid-template-columns:repeat(15,minmax(0,1fr));gap:4px;padding:4px 0 8px;">' + grid + '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#6E6A62;">' + r.rest.length + ' rest · ' + (r.length - r.rest.length) + ' training. Tap a day to flip it. Rest days carry the streak and never count as missed.</span><button class="btn sm sec" data-a="rest-default">Reset to default pattern</button></div>', 'Rest days') +
+      card(fNum('Points per target hit', '', 'round.bonusHit', 0, 9999, 5, 'pts') + fNum('Points per streak day', '', 'round.bonusStreak', 0, 9999, 5, 'pts') +
+        fNum('Streak badge at', 'Consecutive days for the streak badge.', 'round.badgeStreak', 1, 366, 1, 'days') + fNum('Hits badge at', 'Target hits for the hits badge.', 'round.badgeHits', 1, 366, 1, 'hits') +
+        fNote('Score = total reps + hits × hit bonus + best streak × streak bonus, ties broken by join order. Straight from the Push-Ups app.'), 'Scoring') +
+      card(fNum('Catch-up window', 'How many recent missed training days you can still fill in. Push-Ups fixed this at 7.', 'settings.catchupDays', 0, 30, 1, 'days') +
+        fNum('"Behind" threshold', 'Admin panel flags members this many missed days behind.', 'settings.behindThreshold', 1, 30, 1, 'days'), 'Rules');
+  }
+  function secIntegrations() {
+    const st = S.settings;
+    return secTitle('Integrations & AI', 'Fitbit and the two places Claude is used. Consents are per device in Glimpse; Soma keeps them on the account.') +
+      card(fTog('Fitbit connected', 'Sleep, steps, resting heart rate and active minutes. Requested scopes are fixed: activity, heart rate, sleep, profile.', 'settings.fitbit.connected') +
+        fSel('Health view timeframe', '', 'settings.fitbit.timeframe', [[7, 'Last 7 days'], [14, 'Last 14 days'], [30, 'Last 30 days']]) +
+        fNum('Refresh every', 'Background refresh while the app is open.', 'settings.fitbit.refreshMin', 5, 240, 5, 'min') +
+        fNum('Backfill on connect', 'Glimpse pulled 90 days the first time.', 'settings.fitbit.backfillDays', 7, 365, 1, 'days') +
+        fBtn('Sync now', '', 'Sync today', 'fitbit-sync'), 'Fitbit') +
+      card(fTog('Pattern analysis', 'Claude reads decrypted transcripts, moods, habits and Fitbit days once per run to find best-day and hardest-day signals. Needs at least three entries.', 'settings.patternsConsent') +
+        fTog('Ask your own question', 'Free-text questions against the same window.', 'settings.askClaude') +
+        fTog('Cloud transcription consent', 'Accepted the first time you record. Glimpse stored this per device.', 'settings.cloudConsent') +
+        fTog('Food estimate', 'Claude Haiku turns a description into macros for review.', 'settings.estimator'), 'Claude') +
+      card(fTog('Orbit bridge', 'Developer feature: pushes decrypted entries to a memory map on this computer at localhost:4747. Silent everywhere else.', 'settings.orbit'), 'Developer');
+  }
+  function secNotify() {
+    return secTitle('Notifications', 'None of the three apps had reminders. These are new in Soma and are off until you turn them on.') +
+      card(fTog('Daily reminder', 'One nudge if the day is not closed by this time.', 'settings.notify.enabled') +
+        '<div class="field"><div class="fl"><span class="fn">Remind me at</span></div><input class="inp" type="time" value="' + esc(S.settings.notify.reminderTime) + '" data-set="settings.notify.reminderTime" style="width:130px;"></div>' +
+        fTog('Streak at risk', 'Only when a full-day streak of 3 or more would break.', 'settings.notify.streakNudge') +
+        fTog('Round day reminder', 'Push-up target for the day, skipping rest days.', 'settings.notify.roundReminder') +
+        fNote('Delivered as web push once the app is installed to the Home Screen.', 'New'), 'Reminders');
+  }
+  function secData() {
+    return secTitle('Data & privacy', 'Exports, imports and the two consents, gathered from all three apps.') +
+      card(fBtn('Export everything', 'Journal, check-ins, food, weight, activity, round history, settings. Journal content is decrypted on this device first.', 'Export .json', 'export', 'everything') +
+        fBtn('Import', 'Accepts a Macros export, a Glimpse JSON backup, or a Soma export. Merges; never replaces.', 'Choose file…', 'export', 'import') +
+        fBtn('Clear daily logs', 'Removes every day\'s meals, weight, activity and check-ins. Plans, recipes, journal and settings stay.', 'Clear logs', 'clear-logs', null, 'sec'), 'Your data') +
+      card(fNum('Keep errors and diagnostics for', 'Server-side error rows are pruned after this many days. 0 keeps the 30-day default.', 'settings.retentionDays', 0, 365, 1, 'days') +
+        '<div class="field"><div class="fl"><span class="fn">Encryption</span><span class="fd">Journal entries, audio, photos and Fitbit tokens are AES-256-GCM encrypted with a key derived from your passphrase in the browser. Food, activity and the round are readable by the server so leaderboards and admin fixes work.</span></div></div>', 'Retention & encryption') +
+      card(fBtn('Delete account', 'Removes your sign-in and every row you own. Not reversible. None of the three apps offered this.', 'Delete…', 'delete-account', null, 'sec'), 'Danger zone');
+  }
+  function secAdmin() {
+    if (!S.profile.admin) return secTitle('Admin', 'Only admins see this section.');
+    const users = S.members.map((m, i) => '<div class="field"><div class="fl"><span class="fn">' + esc(m.name) + (m.role === 'admin' ? ' <span class="tag" style="background:#ECEBF8;color:#3F3C8F;">admin</span>' : '') + '</span><span class="fd">' + esc(m.email) + ' · ' + (m.seen === 'today' ? 'active today' : m.seen === 'yesterday' ? 'active yesterday' : 'active ' + m.seen) + '</span></div><div style="display:flex;gap:6px;align-items:center;"><span class="tag" style="background:' + (m.status === 'active' ? '#E6F2EB;color:#1F5F41' : '#F3DCD7;color:#8E2F24') + ';">' + m.status + '</span><button class="btn sm sec" data-a="member-status" data-x="' + i + '">' + (m.status === 'active' ? 'Disable' : 'Re-enable') + '</button><button class="btn sm sec" data-a="member-role" data-x="' + i + '">' + (m.role === 'admin' ? 'Make member' : 'Make admin') + '</button></div></div>').join('');
+    const pending = S.pending.map((p, i) => '<div class="field"><div class="fl"><span class="fn">' + esc(p.email) + '</span><span class="fd">Signed up ' + esc(p.since) + '</span></div><button class="btn sm" data-a="approve" data-x="' + i + '">Approve</button></div>').join('') || fNote('Nobody waiting.');
+    const errors = S.errors.map((x, i) => '<div class="field" style="' + (x.open ? '' : 'opacity:.5;') + '"><div class="fl"><span class="fn"><span class="tag" style="background:' + (x.ctx.indexOf('ios') === 0 ? '#F5EBD3;color:#7A5A0E' : '#F3DCD7;color:#8E2F24') + ';margin-right:6px;">' + esc(x.ctx) + '</span><span class="m" style="font-size:11px;color:#6E6A62;">' + esc(x.when) + '</span></span><span class="fd">' + esc(x.msg) + '</span></div>' + (x.open ? '<button class="btn sm sec" data-a="resolve" data-x="' + i + '">Resolve</button>' : '<span class="m" style="font-size:11px;color:#6E6A62;">resolved</span>') + '</div>').join('');
+    const fb = S.feedback.map((x, i) => '<div class="field"><div class="fl"><span class="fn"><span class="m" style="font-size:11px;color:#6E6A62;">' + esc(x.who) + ' · ' + esc(x.when) + '</span></span><span class="fd" style="color:#1B1A17;">' + esc(x.text) + '</span></div>' + (x.ack ? '<span class="m" style="font-size:11px;color:#2C8A5E;">ack\'d</span>' : '<button class="btn sm sec" data-a="ack" data-x="' + i + '">Acknowledge</button>') + '</div>').join('');
+    return secTitle('Admin', 'Users, approvals, the round, errors and feedback. Metadata only: journal contents are never visible here.') +
+      '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;"><div class="stat"><span class="d" style="font-size:24px;">' + (S.members.length + 1 + S.pending.length) + '</span><span class="eb" style="font-size:9.5px;">Users</span></div><div class="stat"><span class="d" style="font-size:24px;">' + S.pending.length + '</span><span class="eb" style="font-size:9.5px;">Pending</span></div><div class="stat"><span class="d" style="font-size:24px;">' + S.members.filter(m => m.seen === 'today' || m.seen === 'yesterday' || /days/.test(m.seen)).length + '</span><span class="eb" style="font-size:9.5px;">Active 7d</span></div><div class="stat"><span class="d" style="font-size:24px;">' + (129 + S.journal.length - 3) + '</span><span class="eb" style="font-size:9.5px;">Entries</span></div></div>' +
+      card(pending, 'Waiting for approval') +
+      card(users + fNote('Statuses: pending, active, disabled. You cannot disable yourself or remove the last admin. There is no delete; disabling is the safe stop.'), 'Users') +
+      card('<div class="field"><div class="fl"><span class="fn">' + esc(S.round.name) + '</span><span class="fd">Day ' + roundDay() + ' of ' + S.round.length + ' · ' + (S.members.filter(m => m.status === 'active').length + 1) + ' members · ' + (S.round.archived ? 'archived' : 'running') + '</span></div><button class="btn sm sec" data-a="setsec" data-x="activity">Round settings</button></div>' +
+        fNote('Admins can also fix any member\'s day entry from the Activity grid, add or remove roster members, and override a test number or start day.'), 'Rounds') +
+      card(errors, 'Errors') + card(fb, 'Feedback') +
+      card(fText('Webhook URL', 'Called when someone signs up; empty disables it.', 'settings.webhook.url', 'https://…/api/hooks/new-signup') +
+        fText('Shared secret', 'Sent as x-signup-secret.', 'settings.webhook.secret', '') +
+        fText('From address', '', 'settings.webhook.from', 'Soma <onboarding@resend.dev>') +
+        fText('Notify email', 'Where the approval email goes.', 'settings.webhook.adminEmail', ''), 'Sign-up notifications');
+  }
+
+  function viewSettingsDesktop() {
+    const sec = UI.setSection || 'account';
+    const secs = SECTIONS.filter(s => s[0] !== 'admin' || S.profile.admin);
+    const body = { account: secAccount, checkin: secCheckin, journal: secJournal, food: secFood, activity: secActivity, integrations: secIntegrations, notify: secNotify, data: secData, admin: secAdmin }[sec]();
+    return '<div class="wide"><div class="h1" style="padding-bottom:12px;"><div><div class="eb">' + esc(S.profile.email) + '</div><div class="d title">Settings</div></div><span class="lnk">Changes save as you make them</span></div>' +
+      '<div class="setgrid"><div class="setrail">' + secs.map(s => '<button class="' + (sec === s[0] ? 'on' : '') + '" data-a="setsec" data-x="' + s[0] + '">' + s[1] + '</button>').join('') +
+      '<div style="border-top:1px solid #DCD9D0;margin-top:8px;padding-top:10px;display:flex;flex-direction:column;gap:6px;"><span class="eb" style="padding:0 12px;">Prototype</span>' +
+      '<div style="display:flex;gap:6px;padding:0 12px;"><button class="btn sm sec" data-a="day" data-x="-1">− day</button><button class="btn sm sec" data-a="day" data-x="1">+ day</button></div><button class="lnk" style="padding:4px 12px;text-align:left;" data-a="reset">Reset sample data</button></div></div>' +
+      '<div style="display:flex;flex-direction:column;gap:12px;min-width:0;">' + body + '</div></div></div>';
+  }
+
+  function viewSettings() {
+    if (isDesktop()) return viewSettingsDesktop();
+        const admin = S.profile.admin ? '<div class="eb" style="padding:8px 4px 0;">Admin</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;"><div class="stat"><span class="d" style="font-size:24px;">' + (S.members.length + 1 + S.pending.length) + '</span><span class="eb" style="font-size:9.5px;">Users</span></div><div class="stat"><span class="d" style="font-size:24px;">' + S.pending.length + '</span><span class="eb" style="font-size:9.5px;">Pending</span></div><div class="stat"><span class="d" style="font-size:24px;">6</span><span class="eb" style="font-size:9.5px;">Active 7d</span></div><div class="stat"><span class="d" style="font-size:24px;">' + (129 + S.journal.length - 3) + '</span><span class="eb" style="font-size:9.5px;">Entries</span></div></div>' +
+      '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;"><span class="eb" style="color:#1B1A17;">Waiting for approval</span><span style="font-size:12px;color:#6E6A62;">' + S.pending.length + '</span></div>' +
+      (S.pending.length ? S.pending.map((p, i) => '<div class="row"><div class="name"><span style="font-weight:500;">' + esc(p.email) + '</span><span class="sub">Signed up ' + esc(p.since) + ' · Round 3</span></div><button class="btn sm" data-a="approve" data-x="' + i + '">Approve</button></div>').join('') : '<div style="font-size:13px;color:#6E6A62;">Nobody waiting.</div>') + '</div>' +
+      '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;"><span class="eb" style="color:#1B1A17;">Errors · unresolved</span><span style="font-size:12px;color:#6E6A62;">' + S.errors.filter(x => x.open).length + ' of ' + S.errors.length + '</span></div>' +
+      S.errors.map((x, i) => '<div class="row" style="align-items:flex-start;padding-top:6px;' + (x.open ? '' : 'opacity:.5;') + '"><div class="name"><div style="display:flex;gap:8px;align-items:center;"><span class="tag" style="background:' + (x.ctx.indexOf('ios') === 0 ? '#F5EBD3;color:#7A5A0E' : '#F3DCD7;color:#8E2F24') + ';">' + esc(x.ctx) + '</span><span class="m" style="font-size:11px;color:#6E6A62;">' + esc(x.when) + '</span></div><span style="font-size:12px;color:#4A4741;">' + esc(x.msg) + '</span></div>' + (x.open ? '<button class="btn sm sec" data-a="resolve" data-x="' + i + '">Resolve</button>' : '<span class="m" style="font-size:11px;color:#6E6A62;">resolved</span>') + '</div>').join('') + '</div>' +
+      '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;"><span class="eb" style="color:#1B1A17;">Feedback</span><span style="font-size:12px;color:#6E6A62;">' + S.feedback.filter(f => !f.ack).length + ' new</span></div>' +
+      S.feedback.map((f, i) => '<div class="row" style="align-items:flex-start;padding-top:6px;"><div class="name"><span class="m" style="font-size:11px;color:#6E6A62;">' + esc(f.who) + ' · ' + esc(f.when) + '</span><span style="font-size:13px;line-height:1.45;">' + esc(f.text) + '</span></div>' + (f.ack ? '<span class="m" style="font-size:11px;color:#2C8A5E;">ack\'d</span>' : '<button class="btn sm sec" data-a="ack" data-x="' + i + '">Ack</button>') + '</div>').join('') + '</div>' : '';
+    return '<div class="h1"><div><div class="eb">' + esc(S.profile.email) + '</div><div class="d title">Settings</div></div><button class="lnk" data-a="tab" data-x="today">Back to Today</button></div>' +
+      '<div class="card" style="flex-direction:row;align-items:center;gap:12px;background:#ECEBF8;border-color:#ECEBF8;box-shadow:none;"><span style="color:#3F3C8F;">' + ICON.gear + '</span><div style="font-size:12.5px;color:#3F3C8F;line-height:1.45;">The phone keeps settings short. Open Soma on a computer for the full set: moods, habits, plans and targets, the push-up round, integrations, notifications and admin.</div></div>' +
+      '<div class="card"><span class="eb" style="color:#1B1A17;">Prototype controls</span><div style="font-size:13px;color:#6E6A62;line-height:1.5;">These exist only in the prototype so you can play with the day. Nothing here ships.</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding-top:6px;border-top:1px solid #ECEAE3;"><span>Simulated date<br><span class="m" style="font-size:12px;color:#6E6A62;">' + tkey() + ' · day ' + roundDay() + ' of round</span></span><div style="display:flex;gap:6px;"><button class="btn sm sec" data-a="day" data-x="-1">Back a day</button><button class="btn sm" data-a="day" data-x="1">Next day</button></div></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding-top:6px;border-top:1px solid #ECEAE3;"><span>Start over<br><span style="font-size:12px;color:#6E6A62;">Wipe your taps and reload the sample data</span></span><button class="btn sm sec" data-a="reset">Reset prototype</button></div></div>' +
+      '<div class="card"><span class="eb" style="color:#1B1A17;">Account</span>' +
+      '<div class="row"><div class="name"><span>Display name</span><span class="sub">' + esc(S.profile.name) + ' · ' + esc(S.profile.initials) + '</span></div></div>' +
+      '<div class="row"><div class="name"><span>Vault</span><span class="sub">' + (S.profile.vault ? 'Unlocked on this phone' : 'Locked') + ' · journal is end-to-end encrypted</span></div><button class="btn sm sec" data-a="vault">' + (S.profile.vault ? 'Lock' : 'Unlock') + '</button></div>' +
+      '<div class="row"><div class="name"><span>Fitbit</span><span class="sub">Connected · sleep, steps, resting heart rate</span></div></div>' +
+      '<div class="row"><div class="name"><span>Daily goals</span><span class="sub">' + fmtK(S.goals.kcal) + ' kcal · ' + S.goals.protein + ' g protein · ' + fmtK(S.goals.steps) + ' steps</span></div></div>' +
+      '<div class="row"><div class="name"><span>Push-up round</span><span class="sub">' + S.round.goal + ' a day · ' + S.round.length + ' days · started ' + S.round.start + '</span></div></div></div>' + admin;
+  }
+
+  // ───────────────────────── sheet (swap meal) ─────────────────────────
+  function renderSheet() {
+    const el = $('sheet');
+    if (!UI.sheet) { el.innerHTML = ''; return; }
+    if (UI.sheet.type === 'push') {
+      const k = tkey(); const day = roundDay(); const tgt = target(day); const sr = setsReps(tgt); const rest = isRest(day); const pc = pushCount(k);
+      el.innerHTML = '<div class="sheet-bg" data-a="sheet-close"><div class="sheet" data-stop="1"><div style="display:flex;justify-content:space-between;align-items:center;"><span class="d" style="font-size:22px;">Push-ups today</span><button class="lnk" data-a="sheet-close">Close</button></div>' +
+        '<div style="font-size:13px;color:#6E6A62;">' + (rest ? 'Day ' + day + ' is a rest day. Anything you do still counts as activity.' : 'The target is <strong style="color:#1B1A17;">' + tgt + '</strong> a day, in as many sets as you like. Enter what you actually did.') + '</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;"><button class="btn sec" style="width:52px;padding:0;" data-a="push-nudge" data-x="-5">−5</button><input class="inp" id="push-inp" type="number" inputmode="numeric" min="0" step="1" value="' + (pc > 0 ? pc : '') + '" placeholder="' + (rest ? '0' : tgt) + '" style="text-align:center;font-size:24px;height:56px;font-family:Bricolage Grotesque,sans-serif;font-weight:600;" data-enter="push-save"><button class="btn sec" style="width:52px;padding:0;" data-a="push-nudge" data-x="5">+5</button></div>' +
+        '<div style="display:flex;gap:8px;">' + (rest ? '' : '<button class="btn amber" style="flex:1;" data-a="push-target">Hit the target · ' + tgt + '</button>') + '<button class="btn" style="flex:1;" data-a="push-save">Save</button></div>' +
+        (pc > 0 ? '<button class="lnk" style="align-self:center;" data-a="push-clear">Clear today\'s push-ups</button>' : '') + '</div></div>';
+      return;
+    }
+    if (UI.sheet.type === 'swap') {
+      const m = UI.sheet.meal; const curName = S.plan[m].name;
+      el.innerHTML = '<div class="sheet-bg" data-a="sheet-close"><div class="sheet" data-stop="1"><div style="display:flex;justify-content:space-between;align-items:center;"><span class="d" style="font-size:22px;">Swap ' + m + '</span><button class="lnk" data-a="sheet-close">Close</button></div>' +
+        '<div style="display:flex;flex-direction:column;gap:0;background:#FFFFFF;border:1px solid #DCD9D0;border-radius:14px;padding:4px 14px;">' +
+        RECIPES.map((r, i) => '<button class="row" style="text-align:left;width:100%;" data-a="swap-pick" data-x="' + i + '"><div class="name"><span style="font-weight:500;' + (r.name === curName ? 'color:#2C8A5E;' : '') + '">' + esc(r.name) + '</span><span class="sub">' + r.protein + ' g protein</span></div><span class="kcal">' + r.kcal + '</span></button>').join('') + '</div>' +
+        '<div style="font-size:12px;color:#6E6A62;">Recipes come from your saved list. Adding new recipes lives on this screen in production.</div></div></div>';
+    }
+  }
+
+  // ───────────────────────── render ─────────────────────────
+  const TABS = [['today', 'Today', ICON.today], ['journal', 'Journal', ICON.mic(22)], ['food', 'Food', ICON.leaf(22)], ['activity', 'Activity', ICON.bell(22)], ['insights', 'Insights', ICON.spark]];
+  function render() {
+    const app = $('app'); const y = app.scrollTop;
+    let html = '';
+    if (S.tab === 'today') html = viewToday();
+    else if (S.tab === 'journal') html = viewJournal();
+    else if (S.tab === 'food') html = viewFood();
+    else if (S.tab === 'activity') html = viewActivity();
+    else if (S.tab === 'insights') html = viewInsights();
+    else html = viewSettings();
+    app.innerHTML = html; app.scrollTop = y;
+    $('tabbar').innerHTML = TABS.map(t => '<button class="tab ' + (S.tab === t[0] ? 'on' : '') + '" data-a="tab" data-x="' + t[0] + '">' + t[2] + '<span>' + t[1] + '</span></button>').join('');
+    layout();
+    $('side').innerHTML = '<div class="d" style="font-size:22px;letter-spacing:.02em;padding:4px 12px 18px;">Soma</div>' +
+      TABS.concat([['settings', 'Settings', ICON.gear]]).map(t => '<button class="nav ' + (S.tab === t[0] ? 'on' : '') + '" data-a="tab" data-x="' + t[0] + '">' + t[2] + '<span>' + t[1] + '</span></button>').join('') +
+      '<div class="sidefoot">' +
+        '<button class="sidebtn ' + (UI.recording ? 'rec' : '') + '" data-a="rec">' + ICON.mic(18) + '<span>' + (UI.recording ? 'Stop · ' + clock(UI.recSec) : 'Record an entry') + '</span></button>' +
+        '<button class="sidebtn ghost" data-a="preview">' + (UI.preview ? 'Back to desktop' : 'Phone preview') + '</button>' +
+        '<div style="font-size:11.5px;color:#6E6A62;padding:6px 12px 0;line-height:1.4;">' + esc(S.profile.email) + '<br>' + (S.profile.admin ? 'Admin · ' : '') + 'Prototype</div>' +
+      '</div>';
+    const fab = $('fab');
+    if (S.tab === 'journal') {
+      fab.innerHTML = (UI.recording ? '<span class="m" style="font-size:12px;background:#1B1A17;color:#F4F3EF;padding:4px 10px;border-radius:999px;">Recording · ' + clock(UI.recSec) + ' · tap to stop</span>' : '') +
+        '<button class="mic ' + (UI.recording ? 'rec' : '') + '" data-a="rec" aria-label="record"><span style="color:#fff;">' + ICON.mic(26) + '</span></button>';
+    } else fab.innerHTML = '';
+    renderSheet();
+  }
+
+  // ───────────────────────── actions ─────────────────────────
+  function act(a, x) {
+    const k = tkey();
+    switch (a) {
+      case 'tab': S.tab = x; UI.checkinOpen = null; UI.sheet = null; break;
+      case 'mood': { const c = S.checkins[k] || { mood: null, habits: {}, drinks: 0 }; if (c.mood === x) { c.mood = null; S.checkins[k] = c; UI.checkinOpen = true; } else { c.mood = x; S.checkins[k] = c; UI.checkinOpen = false; toast('Checked in: ' + x); } break; }
+      case 'habit': { const c = S.checkins[k] || { mood: null, habits: {}, drinks: 0 }; c.habits[x] = !c.habits[x]; S.checkins[k] = c; break; }
+      case 'count': { const c = S.checkins[k] || { mood: null, habits: {}, counts: {} }; c.counts = c.counts || {}; c.counts[x] = ((c.counts[x] || 0) + 1) % 10; S.checkins[k] = c; break; }
+      case 'tog': setPath(S, x, !getPath(S, x)); break;
+      case 'mood-on': { const m = S.settings.moods.filter(z => z.id === x)[0]; if (m.on && S.settings.moods.filter(z => z.on).length <= 1) { toast('Keep at least one mood'); return; } m.on = !m.on; break; }
+      case 'hab-add': { const inp = $('hab-new'); const v = (inp && inp.value || '').trim(); if (!v) return; if (S.settings.habits.length >= 12) { toast('Keep it focused: max 12 habits'); return; } S.settings.habits.push({ id: slug(v), label: v, type: 'daily' }); toast('Added ' + v); break; }
+      case 'hab-del': { if (S.settings.habits.length <= 1) { toast('Keep at least one habit'); return; } S.settings.habits.splice(Number(x), 1); break; }
+      case 'hab-type': { const h = S.settings.habits[Number(x)]; h.type = h.type === 'counter' ? 'daily' : 'counter'; if (h.type === 'counter' && !h.dir) h.dir = 'at_least'; break; }
+      case 'hab-dir': { const h = S.settings.habits[Number(x)]; h.dir = h.dir === 'at_most' ? 'at_least' : 'at_most'; break; }
+      case 'act-add': { const inp = $('act-new'); const v = (inp && inp.value || '').trim(); if (!v) return; S.settings.activityTypes.push({ key: slug(v), name: v }); toast('Added ' + v); break; }
+      case 'act-del': { if (S.settings.activityTypes.length <= 1) { toast('Keep at least one activity type'); return; } S.settings.activityTypes.splice(Number(x), 1); break; }
+      case 'snack-add': { const n = $('snack-new'); const kc = $('snack-kcal'); const v = (n && n.value || '').trim(); const kv = parseInt(kc && kc.value, 10); if (!v || isNaN(kv)) return; S.settings.snacks.push({ name: v, kcal: kv }); break; }
+      case 'snack-del': S.settings.snacks.splice(Number(x), 1); break;
+      case 'rest': { const d = Number(x); const i = S.round.rest.indexOf(d); if (i >= 0) S.round.rest.splice(i, 1); else S.round.rest.push(d); S.round.rest.sort((p, q) => p - q); break; }
+      case 'rest-default': S.round.rest = defaultRestDays(S.round.length); toast('Default rest pattern restored'); break;
+      case 'kcal-preset': { const n = Number(x); const g = S.goals; const ratio = n / (g.kcal || 2100); g.kcal = n; g.protein = Math.round(g.protein * ratio); g.carbs = Math.round(g.carbs * ratio); g.fat = Math.round(g.fat * ratio); break; }
+      case 'plan-defaults': { const p = { standard: [2100, 200, 150, 75], paleo: [2100, 175, 145, 85], keto: [2100, 180, 23, 140] }[S.settings.plan] || [2100, 200, 150, 75]; S.goals.kcal = p[0]; S.goals.protein = p[1]; S.goals.carbs = p[2]; S.goals.fat = p[3]; toast('Targets reset to the ' + S.settings.plan + ' plan'); break; }
+      case 'member-status': { const m = S.members[Number(x)]; m.status = m.status === 'active' ? 'disabled' : 'active'; break; }
+      case 'member-role': { const m = S.members[Number(x)]; m.role = m.role === 'admin' ? 'member' : 'admin'; break; }
+      case 'round-archive': S.round.archived = !S.round.archived; toast(S.round.archived ? 'Round archived' : 'Round re-opened'); break;
+      case 'export': toast('Export prepared: ' + x + ' (download is simulated in the prototype)'); return;
+      case 'clear-logs': if (confirm('Clear every daily log? Plans, recipes and settings stay.')) { S.eaten = {}; S.extras = {}; S.weight = {}; S.activity = {}; S.checkins = {}; toast('Daily logs cleared'); } break;
+      case 'passphrase': toast('Passphrase change is a production feature; nothing to change in the prototype'); return;
+      case 'checkin-toggle': UI.checkinOpen = !(UI.checkinOpen === null ? false : UI.checkinOpen); break;
+      case 'meal': { const e = eatenOf(k); e[x] = !e[x]; S.eaten[k] = e; break; }
+      case 'act': { const av = actOf(k); av[x] = !av[x]; S.activity[k] = av; break; }
+      case 'push-open': UI.sheet = { type: 'push' }; break;
+      case 'preview': UI.preview = !UI.preview; try { localStorage.setItem('soma-proto-preview', UI.preview ? '1' : '0'); } catch (e) { /* ignore */ } break;
+      case 'setsec': UI.setSection = x; break;
+      case 'push-nudge': { const inp = $('push-inp'); if (!inp) return; const cur = parseInt(inp.value, 10); const base = isNaN(cur) ? (isRest(roundDay()) ? 0 : target(roundDay())) : cur; inp.value = Math.max(0, base + Number(x)); return; }
+      case 'push-target': { const av = actOf(k); av.pushups = target(roundDay()); S.activity[k] = av; UI.sheet = null; toast('Target hit · ' + av.pushups + ' push-ups'); break; }
+      case 'push-save': { const inp = $('push-inp'); const v = parseInt(inp && inp.value, 10); if (isNaN(v) || v < 0) return; const av = actOf(k); av.pushups = v; S.activity[k] = av; UI.sheet = null; toast(v ? v + ' push-ups logged' : 'Push-ups cleared'); break; }
+      case 'push-clear': { const av = actOf(k); av.pushups = 0; S.activity[k] = av; UI.sheet = null; break; }
+      case 'rec': toggleRec(); return;
+      case 'play': togglePlay(x); return;
+      case 'del-journal': S.journal = S.journal.filter(j => j.id !== x); break;
+      case 'swap': UI.sheet = { type: 'swap', meal: x }; break;
+      case 'swap-pick': { const r = RECIPES[Number(x)]; S.plan[UI.sheet.meal] = r; UI.sheet = null; toast('Planned: ' + r.name); break; }
+      case 'sheet-close': UI.sheet = null; break;
+      case 'add-extra': { const inp = $('extra-inp'); const txt = (inp && inp.value || '').trim(); if (!txt) return; const words = txt.split(/\s+/).length; const kcal = Math.min(900, 180 + words * 65); const ex = extrasOf(k); ex.push({ name: txt, kcal: kcal, protein: Math.round(kcal / 26) }); S.extras[k] = ex; toast('Added · ~' + kcal + ' kcal'); break; }
+      case 'del-extra': { const ex = extrasOf(k); ex.splice(Number(x), 1); S.extras[k] = ex; break; }
+      case 'weight': { const inp = $('w-inp'); const v = parseFloat(inp && inp.value); if (!v) return; S.weight[k] = Math.round(v * 10) / 10; toast('Weight logged'); break; }
+      case 'range': UI.insightRange = Number(x); break;
+      case 'approve': { const p = S.pending.splice(Number(x), 1)[0]; S.members.push({ name: p.email.split('@')[0], hit: 0 }); toast('Approved ' + p.email); break; }
+      case 'resolve': S.errors[Number(x)].open = false; break;
+      case 'ack': S.feedback[Number(x)].ack = true; break;
+      case 'vault': S.profile.vault = !S.profile.vault; toast(S.profile.vault ? 'Vault unlocked' : 'Vault locked'); break;
+      case 'signout': toast('Signed out (simulated)'); return;
+      case 'retry-all': { let n = 0; S.journal.forEach(j => { if (j.status === 'transcribing') { j.status = 'done'; j.text = j.text || SAMPLE_TRANSCRIPTS[0]; n++; } }); toast(n ? n + ' transcript' + (n > 1 ? 's' : '') + ' recovered' : 'Nothing stuck'); break; }
+      case 'fitbit-sync': toast('Fitbit synced (simulated)'); return;
+      case 'delete-account': toast('Account deletion is a production action; nothing happens in the prototype'); return;
+      case 'clock-live': S.clockOverride = null; break;
+      case 'day': { closeOutToday(); S.offset += Number(x); UI.checkinOpen = null; seedDayIfMissing(); break; }
+      case 'reset': if (confirm('Reset the prototype to its sample data?')) { S = makeSeed(); UI.checkinOpen = null; toast('Reset'); } break;
+      default: return;
+    }
+    save(); render();
+  }
+  function closeOutToday() { const k = tkey(); S.closed[k] = dayStatus(k).closed; }
+  function seedDayIfMissing() {
+    const k = tkey();
+    if (S.sleep[k] === undefined) { S.sleep[k] = 380 + Math.round(Math.random() * 90); }
+    if (S.steps[k] === undefined) { S.steps[k] = 2500 + Math.round(Math.random() * 6000); }
+  }
+  function ciValid(k) { const c = S.checkins[k]; return c && c.mood ? c : null; }
+
+  function toggleRec() {
+    if (UI.recording) {
+      clearInterval(UI.recTimer); UI.recTimer = null; UI.recording = false;
+      const dur = Math.max(1, UI.recSec); const now = new Date(); const mins = nowMins();
+      const h = Math.floor(mins / 60); const time = ((h % 12) || 12) + ':' + pad(mins % 60) + (h < 12 ? ' am' : ' pm');
+      const c = ciValid(tkey());
+      const entry = { id: 'j' + Date.now(), date: tkey(), time: time, dur: dur, mood: c ? c.mood : null, text: '', status: 'transcribing' };
+      S.journal.unshift(entry); save(); render(); toast('Saved · ' + clock(dur) + ' · transcribing');
+      setTimeout(() => { entry.text = SAMPLE_TRANSCRIPTS[(S.journal.length + dur) % SAMPLE_TRANSCRIPTS.length]; entry.status = 'done'; save(); render(); }, 4000 + Math.min(6000, dur * 100));
+      void now;
+    } else {
+      UI.recording = true; UI.recSec = 0; render();
+      UI.recTimer = setInterval(() => { UI.recSec++; render(); }, 1000);
+    }
+  }
+  function togglePlay(id) {
+    if (UI.playing === id) { clearInterval(UI.playTimer); UI.playing = null; render(); return; }
+    clearInterval(UI.playTimer); UI.playing = id; render();
+    const j = S.journal.filter(x => x.id === id)[0]; if (!j) return;
+    let t = 0; const step = Math.max(1, Math.round(j.dur / 12));
+    UI.playTimer = setInterval(() => { t += step; const bar = $('pbar'); if (bar) bar.style.width = Math.min(100, t / j.dur * 100) + '%'; if (t >= j.dur) { clearInterval(UI.playTimer); UI.playing = null; render(); } }, 900);
+  }
+
+  // ───────────────────────── events ─────────────────────────
+  document.addEventListener('click', (ev) => {
+    const el = ev.target.closest('[data-a]'); if (!el) return;
+    if (el.dataset.a === 'sheet-close' && ev.target.closest('[data-stop]') && !ev.target.closest('.lnk')) return;
+    act(el.dataset.a, el.dataset.x);
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') { const el = ev.target.closest('[data-enter]'); if (el) { act(el.dataset.enter); return; } }
+    if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('[role="button"][data-a]')) { ev.preventDefault(); act(ev.target.dataset.a, ev.target.dataset.x); }
+  });
+  document.addEventListener('input', (ev) => { const el = ev.target.closest('[data-input]'); if (!el) return; if (el.dataset.input === 'clock') { S.clockOverride = Number(el.value); save(); const lbl = el.previousElementSibling.querySelector('.m'); if (lbl) lbl.textContent = pad(Math.floor(S.clockOverride / 60)) + ':' + pad(S.clockOverride % 60) + ' · set'; } });
+  document.addEventListener('change', (ev) => {
+    const el = ev.target.closest('[data-input]'); if (el && el.dataset.input === 'clock') render();
+    const s = ev.target.closest('[data-set]'); if (!s) return;
+    let v = s.value;
+    if (s.dataset.type === 'num') { v = parseFloat(v); if (isNaN(v)) return; if (s.min !== '' && v < Number(s.min)) v = Number(s.min); if (s.max !== '' && v > Number(s.max)) v = Number(s.max); }
+    if (s.dataset.type === 'bool') v = !!s.checked;
+    if (s.dataset.set === 'goals.kcal') {
+      // Typing a calorie figure rescales protein, carbs and fat in proportion, same as the quick-set chips.
+      const g = S.goals; const ratio = v / (g.kcal || v || 1);
+      g.protein = Math.round(g.protein * ratio); g.carbs = Math.round(g.carbs * ratio); g.fat = Math.round(g.fat * ratio);
+    }
+    setPath(S, s.dataset.set, v);
+    if (s.dataset.set === 'round.length') { S.round.rest = S.round.rest.filter(d => d <= S.round.length); }
+    save(); render();
+  });
+
+  window.addEventListener('resize', () => { layout(); });
+  seedDayIfMissing();
+  render();
+})();
+</script>

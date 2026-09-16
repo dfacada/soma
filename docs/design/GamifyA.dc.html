@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #F4F3EF; color: #1B1A17; font-family: Figtree, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+    a { color: #2C8A5E; } a:hover { color: #1F6A47; }
+    .d { font-family: "Bricolage Grotesque", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.01em; line-height: 1.05; }
+    .m { font-family: "JetBrains Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+    .eb { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #6E6A62; }
+    .row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px; background: #FFFFFF; border: 1px solid #DCD9D0; border-radius: 14px; }
+    .row .t { font-weight: 600; font-size: 15px; }
+    .row .s { font-size: 12px; color: #6E6A62; }
+    .chk { width: 26px; height: 26px; border-radius: 999px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .mini { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .chain { width: 16px; height: 16px; border-radius: 999px; background: #1B1A17; }
+    .chain.miss { background: transparent; border: 1.5px solid #C9C4B8; box-sizing: border-box; }
+    .chain.today { background: transparent; border: 2px solid #B7692A; box-sizing: border-box; }
+    .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 56px; color: #8A857B; font-size: 11px; font-weight: 500; }
+    .tab.on { color: #1B1A17; }
+    svg { display: block; }
+  </style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #F4F3EF; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+
+  <div style="flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 20px 16px 96px;">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px;">
+      <div class="d" style="font-size: 17px; letter-spacing: 0.02em;">Soma</div>
+      <div style="width: 34px; height: 34px; border-radius: 999px; background: #1B1A17; color: #F4F3EF; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">DF</div>
+    </div>
+
+    <div style="background: linear-gradient(180deg, #FBF3E6 0%, #FFFFFF 70%); border: 1px solid #DCD9D0; border-radius: 18px; padding: 18px 16px 14px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+      <div class="eb">Tuesday · September 14</div>
+      <div style="position: relative; width: 320px; height: 176px;">
+        <svg width="320" height="176" viewBox="0 0 320 176">
+          <path d="M30 160 A130 130 0 0 1 290 160" fill="none" stroke="#ECEAE3" stroke-width="14" stroke-linecap="round"></path>
+          <path d="M30 160 A130 130 0 0 1 64.9 71.3" fill="none" stroke="#5F5BBF" stroke-width="14" stroke-linecap="butt"></path>
+          <path d="M71.3 64.9 A130 130 0 0 1 155.5 30.1" fill="none" stroke="#8F8CD3" stroke-width="14" stroke-linecap="butt"></path>
+          <path d="M164.5 30.1 A130 130 0 0 1 248.7 64.9" fill="none" stroke="#CFE6D8" stroke-width="14" stroke-linecap="butt"></path>
+          <path d="M255.1 71.3 A130 130 0 0 1 290 160" fill="none" stroke="#F0DCC6" stroke-width="14" stroke-linecap="butt"></path>
+          <circle cx="155.5" cy="30.1" r="9" fill="#1B1A17" stroke="#FFFFFF" stroke-width="3"></circle>
+          <text x="30" y="176" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8A857B">6:40</text>
+          <text x="290" y="176" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8A857B">21:30</text>
+        </svg>
+        <div style="position: absolute; left: 0; right: 0; top: 78px; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+          <span class="d" style="font-size: 44px;">2 <span style="font-size: 22px; color: #6E6A62;">of 4</span></span>
+          <span style="font-size: 13px; color: #6E6A62;">Two taps to close the day</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; align-items: center; width: 100%;">
+        <div style="display: flex; gap: 6px;">
+          <span class="chain"></span><span class="chain"></span><span class="chain"></span><span class="chain miss"></span><span class="chain"></span><span class="chain"></span><span class="chain"></span><span class="chain"></span><span class="chain"></span><span class="chain"></span><span class="chain"></span><span class="chain"></span><span class="chain"></span><span class="chain today"></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; width: 100%; font-size: 12px; color: #6E6A62;"><span><span class="m" style="color: #1B1A17; font-weight: 500;">9</span> days closed in a row</span><span>Best chain <span class="m">19</span></span></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <span class="chk" style="background: #5F5BBF;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span class="t">Check-in</span><span class="s">Focused · Meditate</span></div>
+      <span class="s">Change</span>
+    </div>
+
+    <div class="row">
+      <span class="chk" style="background: #5F5BBF;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span class="t">Journal</span><span class="s">Recorded this morning · 3:48</span></div>
+      <span class="s">Add another</span>
+    </div>
+
+    <div class="row" style="min-height: 64px;">
+      <span class="chk" style="border: 2px solid #2C8A5E; box-sizing: border-box;"><span class="m" style="font-size: 10px; color: #2C8A5E; font-weight: 500;">3/4</span></span>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span class="t">Food</span><span class="s">Dinner left · 1,480 of 2,100 kcal</span></div>
+      <div style="display: flex; gap: 6px;">
+        <span class="mini" style="background: #E6F2EB; color: #1F5F41;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h16"></path><path d="M8 13a4 4 0 0 1 8 0"></path><path d="M12 5v2M6 8l1.5 1.5M18 8l-1.5 1.5"></path></svg></span>
+        <span class="mini" style="background: #E6F2EB; color: #1F5F41;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18c0 4-3 8-9 8s-9-4-9-8z"></path><path d="M9 8c0-2 1-2 1-4M14 8c0-2 1-2 1-4"></path></svg></span>
+        <span class="mini" style="background: #E6F2EB; color: #1F5F41;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c-3-3-8-1-8 4 0 5 4 9 8 9s8-4 8-9c0-5-5-7-8-4z"></path><path d="M12 8V5"></path><path d="M12 5c1-1.5 3-1.5 4-1"></path></svg></span>
+        <span class="mini" style="border: 1.5px dashed #2C8A5E; color: #2C8A5E; box-sizing: border-box;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4.5"></circle></svg></span>
+      </div>
+    </div>
+
+    <div class="row" style="min-height: 64px;">
+      <span class="chk" style="border: 2px solid #B7692A; box-sizing: border-box;"><span class="m" style="font-size: 10px; color: #B7692A; font-weight: 500;">1/2</span></span>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span class="t">Activity</span><span class="s">Walk done · 53 push-ups to go</span></div>
+      <span style="height: 40px; padding: 0 14px; border-radius: 10px; background: #B7692A; color: #FFFFFF; display: inline-flex; align-items: center; font-weight: 600; font-size: 13px;">Did 53</span>
+    </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 96px; display: flex; justify-content: center; pointer-events: none;">
+    <div style="width: 64px; height: 64px; border-radius: 999px; background: #5F5BBF; box-shadow: 0 8px 20px rgba(95, 91, 191, 0.32); display: flex; align-items: center; justify-content: center;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg>
+    </div>
+  </div>
+
+  <div style="height: 82px; background: #FFFFFF; border-top: 1px solid #DCD9D0; display: flex; align-items: flex-start; padding: 6px 8px 0;">
+    <div class="tab on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path><circle cx="12" cy="15.5" r="1.5" fill="currentColor" stroke="none"></circle></svg><span>Today</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg><span>Journal</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14Z"></path><path d="M5 19l8-8"></path></svg><span>Food</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"></path></svg><span>Activity</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-8 4 3"></path></svg><span>Insights</span></div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

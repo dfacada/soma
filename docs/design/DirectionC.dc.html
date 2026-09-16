@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #FBFAF7; color: #1F1D1A; font-family: Newsreader, Georgia, serif; font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+    a { color: #1F1D1A; } a:hover { color: #6E6A62; }
+    .m { font-family: "JetBrains Mono", Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #8A857B; }
+    .ln { display: grid; grid-template-columns: 56px 1fr; gap: 14px; padding: 14px 0; border-top: 1px solid #E6E3DB; align-items: baseline; }
+    .ln .tm { font-family: "JetBrains Mono", Consolas, monospace; font-size: 12px; color: #8A857B; padding-top: 3px; }
+    .ln .bd { display: flex; flex-direction: column; gap: 4px; }
+    .ln .bd .h { font-size: 18px; font-weight: 500; line-height: 1.2; }
+    .ln .bd .s { font-size: 14px; color: #6E6A62; font-style: italic; }
+    .act { display: inline-flex; align-items: center; height: 40px; padding: 0 14px; border: 1px solid #1F1D1A; border-radius: 2px; font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .tab { flex: 1; display: flex; align-items: center; justify-content: center; height: 56px; font-family: "JetBrains Mono", Consolas, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #8A857B; }
+    .tab.on { color: #1F1D1A; border-bottom: 2px solid #1F1D1A; }
+  </style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #FBFAF7; display: flex; flex-direction: column; overflow: hidden;">
+  <div style="flex: 1; overflow: auto; display: flex; flex-direction: column; padding: 28px 20px 16px;">
+
+    <div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 18px;">
+      <span class="m">Soma · Tuesday · Day 41 of Round 3</span>
+      <span style="font-size: 44px; font-weight: 400; line-height: 1; letter-spacing: -0.01em;">Sept. 14</span>
+      <span style="font-size: 15px; color: #6E6A62; font-style: italic;">Slept 6h 52m. Resting 58. 4,120 steps so far.</span>
+    </div>
+
+    <div class="ln"><span class="tm">07:02</span><div class="bd"><span class="h">Weighed in at 182.4</span><span class="s">Down six-tenths on the week.</span></div></div>
+    <div class="ln"><span class="tm">07:30</span><div class="bd"><span class="h">Breakfast, 470</span><span class="s">Two eggs; sourdough toast with butter (estimated).</span></div></div>
+    <div class="ln"><span class="tm">now</span><div class="bd" style="gap: 10px;"><span class="h">Check in</span><div style="display: flex; gap: 6px; flex-wrap: wrap;"><span class="act" style="height: 36px;">Down</span><span class="act" style="height: 36px;">Tired</span><span class="act" style="height: 36px; background: #1F1D1A; color: #FBFAF7;">Focused</span><span class="act" style="height: 36px;">Great</span></div></div></div>
+    <div class="ln"><span class="tm">—</span><div class="bd" style="gap: 10px;"><span class="h">53 push-ups due, 3 × 18</span><div style="display: flex; gap: 8px;"><span class="act">Done</span><span class="act" style="border-color: #C9C4B8; color: #6E6A62;">Other number</span></div></div></div>
+    <div class="ln"><span class="tm">—</span><div class="bd" style="gap: 10px;"><span class="h">Say something about today</span><span class="s">Yesterday, 4:12: "The thing I keep coming back to is the walk…"</span><span class="act" style="align-self: flex-start;">Record</span></div></div>
+    <div class="ln"><span class="tm">—</span><div class="bd"><span class="h">Lunch, dinner</span><span class="s">470 of 2,100 so far. 22 g protein of 160.</span></div></div>
+    <div style="border-top: 1px solid #E6E3DB; padding-top: 14px; font-size: 13px; color: #8A857B; font-style: italic;">Tomorrow is a rest day.</div>
+
+  </div>
+  <div style="height: 82px; background: #FBFAF7; border-top: 1px solid #E6E3DB; display: flex; align-items: flex-start; padding: 0 8px;">
+    <div class="tab on">Today</div><div class="tab">Journal</div><div class="tab">Food</div><div class="tab">Activity</div><div class="tab">Insights</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

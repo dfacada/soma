@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #F4F3EF; color: #1B1A17; font-family: Figtree, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+    a { color: #2C8A5E; } a:hover { color: #1F6A47; }
+    .d { font-family: "Bricolage Grotesque", "Arial Narrow", sans-serif; font-weight: 600; letter-spacing: -0.01em; line-height: 1.05; }
+    .m { font-family: "JetBrains Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+    .eb { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #6E6A62; }
+    .row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px; background: #FFFFFF; border: 1px solid #DCD9D0; border-radius: 14px; }
+    .row .t { font-weight: 600; font-size: 15px; }
+    .row .s { font-size: 12px; color: #6E6A62; }
+    .chk { width: 26px; height: 26px; border-radius: 999px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .mini { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 56px; color: #8A857B; font-size: 11px; font-weight: 500; }
+    .tab.on { color: #1B1A17; }
+    svg { display: block; }
+  </style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #F4F3EF; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+
+  <div style="flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 20px 16px 96px;">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px;">
+      <div class="d" style="font-size: 17px; letter-spacing: 0.02em;">Soma</div>
+      <div style="width: 34px; height: 34px; border-radius: 999px; background: #1B1A17; color: #F4F3EF; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">DF</div>
+    </div>
+
+    <div style="background: #1B1A17; color: #F4F3EF; border-radius: 18px; padding: 18px 20px 16px; display: flex; gap: 16px; align-items: center;">
+      <svg width="112" height="196" viewBox="0 0 112 196">
+        <circle cx="56" cy="28" r="17" fill="#5F5BBF"></circle>
+        <rect x="38" y="52" width="36" height="74" rx="16" fill="none" stroke="#4A473F" stroke-width="3"></rect>
+        <circle cx="56" cy="70" r="6" fill="#8F8CD3"></circle>
+        <path d="M38 64 L14 112" stroke="#B7692A" stroke-width="12" stroke-linecap="round"></path>
+        <path d="M74 64 L98 112" stroke="#4A473F" stroke-width="12" stroke-linecap="round"></path>
+        <path d="M46 128 L40 186" stroke="#4A473F" stroke-width="12" stroke-linecap="round"></path>
+        <path d="M66 128 L72 186" stroke="#4A473F" stroke-width="12" stroke-linecap="round"></path>
+      </svg>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span class="eb" style="color: #A8A196;">Tuesday · Sep 14</span>
+          <span class="d" style="font-size: 30px;">Light the body</span>
+          <span style="font-size: 13px; color: #C9C4B8; line-height: 1.45;">Mind and voice are lit. Feed the body, finish the push-ups, and you are whole for the day.</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span style="width: 8px; height: 8px; border-radius: 999px; background: #5F5BBF;"></span><span style="color: #F4F3EF;">Head · journal</span><span class="m" style="margin-left: auto; color: #A8A196;">lit</span></div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span style="width: 8px; height: 8px; border-radius: 999px; background: #8F8CD3;"></span><span style="color: #F4F3EF;">Heart · check-in</span><span class="m" style="margin-left: auto; color: #A8A196;">lit</span></div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span style="width: 8px; height: 8px; border-radius: 999px; border: 1.5px solid #2C8A5E; box-sizing: border-box;"></span><span style="color: #A8A196;">Core · food</span><span class="m" style="margin-left: auto; color: #A8A196;">3 of 4</span></div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span style="width: 8px; height: 8px; border-radius: 999px; border: 1.5px solid #B7692A; box-sizing: border-box;"></span><span style="color: #A8A196;">Limbs · activity</span><span class="m" style="margin-left: auto; color: #A8A196;">1 of 2</span></div>
+        </div>
+        <div style="display: flex; gap: 5px; align-items: flex-end; padding-top: 4px;">
+          <svg width="14" height="22" viewBox="0 0 14 22"><circle cx="7" cy="4" r="3.5" fill="#F4F3EF"></circle><rect x="3.5" y="9" width="7" height="12" rx="3" fill="#F4F3EF"></rect></svg>
+          <svg width="14" height="22" viewBox="0 0 14 22"><circle cx="7" cy="4" r="3.5" fill="#F4F3EF"></circle><rect x="3.5" y="9" width="7" height="12" rx="3" fill="#F4F3EF"></rect></svg>
+          <svg width="14" height="22" viewBox="0 0 14 22"><circle cx="7" cy="4" r="3.5" fill="none" stroke="#6E6A62"></circle><rect x="3.5" y="9" width="7" height="12" rx="3" fill="none" stroke="#6E6A62"></rect></svg>
+          <svg width="14" height="22" viewBox="0 0 14 22"><circle cx="7" cy="4" r="3.5" fill="#F4F3EF"></circle><rect x="3.5" y="9" width="7" height="12" rx="3" fill="#F4F3EF"></rect></svg>
+          <svg width="14" height="22" viewBox="0 0 14 22"><circle cx="7" cy="4" r="3.5" fill="#F4F3EF"></circle><rect x="3.5" y="9" width="7" height="12" rx="3" fill="#F4F3EF"></rect></svg>
+          <svg width="14" height="22" viewBox="0 0 14 22"><circle cx="7" cy="4" r="3.5" fill="#F4F3EF"></circle><rect x="3.5" y="9" width="7" height="12" rx="3" fill="#F4F3EF"></rect></svg>
+          <svg width="14" height="22" viewBox="0 0 14 22"><circle cx="7" cy="4" r="3.5" fill="#B7692A"></circle><rect x="3.5" y="9" width="7" height="12" rx="3" fill="none" stroke="#B7692A"></rect></svg>
+          <span class="m" style="font-size: 11px; color: #A8A196; margin-left: 6px;">6 of 7 whole this week</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <span class="chk" style="background: #5F5BBF;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span class="t">Check-in</span><span class="s">Focused · Meditate</span></div>
+      <span class="s">Change</span>
+    </div>
+
+    <div class="row">
+      <span class="chk" style="background: #5F5BBF;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span class="t">Journal</span><span class="s">Recorded this morning · 3:48</span></div>
+      <span class="s">Add another</span>
+    </div>
+
+    <div class="row" style="min-height: 64px;">
+      <span class="chk" style="border: 2px solid #2C8A5E; box-sizing: border-box;"><span class="m" style="font-size: 10px; color: #2C8A5E; font-weight: 500;">3/4</span></span>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span class="t">Food</span><span class="s">Dinner left · 1,480 of 2,100 kcal</span></div>
+      <div style="display: flex; gap: 6px;">
+        <span class="mini" style="background: #E6F2EB; color: #1F5F41;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h16"></path><path d="M8 13a4 4 0 0 1 8 0"></path><path d="M12 5v2M6 8l1.5 1.5M18 8l-1.5 1.5"></path></svg></span>
+        <span class="mini" style="background: #E6F2EB; color: #1F5F41;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18c0 4-3 8-9 8s-9-4-9-8z"></path><path d="M9 8c0-2 1-2 1-4M14 8c0-2 1-2 1-4"></path></svg></span>
+        <span class="mini" style="background: #E6F2EB; color: #1F5F41;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c-3-3-8-1-8 4 0 5 4 9 8 9s8-4 8-9c0-5-5-7-8-4z"></path><path d="M12 8V5"></path><path d="M12 5c1-1.5 3-1.5 4-1"></path></svg></span>
+        <span class="mini" style="border: 1.5px dashed #2C8A5E; color: #2C8A5E; box-sizing: border-box;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4.5"></circle></svg></span>
+      </div>
+    </div>
+
+    <div class="row" style="min-height: 64px;">
+      <span class="chk" style="border: 2px solid #B7692A; box-sizing: border-box;"><span class="m" style="font-size: 10px; color: #B7692A; font-weight: 500;">1/2</span></span>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 1px;"><span class="t">Activity</span><span class="s">Walk done · 53 push-ups to go</span></div>
+      <span style="height: 40px; padding: 0 14px; border-radius: 10px; background: #B7692A; color: #FFFFFF; display: inline-flex; align-items: center; font-weight: 600; font-size: 13px;">Did 53</span>
+    </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 96px; display: flex; justify-content: center; pointer-events: none;">
+    <div style="width: 64px; height: 64px; border-radius: 999px; background: #5F5BBF; box-shadow: 0 8px 20px rgba(95, 91, 191, 0.32); display: flex; align-items: center; justify-content: center;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg>
+    </div>
+  </div>
+
+  <div style="height: 82px; background: #FFFFFF; border-top: 1px solid #DCD9D0; display: flex; align-items: flex-start; padding: 6px 8px 0;">
+    <div class="tab on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path><circle cx="12" cy="15.5" r="1.5" fill="currentColor" stroke="none"></circle></svg><span>Today</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3M8 21h8"></path></svg><span>Journal</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14Z"></path><path d="M5 19l8-8"></path></svg><span>Food</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"></path></svg><span>Activity</span></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-8 4 3"></path></svg><span>Insights</span></div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
