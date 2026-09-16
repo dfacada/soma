@@ -49,6 +49,17 @@ Pass: a job submitted from `soma_api` sleeps 60 s, then writes a row to a `jobs`
 - Export `analyze-entry` from the Glimpse Supabase dashboard into the Glimpse repo so no function source is lost.
 - Write down every number found (limits, expiries, timeouts) in `docs/HANDOFF.md` §8.
 
+## Findings log (2026-09-16)
+
+- Project **soma** created in the console: id `120218000000014077`, org `939530195`, US DC, timezone America/New_York. `catalyst/.catalystrc` links this folder to it.
+- `catalyst init -ni` only links a project. Functions are added with `catalyst functions:add --name <n> --type aio --stack node24 -ni`, which writes `catalyst.json` and `functions/<n>/catalyst-config.json`. There is no Express template flag; the scaffold is a raw `(req, res)` handler, and an Express app is exactly that, so `module.exports = app` works.
+- **Deployed and verified**: `catalyst deploy --only functions:soma_api -ni` → `https://soma-939530195.development.catalystserverless.com/server/soma_api/`. `GET .../execute/health` 200 in ~0.3 s warm, ~1.5 s cold. `/execute/me` 401 when unauthenticated. The gateway passes `/execute` through to the function, so Express strips that prefix; calling `/health` without `/execute` also worked, contrary to the vendored skill notes.
+- **Slate and functions are different origins.** Slate serves from `*.onslate.com` (or the mapped custom domain); functions live on `*.catalystserverless.com`. Every API call from the app must use the absolute function URL, send `Authorization: Bearer <token>` from `catalyst.auth.generateAuthToken()` (Web SDK ≥ 4.6.1), and the Slate domain must be in Authentication → Authorized Domains with CORS on. The function must not set CORS headers for those origins (the gateway does; duplicates break the browser). This replaces the "same-origin, no CORS" assumption in `docs/migration-plan.html`. Item 2 below now means: prove that token flow from the custom domain, on iOS Safari, where third-party cookies are blocked.
+- **Env vars**: `catalyst deploy` overwrites a function's environment with whatever is in `catalyst-config.json`; console-set values are lost on every deploy. Secrets therefore have to be injected into `catalyst-config.json` at deploy time from a gitignored file, never committed. Decide the mechanism before the Groq/Anthropic/Fitbit keys are needed.
+- Development environment caps app users at 25. Fine for 8 people; Production removes the cap.
+- `getCurrentUser()` returns null for console collaborators; only registered app users count. David must sign up as an app user like everyone else.
+- Zoho's official agent skills are vendored in `.claude/skills/` (see `CATALYST-SKILLS-SOURCE.md`). Their "hard stop without Zoho MCP" gate does not apply here; the CLI path works and is what we use. Zoho MCP (mcp.zoho.com) is optional and would only save console clicks for table creation.
+
 ## Function skeleton
 
-`functions/soma_api/` holds a minimal Express Advanced I/O function to grow from. `catalyst init` will want to generate `catalyst-config.json` and the function's own `package.json`; keep the handler shape below.
+`functions/soma_api/` is the deployed Express Advanced I/O function: `/health` (public), `/me` and `/sign` (require an app-user session). `/sign` mints pre-signed Stratus URLs with `bucket.generatePreSignedUrl(key, 'PUT'|'GET', { expiryIn: 900 })` under admin scope and only for keys under the caller's own `<user_id>/` prefix. Buckets must exist first: `soma-entries`, `soma-audio`, `soma-photos`, `soma-drafts`.

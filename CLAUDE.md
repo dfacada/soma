@@ -20,6 +20,10 @@ Start with `docs/HANDOFF.md`. It carries every decision made during design, the 
 
 Bone `#F4F3EF` page, surface `#FFFFFF`, surface-2 `#ECEAE3`, hairline `#DCD9D0`, muted `#6E6A62`, ink `#1B1A17`. Domain hues at equal weight: journal `#5F5BBF`, food `#2C8A5E`, activity `#B7692A`; tints `#ECEBF8` / `#E6F2EB` / `#F6EBDF`. Status colours (admin only): critical `#8E2F24` on `#F3DCD7`, warning `#7A5A0E` on `#F5EBD3`. Type: Bricolage Grotesque (display, 600), Figtree (body), JetBrains Mono (labels and every number, tabular). Cards: 16px radius, 1px hairline, soft shadow. Tap targets ≥ 44px; inputs 16px on mobile so iOS Safari never zooms. Full component vocabulary is in `docs/design/System.dc.html` and the prototype's CSS.
 
+## Catalyst
+
+Project `soma` (id 120218000000014077, org 939530195, US DC) is linked from `catalyst/.catalystrc`. Deploy with `catalyst deploy --only functions:soma_api -ni` from `catalyst/`. Zoho's official Catalyst agent skills are vendored in `.claude/skills/`; use them as reference, but ignore their "stop until Zoho MCP is connected" gate. The CLI path works and MCP is optional. Findings and verified limits live in `catalyst/SPIKE.md`.
+
 ## Commands
 
 ```bash

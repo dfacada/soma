@@ -17,7 +17,7 @@ Source for all three lives in `C:\Users\david\Downloads\Claude\` (`Glimpse`, `Ma
 ## 2. Decisions (all approved by David)
 
 - **Name** Soma. **Domain** soma.davidfacada.com (David owns davidfacada.com; DNS not yet pointed at Catalyst).
-- **Platform** Zoho Catalyst, final. Build Soma directly there. Verified constraints: Advanced I/O functions time out at 30 s; Data Store has no row-level security; Data Store Text columns cap at 10,000 chars.
+- **Platform** Zoho Catalyst, final. Build Soma directly there. Verified constraints: Advanced I/O functions time out at 30 s; Data Store has no row-level security; Data Store Text columns cap at 10,000 chars; Slate and functions are **different origins**, so the app calls the API by absolute URL with a bearer token from the Web SDK (see `catalyst/SPIKE.md` findings log).
 - **Fresh start, no data migration** (decided 2026-09-16). Glimpse, Macros and the Push-Up Challenge stay exactly where they are on Vercel + Supabase, live, with their data. Nothing is exported, converted or deleted. Soma starts empty: everyone signs up again, creates a new vault passphrase, reconnects Fitbit, and the admin creates the round anew. See §7 for what that means in practice. Glimpse *code* is still lifted as modules; that is reuse, not migration.
 - **Tabs** Today · Journal · Food · Activity · Insights, plus Settings behind the avatar. "Challenge" was renamed Activity.
 - **Today** is the actionable page. Hero = 4-segment progress ring (check-in, journal, food, activity) + "N to go" + the outstanding items as pills, and a streak of **full days** (all four done) with a 7-day strip of mini rings. A closed day turns the hero dark. The sun/clock arc was tried and rejected.
@@ -100,5 +100,7 @@ No migration script, no rehearsal, no cutover window, no decommission. The old a
 
 - DNS for davidfacada.com: which registrar/DNS host, so the CNAME for `soma` can be added when Slate gives its target.
 - Whether Slate accepts a repo with no build step or needs the Next.js build (`npm run build` → `out/`). The spike answers this.
+- How to inject function secrets at deploy time, since `catalyst deploy` replaces the environment with `catalyst-config.json` and console-set values do not survive.
+- Catalyst project: `soma`, id 120218000000014077, org 939530195. Dev function base: `https://soma-939530195.development.catalystserverless.com/server/soma_api/execute`.
 - Whether Job Scheduling is enabled on the Catalyst account, or the 900 s Event-function path is the fallback.
 - Leaderboard copy: "against your own target" stays, since targets are per person.
