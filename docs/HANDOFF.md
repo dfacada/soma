@@ -17,7 +17,8 @@ Source for all three lives in `C:\Users\david\Downloads\Claude\` (`Glimpse`, `Ma
 ## 2. Decisions (all approved by David)
 
 - **Name** Soma. **Domain** soma.davidfacada.com (David owns davidfacada.com; DNS not yet pointed at Catalyst).
-- **Platform** Zoho Catalyst, final. Build Soma directly there; migrate data once at the end. Verified constraints: Advanced I/O functions time out at 30 s; Data Store has no row-level security; Data Store Text columns cap at 10,000 chars; Supabase password hashes cannot be imported (users re-set a login password, vault passphrase unchanged).
+- **Platform** Zoho Catalyst, final. Build Soma directly there. Verified constraints: Advanced I/O functions time out at 30 s; Data Store has no row-level security; Data Store Text columns cap at 10,000 chars.
+- **Fresh start, no data migration** (decided 2026-09-16). Glimpse, Macros and the Push-Up Challenge stay exactly where they are on Vercel + Supabase, live, with their data. Nothing is exported, converted or deleted. Soma starts empty: everyone signs up again, creates a new vault passphrase, reconnects Fitbit, and the admin creates the round anew. See §7 for what that means in practice. Glimpse *code* is still lifted as modules; that is reuse, not migration.
 - **Tabs** Today · Journal · Food · Activity · Insights, plus Settings behind the avatar. "Challenge" was renamed Activity.
 - **Today** is the actionable page. Hero = 4-segment progress ring (check-in, journal, food, activity) + "N to go" + the outstanding items as pills, and a streak of **full days** (all four done) with a 7-day strip of mini rings. A closed day turns the hero dark. The sun/clock arc was tried and rejected.
 - **Check-in** mood chips (Glimpse's 10-mood library, user picks which show, ≥1) and habits (daily yes/no or counters with ≥/≤ goals, max 12).
@@ -31,17 +32,16 @@ Source for all three lives in `C:\Users\david\Downloads\Claude\` (`Glimpse`, `Ma
 
 - `docs/prototype/soma-prototype.html` — working prototype, single file, localStorage state, iPhone 17 Pro frame + desktop sidebar. Open it in a browser. Published copy: https://claude.ai/artifact/Dph2wmLtk3m35qDvyCj7EE
 - `docs/design/*.dc.html` + `canvas.json` — design canvas sources (Claude Design format). Published canvas: https://claude.ai/code/artifact/53e5c6ee-63d3-4342-ba2d-95520015650e. Note: the canvas Today still shows the earlier sun-arc hero; the prototype is authoritative where they differ.
-- `docs/migration-plan.html` — the Catalyst migration plan with service mapping, phases and risks. Published: https://claude.ai/code/artifact/99995c84-64e1-41b1-9ca8-3d8b4d0616f5
+- `docs/migration-plan.html` — the earlier Glimpse-only Catalyst plan. Still the best reference for the platform constraints and the service mapping; its data-migration phases are superseded by the fresh-start decision. Published: https://claude.ai/code/artifact/99995c84-64e1-41b1-9ca8-3d8b4d0616f5
 - `docs/checks/` — the two fake-DOM tap-through scripts used to verify the prototype. Reuse the approach for the real app's smoke tests.
 
-## 4. Build plan (~8–10 weeks)
+## 4. Build plan (~7–9 weeks)
 
 0. **Catalyst spike, 2–3 days** — see `catalyst/SPIKE.md`. Do not start screens until it passes.
 1. **Design system, ~1 week** — tokens and components from the prototype: card, chip, tile, medallion, ring, sheet, settings field kit, tab bar, sidebar. Storybook optional; a `/kit` route showing every component is enough.
 2. **Data model + API, ~1 week** — Catalyst Express function `soma_api` (§5), Data Store tables, Stratus buckets, jobs for transcription and analysis, nightly cron for error pruning.
 3. **Screens, 4–5 weeks, hardest rules first** — Today + Settings shell → Activity (port push-up rules out of Postgres triggers into the API) → Food → Journal (lift Glimpse modules) → Insights → Admin.
-4. **Migration script, ~3 days** — both Supabase projects → one Catalyst project. Rehearse against dev; verify by unlocking a real vault on the new site.
-5. **Beta, cutover, decommission, ~1 week** — 8 users on soma.davidfacada.com for a week; Supabase read-only for 30 days as rollback; then delete Vercel/Supabase, rotate Groq/Anthropic/Fitbit secrets.
+4. **Beta and launch, ~1 week** — David uses it solo first, then the 8 users sign up on soma.davidfacada.com. The old apps stay up untouched; people move over when they are ready. No decommission step.
 
 ## 5. Data model and API (first cut)
 
@@ -83,14 +83,18 @@ From the three apps, plus items marked *new*:
 - **Data & privacy**: export everything, import (Macros export, Glimpse backup, Soma export; merge never replace), clear daily logs, retention days, encryption summary, delete account (*new*).
 - **Admin**: approvals (pending→active), users with disable/re-enable and make admin/member (cannot disable self or remove last admin; no delete), rounds, errors with resolve, feedback with acknowledge, orphan draft recover/discard, sign-up webhook (URL, secret, from, notify email — were env vars).
 
-## 7. Migration notes
+## 7. Fresh start: what it means
 
-- Two Supabase projects → one Catalyst project. Map `auth.users.id` (uuid) → Catalyst user id by email. Users get an invite to set a login password; vault passphrase unchanged.
-- Glimpse `entries.iv/ct` are JSON integer arrays: convert to the binary object format and upload to Stratus; row keeps metadata only.
-- Before cutover every user opens the old apps once per device so IndexedDB recovery buffers drain (per-origin, won't follow). Put the old sites read-only with a banner.
-- Fitbit: register the new redirect URI at dev.fitbit.com; users reconnect once.
-- `analyze-entry` edge function exists in production but not in the Glimpse repo: export it from the Supabase dashboard first.
-- Keep Supabase alive read-only 30 days after cutover, then delete and rotate Groq, Anthropic and Fitbit secrets.
+No migration script, no rehearsal, no cutover window, no decommission. The old apps are left alone.
+
+- **Accounts** everyone signs up fresh on Soma and waits for admin approval, same flow Macros had. Nothing links a Soma user to an old Supabase user.
+- **Vault** new passphrase, new salt, new key. Old Glimpse entries are not on Soma. Anyone who wants their old journal as a file uses Glimpse's own Markdown/JSON export, which keeps working.
+- **Round** the admin creates the round on Soma (same name and start date if the group wants continuity). Days before Soma launch are unscored, not migrated. Best streak and best chain start at zero; say so in the sign-up email.
+- **Food** plans, targets, recipes and quick snacks are re-entered. Defaults from §6 cover the common case.
+- **Fitbit** register `soma.davidfacada.com` as a redirect URI at dev.fitbit.com; users connect once.
+- **Secrets** Groq, Anthropic and Fitbit keys are set fresh in Catalyst. The old apps keep their own; nothing is rotated.
+- **`analyze-entry`** the edge function exists in production but not in the Glimpse repo. Still worth exporting from the Supabase dashboard once, purely to reuse the prompt and response shape when writing the Catalyst job.
+- **Formats** the Stratus object layout `[0x01][iv 12][ciphertext]` and the table names in §5 are kept because Glimpse's crypto code already produces them, not because anything old has to load.
 
 ## 8. Open items
 
