@@ -1,0 +1,9 @@
+{
+  "functions": {
+    "targets": [
+      "soma_api"
+    ],
+    "ignore": [],
+    "source": "functions"
+  }
+}

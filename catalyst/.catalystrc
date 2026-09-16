@@ -1,0 +1,30 @@
+{
+  "defaults": {
+    "project": 1,
+    "env": 1
+  },
+  "actives": {
+    "project": 1,
+    "env": 1
+  },
+  "projects": [
+    {
+      "idx": 1,
+      "id": "120218000000014077",
+      "name": "soma",
+      "domain": {
+        "id": "10134228420",
+        "name": "soma-939530195.development"
+      },
+      "timezone": "America/New_York",
+      "env": [
+        {
+          "idx": 1,
+          "id": "939530195",
+          "name": "Development",
+          "type": 3
+        }
+      ]
+    }
+  ]
+}

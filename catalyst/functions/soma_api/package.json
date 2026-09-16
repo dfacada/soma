@@ -1,11 +1,12 @@
 {
   "name": "soma_api",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
   "main": "index.js",
-  "description": "Soma API — Catalyst Advanced I/O function (Express). See catalyst/SPIKE.md.",
+  "author": "davidfacada@gmail.com",
   "dependencies": {
     "express": "^4.21.0",
     "zcatalyst-sdk-node": "latest"
-  }
+  },
+  "description": "Soma API — Catalyst Advanced I/O function (Express). See catalyst/SPIKE.md and docs/HANDOFF.md §5.",
+  "private": true
 }
