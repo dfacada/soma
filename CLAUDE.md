@@ -29,4 +29,4 @@ node docs/checks/prototype-smoke-mobile.js docs/prototype/soma-prototype.html   
 node docs/checks/prototype-smoke-desktop.js docs/prototype/soma-prototype.html
 ```
 
-Catalyst CLI is installed globally (`catalyst --version`). `catalyst login` is interactive and must be run by David in a terminal.
+Catalyst CLI (`zcatalyst-cli`) must be installed by David in his own terminal: Claude's shells run in a sandbox where global npm installs and writes outside this repo do not reach the real disk. `catalyst login` is interactive and must be run by David too.

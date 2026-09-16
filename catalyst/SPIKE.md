@@ -5,7 +5,8 @@ Budget: 2–3 days. Each item has a pass condition. If pre-signed uploads or the
 ## Setup (David, interactive)
 
 ```bash
-catalyst --version          # 1.27.2 installed globally on this machine
+npm i -g zcatalyst-cli       # run this in YOUR terminal: Claude's shells are sandboxed and global installs made there never reach the real disk
+catalyst --version          # 1.27.2 at time of writing
 catalyst login              # opens a browser; use the Zoho account that will own Soma
 catalyst init               # in this catalyst/ folder: pick Functions (Advanced I/O, Node), Client
 ```
