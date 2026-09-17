@@ -106,6 +106,8 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .actList { gap: 0 !important; }
 .actRow { display: flex; align-items: center; gap: 12px; min-height: 56px; }
 .actRow + .actRow { border-top: 1px solid var(--surface-2); }
+.legal { display: flex; justify-content: center; gap: 20px; font-size: 12px; }
+.legal a { color: var(--muted); min-height: 44px; display: inline-flex; align-items: center; }
 .factor { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; }
 .factor + .factor { border-top: 1px solid var(--surface-2); }
 .factorHead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; font-weight: 500; }

@@ -1,0 +1,12 @@
+.page { max-width: 680px; margin: 0 auto; padding: 32px 20px 64px; display: flex; flex-direction: column; gap: 10px; }
+.back { align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; text-decoration: none; color: var(--ink); }
+.wordmark { font-size: 22px; }
+.title { font-size: 34px; line-height: 1.1; margin: 8px 0 0; }
+.body { display: flex; flex-direction: column; gap: 12px; padding-top: 12px; font-size: 15px; line-height: 1.6; color: var(--ink); }
+.body h2 { font-family: var(--font-display), sans-serif; font-weight: 600; font-size: 20px; line-height: 1.25; margin: 18px 0 0; }
+.body p, .body ul { margin: 0; }
+.body ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.body a { color: var(--journal); }
+.body strong { font-weight: 600; }
+.foot { display: flex; gap: 20px; padding-top: 28px; margin-top: 16px; border-top: 1px solid var(--hairline); font-size: 13px; }
+.foot a { color: var(--muted); min-height: 44px; display: inline-flex; align-items: center; }

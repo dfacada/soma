@@ -3,6 +3,7 @@
 // Gate for every signed-in screen: resolves the Catalyst session, the profile (approval) and the settings,
 // and renders the right thing for each state. Children only mount when the user is active.
 
+import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, ApiError, type Me } from "@/lib/api";
 import { catalystAuth, currentUser, isDevIdentity } from "@/lib/catalyst";
@@ -193,6 +194,7 @@ function SignIn() {
         </form>
       )}
       {note && <p role="status" className={note.ok ? a.noteOk : a.noteBad}>{note.text}</p>}
+      <p className={a.legal}><Link href="/privacy/">Privacy</Link><Link href="/terms/">Terms</Link></p>
     </main>
   );
 }

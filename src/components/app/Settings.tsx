@@ -4,6 +4,7 @@
 // Sections still to come with their features: notifications, exports and import, rounds, passphrase change.
 
 import { useCallback, useRef, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
 import type { Habit, Settings } from "@/lib/settings";
@@ -130,6 +131,8 @@ export function SettingsScreen() {
       </Card>
 
       <Feedback say={say} />
+
+      <p className={a.legal}><Link href="/privacy/">Privacy policy</Link><Link href="/terms/">Terms of service</Link></p>
 
       {me.profile.role === "admin" && <><div className={a.pageHead} style={{ paddingTop: 12 }}><span className="d" style={{ fontSize: 24 }}>Admin</span></div><Admin say={say} /></>}
 
