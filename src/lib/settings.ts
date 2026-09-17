@@ -32,6 +32,8 @@ export type Settings = {
   palette: PaletteId;
   /** The words shown full screen when the app opens. An empty list is a choice and stays empty. */
   opening: { on: boolean; phrases: Phrase[] };
+  /** One notification at `time` (local, HH:MM) when the day is still open. The server reads this: soma_jobs/nudge.js. */
+  nudge: { on: boolean; time: string };
 };
 
 export const MEALS: Meal[] = ["breakfast", "lunch", "snack", "dinner"];
@@ -66,6 +68,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "light",
   palette: "soma",
   opening: { on: true, phrases: DEFAULT_PHRASES },
+  nudge: { on: false, time: "20:30" },
 };
 
 /** The starter recipe book from the prototype. A user's own recipes (GET /recipes) are listed ahead of these. */
@@ -98,6 +101,7 @@ export function mergeSettings(stored: unknown): Settings {
     unlockOnOpen: s.unlockOnOpen !== false,
     theme: THEME_MODES.includes(s.theme as ThemeMode) ? (s.theme as ThemeMode) : d.theme,
     palette: isPalette(s.palette) ? s.palette : d.palette,
+    nudge: { on: s.nudge?.on === true, time: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.nudge?.time || "") ? s.nudge!.time : d.nudge.time },
     opening: {
       on: s.opening?.on !== false,
       phrases: Array.isArray(s.opening?.phrases)

@@ -3,6 +3,7 @@
 //   transcribe   Groq whisper-large-v3-turbo over a plaintext audio object the browser uploaded for this purpose.
 //                The audio is deleted as soon as Groq has answered, whatever the answer was. The transcript is
 //                written next to it for the browser to collect, encrypt into the entry and delete.
+//   nudge        the evening nudge, from a 15-minute cron (nudge.js); with test=1, a test notification for one user.
 //   (none)       the spike's sleep-and-write job, kept until the spike routes are removed.
 //
 // The jobs row is the contract with soma_api/routes/jobs.js:
@@ -12,6 +13,7 @@
 'use strict';
 
 const catalyst = require('zcatalyst-sdk-node');
+const nudge = require('./nudge');
 
 const BUCKET = 'soma-drafts';
 const GROQ_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
@@ -101,6 +103,7 @@ module.exports = async (jobRequest, context) => {
   try {
     const params = jobRequest.getAllJobParams() || {};
     if (params.type === 'transcribe') await transcribe(app, params);
+    else if (params.type === 'nudge') await nudge.run(app, params);
     else await spike(app, params, context, started);
     // A failed transcription is a handled outcome recorded on the row, not a failed job: retrying it would
     // find the audio already deleted.

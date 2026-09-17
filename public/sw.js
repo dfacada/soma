@@ -1,4 +1,4 @@
-// Soma service worker. It does exactly one thing: cache-first for Next's hashed build assets.
+// Soma service worker. Two jobs: cache-first for Next's hashed build assets, and showing the evening nudge.
 //
 // Slate serves every response with `cache-control: no-store` (the alternative it offers is a one-year max-age
 // on everything, HTML included, which would strand users on an old index.html; see catalyst/SPIKE.md). no-store
@@ -30,5 +30,24 @@ self.addEventListener('fetch', (event) => {
       if (keys.length > MAX_ENTRIES) await Promise.all(keys.slice(0, keys.length - MAX_ENTRIES).map((k) => cache.delete(k)));
     }
     return res;
+  }));
+});
+
+// ── The evening nudge (catalyst/functions/soma_jobs/nudge.js). iOS requires every push to show a notification, so a
+// payload that cannot be read still shows something sensible.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { /* not JSON */ }
+  event.waitUntil(self.registration.showNotification(data.title || 'Soma', {
+    body: data.body || 'Your day is still open.', icon: '/icon-192.png', badge: '/icon-192.png', tag: 'soma-nudge', data: { url: data.url || '/' }
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((tabs) => {
+    const open = tabs.find((t) => new URL(t.url).origin === self.location.origin);
+    return open ? open.focus() : self.clients.openWindow(url);
   }));
 });

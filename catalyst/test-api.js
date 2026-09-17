@@ -276,6 +276,26 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('GET', '/google-health');
   check('…and it is gone', r.status === 200 && r.json.link === null, r.json);
 
+  console.log('push');
+  r = await call('GET', '/push');
+  check('the VAPID public key is served, never the private one', r.status === 200 && r.json.configured === true && /^[A-Za-z0-9_-]{80,}$/.test(r.json.publicKey) && !JSON.stringify(r.json).toLowerCase().includes('private'), r.json);
+  const endpoint = 'https://web.push.apple.com/test-' + 'a'.repeat(40);
+  const keys = { p256dh: 'B' + 'x'.repeat(86), auth: 'y'.repeat(22) };
+  r = await call('PUT', '/push/subscription', { endpoint: 'https://evil.example/push', keys, tz: 'America/New_York' });
+  check('only real push services are accepted as endpoints', r.status === 400, r.text);
+  r = await call('PUT', '/push/subscription', { endpoint, keys, tz: 'Mars/Olympus' });
+  check('an unknown time zone is refused', r.status === 400, r.text);
+  r = await call('POST', '/push/test');
+  check('a test with no device is a 409', r.status === 409, r.text);
+  r = await call('PUT', '/push/subscription', { endpoint, keys, tz: 'America/New_York' });
+  check('a subscription saves', r.status === 200, r.text);
+  r = await call('PUT', '/push/subscription', { endpoint, keys, tz: 'Europe/London' });
+  check('…and saving it again updates, not duplicates', r.status === 200, r.text);
+  r = await call('DELETE', '/push/subscription', { endpoint });
+  check('…and deletes', r.status === 200 && r.json.deleted === true, r.json);
+  r = await call('DELETE', '/push/subscription', { endpoint });
+  check('…once', r.status === 200 && r.json.deleted === false, r.json);
+
   console.log('cleanup');
   r = await call('DELETE', '/recipes/' + recipeId);
   check('recipe deletes', r.status === 200, r.text);

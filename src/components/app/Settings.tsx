@@ -1,7 +1,7 @@
 "use client";
 
 // Settings (docs/HANDOFF.md §6). Every control saves on change; nothing has a Save button.
-// Sections still to come with their features: notifications, exports and import, rounds, passphrase change.
+// Sections still to come with their features: exports and import, rounds, passphrase change.
 
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
@@ -13,6 +13,7 @@ import type { Habit, Settings } from "@/lib/settings";
 import { Button, Card, Chip, Field, Input, Pill, Segmented, Switch, Toast } from "@/components/ui";
 import { Admin } from "./Admin";
 import { useHealth } from "./Health";
+import { NudgeCard } from "./Nudge";
 import { useJournal } from "./Journal";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -152,6 +153,8 @@ export function SettingsScreen() {
         <AddRow placeholder="Add an activity" disabled={settings.activityTypes.length >= 8}
           onAdd={(name) => { if (settings.activityTypes.some((t) => t.name.toLowerCase() === name.toLowerCase())) return say("That one is already there"); void save({ activityTypes: [...settings.activityTypes, { key: slug(name), name }] }, `Added ${name}`); }} />
       </Card>
+
+      <NudgeCard say={say} />
 
       <HealthCard steps={g.steps} onSteps={(n) => void save({ goals: { ...g, steps: n } }, `Steps goal set to ${n.toLocaleString("en-US")}`)} />
 

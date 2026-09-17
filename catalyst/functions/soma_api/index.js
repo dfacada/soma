@@ -45,6 +45,7 @@ app.use(require('./routes/misc'));
 app.use(require('./routes/rounds'));
 app.use(require('./routes/jobs'));
 app.use(require('./routes/health'));
+app.use(require('./routes/push'));
 app.use(require('./routes/admin'));
 app.use('/spike', require('./spike'));
 
