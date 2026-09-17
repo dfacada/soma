@@ -22,7 +22,7 @@ Bone `#F4F3EF` page, surface `#FFFFFF`, surface-2 `#ECEAE3`, hairline `#DCD9D0`,
 
 ## Catalyst
 
-Project `soma` (id 120218000000014077, org 939530195, US DC) is linked from `catalyst/.catalystrc`. Deploy with `catalyst deploy --only functions:soma_api -ni` from `catalyst/`. Zoho's official Catalyst agent skills are vendored in `.claude/skills/`; use them as reference, but ignore their "stop until Zoho MCP is connected" gate. The CLI path works and MCP is optional. Findings and verified limits live in `catalyst/SPIKE.md`.
+Project `soma` (id 120218000000014077, org 939530195, US DC) is linked from `catalyst/.catalystrc`. Deploy functions with `catalyst deploy --only functions:soma_api -ni` from `catalyst/`. Deploy the frontend with `npm run build` in the root, then `catalyst deploy slate soma -ni` from `catalyst/` (Dev URL `https://soma-onkasary.onslate.com`). The `catalyst-by-zoho` MCP server handles tables, job pools and Authorized Domains (headers `Catalyst-org: 939530195`, `Environment: Development`). Data Store Text silently truncates at 10,000 chars: enforce lengths in the API. Zoho's official Catalyst agent skills are vendored in `.claude/skills/`; use them as reference, but ignore their "stop until Zoho MCP is connected" gate. The CLI path works and MCP is optional. Findings and verified limits live in `catalyst/SPIKE.md`.
 
 ## Commands
 

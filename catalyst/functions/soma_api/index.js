@@ -128,14 +128,17 @@ app.post('/spike/job', spikeGate, async (req, res) => {
   const pool = (req.body && req.body.pool) || 'soma_jobs';
   const key = 'spike/job-' + Date.now() + '.json';
   try {
-    const job = await adminApp(req).jobScheduling().job().submitJob({
+    const a = adminApp(req);
+    // user_id 0: spike rows belong to nobody. Real /jobs inserts req.user.id.
+    const row = await a.datastore().table('jobs').insertRow({ user_id: 0, type: 'spike', status: 'queued' });
+    const job = await a.jobScheduling().job().submitJob({
       job_name: 'spike_' + Date.now().toString(36),
       target_type: 'Function',
       target_name: 'soma_jobs',
       jobpool_name: pool,
-      params: { sleep_ms: String(sleepMs), result_key: key }
+      params: { sleep_ms: String(sleepMs), result_key: key, row_id: String(row.ROWID) }
     });
-    res.json({ jobId: job.job_id, status: job.job_status, key, submitted: job });
+    res.json({ jobId: job.job_id, status: job.job_status, key, rowId: String(row.ROWID) });
   } catch (e) {
     console.error(JSON.stringify({ action: 'spike_job_submit', error: e.message }));
     res.status(502).json({ error: e.message });
@@ -154,9 +157,28 @@ app.get('/spike/job/:id', spikeGate, async (req, res) => {
         result = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       } catch (_e) { result = null; }
     }
-    res.json({ job, result });
+    let row = null;
+    if (/^\d+$/.test(String(req.query.row || ''))) {
+      const rows = await a.zcql().executeZCQLQuery('SELECT ROWID, status, result_ref, MODIFIEDTIME FROM jobs WHERE ROWID = ' + req.query.row);
+      row = (rows[0] && rows[0].jobs) || null;
+    }
+    res.json({ job: { id: job.job_id, status: job.job_status, executionMs: job.execution_time, dispatchDelayMs: job.dispatch_delay }, result, row });
   } catch (e) {
     res.status(502).json({ error: e.message });
+  }
+});
+
+// Data Store Text limit: insert n characters into spike_text.body and report what happens.
+app.post('/spike/text', spikeGate, async (req, res) => {
+  const n = Math.min(Number((req.body && req.body.n) || 10001), 200000);
+  try {
+    const table = adminApp(req).datastore().table('spike_text');
+    const row = await table.insertRow({ body: 'x'.repeat(n - 1) + 'Z' });
+    const back = await table.getRow(row.ROWID);
+    const stored = String(back.body || '');
+    res.json({ n, ok: true, rowId: String(row.ROWID), echoedLength: String(row.body || '').length, storedLength: stored.length, lastChar: stored.slice(-1) });
+  } catch (e) {
+    res.json({ n, ok: false, error: e.message });
   }
 });
 

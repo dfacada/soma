@@ -24,6 +24,9 @@ module.exports = async (jobRequest, context) => {
       finishedAt: new Date().toISOString()
     });
     await app.stratus().bucket('soma-drafts').putObject(key, body, { contentType: 'application/json', overwrite: true });
+    if (params.row_id) {
+      await app.datastore().table('jobs').updateRow({ ROWID: params.row_id, status: 'done', result_ref: key });
+    }
     console.log(JSON.stringify({ action: 'spike_job_done', ms: Date.now() - started }));
     context.closeWithSuccess();
   } catch (e) {

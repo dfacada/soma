@@ -1,0 +1,189 @@
+<!doctype html>
+<!-- Catalyst spike page for catalyst/SPIKE.md items 2 and 3. Temporary: delete with the /spike routes. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Soma spike</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+  :root { --bone:#F4F3EF; --surface:#FFFFFF; --hair:#DCD9D0; --muted:#6E6A62; --ink:#1B1A17; --ok:#2C8A5E; --bad:#8E2F24; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; background:var(--bone); color:var(--ink); font:16px/1.45 system-ui, sans-serif; }
+  main { max-width:640px; margin:0 auto; }
+  h1 { font-size:22px; margin:8px 0 16px; }
+  h2 { font-size:16px; margin:0 0 8px; }
+  section { background:var(--surface); border:1px solid var(--hair); border-radius:16px; padding:16px; margin-bottom:12px; }
+  input { width:100%; font-size:16px; padding:10px 12px; margin-bottom:8px; border:1px solid var(--hair); border-radius:10px; }
+  button { min-height:44px; padding:0 16px; font-size:16px; border-radius:12px; border:1px solid var(--ink); background:var(--ink); color:#fff; margin:4px 4px 4px 0; }
+  button.ghost { background:transparent; color:var(--ink); }
+  #login iframe { width:100% !important; height:460px !important; border:none !important; }
+  pre { font:12px/1.5 ui-monospace, Menlo, Consolas, monospace; white-space:pre-wrap; word-break:break-word; background:#ECEAE3; border-radius:10px; padding:12px; margin:0; max-height:50vh; overflow:auto; }
+  .muted { color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Soma · Catalyst spike</h1>
+
+  <section>
+    <h2>1 · Session</h2>
+    <p class="muted" id="who">checking…</p>
+    <button id="btnCheck" class="ghost">Re-check session</button>
+    <button id="btnOut" class="ghost">Sign out</button>
+  </section>
+
+  <section id="signupBox">
+    <h2>2a · Sign up (once)</h2>
+    <input id="fn" placeholder="First name" autocomplete="given-name">
+    <input id="ln" placeholder="Last name" autocomplete="family-name">
+    <input id="em" placeholder="Email" type="email" autocomplete="email">
+    <button id="btnUp">Sign up</button>
+    <p class="muted">Catalyst emails a confirmation link; set the password there, then sign in below.</p>
+  </section>
+
+  <section id="signinBox">
+    <h2>2b · Sign in</h2>
+    <div id="login"></div>
+  </section>
+
+  <section>
+    <h2>3 · API with token</h2>
+    <button id="btnMe">GET /me (all three ways)</button>
+  </section>
+
+  <section>
+    <h2>4 · 25 MB straight to Stratus</h2>
+    <button id="btnUpload">Upload, download, compare</button>
+  </section>
+
+  <section>
+    <h2>Log</h2>
+    <button id="btnCopy" class="ghost">Copy log</button>
+    <pre id="log"></pre>
+  </section>
+</main>
+
+<script src="https://static.zohocdn.com/catalyst/sdk/js/4.6.1/catalystWebSDK.js"></script>
+<script src="/__catalyst/sdk/init.js"></script>
+<script>
+(function () {
+  var API = 'https://soma-939530195.development.catalystserverless.com/server/soma_api/execute';
+  var $ = function (id) { return document.getElementById(id); };
+  var user = null;
+
+  function log() {
+    var parts = Array.prototype.map.call(arguments, function (a) { return typeof a === 'string' ? a : JSON.stringify(a); });
+    $('log').textContent += new Date().toISOString().slice(11, 23) + '  ' + parts.join(' ') + '\n';
+  }
+  function errText(e) { return (e && (e.message || e.error || JSON.stringify(e))) || String(e); }
+
+  log('origin', location.origin);
+  log('ua', navigator.userAgent);
+  log('sdk', window.catalyst ? 'loaded' : 'MISSING (is /__catalyst/sdk/init.js served here?)');
+
+  async function check() {
+    try {
+      var r = await catalyst.auth.isUserAuthenticated();
+      user = r.content;
+      $('who').textContent = 'Signed in as ' + user.email_id + ' · user_id ' + user.user_id;
+      log('session ok', { user_id: user.user_id, email: user.email_id, status: user.status });
+    } catch (e) {
+      user = null;
+      $('who').textContent = 'Not signed in.';
+      log('session none:', errText(e));
+      try { catalyst.auth.signIn('login', { redirect_url: '/spike.html' }); } catch (e2) { log('signIn widget failed:', errText(e2)); }
+    }
+  }
+
+  async function token() {
+    var t = await catalyst.auth.generateAuthToken();
+    return t.access_token;
+  }
+
+  async function tryMe(label, init) {
+    var t0 = performance.now();
+    try {
+      var res = await fetch(API + '/me', init);
+      var body = await res.text();
+      log('/me', label, '→', res.status, body.slice(0, 200), Math.round(performance.now() - t0) + 'ms');
+      return res.ok;
+    } catch (e) {
+      log('/me', label, '→ FETCH FAILED (CORS?)', errText(e));
+      return false;
+    }
+  }
+
+  $('btnCheck').onclick = check;
+  $('btnOut').onclick = function () { catalyst.auth.signOut(location.origin + '/spike.html'); };
+
+  $('btnUp').onclick = async function () {
+    try {
+      var r = await catalyst.auth.signUp({
+        first_name: $('fn').value.trim(), last_name: $('ln').value.trim(), email_id: $('em').value.trim(),
+        platform_type: 'web', redirect_url: location.origin + '/spike.html'
+      });
+      log('signUp →', r);
+    } catch (e) { log('signUp failed:', errText(e)); }
+  };
+
+  $('btnMe').onclick = async function () {
+    var tok;
+    try { tok = await token(); log('generateAuthToken ok, length', tok.length); }
+    catch (e) { log('generateAuthToken failed:', errText(e)); }
+    if (tok) {
+      await tryMe('Authorization: <raw>', { headers: { Authorization: tok } });
+      await tryMe('Authorization: Bearer', { headers: { Authorization: 'Bearer ' + tok } });
+    }
+    await tryMe('cookies only', { credentials: 'include' });
+  };
+
+  async function sha256(buf) {
+    var d = await crypto.subtle.digest('SHA-256', buf);
+    return Array.prototype.map.call(new Uint8Array(d), function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
+
+  async function sign(tok, scheme, method, key) {
+    var res = await fetch(API + '/sign', {
+      method: 'POST',
+      headers: { Authorization: scheme + tok, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bucket: 'soma-drafts', method: method, keys: [key] })
+    });
+    if (!res.ok) throw new Error('/sign ' + res.status + ' ' + (await res.text()).slice(0, 200));
+    return (await res.json()).urls[0].url;
+  }
+
+  $('btnUpload').onclick = async function () {
+    if (!user) return log('sign in first');
+    try {
+      var tok = await token();
+      // Use whichever Authorization form /me accepts.
+      var scheme = (await tryMe('probe raw', { headers: { Authorization: tok } })) ? '' : 'Bearer ';
+      var size = 25 * 1024 * 1024, bytes = new Uint8Array(size);
+      for (var o = 0; o < size; o += 65536) crypto.getRandomValues(bytes.subarray(o, Math.min(o + 65536, size)));
+      var want = await sha256(bytes.buffer);
+      var key = user.user_id + '/spike-25mb.bin';
+
+      var putUrl = await sign(tok, scheme, 'PUT', key);
+      var t0 = performance.now();
+      var put = await fetch(putUrl, { method: 'PUT', body: bytes, headers: { 'Content-Type': 'application/octet-stream' } });
+      log('PUT 25 MB →', put.status, Math.round(performance.now() - t0) + 'ms');
+      if (!put.ok) return log('PUT body:', (await put.text()).slice(0, 300));
+
+      var getUrl = await sign(tok, scheme, 'GET', key);
+      t0 = performance.now();
+      var get = await fetch(getUrl);
+      var got = await get.arrayBuffer();
+      log('GET →', get.status, got.byteLength, 'bytes', Math.round(performance.now() - t0) + 'ms');
+      log((await sha256(got)) === want ? 'PASS: bytes identical' : 'FAIL: hash mismatch');
+    } catch (e) { log('upload test failed (bucket CORS?):', errText(e)); }
+  };
+
+  $('btnCopy').onclick = function () { navigator.clipboard.writeText($('log').textContent).then(function () { log('copied'); }); };
+
+  if (window.catalyst) check();
+})();
+</script>
+</body>
+</html>

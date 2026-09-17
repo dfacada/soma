@@ -99,8 +99,9 @@ No migration script, no rehearsal, no cutover window, no decommission. The old a
 ## 8. Open items
 
 - DNS for davidfacada.com: which registrar/DNS host, so the CNAME for `soma` can be added when Slate gives its target.
-- Whether Slate accepts a repo with no build step or needs the Next.js build (`npm run build` → `out/`). The spike answers this.
+- Slate: answered. `catalyst deploy slate soma -ni` from `catalyst/` uploads the local `out/` as a static app (no GitHub link needed). Dev URL `https://soma-onkasary.onslate.com`. **Slate sends `cache-control: public, max-age=31536000` on every file including HTML**; see `catalyst/SPIKE.md` for the mitigation to settle before the PWA shell ships.
 - How to inject function secrets at deploy time, since `catalyst deploy` replaces the environment with `catalyst-config.json` and console-set values do not survive.
 - Catalyst project: `soma`, id 120218000000014077, org 939530195. Dev function base: `https://soma-939530195.development.catalystserverless.com/server/soma_api/execute`.
-- Whether Job Scheduling is enabled on the Catalyst account, or the 900 s Event-function path is the fallback.
+- Job Scheduling: answered. Enabled, pool `soma_jobs` (Function, 256 MB) exists, job budget is **900 s**, dispatch delay ~20 ms. No Event-function fallback needed.
+- Verified numbers: Advanced I/O 30 s; Job function 900 s; pre-signed URL expiry 30 s–7 days (we use 900 s); Data Store Text **silently truncates at 10,000 chars with no error**, so the API must reject or spill to Stratus itself; ZCQL has no `LENGTH()`; Development caps app users at 25.
 - Leaderboard copy: "against your own target" stays, since targets are per person.
