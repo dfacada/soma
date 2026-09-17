@@ -53,7 +53,7 @@ export function DayGlyph({ done, total = 4, today = false }: { done: number; tot
     return (
       <svg width="28" height="28" viewBox="0 0 28 28" role="img" aria-label="All done">
         <circle cx="14" cy="14" r="13" fill="var(--activity)" />
-        <path d="M8 14l4 4 8-9" fill="none" stroke="#FFFFFF" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8 14l4 4 8-9" fill="none" stroke="var(--on-hue)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }

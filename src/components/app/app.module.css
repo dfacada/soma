@@ -34,8 +34,8 @@
 .noteBad { background: var(--critical-bg); color: var(--critical); }
 
 /* ── Today hero: full-bleed on phones, a rounded card on desktop ── */
-.hero { margin: calc(-18px - var(--inset-top)) -16px 0; padding: calc(18px + var(--inset-top)) 16px 18px; border-radius: 0 0 30px 30px; display: flex; flex-direction: column; gap: 14px; background: linear-gradient(180deg, #FFFFFF 0%, #F7F5EF 100%); color: var(--ink); box-shadow: 0 14px 30px rgba(27, 26, 23, 0.10); transition: background 0.6s ease, color 0.6s ease; --hero-muted: var(--muted); --hero-line: var(--surface-2); --hero-chip: var(--bone); }
-.heroClosed { background: linear-gradient(180deg, #1B1A17 0%, #2A2620 100%); color: var(--bone); --hero-muted: #B8B1A4; --hero-line: rgba(255, 255, 255, 0.12); --hero-chip: rgba(255, 255, 255, 0.1); }
+.hero { margin: calc(-18px - var(--inset-top)) -16px 0; padding: calc(18px + var(--inset-top)) 16px 18px; border-radius: 0 0 30px 30px; display: flex; flex-direction: column; gap: 14px; background: linear-gradient(180deg, var(--surface) 0%, var(--hero-foot) 100%); color: var(--ink); box-shadow: var(--hero-shadow); transition: background 0.6s ease, color 0.6s ease; --hero-muted: var(--muted); --hero-line: var(--surface-2); --hero-chip: var(--bone); }
+.heroClosed { background: linear-gradient(180deg, var(--closed-top) 0%, var(--closed-bottom) 100%); color: var(--closed-text); --hero-muted: var(--closed-muted); --hero-line: var(--closed-line); --hero-chip: var(--closed-chip); }
 @media (min-width: 900px) { .hero { margin: 0; border-radius: 22px; padding: 24px 28px; } }
 .heroMuted { color: var(--hero-muted); }
 .heroTop { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
@@ -106,6 +106,12 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .actList { gap: 0 !important; }
 .actRow { display: flex; align-items: center; gap: 12px; min-height: 56px; }
 .actRow + .actRow { border-top: 1px solid var(--surface-2); }
+.palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.palette { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; border-radius: var(--r-ctl); border: 1px solid var(--hairline); background: var(--surface); color: var(--ink); text-align: left; }
+.paletteOn { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.paletteDots { display: flex; flex-shrink: 0; }
+.paletteDots i { width: 16px; height: 16px; border-radius: 999px; border: 2px solid var(--surface); }
+.paletteDots i + i { margin-left: -6px; }
 .legal { display: flex; justify-content: center; gap: 20px; font-size: 12px; }
 .legal a { color: var(--muted); min-height: 44px; display: inline-flex; align-items: center; }
 .factor { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; }

@@ -1,6 +1,8 @@
 // Settings live as one JSON blob on the profile (GET/PUT /settings). Defaults are here, not on the server:
 // what is stored is only what the user changed, merged over these on load, so new settings need no migration.
 
+import { isPalette, THEME_MODES, type PaletteId, type ThemeMode } from "./look";
+
 export type Mood = { id: string; label: string; on: boolean };
 export type Habit = { id: string; label: string; type: "daily" | "counter"; goal?: number; dir?: "at_least" | "at_most" };
 export type Meal = "breakfast" | "lunch" | "snack" | "dinner";
@@ -24,6 +26,9 @@ export type Settings = {
   requireWeight: boolean;
   /** Ask for the vault passphrase when the app opens, once per tab, dismissible. The vault gates the journal, sleep and the health sync. */
   unlockOnOpen: boolean;
+  /** Appearance. The colours are in globals.css; src/lib/look.ts applies these. */
+  theme: ThemeMode;
+  palette: PaletteId;
 };
 
 export const MEALS: Meal[] = ["breakfast", "lunch", "snack", "dinner"];
@@ -55,6 +60,8 @@ export const DEFAULT_SETTINGS: Settings = {
   cloudTranscription: false,
   requireWeight: true,
   unlockOnOpen: true,
+  theme: "light",
+  palette: "soma",
 };
 
 /** The starter recipe book from the prototype. A user's own recipes (GET /recipes) are listed ahead of these. */
@@ -85,5 +92,7 @@ export function mergeSettings(stored: unknown): Settings {
     cloudTranscription: s.cloudTranscription === true,
     requireWeight: s.requireWeight !== false,
     unlockOnOpen: s.unlockOnOpen !== false,
+    theme: THEME_MODES.includes(s.theme as ThemeMode) ? (s.theme as ThemeMode) : d.theme,
+    palette: isPalette(s.palette) ? s.palette : d.palette,
   };
 }

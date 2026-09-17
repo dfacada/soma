@@ -7,6 +7,7 @@ import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
+import { PALETTES, type ThemeMode } from "@/lib/look";
 import type { Habit, Settings } from "@/lib/settings";
 import { Button, Card, Chip, Field, Input, Pill, Segmented, Switch, Toast } from "@/components/ui";
 import { Admin } from "./Admin";
@@ -45,6 +46,24 @@ export function SettingsScreen() {
         </Field>
         <Field name="Email" help={me.profile.role === "admin" ? "Admin" : "Member"}><span className="m muted" style={{ fontSize: 12, wordBreak: "break-all", textAlign: "right" }}>{me.email}</span></Field>
         {!isDevIdentity && <Button variant="secondary" onClick={signOut}>Sign out</Button>}
+      </Card>
+
+      <Card>
+        <span className="eb">Appearance</span>
+        <Field name="Theme" help="System follows your phone or computer, so Soma goes dark when it does.">
+          <Segmented label="Theme" value={settings.theme} onChange={(v) => void save({ theme: v as ThemeMode })}
+            options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }, { value: "system", label: "System" }]} />
+        </Field>
+        <span className="eb" style={{ paddingTop: 6 }}>Accent palette</span>
+        <div className={a.palettes} role="radiogroup" aria-label="Accent palette">
+          {PALETTES.map((p) => (
+            <button key={p.id} type="button" role="radio" aria-checked={settings.palette === p.id} className={`${a.palette} ${settings.palette === p.id ? a.paletteOn : ""}`} onClick={() => void save({ palette: p.id })}>
+              <span className={a.paletteDots}>{p.hues.map((h) => <i key={h} style={{ background: h }} />)}</span>
+              <span className={a.pickName}><span style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</span><span className="muted" style={{ fontSize: 11 }}>{p.note}</span></span>
+            </button>
+          ))}
+        </div>
+        <p className="muted" style={{ fontSize: 12 }}>A palette changes the three colours for journal, food and activity. The page, the cards and the type stay as they are.</p>
       </Card>
 
       <Card>

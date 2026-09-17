@@ -1,3 +1,4 @@
+import { LOOK_SCRIPT } from "@/lib/look";
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Figtree, JetBrains_Mono } from "next/font/google";
 import { RegisterSW } from "@/components/app/RegisterSW";
@@ -42,8 +43,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${bricolage.variable} ${figtree.variable} ${jetbrains.variable}`}>
+    // The inline script sets data-theme / data-palette before first paint, so the server HTML and the live DOM differ on <html> by design.
+    <html lang="en" suppressHydrationWarning className={`${bricolage.variable} ${figtree.variable} ${jetbrains.variable}`}>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: LOOK_SCRIPT }} />
         {children}
         <RegisterSW />
       </body>

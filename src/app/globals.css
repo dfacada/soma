@@ -38,6 +38,24 @@
   --warning: #7A5A0E;
   --warning-bg: #F5EBD3;
 
+  /* The three hues a palette is made of. Everything in a hue's family (soft, pale, tint, ink) follows from these. */
+  --h-journal: #5F5BBF;
+  --h-food: #2C8A5E;
+  --h-activity: #B7692A;
+
+  /* Things that differ between light and dark but are not neutrals or hues */
+  --on-hue: #FFFFFF;
+  --hairline-strong: #CFCABF;
+  --scrim: rgba(27, 26, 23, 0.35);
+  --hero-foot: #F7F5EF;
+  --hero-shadow: 0 14px 30px rgba(27, 26, 23, 0.10);
+  --closed-top: #1B1A17;
+  --closed-bottom: #2A2620;
+  --closed-text: #F4F3EF;
+  --closed-muted: #B8B1A4;
+  --closed-line: rgba(255, 255, 255, 0.12);
+  --closed-chip: rgba(255, 255, 255, 0.1);
+
   --r-card: 16px;
   --r-ctl: 12px;
   --r-sm: 10px;
@@ -51,6 +69,79 @@
   --font-display: var(--font-bricolage), "Arial Narrow", sans-serif;
   --font-body: var(--font-figtree), "Segoe UI", system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), Consolas, monospace;
+}
+
+/* ── Accent palettes (Settings → Appearance). Named after the six Macros shipped; there a palette was one progress
+   colour, here it is three hues at equal weight, led by that colour on Food. The attribute is absent for the
+   default, whose family is hand-picked above. Any other palette derives its family from its three hues. ── */
+:root[data-palette="organic"] { --h-journal: #7D6B8A; --h-food: #6F7A52; --h-activity: #A8703A; }
+:root[data-palette="macrofactor"] { --h-journal: #7A5FD0; --h-food: #3F7FE8; --h-activity: #DD6F45; }
+:root[data-palette="balance"] { --h-journal: #4F6FA8; --h-food: #2E9C95; --h-activity: #CF7443; }
+:root[data-palette="basecamp"] { --h-journal: #5B6472; --h-food: #B08A0E; --h-activity: #C8642B; }
+:root[data-palette="bear"] { --h-journal: #7C2D52; --h-food: #C0564C; --h-activity: #B8792E; }
+:root[data-palette="behance"] { --h-journal: #7A4FE0; --h-food: #3D6DEB; --h-activity: #E0564B; }
+
+:root[data-palette] {
+  --journal: var(--h-journal);
+  --journal-soft: color-mix(in oklab, var(--h-journal) 68%, var(--surface));
+  --journal-pale: color-mix(in oklab, var(--h-journal) 34%, var(--surface));
+  --journal-tint: color-mix(in oklab, var(--h-journal) 11%, var(--surface));
+  --journal-ink: color-mix(in oklab, var(--h-journal) 72%, var(--ink));
+  --food: var(--h-food);
+  --food-bar: color-mix(in oklab, var(--h-food) 50%, var(--surface));
+  --food-tint: color-mix(in oklab, var(--h-food) 11%, var(--surface));
+  --food-ink: color-mix(in oklab, var(--h-food) 72%, var(--ink));
+  --activity: var(--h-activity);
+  --activity-tint: color-mix(in oklab, var(--h-activity) 12%, var(--surface));
+  --activity-ink: color-mix(in oklab, var(--h-activity) 72%, var(--ink));
+}
+
+/* ── Dark: the same warm neutrals turned over. Hues are lifted toward white so they hold on dark surfaces, and
+   text on a hue turns dark. Comes after the palette block on purpose: same specificity, later wins. ── */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bone: #151412;
+  --surface: #1F1D1A;
+  --surface-2: #2B2824;
+  --side: #1A1816;
+  --field: #252320;
+  --hairline: #39352F;
+  --hairline-soft: #302D28;
+  --hairline-strong: #4A453E;
+  --faint: #8A857B;
+  --muted: #A59F95;
+  --ink-2: #CFCAC0;
+  --ink: #F1EEE7;
+
+  --journal: color-mix(in oklab, var(--h-journal) 62%, white);
+  --journal-soft: color-mix(in oklab, var(--h-journal) 80%, white);
+  --journal-pale: color-mix(in oklab, var(--h-journal) 55%, var(--surface));
+  --journal-tint: color-mix(in oklab, var(--h-journal) 24%, var(--surface));
+  --journal-ink: color-mix(in oklab, var(--h-journal) 38%, white);
+  --food: color-mix(in oklab, var(--h-food) 62%, white);
+  --food-bar: color-mix(in oklab, var(--h-food) 70%, var(--surface));
+  --food-tint: color-mix(in oklab, var(--h-food) 24%, var(--surface));
+  --food-ink: color-mix(in oklab, var(--h-food) 38%, white);
+  --activity: color-mix(in oklab, var(--h-activity) 66%, white);
+  --activity-tint: color-mix(in oklab, var(--h-activity) 24%, var(--surface));
+  --activity-ink: color-mix(in oklab, var(--h-activity) 40%, white);
+  --rec: #D9574B;
+
+  --critical: #F0A79D;
+  --critical-bg: #4A211C;
+  --warning: #E8C66A;
+  --warning-bg: #453712;
+
+  --on-hue: #14130F;
+  --scrim: rgba(0, 0, 0, 0.6);
+  --hero-foot: #1A1816;
+  --hero-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+  --closed-top: #37322B;
+  --closed-bottom: #26231F;
+  --closed-text: #F1EEE7;
+  --closed-muted: #B8B1A4;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 22px rgba(0, 0, 0, 0.25);
+  --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 * { box-sizing: border-box; }

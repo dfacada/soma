@@ -7,6 +7,7 @@ import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, ApiError, type Me } from "@/lib/api";
 import { catalystAuth, currentUser, isDevIdentity } from "@/lib/catalyst";
+import { applyLook } from "@/lib/look";
 import { mergeSettings, type Settings } from "@/lib/settings";
 import { Button, Input } from "@/components/ui";
 import a from "./app.module.css";
@@ -74,6 +75,18 @@ export function SessionGate({ children }: { children: ReactNode }) {
     void resolveSession().then((r) => { if (alive) apply(r); });
     return () => { alive = false; };
   }, [apply]);
+
+  // Appearance follows the account. "system" also follows the OS while the app is open.
+  const theme = settings?.theme, palette = settings?.palette;
+  useEffect(() => {
+    if (!theme || !palette) return;
+    applyLook(theme, palette);
+    if (theme !== "system") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const follow = () => applyLook(theme, palette);
+    media.addEventListener("change", follow);
+    return () => media.removeEventListener("change", follow);
+  }, [theme, palette]);
 
   const load = useCallback(() => { setState({ kind: "loading" }); void resolveSession().then(apply); }, [apply]);
 
