@@ -35,6 +35,8 @@ let oauthDone = false;
 /** First connect fills the whole window the screens load; later syncs re-read a week, since trackers sync late. */
 const BACKFILL_DAYS = 60;
 const REFRESH_DAYS = 7;
+/** Until one sync has succeeded on this device there is nothing to refresh: fill the window instead. */
+const span = (userId: string) => (lastSync(userId) ? REFRESH_DAYS : BACKFILL_DAYS);
 
 /** Back from Google's consent screen: trade the code, encrypt the token here, store only the ciphertext. */
 async function completeConnect(code: string, seal: (value: unknown) => Promise<string>) {
@@ -105,7 +107,7 @@ export function HealthProvider({ children }: { children: ReactNode }) {
   const link = info?.link ?? null;
   useEffect(() => {
     if (vault !== "open" || !link || stale) return;
-    const tick = () => { if (document.visibilityState === "visible" && Date.now() - lastSync(userId) > SYNC_EVERY_MS) void sync(link, REFRESH_DAYS, true); };
+    const tick = () => { if (document.visibilityState === "visible" && Date.now() - lastSync(userId) > SYNC_EVERY_MS) void sync(link, span(userId), true); };
     tick();
     document.addEventListener("visibilitychange", tick);
     const timer = window.setInterval(tick, 5 * 60 * 1000);
@@ -133,8 +135,8 @@ export function HealthProvider({ children }: { children: ReactNode }) {
   const syncNow = useCallback(() => {
     if (!link) return;
     if (vault !== "open") { openVault(); return; }
-    void sync(link, REFRESH_DAYS, false);
-  }, [link, vault, openVault, sync]);
+    void sync(link, span(userId), false);
+  }, [link, vault, openVault, sync, userId]);
 
   const status: HealthStatus = !info ? "loading" : !info.link ? (info.configured ? "off" : "unconfigured") : stale ? "reconnect" : "connected";
   const value = useMemo<Health>(() => ({ status, syncing, lastSyncMs, connect, disconnect, syncNow }), [status, syncing, lastSyncMs, connect, disconnect, syncNow]);

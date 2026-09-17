@@ -103,7 +103,8 @@ function readPoint(p) {
   if (!Number.isFinite(steps) || steps < 0) return null;
   return { day: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`, steps: Math.min(steps, 1000000) };
 }
-const civil = (day) => ({ year: Number(day.slice(0, 4)), month: Number(day.slice(5, 7)), day: Number(day.slice(8, 10)) });
+// CivilDateTime is { date: { year, month, day }, time? }. A bare { year, month, day } is a 400 (found on the first real sync).
+const civil = (day) => ({ date: { year: Number(day.slice(0, 4)), month: Number(day.slice(5, 7)), day: Number(day.slice(8, 10)) } });
 
 router.post('/google-health/sync', member, wrap(async (req, res) => {
   const b = req.body || {};
@@ -139,6 +140,7 @@ router.post('/google-health/sync', member, wrap(async (req, res) => {
     if (!pageToken) break;
   }
   const days = points.map(readPoint).filter((p) => p && p.day >= from && p.day <= to);
+  if (points.length && !days.length) console.error(JSON.stringify({ action: 'gh_shape', keys: Object.keys(points[0]), start: Object.keys(points[0].civilStartTime || {}), steps: Object.keys(points[0].steps || {}) }));
 
   // One read, then two bulk writes: a 60-day backfill must fit well inside the 30 s limit.
   const uid = needId(req.user.id);
