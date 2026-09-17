@@ -128,10 +128,12 @@ router.post('/google-health/sync', member, wrap(async (req, res) => {
   let pageToken;
   for (let page = 0; page < 5; page++) {
     const r = await google(STEPS_URL, { method: 'POST', headers: { authorization: 'Bearer ' + t.json.access_token, 'content-type': 'application/json' },
-      body: JSON.stringify(Object.assign({ range: { start: civil(from), end: civil(end) }, windowSizeDays: 1, pageSize: 200 }, pageToken ? { pageToken } : {})) });
+      // The same body Google's own CLI sends. windowSizeDays is "optional" but the live API 400s without it, and a
+      // pageSize here was answered with a bare "Invalid argument".
+      body: JSON.stringify(Object.assign({ range: { start: civil(from), end: civil(end) }, windowSizeDays: 1 }, pageToken ? { pageToken } : {})) });
     if (!r.ok) {
       const message = r.json && r.json.error && r.json.error.message;
-      console.error(JSON.stringify({ action: 'gh_steps', status: r.status, error: message }));
+      console.error(JSON.stringify({ action: 'gh_steps', status: r.status, error: message, details: r.json && r.json.error && r.json.error.details, from, end }));
       if (r.status === 401 || r.status === 403) throw new HttpError(409, 'reconnect');
       throw new HttpError(502, 'Google Health did not return steps' + (message ? ': ' + String(message).slice(0, 200) : ''));
     }
