@@ -2,6 +2,7 @@
 // what is stored is only what the user changed, merged over these on load, so new settings need no migration.
 
 import { isPalette, THEME_MODES, type PaletteId, type ThemeMode } from "./look";
+import { DEFAULT_PHRASES, NOTE_MAX, PHRASE_MAX, PHRASES_MAX, type Phrase } from "./opening";
 
 export type Mood = { id: string; label: string; on: boolean };
 export type Habit = { id: string; label: string; type: "daily" | "counter"; goal?: number; dir?: "at_least" | "at_most" };
@@ -29,6 +30,8 @@ export type Settings = {
   /** Appearance. The colours are in globals.css; src/lib/look.ts applies these. */
   theme: ThemeMode;
   palette: PaletteId;
+  /** The words shown full screen when the app opens. An empty list is a choice and stays empty. */
+  opening: { on: boolean; phrases: Phrase[] };
 };
 
 export const MEALS: Meal[] = ["breakfast", "lunch", "snack", "dinner"];
@@ -62,6 +65,7 @@ export const DEFAULT_SETTINGS: Settings = {
   unlockOnOpen: true,
   theme: "light",
   palette: "soma",
+  opening: { on: true, phrases: DEFAULT_PHRASES },
 };
 
 /** The starter recipe book from the prototype. A user's own recipes (GET /recipes) are listed ahead of these. */
@@ -94,5 +98,12 @@ export function mergeSettings(stored: unknown): Settings {
     unlockOnOpen: s.unlockOnOpen !== false,
     theme: THEME_MODES.includes(s.theme as ThemeMode) ? (s.theme as ThemeMode) : d.theme,
     palette: isPalette(s.palette) ? s.palette : d.palette,
+    opening: {
+      on: s.opening?.on !== false,
+      phrases: Array.isArray(s.opening?.phrases)
+        ? s.opening.phrases.filter((p) => p && typeof p.text === "string" && p.text.trim()).slice(0, PHRASES_MAX)
+          .map((p) => ({ text: p.text.trim().slice(0, PHRASE_MAX), ...(typeof p.note === "string" && p.note.trim() ? { note: p.note.trim().slice(0, NOTE_MAX) } : {}) }))
+        : d.opening.phrases,
+    },
   };
 }

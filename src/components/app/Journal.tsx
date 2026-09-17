@@ -9,6 +9,7 @@ import { isDevIdentity } from "@/lib/catalyst";
 import { deleteEntry, loadAudio, loadEntries, newEntry, saveEntry, type LoadedEntry } from "@/lib/journal";
 import { Recorder, toneStream } from "@/lib/recorder";
 import { clearDraft, deletePending, listOrphanDrafts, listPending, putPending, type JournalEntry, type PendingRecording } from "@/lib/recovery";
+import { opened as openingDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
 import { transcribe, TranscribeError } from "@/lib/transcribe";
 import { createVault, decryptJson, encryptJson, exportKey, fromB64, importKey, toB64, unlockVault, type VaultMeta } from "@/lib/vault-crypto";
@@ -144,7 +145,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       setVault(m ? "locked" : "none");
       // Opening the app is the moment to unlock: the vault now gates the health sync and sleep as well as the journal.
       // Only for a vault that exists; creating one stays with the Journal card, where it is explained.
-      if (m && askOnOpen.current && askOnce(userId)) setSheet(true);
+      // …but after the opening words, never on top of them.
+      if (m && askOnOpen.current && askOnce(userId)) void openingDone.then(() => { if (alive) setSheet(true); });
     }).catch(() => { if (alive) setVault("locked"); });
     return () => { alive = false; };
   }, [userId, opened]);

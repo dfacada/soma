@@ -8,6 +8,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
 import { PALETTES, type ThemeMode } from "@/lib/look";
+import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX } from "@/lib/opening";
 import type { Habit, Settings } from "@/lib/settings";
 import { Button, Card, Chip, Field, Input, Pill, Segmented, Switch, Toast } from "@/components/ui";
 import { Admin } from "./Admin";
@@ -64,6 +65,25 @@ export function SettingsScreen() {
           ))}
         </div>
         <p className="muted" style={{ fontSize: 12 }}>A palette changes the three colours for journal, food and activity. The page, the cards and the type stay as they are.</p>
+      </Card>
+
+      <Card>
+        <span className="eb">Opening words</span>
+        <Field name="Show when Soma opens" help="One of these fills the screen each time you open Soma, before anything else. They take turns. A tap goes on.">
+          <Switch checked={settings.opening.on} label="Show opening words" onChange={(v) => void save({ opening: { ...settings.opening, on: v } }, v ? "Opening words on" : "Opening words off")} />
+        </Field>
+        {settings.opening.phrases.map((p, i) => (
+          <div key={p.text + i} className={a.habitRow}>
+            <div className={a.habitTop}>
+              <span style={{ fontWeight: 500 }}>{p.text}</span>
+              <button type="button" className={a.lnk} onClick={() => void save({ opening: { ...settings.opening, phrases: settings.opening.phrases.filter((_, j) => j !== i) } }, "Removed")}>Remove</button>
+            </div>
+            {p.note && <span className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>{p.note}</span>}
+          </div>
+        ))}
+        {settings.opening.phrases.length < PHRASES_MAX
+          ? <PhraseForm onAdd={(text, note) => void save({ opening: { ...settings.opening, phrases: [...settings.opening.phrases, note ? { text, note } : { text }] } }, "Added")} />
+          : <p className="muted" style={{ fontSize: 12 }}>Twelve is the limit. Keep the ones that still land.</p>}
       </Card>
 
       <Card>
@@ -236,6 +256,18 @@ function AddRow({ placeholder, onAdd, disabled, note }: { placeholder: string; o
     <form className={a.extraForm} onSubmit={(e) => { e.preventDefault(); const t = v.trim().slice(0, 40); if (!t) return; onAdd(t); setV(""); }}>
       <Input placeholder={placeholder} aria-label={placeholder} value={v} maxLength={40} onChange={(e) => setV(e.target.value)} />
       <Button type="submit" disabled={!v.trim()}>Add</Button>
+    </form>
+  );
+}
+
+function PhraseForm({ onAdd }: { onAdd: (text: string, note: string) => void }) {
+  const [text, setText] = useState("");
+  const [note, setNote] = useState("");
+  return (
+    <form className={a.vaultForm} onSubmit={(e) => { e.preventDefault(); if (!text.trim()) return; onAdd(text.trim(), note.trim()); setText(""); setNote(""); }}>
+      <Input placeholder="A phrase to open with" aria-label="New phrase" value={text} maxLength={PHRASE_MAX} onChange={(e) => setText(e.target.value)} />
+      <Input placeholder="Why it matters to you (optional)" aria-label="Note for the phrase" value={note} maxLength={NOTE_MAX} onChange={(e) => setNote(e.target.value)} />
+      <div><Button type="submit" variant="secondary" disabled={!text.trim()}>Add phrase</Button></div>
     </form>
   );
 }

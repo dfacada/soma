@@ -4,6 +4,7 @@
 	"main": "index.js",
 	"author": "davidfacada@gmail.com",
 	"dependencies": {
+		"web-push": "^3.6.7",
 		"zcatalyst-sdk-node": "latest"
 	}
 }
