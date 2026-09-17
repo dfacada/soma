@@ -25,8 +25,9 @@ const router = express.Router();
 const VAULT_COLS = 'ROWID, salt, verifier_iv, verifier_ct, MODIFIEDTIME';
 router.get('/vault-meta', member, wrap(async (req, res) => {
   const rows = await select(req.admin, 'vault_meta', `SELECT ${VAULT_COLS} FROM vault_meta WHERE user_id = ${needId(req.user.id)}`);
-  if (!rows[0]) throw new HttpError(404, 'no vault yet');
-  res.json({ salt: rows[0].salt, verifierIv: rows[0].verifier_iv, verifierCt: rows[0].verifier_ct, updatedAt: rows[0].MODIFIEDTIME });
+  // Not having a vault yet is a normal state for a new user, not an error: answer 200 so it never shows as one.
+  if (!rows[0]) return res.json({ exists: false });
+  res.json({ exists: true, salt: rows[0].salt, verifierIv: rows[0].verifier_iv, verifierCt: rows[0].verifier_ct, updatedAt: rows[0].MODIFIEDTIME });
 }));
 // Creating is free; overwriting orphans every existing entry unless the client re-encrypted them,
 // so it has to be asked for explicitly with { replace: true } (the change-passphrase flow).

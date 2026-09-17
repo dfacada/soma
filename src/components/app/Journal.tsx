@@ -46,8 +46,8 @@ const SESSION_KEY = "soma-ck-v1.";
 
 /** Vault metadata, or null when this user has not made a vault yet. */
 async function fetchMeta(): Promise<VaultMeta | null> {
-  try { return await api<VaultMeta>("GET", "/vault-meta"); }
-  catch (e) { if (e instanceof ApiError && e.status === 404) return null; throw e; }
+  const res = await api<({ exists: true } & VaultMeta) | { exists: false }>("GET", "/vault-meta");
+  return res.exists ? { salt: res.salt, verifierIv: res.verifierIv, verifierCt: res.verifierCt } : null;
 }
 
 /** The key survives reloads for the life of the tab (sessionStorage is per tab and dies with it), as in Glimpse. */
