@@ -27,6 +27,8 @@ Project `soma` (id 120218000000014077, org 939530195, US DC) is linked from `cat
 ## Commands
 
 ```bash
+node catalyst/deploy.js soma_api   # deploy a function with secrets injected (run from anywhere)
+node catalyst/test-api.js          # 41 end-to-end API checks against Development
 npm run dev        # Next.js dev server
 npm run build      # static export to out/
 node docs/checks/prototype-smoke-mobile.js docs/prototype/soma-prototype.html   # prototype tap-through (fake DOM)
