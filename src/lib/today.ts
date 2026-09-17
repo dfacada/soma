@@ -1,6 +1,6 @@
 // Pure Today logic, ported from the prototype's dayStatus / streakInfo / viewToday. No React, no I/O.
-// A day closes when every task is done: check-in (a mood), a journal entry, all four meals, weight (unless the
-// user has switched that requirement off) and any activity.
+// A day closes when every task is done: check-in (a mood), a journal entry, all four meals, and any activity, plus weight
+// first of all unless the user has switched that requirement off. Order here is the order of the cards on Today.
 
 import type { ActivityDay, Checkin, DayLog, EntryMeta } from "./api";
 import { MEALS, type Meal, type Settings } from "./settings";
@@ -69,10 +69,10 @@ export function dayStatus(data: DayData | undefined, settings: Settings): DaySta
   const weightRequired = settings.requireWeight;
   const weightDone = d.weight !== undefined;
   const ring: DayStatus["ring"] = [
+    ...(weightRequired ? [{ key: "weight" as const, value: weightDone ? 1 : 0, color: "var(--food-bar)" }] : []),
     { key: "checkin", value: checkinDone ? 1 : 0, color: "var(--journal)" },
     { key: "journal", value: journalDone ? 1 : 0, color: "var(--journal-soft)" },
     { key: "food", value: meals / 4, color: "var(--food)" },
-    ...(weightRequired ? [{ key: "weight" as const, value: weightDone ? 1 : 0, color: "var(--food-bar)" }] : []),
     { key: "activity", value: acts / actTotal, color: "var(--activity)" },
   ];
   const taskCount = ring.length;
@@ -102,10 +102,10 @@ export type Todo = { label: string; color: string };
 /** Hero headline, sub-line and the chips for what is left. */
 export function headline(st: DayStatus, streakNow: number, hour: number): { big: string; sub: string; todos: Todo[] } {
   const todos: Todo[] = [];
+  if (st.weightRequired && !st.weightDone) todos.push({ label: "Weight", color: "var(--food-bar)" });
   if (!st.checkinDone) todos.push({ label: "Check in", color: "var(--journal)" });
   if (!st.journalDone) todos.push({ label: "Journal", color: "var(--journal-soft)" });
   if (!st.foodDone) todos.push({ label: st.leftMeals.length === 1 ? cap(st.leftMeals[0]) : `${st.leftMeals.length} meals`, color: "var(--food)" });
-  if (st.weightRequired && !st.weightDone) todos.push({ label: "Weight", color: "var(--food-bar)" });
   if (!st.activityDone) todos.push({ label: "Any activity", color: "var(--activity)" });
 
   if (st.closed) return { big: "Day closed", sub: streakNow <= 1 ? "First full day of a new run." : `${streakNow} full days in a row.`, todos };

@@ -182,6 +182,16 @@ export function Today() {
         </div>
       )}
 
+      {/* Weight comes first: it is the one task with a right time of day, before anything is eaten. */}
+      <Card onClick={() => setWeightSheet(true)} aria-label="Log today’s weight">
+        <RowHead
+          lead={<Medallion domain="food" icon="scale" state={st.weight !== null ? "done" : "idle"} />}
+          title="Weight"
+          sub={weightSub}
+          trail={<span className={a.lnk} style={st.weight === null ? { color: "var(--food)" } : undefined}>{st.weight !== null ? "Change" : "Log"}</span>}
+        />
+      </Card>
+
       <Card>
         <RowHead
           lead={<Medallion domain="journal" icon="heart" state={st.checkinDone ? "done" : "idle"} />}
@@ -237,15 +247,6 @@ export function Today() {
               ))}
             </div>
         </div>
-      </Card>
-
-      <Card onClick={() => setWeightSheet(true)} aria-label="Log today’s weight">
-        <RowHead
-          lead={<Medallion domain="food" icon="scale" state={st.weight !== null ? "done" : "idle"} />}
-          title="Weight"
-          sub={weightSub}
-          trail={<span className={a.lnk} style={st.weight === null ? { color: "var(--food)" } : undefined}>{st.weight !== null ? "Change" : "Log"}</span>}
-        />
       </Card>
 
       <Card>

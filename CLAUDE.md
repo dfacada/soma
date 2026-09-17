@@ -13,7 +13,7 @@ Start with `docs/HANDOFF.md`. It carries every decision made during design, the 
 - Every API query is scoped by the calling user. Catalyst Data Store has no row-level security.
 - Journal entries, audio, photos and Fitbit tokens are end-to-end encrypted (AES-256-GCM, key derived from the vault passphrase in the browser). Food, activity and the round are server-readable so leaderboards and admin fixes work.
 - Push-up target is **per person** (default 100 a day, flat, no ramp). Rest days carry the streak.
-- A day closes on five things: check-in, journal, all four meals, weight, any activity. Weight is per-person (`requireWeight`, on by default); off means four.
+- A day closes on five things, in card order: weight, check-in, journal, all four meals, any activity. Weight is per-person (`requireWeight`, on by default); off means four.
 - Today is the actionable screen: every daily task completes with a tap there. The Journal card is the record button (no floating mic on Today; voice only).
 - Commit and push to `master` directly. No feature branches.
 
