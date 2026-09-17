@@ -1,7 +1,8 @@
 {
   "functions": {
     "targets": [
-      "soma_api"
+      "soma_api",
+      "soma_jobs"
     ],
     "ignore": [],
     "source": "functions"

@@ -9,6 +9,7 @@
 
 const express = require('express');
 const catalyst = require('zcatalyst-sdk-node');
+const crypto = require('crypto');
 
 const BUCKETS = ['soma-entries', 'soma-audio', 'soma-photos', 'soma-drafts'];
 const SIGN_EXPIRY_S = 900;
@@ -93,6 +94,69 @@ app.post('/sign', withUser, async (req, res) => {
   } catch (e) {
     console.error(JSON.stringify({ action: 'sign', error: e.message }));
     res.status(502).json({ error: 'could not sign', detail: e.message });
+  }
+});
+
+// ── Spike routes (temporary; delete after catalyst/SPIKE.md items 3 and 4 pass) ──
+// Gated by SPIKE_KEY from catalyst-config.json env_variables, which also proves env vars reach process.env.
+const SPIKE_KEY = process.env.SPIKE_KEY || '';
+function spikeGate(req, res, next) {
+  const given = req.get('x-spike-key') || (req.query && req.query.spike);
+  if (!SPIKE_KEY || given !== SPIKE_KEY) return res.status(404).json({ error: 'no such route' });
+  next();
+}
+const adminApp = (req) => catalyst.initialize(req, { scope: 'admin' });
+const SPIKE_BUCKET = 'soma-drafts';
+
+// Item 3: mint a PUT and a GET URL for a throwaway key so a browser page can upload straight to Stratus.
+app.post('/spike/sign', spikeGate, async (req, res) => {
+  try {
+    const key = 'spike/' + crypto.randomUUID() + '.bin';
+    const b = adminApp(req).stratus().bucket(SPIKE_BUCKET);
+    const put = await b.generatePreSignedUrl(key, 'PUT', { expiryIn: SIGN_EXPIRY_S });
+    const get = await b.generatePreSignedUrl(key, 'GET', { expiryIn: SIGN_EXPIRY_S });
+    res.json({ bucket: SPIKE_BUCKET, key, put: put.signature, get: get.signature, expiresIn: SIGN_EXPIRY_S });
+  } catch (e) {
+    console.error(JSON.stringify({ action: 'spike_sign', error: e.message }));
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Item 4: submit a job to soma_jobs and read its status plus the result object it writes.
+app.post('/spike/job', spikeGate, async (req, res) => {
+  const sleepMs = Number((req.body && req.body.sleepMs) || 90000);
+  const pool = (req.body && req.body.pool) || 'soma_jobs';
+  const key = 'spike/job-' + Date.now() + '.json';
+  try {
+    const job = await adminApp(req).jobScheduling().job().submitJob({
+      job_name: 'spike_' + Date.now().toString(36),
+      target_type: 'Function',
+      target_name: 'soma_jobs',
+      jobpool_name: pool,
+      params: { sleep_ms: String(sleepMs), result_key: key }
+    });
+    res.json({ jobId: job.job_id, status: job.job_status, key, submitted: job });
+  } catch (e) {
+    console.error(JSON.stringify({ action: 'spike_job_submit', error: e.message }));
+    res.status(502).json({ error: e.message });
+  }
+});
+app.get('/spike/job/:id', spikeGate, async (req, res) => {
+  try {
+    const a = adminApp(req);
+    const job = await a.jobScheduling().job().getJob(req.params.id);
+    let result = null;
+    if (req.query.key) {
+      try {
+        const stream = await a.stratus().bucket(SPIKE_BUCKET).getObject(String(req.query.key));
+        const chunks = [];
+        for await (const c of stream) chunks.push(c);
+        result = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      } catch (_e) { result = null; }
+    }
+    res.json({ job, result });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
   }
 });
 

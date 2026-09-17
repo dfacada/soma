@@ -1,0 +1,9 @@
+{
+	"name": "soma_jobs",
+	"version": "1.0.0",
+	"main": "index.js",
+	"author": "davidfacada@gmail.com",
+	"dependencies": {
+		"zcatalyst-sdk-node": "latest"
+	}
+}
