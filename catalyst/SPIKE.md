@@ -77,6 +77,8 @@ Pass: a job submitted from `soma_api` sleeps 60 s, then writes a row to a `jobs`
 - **Item 3 in the browser is blocked only on bucket CORS.** A preflight to `soma-drafts-development.zohostratus.com` from the Slate origin returns 403 until the origin is added in the bucket's Configurations → Bucket CORS.
 - **Spike page**: `public/spike.html` → `https://soma-onkasary.onslate.com/spike.html`. Sign up, sign in, `GET /me` three ways (raw token, `Bearer` token, cookies only: the vendored SDK notes say raw, our earlier note said Bearer; the page reports which the gateway accepts), then a 25 MB PUT/GET round trip through `/sign` with a SHA-256 compare. "Copy log" puts the whole run on the clipboard.
 
+- **Cache toggle result (David disabled it, 2026-09-16):** with Slate Cache off, every response carries `cache-control: no-store` instead of the one-year max-age. Stale `index.html` is no longer a risk. The cost is that hashed `_next/static` assets are not browser-cached either, so the service worker should cache-first those (their names change per build). Keep Cache **disabled**; remember to set it again on the Production deployment. `soma-drafts` bucket CORS verified from the Slate origin (GET, PUT); the other three buckets still need it. David's app user exists and is confirmed (`user_id 120218000000022011`).
+
 ## What is left (needs David)
 
 1. Bucket CORS, console only: Stratus → `soma-drafts` → Configurations → Bucket CORS → add `https://soma-onkasary.onslate.com` for GET and PUT. Repeat for the other three buckets when convenient.
