@@ -87,5 +87,29 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .recTime { font-size: 13px; color: var(--rec); font-weight: 500; }
 @media (min-width: 900px) { .fab { left: 232px; bottom: 32px; } .journalPage { padding-bottom: 140px; } }
 
+/* ── Food ── */
+.summary { flex-direction: row !important; align-items: center; gap: 16px !important; }
+.summaryRing { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+.ringWrap96 { position: relative; width: 96px; height: 96px; }
+.summaryBars { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+.extraForm { display: flex; gap: 8px; }
+.extraForm > :first-child { flex: 1; min-width: 0; }
+.kcalInput { width: 84px !important; flex: none; text-align: right; }
+.pickList { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 4px 14px; max-height: 46dvh; overflow: auto; }
+.pickRow { display: flex; align-items: center; gap: 10px; min-height: 48px; width: 100%; text-align: left; }
+.pickRow + .pickRow { border-top: 1px solid var(--surface-2); }
+.pickName { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.macroRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.macroRow input { padding: 0 8px; text-align: center; }
+
+/* ── Settings and admin ── */
+.habitRow { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
+.habitRow + .habitRow { border-top: 1px solid var(--surface-2); }
+.habitTop { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.habitControls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.habitControls input { width: 72px !important; }
+.adminUser { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
+.adminUser + .adminUser { border-top: 1px solid var(--surface-2); }
+
 .pushRow { display: flex; gap: 8px; align-items: center; }
 .pushInput { text-align: center; font-size: 24px !important; height: 56px !important; font-family: var(--font-display) !important; font-weight: 600; }

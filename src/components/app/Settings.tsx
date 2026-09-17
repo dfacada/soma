@@ -1,34 +1,36 @@
 "use client";
 
-// Settings shell. Sections arrive with the screens they configure (docs/HANDOFF.md §6);
-// for now: the account, and the one number Today needs.
+// Settings (docs/HANDOFF.md §6). Every control saves on change; nothing has a Save button.
+// Sections still to come with their features: notifications, Fitbit, exports and import, rounds, passphrase change.
 
-import { useState } from "react";
-import { Button, Card, Field, Input, Toast } from "@/components/ui";
+import { useCallback, useRef, useState } from "react";
+import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
+import type { Habit, Settings } from "@/lib/settings";
+import { Button, Card, Chip, Field, Input, Pill, Segmented, Toast } from "@/components/ui";
+import { Admin } from "./Admin";
+import { useJournal } from "./Journal";
 import { useSession } from "./Session";
 import a from "./app.module.css";
 
+const digits = (v: string, max = 5) => v.replace(/\D/g, "").slice(0, max);
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "x" + Date.now();
+// Defaults from HANDOFF §6: kcal, protein, carbs, fat.
+const PLANS = { standard: [2100, 200, 150, 75], paleo: [2100, 175, 145, 85], keto: [2100, 180, 23, 140] } as const;
+const KCAL_PRESETS = [1800, 2000, 2100, 2200, 2400, 2600];
+
 export function SettingsScreen() {
   const { me, displayName, settings, saveSettings, saveDisplayName, signOut } = useSession();
-  const [name, setName] = useState(displayName);
-  const [target, setTarget] = useState(String(settings.pushupTarget));
+  const journal = useJournal();
   const [toast, setToast] = useState<string | null>(null);
-  const say = (m: string) => { setToast(m); window.setTimeout(() => setToast(null), 1800); };
+  const timer = useRef<number | undefined>(undefined);
+  const say = useCallback((m: string) => { setToast(m); window.clearTimeout(timer.current); timer.current = window.setTimeout(() => setToast(null), 1800); }, []);
+  const save = useCallback((patch: Partial<Settings>, done?: string) => saveSettings(patch).then(() => { if (done) say(done); }, () => say("Couldn't save that")), [saveSettings, say]);
 
-  async function commitName() {
-    const next = name.trim();
-    if (!next) return setName(displayName);
-    if (next === displayName) return;
-    try { await saveDisplayName(next); say("Name saved"); } catch { setName(displayName); say("Couldn't save the name"); }
-  }
-
-  async function commitTarget() {
-    const n = Math.round(Number(target));
-    if (!Number.isFinite(n) || n < 1 || n > 10000) return setTarget(String(settings.pushupTarget));
-    if (n === settings.pushupTarget) return;
-    try { await saveSettings({ pushupTarget: n }); say(`Target set to ${n}`); } catch { setTarget(String(settings.pushupTarget)); say("Couldn't save the target"); }
-  }
+  const g = settings.goals;
+  // Which plan the four targets currently match, if any.
+  const plan = (Object.keys(PLANS) as (keyof typeof PLANS)[]).find((p) => PLANS[p][0] === g.kcal && PLANS[p][1] === g.protein && PLANS[p][2] === g.carbs && PLANS[p][3] === g.fat) || "custom";
+  const moodsOn = settings.moods.filter((m) => m.on).length;
 
   return (
     <div className={a.page}>
@@ -37,21 +39,164 @@ export function SettingsScreen() {
       <Card>
         <span className="eb">Account</span>
         <Field name="Display name">
-          <Input compact value={name} maxLength={100} aria-label="Display name" onChange={(e) => setName(e.target.value)} onBlur={commitName} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+          <Commit value={displayName} label="Display name" onCommit={(v) => (v.trim() ? saveDisplayName(v).then(() => say("Name saved"), () => say("Couldn't save the name")) : undefined)} />
         </Field>
         <Field name="Email" help={me.profile.role === "admin" ? "Admin" : "Member"}><span className="m muted" style={{ fontSize: 12, wordBreak: "break-all", textAlign: "right" }}>{me.email}</span></Field>
         {!isDevIdentity && <Button variant="secondary" onClick={signOut}>Sign out</Button>}
       </Card>
 
       <Card>
-        <span className="eb">Activity</span>
-        <Field name="Daily push-up target" help="Yours alone. Flat, every day, no ramp.">
-          <Input compact inputMode="numeric" pattern="[0-9]*" value={target} aria-label="Daily push-up target" onChange={(e) => setTarget(e.target.value.replace(/\D/g, "").slice(0, 5))} onBlur={commitTarget} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
-        </Field>
+        <span className="eb">Check-in · moods</span>
+        <div className={a.chips}>
+          {settings.moods.map((m) => (
+            <Chip key={m.id} kind="habit" label={m.label} on={m.on}
+              onClick={() => (m.on && moodsOn <= 1 ? say("Keep at least one mood") : void save({ moods: settings.moods.map((x) => (x.id === m.id ? { ...x, on: !x.on } : x)) }))} />
+          ))}
+        </div>
+        <p className="muted" style={{ fontSize: 12 }}>The moods that are on are the ones offered on Today.</p>
       </Card>
 
-      <p className="muted" style={{ fontSize: 12, padding: "0 4px" }}>Moods, habits, meals, targets and the rest arrive with the screens they belong to.</p>
+      <Card>
+        <span className="eb">Check-in · habits</span>
+        {settings.habits.map((h, i) => <HabitRow key={h.id} habit={h} canRemove={settings.habits.length > 1}
+          onChange={(next) => void save({ habits: settings.habits.map((x, j) => (j === i ? next : x)) })}
+          onRemove={() => void save({ habits: settings.habits.filter((_, j) => j !== i) }, `Removed ${h.label}`)} />)}
+        <AddRow placeholder="Add a habit" disabled={settings.habits.length >= 12} note={settings.habits.length >= 12 ? "Twelve is the limit. Keep it focused." : undefined}
+          onAdd={(label) => { if (settings.habits.some((h) => h.label.toLowerCase() === label.toLowerCase())) return say("That habit is already there"); void save({ habits: [...settings.habits, { id: slug(label) + "-" + Date.now().toString(36), label, type: "daily" }] }, `Added ${label}`); }} />
+      </Card>
+
+      <Card>
+        <span className="eb">Food · targets</span>
+        <Field name="Plan" help="Resets the four targets to the plan's defaults.">
+          <Segmented label="Plan" value={plan as string} onChange={(p) => { const d = PLANS[p as keyof typeof PLANS]; void save({ goals: { ...g, kcal: d[0], protein: d[1], carbs: d[2], fat: d[3] } }, `Targets set to the ${p} plan`); }}
+            options={[{ value: "standard", label: "Standard" }, { value: "paleo", label: "Paleo" }, { value: "keto", label: "Keto" }]} />
+        </Field>
+        <div className={a.chips}>
+          {KCAL_PRESETS.map((n) => (
+            <Chip key={n} kind="habit" label={n.toLocaleString("en-US")} on={g.kcal === n}
+              onClick={() => { const r = n / (g.kcal || 2100); void save({ goals: { ...g, kcal: n, protein: Math.round(g.protein * r), carbs: Math.round(g.carbs * r), fat: Math.round(g.fat * r) } }, `${n} kcal · macros rescaled`); }} />
+          ))}
+        </div>
+        {(["kcal", "protein", "carbs", "fat"] as const).map((f) => (
+          <Field key={f} name={f === "kcal" ? "Calories" : f[0].toUpperCase() + f.slice(1)} help={f === "kcal" ? "kcal a day" : "grams a day"}>
+            <Commit numeric value={String(g[f])} label={f} onCommit={(v) => { const n = Number(v); if (n >= 1 && n <= 20000 && n !== g[f]) void save({ goals: { ...g, [f]: n } }); }} />
+          </Field>
+        ))}
+      </Card>
+
+      <Card>
+        <span className="eb">Food · quick snacks</span>
+        <div className={a.chips}>
+          {settings.snacks.map((s, i) => <Pill key={s.name + i} label={`${s.name} · ${s.kcal}`} onRemove={() => void save({ snacks: settings.snacks.filter((_, j) => j !== i) })} />)}
+        </div>
+        <SnackForm onAdd={(name, kcal) => void save({ snacks: [...settings.snacks, { name, kcal }] }, `Added ${name}`)} />
+      </Card>
+
+      <Card>
+        <span className="eb">Activity</span>
+        <Field name="Daily push-up target" help="Yours alone. Flat, every day, no ramp.">
+          <Commit numeric value={String(settings.pushupTarget)} label="Daily push-up target" onCommit={(v) => { const n = Number(v); if (n >= 1 && n <= 10000 && n !== settings.pushupTarget) void save({ pushupTarget: n }, `Target set to ${n}`); }} />
+        </Field>
+        <span className="eb" style={{ paddingTop: 6 }}>Activity types</span>
+        <div className={a.chips}>
+          {settings.activityTypes.map((t, i) => <Pill key={t.key} label={t.name} onRemove={settings.activityTypes.length > 1 ? () => void save({ activityTypes: settings.activityTypes.filter((_, j) => j !== i) }) : undefined} />)}
+        </div>
+        <AddRow placeholder="Add an activity" disabled={settings.activityTypes.length >= 8}
+          onAdd={(name) => { if (settings.activityTypes.some((t) => t.name.toLowerCase() === name.toLowerCase())) return say("That one is already there"); void save({ activityTypes: [...settings.activityTypes, { key: slug(name), name }] }, `Added ${name}`); }} />
+      </Card>
+
+      <Card>
+        <span className="eb">Journal &amp; vault</span>
+        <Field name="Vault" help={journal.vault === "open" ? "Open on this device until the tab closes." : journal.vault === "none" ? "Not created yet." : "Locked."}>
+          {journal.vault === "open" ? <Button size="sm" variant="secondary" onClick={() => { journal.lock(); say("Vault locked"); }}>Lock</Button> : <Button size="sm" variant="journal" onClick={journal.openVault}>{journal.vault === "none" ? "Create" : "Unlock"}</Button>}
+        </Field>
+        <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Entries and audio are encrypted on this device with AES-256-GCM before upload; the key comes from your passphrase and never leaves the browser. Food, activity and check-ins are readable by the server so leaderboards and admin fixes work.</p>
+      </Card>
+
+      <Feedback say={say} />
+
+      {me.profile.role === "admin" && <><div className={a.pageHead} style={{ paddingTop: 12 }}><span className="d" style={{ fontSize: 24 }}>Admin</span></div><Admin say={say} /></>}
+
       <Toast message={toast} />
     </div>
+  );
+}
+
+/** A text field that saves when you leave it or press Enter, and snaps back if the value is rejected. */
+function Commit({ value, label, numeric, onCommit }: { value: string; label: string; numeric?: boolean; onCommit: (v: string) => unknown }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <Input compact aria-label={label} value={draft ?? value} maxLength={100} inputMode={numeric ? "numeric" : undefined} pattern={numeric ? "[0-9]*" : undefined}
+      onChange={(e) => setDraft(numeric ? digits(e.target.value) : e.target.value)}
+      onBlur={() => { if (draft !== null && draft !== value) onCommit(draft); setDraft(null); }}
+      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+  );
+}
+
+function HabitRow({ habit, canRemove, onChange, onRemove }: { habit: Habit; canRemove: boolean; onChange: (h: Habit) => void; onRemove: () => void }) {
+  const counter = habit.type === "counter";
+  return (
+    <div className={a.habitRow}>
+      <div className={a.habitTop}>
+        <span style={{ fontWeight: 500 }}>{habit.label}</span>
+        {canRemove && <button type="button" className={a.lnk} onClick={onRemove}>Remove</button>}
+      </div>
+      <div className={a.habitControls}>
+        <Segmented label={`${habit.label} type`} value={habit.type} onChange={(type) => onChange(type === "counter" ? { ...habit, type, dir: habit.dir || "at_least" } : { ...habit, type })}
+          options={[{ value: "daily", label: "Daily" }, { value: "counter", label: "Counter" }]} />
+        {counter && (
+          <>
+            <Segmented label={`${habit.label} direction`} value={habit.dir || "at_least"} onChange={(dir) => onChange({ ...habit, dir })} options={[{ value: "at_least", label: "≥" }, { value: "at_most", label: "≤" }]} />
+            <Commit numeric value={habit.goal ? String(habit.goal) : ""} label={`${habit.label} goal`} onCommit={(v) => onChange({ ...habit, goal: Number(v) || undefined })} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AddRow({ placeholder, onAdd, disabled, note }: { placeholder: string; onAdd: (v: string) => void; disabled?: boolean; note?: string }) {
+  const [v, setV] = useState("");
+  if (disabled) return note ? <p className="muted" style={{ fontSize: 12 }}>{note}</p> : null;
+  return (
+    <form className={a.extraForm} onSubmit={(e) => { e.preventDefault(); const t = v.trim().slice(0, 40); if (!t) return; onAdd(t); setV(""); }}>
+      <Input placeholder={placeholder} aria-label={placeholder} value={v} maxLength={40} onChange={(e) => setV(e.target.value)} />
+      <Button type="submit" disabled={!v.trim()}>Add</Button>
+    </form>
+  );
+}
+
+function SnackForm({ onAdd }: { onAdd: (name: string, kcal: number) => void }) {
+  const [name, setName] = useState("");
+  const [kcal, setKcal] = useState("");
+  const ok = name.trim() && kcal !== "";
+  return (
+    <form className={a.extraForm} onSubmit={(e) => { e.preventDefault(); if (!ok) return; onAdd(name.trim().slice(0, 40), Number(kcal)); setName(""); setKcal(""); }}>
+      <Input placeholder="Snack" aria-label="Snack name" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
+      <Input className={a.kcalInput} placeholder="kcal" aria-label="Snack calories" inputMode="numeric" pattern="[0-9]*" value={kcal} onChange={(e) => setKcal(digits(e.target.value, 4))} />
+      <Button type="submit" disabled={!ok}>Add</Button>
+    </form>
+  );
+}
+
+function Feedback({ say }: { say: (m: string) => void }) {
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    if (!body.trim()) return;
+    setBusy(true);
+    try { await api("POST", "/feedback", { body: body.trim() }); setBody(""); say("Sent. Thank you."); }
+    catch { say("Couldn't send that"); }
+    finally { setBusy(false); }
+  }
+  return (
+    <Card>
+      <span className="eb">Feedback</span>
+      <form className={a.vaultForm} onSubmit={send}>
+        <textarea className={a.note} rows={3} maxLength={4000} value={body} aria-label="Feedback" placeholder="Something broken, confusing or missing? It goes straight to David." onChange={(e) => setBody(e.target.value)} />
+        <div><Button type="submit" variant="secondary" disabled={busy || !body.trim()}>{busy ? "Sending…" : "Send feedback"}</Button></div>
+      </form>
+    </Card>
   );
 }

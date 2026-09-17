@@ -1,3 +1,4 @@
+import { DaysProvider } from "@/components/app/Days";
 import { JournalProvider } from "@/components/app/Journal";
 import { SessionGate } from "@/components/app/Session";
 import { Shell } from "@/components/app/Shell";
@@ -7,9 +8,11 @@ import { Shell } from "@/components/app/Shell";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SessionGate>
-      <JournalProvider>
-        <Shell>{children}</Shell>
-      </JournalProvider>
+      <DaysProvider>
+        <JournalProvider>
+          <Shell>{children}</Shell>
+        </JournalProvider>
+      </DaysProvider>
     </SessionGate>
   );
 }

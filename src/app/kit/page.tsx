@@ -176,7 +176,7 @@ export default function Kit() {
               <Stat label="Weight" value={<span className="m">182.4</span>} note="−1.2 lb this week" />
             </div>
             <Bar label="Protein" value={112} max={200} domain="food" />
-            <Bar label="Carbs" value={96} max={150} />
+            <Bar label="Carbs" value={96} max={150} color="var(--food-bar)" />
             <Card>
               <Row name="Eggs & toast" sub="22 g protein" value="470" />
               <Row name="Chicken bowl" sub="48 g protein" value="640" />

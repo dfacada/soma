@@ -12,25 +12,26 @@ export function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x
 export function noon(d = new Date()) { const x = new Date(d); x.setHours(12, 0, 0, 0); return x; }
 export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export type DayData = { checkin?: Checkin; log?: DayLog; activity?: ActivityDay; entries: number };
+export type DayData = { checkin?: Checkin; log?: DayLog; activity?: ActivityDay; weight?: number; entries: number };
 export type DayMap = Record<string, DayData>;
 
 export function emptyDay(): DayData { return { entries: 0 }; }
 
 /** Index the /days response by local day. */
-export function indexDays(days: { checkins: Checkin[]; dayLogs: DayLog[]; activity: ActivityDay[]; entries: EntryMeta[] }): DayMap {
+export function indexDays(days: { checkins: Checkin[]; dayLogs: DayLog[]; activity: ActivityDay[]; weight: { day: string; value: number }[]; entries: EntryMeta[] }): DayMap {
   const map: DayMap = {};
   const at = (k: string) => (map[k] ||= emptyDay());
   days.checkins.forEach((c) => { at(c.day).checkin = c; });
   days.dayLogs.forEach((l) => { at(l.day).log = l; });
   days.activity.forEach((a) => { at(a.day).activity = a; });
+  days.weight.forEach((w) => { at(w.day).weight = w.value; });
   days.entries.forEach((e) => { at(dayKey(new Date(e.createdMs))).entries++; });
   return map;
 }
 
 export type DayStatus = {
   checkinDone: boolean; journalDone: boolean; foodDone: boolean; activityDone: boolean;
-  meals: number; leftMeals: Meal[]; kcal: number;
+  meals: number; leftMeals: Meal[]; kcal: number; protein: number; carbs: number; fat: number;
   pushups: number; acts: number; actTotal: number;
   doneCount: number; closed: boolean;
   /** 0–1; food and activity count partially */
@@ -43,7 +44,10 @@ export function dayStatus(data: DayData | undefined, settings: Settings): DaySta
   const eaten = d.log?.meals || {};
   const leftMeals = MEALS.filter((m) => !eaten[m]);
   const meals = 4 - leftMeals.length;
-  const kcal = MEALS.reduce((n, m) => n + (eaten[m] ? settings.plan[m].kcal : 0), 0) + (d.log?.extras || []).reduce((n, x) => n + (x.kcal || 0), 0);
+  // What was eaten: the snapshot when there is one, the current plan for a bare `true` from before snapshots.
+  const ate = [...MEALS.filter((m) => eaten[m]).map((m) => (typeof eaten[m] === "object" ? eaten[m] : settings.plan[m]) as { kcal: number; protein?: number; carbs?: number; fat?: number }), ...(d.log?.extras || [])];
+  const total = (f: "kcal" | "protein" | "carbs" | "fat") => Math.round(ate.reduce((n, x) => n + (Number(x[f]) || 0), 0));
+  const kcal = total("kcal");
   const pushups = d.activity?.pushups || 0;
   const types = d.activity?.types || {};
   const acts = (pushups > 0 ? 1 : 0) + settings.activityTypes.filter((t) => types[t.key]).length;
@@ -56,7 +60,7 @@ export function dayStatus(data: DayData | undefined, settings: Settings): DaySta
   const doneCount = [checkinDone, journalDone, foodDone, activityDone].filter(Boolean).length;
   const ring = { checkin: checkinDone ? 1 : 0, journal: journalDone ? 1 : 0, food: meals / 4, activity: acts / actTotal };
   return {
-    checkinDone, journalDone, foodDone, activityDone, meals, leftMeals, kcal, pushups, acts, actTotal,
+    checkinDone, journalDone, foodDone, activityDone, meals, leftMeals, kcal, protein: total("protein"), carbs: total("carbs"), fat: total("fat"), pushups, acts, actTotal,
     doneCount, closed: doneCount === 4,
     progress: (ring.checkin + ring.journal + ring.food + ring.activity) / 4,
     ring,

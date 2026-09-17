@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/app/Shell";
+import { Food } from "@/components/app/Food";
 
 export default function FoodPage() {
-  return <ComingSoon title="Food" note="Meals, macros and weight. Tick meals off from Today for now." />;
+  return <Food />;
 }

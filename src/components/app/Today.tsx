@@ -7,14 +7,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Chip, DayGlyph, DayRing, Input, Medallion, Mini, RowHead, Sheet, Toast, type IconName, type MedallionState } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
-import { addDays, cap, dayKey, dayStatus, headline, noon, streak, WEEKDAYS } from "@/lib/today";
+import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS } from "@/lib/today";
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
 import { useSession } from "./Session";
-import { useDays } from "./useDays";
+import { useDays } from "./Days";
 import a from "./app.module.css";
 
-const WINDOW_DAYS = 60;
 const fmt = (n: number) => n.toLocaleString("en-US");
 const ACT_ICONS: Record<string, IconName> = { walk: "walk", gym: "barbell", run: "run" };
 
@@ -23,16 +22,7 @@ export function Today() {
   const { settings, displayName, me, saveSettings } = useSession();
   const journal = useJournal();
 
-  // Re-evaluate "today" when the tab comes back, so a phone left open overnight rolls over.
-  const [today, setToday] = useState(() => noon());
-  useEffect(() => {
-    const roll = () => { if (document.visibilityState === "visible") setToday((t) => (dayKey(t) === dayKey(new Date()) ? t : noon())); };
-    document.addEventListener("visibilitychange", roll);
-    return () => document.removeEventListener("visibilitychange", roll);
-  }, []);
-  const k = dayKey(today);
-
-  const { map, error, reload, unsaved, retry, change } = useDays(today, WINDOW_DAYS);
+  const { map, error, reload, unsaved, retry, change, today, todayKey: k, windowDays: WINDOW_DAYS } = useDays();
   const [checkinOpen, setCheckinOpen] = useState<boolean | null>(null);
   const [pushSheet, setPushSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -222,7 +212,7 @@ export function Today() {
             <div className={a.minis}>
               {MEALS.map((m) => (
                 <Mini key={m} domain="food" icon={m} label={`${cap(m)}: ${settings.plan[m].name}`} state={eaten[m] ? "on" : "empty"}
-                  onClick={() => change("day-logs", k, (d) => { d.log.meals[m] = !d.log.meals[m]; })} />
+                  onClick={() => change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; })} />
               ))}
             </div>
         </div>

@@ -96,4 +96,6 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 const member = [withUser, requireActive];
 const admin = [withUser, requireActive, requireAdmin];
 
-module.exports = { withUser, requireActive, requireAdmin, wrap, member, admin, findProfile, STATUSES, PROFILE_COLS };
+const isTestUser = (req) => req.user && req.user.id === TEST_USER.id;
+
+module.exports = { isTestUser, withUser, requireActive, requireAdmin, wrap, member, admin, findProfile, STATUSES, PROFILE_COLS };

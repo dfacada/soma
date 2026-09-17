@@ -3,7 +3,7 @@
 'use strict';
 
 const express = require('express');
-const { member, wrap } = require('../lib/auth');
+const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, listOwned, ownedRow, packJson, unpackJson, fitText, TEXT_MAX } = require('../lib/db');
 
 const router = express.Router();
@@ -40,7 +40,9 @@ router.post('/errors', member, wrap(async (req, res) => {
   const b = req.body || {};
   if (typeof b.message !== 'string' || !b.message) throw new HttpError(400, 'message is required');
   await req.admin.datastore().table('errors').insertRow({
-    user_id: req.user.id, message: clip(b.message, 255), context: clip(b.context, 100), detail: clip(b.detail, TEXT_MAX), resolved: 'false'
+    user_id: req.user.id, message: clip(b.message, 255), context: clip(b.context, 100), detail: clip(b.detail, TEXT_MAX),
+    // Rows from the synthetic test member are filed as handled so test runs never reach the admin inbox.
+    resolved: isTestUser(req) ? 'true' : 'false'
   });
   res.status(201).json({ ok: true });
 }));
@@ -48,7 +50,7 @@ router.post('/errors', member, wrap(async (req, res) => {
 router.post('/feedback', member, wrap(async (req, res) => {
   const body = fitText('body', req.body && req.body.body);
   if (!body || !body.trim()) throw new HttpError(400, 'body is required');
-  await req.admin.datastore().table('feedback').insertRow({ user_id: req.user.id, body, acknowledged: 'false' });
+  await req.admin.datastore().table('feedback').insertRow({ user_id: req.user.id, body, acknowledged: isTestUser(req) ? 'true' : 'false' });
   res.status(201).json({ ok: true });
 }));
 

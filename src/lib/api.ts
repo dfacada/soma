@@ -38,7 +38,10 @@ export type Profile = { rowId: string; displayName: string; role: "admin" | "mem
 export type Me = { id: string; email: string; name: string; profile: Profile };
 
 export type Checkin = { day: string; mood: string | null; habits: Record<string, boolean>; counts: Record<string, number> };
-export type DayLog = { day: string; meals: Record<string, boolean>; extras: { name: string; kcal: number; protein?: number }[] };
+export type Eaten = { name: string; kcal: number; protein: number; carbs?: number; fat?: number };
+export type Extra = { name: string; kcal: number; protein?: number; carbs?: number; fat?: number };
+/** A meal slot holds a snapshot of what was eaten, so swapping the plan later never rewrites past days. */
+export type DayLog = { day: string; meals: Record<string, Eaten | boolean>; extras: Extra[] };
 export type ActivityDay = { day: string; pushups: number | null; types: Record<string, boolean> };
 export type EntryMeta = { id: string; createdMs: number; hasAudio: boolean; hasPhoto: boolean; transcriptStatus: string };
 export type Days = {
