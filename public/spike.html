@@ -17,6 +17,7 @@
   section { background:var(--surface); border:1px solid var(--hair); border-radius:16px; padding:16px; margin-bottom:12px; }
   input { width:100%; font-size:16px; padding:10px 12px; margin-bottom:8px; border:1px solid var(--hair); border-radius:10px; }
   button { min-height:44px; padding:0 16px; font-size:16px; border-radius:12px; border:1px solid var(--ink); background:var(--ink); color:#fff; margin:4px 4px 4px 0; }
+  button:disabled { opacity:.5; }
   button.ghost { background:transparent; color:var(--ink); }
   #login iframe { width:100% !important; height:460px !important; border:none !important; }
   pre { font:12px/1.5 ui-monospace, Menlo, Consolas, monospace; white-space:pre-wrap; word-break:break-word; background:#ECEAE3; border-radius:10px; padding:12px; margin:0; max-height:50vh; overflow:auto; }
@@ -88,6 +89,7 @@
       var r = await catalyst.auth.isUserAuthenticated();
       user = r.content;
       $('who').textContent = 'Signed in as ' + user.email_id + ' · user_id ' + user.user_id;
+      $('signupBox').style.display = 'none'; $('signinBox').style.display = 'none';
       log('session ok', { user_id: user.user_id, email: user.email_id, status: user.status });
     } catch (e) {
       user = null;
@@ -98,7 +100,12 @@
   }
 
   async function token() {
-    var t = await catalyst.auth.generateAuthToken();
+    // generateAuthToken() never settles without a session, so gate on the session and cap the wait.
+    if (!user) throw new Error('not signed in');
+    var t = await Promise.race([
+      catalyst.auth.generateAuthToken(),
+      new Promise(function (_r, rej) { setTimeout(function () { rej(new Error('generateAuthToken timed out after 10 s')); }, 10000); })
+    ]);
     return t.access_token;
   }
 
@@ -115,10 +122,25 @@
     }
   }
 
+  // Disable a button while its handler runs and show the outcome next to it, so nothing gets tapped twice.
+  function run(id, fn) {
+    var b = $(id), label = b.textContent, note = document.createElement('span');
+    note.className = 'muted'; b.insertAdjacentElement('afterend', note);
+    b.onclick = async function () {
+      b.disabled = true; b.textContent = label + ' …'; note.textContent = '';
+      var before = $('log').textContent.length;
+      try { await fn(); } finally {
+        b.disabled = false; b.textContent = label;
+        var lines = $('log').textContent.slice(before).trim().split(String.fromCharCode(10));
+        note.textContent = ' ' + (lines[lines.length - 1] || '').slice(14, 110);
+      }
+    };
+  }
+
   $('btnCheck').onclick = check;
   $('btnOut').onclick = function () { catalyst.auth.signOut(location.origin + '/spike.html'); };
 
-  $('btnUp').onclick = async function () {
+  run('btnUp', async function () {
     try {
       var r = await catalyst.auth.signUp({
         first_name: $('fn').value.trim(), last_name: $('ln').value.trim(), email_id: $('em').value.trim(),
@@ -126,9 +148,9 @@
       });
       log('signUp →', r);
     } catch (e) { log('signUp failed:', errText(e)); }
-  };
+  });
 
-  $('btnMe').onclick = async function () {
+  run('btnMe', async function () {
     var tok;
     try { tok = await token(); log('generateAuthToken ok, length', tok.length); }
     catch (e) { log('generateAuthToken failed:', errText(e)); }
@@ -137,7 +159,7 @@
       await tryMe('Authorization: Bearer', { headers: { Authorization: 'Bearer ' + tok } });
     }
     await tryMe('cookies only', { credentials: 'include' });
-  };
+  });
 
   async function sha256(buf) {
     var d = await crypto.subtle.digest('SHA-256', buf);
@@ -154,7 +176,7 @@
     return (await res.json()).urls[0].url;
   }
 
-  $('btnUpload').onclick = async function () {
+  run('btnUpload', async function () {
     if (!user) return log('sign in first');
     try {
       var tok = await token();
@@ -178,7 +200,7 @@
       log('GET →', get.status, got.byteLength, 'bytes', Math.round(performance.now() - t0) + 'ms');
       log((await sha256(got)) === want ? 'PASS: bytes identical' : 'FAIL: hash mismatch');
     } catch (e) { log('upload test failed (bucket CORS?):', errText(e)); }
-  };
+  });
 
   $('btnCopy').onclick = function () { navigator.clipboard.writeText($('log').textContent).then(function () { log('copied'); }); };
 
