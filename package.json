@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/test-round.mjs && node --import ./scripts/ts-resolve.mjs scripts/test-insights.mjs",
+    "test": "node scripts/test-round.mjs && node --import ./scripts/ts-resolve.mjs scripts/test-insights.mjs && node --import ./scripts/ts-resolve.mjs scripts/test-today.mjs",
     "test:live": "node catalyst/test-api.js && node scripts/test-vault.mjs",
     "check": "tsc --noEmit && eslint && npm test"
   },

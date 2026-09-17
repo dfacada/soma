@@ -19,7 +19,7 @@ const map = {
 const i = insights(map, DEFAULT_SETTINGS, today, 14, 100);
 
 check("window and check-ins (day 20 is outside a 14-day window)", [i.days, i.checkedIn, i.closed], [14, 4, 1]);
-check("task rates are shares of the whole window", [i.rates.checkin, i.rates.journal, i.rates.food, i.rates.activity].map((r) => Math.round(r * 14)), [4, 2, 1, 2]);
+check("task rates are shares of the whole window", [i.rates.checkin, i.rates.journal, i.rates.food, i.rates.weight, i.rates.activity].map((r) => Math.round(r * 14)), [4, 2, 1, 2, 2]);
 check("good days: two, both with activity, one with all meals", i.good, { days: 2, withActivity: 2, withAllMeals: 1 });
 check("hard day over the drinks limit", i.hard, { days: 1, withActivity: 0, withAllMeals: 0, overLimit: 1, limitLabel: "Drinks" });
 check("activity baseline across checked-in days", i.baselineActivity, 0.5);

@@ -85,6 +85,13 @@ export function SettingsScreen() {
       </Card>
 
       <Card>
+        <span className="eb">Weight</span>
+        <Field name="Weight closes the day" help="On: logging your weight is one of the five things that close a day and keep the streak. Off: four things, and the weight card is still there.">
+          <Switch checked={settings.requireWeight} label="Weight closes the day" onChange={(v) => void save({ requireWeight: v }, v ? "Weight is required to close the day" : "Weight is optional")} />
+        </Field>
+      </Card>
+
+      <Card>
         <span className="eb">Food · quick snacks</span>
         <div className={a.chips}>
           {settings.snacks.map((s, i) => <Pill key={s.name + i} label={`${s.name} · ${s.kcal}`} onRemove={() => void save({ snacks: settings.snacks.filter((_, j) => j !== i) })} />)}

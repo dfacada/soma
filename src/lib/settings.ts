@@ -20,6 +20,8 @@ export type Settings = {
   bestStreak: number;
   /** Off until the user opts in: transcription is the one thing that sends plaintext audio off the device. */
   cloudTranscription: boolean;
+  /** Logging weight is one of the things that closes the day. On unless the user switches it off. */
+  requireWeight: boolean;
 };
 
 export const MEALS: Meal[] = ["breakfast", "lunch", "snack", "dinner"];
@@ -49,6 +51,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pushupTarget: 100,
   bestStreak: 0,
   cloudTranscription: false,
+  requireWeight: true,
 };
 
 /** The starter recipe book from the prototype. A user's own recipes (GET /recipes) are listed ahead of these. */
@@ -77,5 +80,6 @@ export function mergeSettings(stored: unknown): Settings {
     pushupTarget: Math.max(1, Math.round(num(s.pushupTarget, d.pushupTarget))),
     bestStreak: Math.round(num(s.bestStreak, 0)),
     cloudTranscription: s.cloudTranscription === true,
+    requireWeight: s.requireWeight !== false,
   };
 }

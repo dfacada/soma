@@ -43,6 +43,7 @@ export function InsightsScreen() {
         <Bar label="Check-in" value={pct(i.rates.checkin)} max={100} text={`${pct(i.rates.checkin)}%`} domain="journal" />
         <Bar label="Journal" value={pct(i.rates.journal)} max={100} text={`${pct(i.rates.journal)}%`} color="var(--journal-soft)" />
         <Bar label="All four meals" value={pct(i.rates.food)} max={100} text={`${pct(i.rates.food)}%`} domain="food" />
+        <Bar label="Weight" value={pct(i.rates.weight)} max={100} text={`${pct(i.rates.weight)}%`} color="var(--food-bar)" />
         <Bar label="Any activity" value={pct(i.rates.activity)} max={100} text={`${pct(i.rates.activity)}%`} domain="activity" />
       </Card>
 

@@ -12,7 +12,7 @@ export type Insights = {
   days: number;
   checkedIn: number; closed: number;
   /** Share of days each task was done, 0–1. */
-  rates: { checkin: number; journal: number; food: number; activity: number };
+  rates: { checkin: number; journal: number; food: number; weight: number; activity: number };
   moods: { label: string; count: number }[];
   good: { days: number; withActivity: number; withAllMeals: number };
   hard: { days: number; withActivity: number; withAllMeals: number; overLimit: number; limitLabel: string | null };
@@ -27,7 +27,7 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
   const keys = Array.from({ length: windowDays }, (_, i) => dayKey(addDays(today, i - (windowDays - 1))));
   const moodCount = new Map<string, number>();
   const out: Insights = {
-    days: windowDays, checkedIn: 0, closed: 0, rates: { checkin: 0, journal: 0, food: 0, activity: 0 }, moods: [],
+    days: windowDays, checkedIn: 0, closed: 0, rates: { checkin: 0, journal: 0, food: 0, weight: 0, activity: 0 }, moods: [],
     good: { days: 0, withActivity: 0, withAllMeals: 0 }, hard: { days: 0, withActivity: 0, withAllMeals: 0, overLimit: 0, limitLabel: null },
     baselineActivity: 0, food: { loggedDays: 0, avgKcal: 0, avgProtein: 0, onTarget: 0 }, pushups: { days: 0, total: 0, best: 0, hitDays: 0 }, weight: null,
   };
@@ -35,7 +35,7 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
   const limit = settings.habits.find((h) => h.type === "counter" && h.dir === "at_most" && h.goal);
   out.hard.limitLabel = limit ? limit.label : null;
 
-  const done = { checkin: 0, journal: 0, food: 0, activity: 0 };
+  const done = { checkin: 0, journal: 0, food: 0, weight: 0, activity: 0 };
   let kcal = 0, protein = 0, activeCheckedIn = 0;
   const weights: number[] = [];
 
@@ -45,6 +45,7 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
     if (st.checkinDone) done.checkin++;
     if (st.journalDone) done.journal++;
     if (st.foodDone) done.food++;
+    if (st.weightDone) done.weight++;
     if (st.activityDone) done.activity++;
     if (st.closed) out.closed++;
     if (d?.weight !== undefined) weights.push(d.weight);
@@ -71,7 +72,7 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
     if (bucket === out.hard && limit && (d?.checkin?.counts[limit.id] || 0) > (limit.goal || 0)) out.hard.overLimit++;
   }
 
-  out.rates = { checkin: done.checkin / windowDays, journal: done.journal / windowDays, food: done.food / windowDays, activity: done.activity / windowDays };
+  out.rates = { checkin: done.checkin / windowDays, journal: done.journal / windowDays, food: done.food / windowDays, weight: done.weight / windowDays, activity: done.activity / windowDays };
   out.moods = [...moodCount.entries()].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
   out.baselineActivity = out.checkedIn ? activeCheckedIn / out.checkedIn : 0;
   if (out.food.loggedDays) { out.food.avgKcal = Math.round(kcal / out.food.loggedDays); out.food.avgProtein = Math.round(protein / out.food.loggedDays); }

@@ -135,7 +135,7 @@ export default function Kit() {
         <div className={k.specimens}>
           <div className={k.phoneCol}>
             <div className={`${k.hero} ${closed ? k.heroClosed : ""}`}>
-              <DayRing progress={progress} closed={closed} />
+              <DayRing closed={closed} segments={[{ value: progress.checkin, color: "var(--journal)" }, { value: progress.journal, color: "var(--journal-soft)" }, { value: progress.food, color: "var(--food)" }, { value: progress.activity, color: "var(--activity)" }]} />
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <span className="d" style={{ fontSize: 26 }}>{closed ? "Day closed" : "Two to go"}</span>
                 <span className={k.heroSub}>Eat all four and reach 100 to see the closed state.</span>

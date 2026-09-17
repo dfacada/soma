@@ -11,6 +11,7 @@ import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS } from "@/l
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
 import { PushSheet } from "./PushSheet";
+import { WeightSheet } from "./WeightSheet";
 import { useRounds } from "./Rounds";
 import { useSession } from "./Session";
 import { useDays } from "./Days";
@@ -28,11 +29,13 @@ export function Today() {
   const { map, error, reload, unsaved, retry, change, today, todayKey: k, windowDays: WINDOW_DAYS } = useDays();
   const [checkinOpen, setCheckinOpen] = useState<boolean | null>(null);
   const [pushSheet, setPushSheet] = useState(false);
+  const [weightSheet, setWeightSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const say = useCallback((m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(null), 1800); }, []);
 
   const closePush = useCallback(() => setPushSheet(false), []);
+  const closeWeight = useCallback(() => setWeightSheet(false), []);
 
   // The server's count is from page load; the journal provider knows about entries recorded since, including
   // ones still waiting to upload. Whichever is higher is the truth for today.
@@ -103,6 +106,19 @@ export function Today() {
       : `${st.leftMeals.length} meals left · ${fmt(st.kcal)} kcal so far`;
   const foodState: MedallionState = st.foodDone ? "done" : st.meals ? "part" : "idle";
 
+  // ── Weight ──
+  // The most recent weight before today, for the one-tap "same as last" and the change since.
+  let lastWeight: number | null = null;
+  for (let i = 1; i <= WINDOW_DAYS && lastWeight === null; i++) lastWeight = days[dayKey(addDays(today, -i))]?.weight ?? null;
+  const weightSub = st.weight !== null
+    ? `${st.weight} lb${lastWeight === null ? "" : st.weight === lastWeight ? " · same as last" : ` · ${st.weight < lastWeight ? "↓" : "↑"}${Math.abs(st.weight - lastWeight).toFixed(1)} since last`}`
+    : lastWeight !== null ? `Last ${lastWeight} lb · tap to log today` : "Tap to log today’s weight.";
+  const saveWeight = (v: number | null) => {
+    change("weight", k, (d) => { d.weight.value = v; });
+    setWeightSheet(false);
+    say(v === null ? "Weight cleared" : `Weight logged · ${v} lb`);
+  };
+
   // ── Activity ──
   const pushLine = rest ? (st.pushups > 0 ? `${st.pushups} push-ups on a rest day` : "rest day for push-ups") : st.pushups >= target ? `${st.pushups} push-ups, target hit` : st.pushups > 0 ? `${st.pushups} of ${target} push-ups` : `${target} push-ups to do`;
   const actSub = `${st.acts ? `${st.acts} of ${st.actTotal} logged` : "Nothing yet"} · ${pushLine}`;
@@ -123,9 +139,9 @@ export function Today() {
         </div>
         <div className={a.heroMain}>
           <div className={a.ringWrap}>
-            <DayRing progress={st.ring} closed={st.closed} />
+            <DayRing segments={st.ring} closed={st.closed} />
             <div className={a.ringLabel}>
-              <span className="d" style={{ fontSize: 30 }}>{st.closed ? "4/4" : `${Math.round(st.progress * 100)}%`}</span>
+              <span className="d" style={{ fontSize: 30 }}>{st.closed ? `${st.taskCount}/${st.taskCount}` : `${Math.round(st.progress * 100)}%`}</span>
               <span className={`m ${a.heroMuted}`} style={{ fontSize: 10, marginTop: 4 }}>{st.closed ? "closed" : "of the day"}</span>
             </div>
           </div>
@@ -150,7 +166,7 @@ export function Today() {
               const done = i === 0 ? st.doneCount : dayStatus(days[dayKey(d)], settings).doneCount;
               return (
                 <div key={i} className={`${a.weekDay} ${i === 0 ? a.weekToday : ""}`}>
-                  <DayGlyph done={done} today={i === 0} />
+                  <DayGlyph done={done} total={st.taskCount} today={i === 0} />
                   <span>{i === 0 ? "Today" : WEEKDAYS[d.getDay()]}</span>
                 </div>
               );
@@ -223,6 +239,15 @@ export function Today() {
         </div>
       </Card>
 
+      <Card onClick={() => setWeightSheet(true)} aria-label="Log today’s weight">
+        <RowHead
+          lead={<Medallion domain="food" icon="scale" state={st.weight !== null ? "done" : "idle"} />}
+          title="Weight"
+          sub={weightSub}
+          trail={<span className={a.lnk} style={st.weight === null ? { color: "var(--food)" } : undefined}>{st.weight !== null ? "Change" : "Log"}</span>}
+        />
+      </Card>
+
       <Card>
         <div className={a.task}>
         <RowHead
@@ -242,6 +267,7 @@ export function Today() {
         </div>
       </Card>
 
+      <WeightSheet open={weightSheet} onClose={closeWeight} current={st.weight} last={lastWeight} onSave={saveWeight} />
       <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={rounds.dayNumber} onSave={savePushups} />
       <Toast message={toast} />
     </div>
