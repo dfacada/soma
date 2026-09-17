@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/app/Shell";
+import { JournalScreen } from "@/components/app/JournalScreen";
 
 export default function JournalPage() {
-  return <ComingSoon title="Journal" note="Voice entries, encrypted in your browser. Recording, the vault and transcripts land here next." />;
+  return <JournalScreen />;
 }

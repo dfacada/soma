@@ -8,8 +8,13 @@ const express = require('express');
 const { member, wrap } = require('../lib/auth');
 const { HttpError, select, upsert, needId, needToken, fitText, bool } = require('../lib/db');
 
-const BUCKETS = ['soma-entries', 'soma-audio', 'soma-photos', 'soma-drafts'];
-const ENTRY_BUCKETS = ['soma-entries', 'soma-audio', 'soma-photos'];
+// One bucket, one key layout: <user_id>/<kind>/<name>. Bucket CORS is console-only and per bucket, so a single
+// bucket means one allow-list per origin instead of four. (The bucket's name predates this; it holds every kind.)
+const BUCKET = 'soma-drafts';
+const KINDS = ['entries', 'audio', 'photos', 'drafts'];
+const ENTRY_KINDS = ['entries', 'audio', 'photos'];
+const NAME = /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,79}$/;
+const LEGACY_BUCKETS = ['soma-entries', 'soma-audio', 'soma-photos', 'soma-drafts']; // spike page only
 const SIGN_EXPIRY_S = 900;
 const TRANSCRIPT = ['none', 'pending', 'done', 'failed'];
 const B64 = /^[A-Za-z0-9+/_-]+={0,2}$/;
@@ -95,30 +100,43 @@ router.delete('/entries/:id', member, wrap(async (req, res) => {
   const rows = await select(req.admin, 'entries',
     `SELECT ROWID FROM entries WHERE entry_id = '${id}' AND user_id = ${needId(req.user.id)}`);
   if (!rows[0]) throw new HttpError(404, 'not found');
-  const key = req.user.id + '/' + id + '.enc';
-  const objects = await Promise.all(ENTRY_BUCKETS.map((name) =>
-    req.admin.stratus().bucket(name).deleteObject(key).then(() => name, () => null)));
+  const bucket = req.admin.stratus().bucket(BUCKET);
+  const objects = await Promise.all(ENTRY_KINDS.map((kind) =>
+    bucket.deleteObject(`${req.user.id}/${kind}/${id}.enc`).then(() => kind, () => null)));
   await req.admin.datastore().table('entries').deleteRow(rows[0].ROWID);
   res.json({ deleted: true, objects: objects.filter(Boolean) });
 }));
 
 // ── Batch pre-signed URLs so audio and draft chunks never pass through this function ──
-// Keys must live under the caller's own prefix. Expiry is 15 minutes.
+//   { kind: 'audio', names: ['e_123.enc'], method: 'PUT' | 'GET' }  →  <user_id>/audio/e_123.enc
+// The caller never supplies a path, only a kind and flat file names, so it cannot reach outside its own prefix.
 router.post('/sign', member, wrap(async (req, res) => {
-  const { bucket, keys, method } = req.body || {};
-  if (!BUCKETS.includes(bucket)) throw new HttpError(400, 'unknown bucket');
-  if (!Array.isArray(keys) || keys.length === 0 || keys.length > 100) throw new HttpError(400, '1–100 keys required');
-  const prefix = req.user.id + '/';
-  if (keys.some((k) => typeof k !== 'string' || k.length > 200 || !k.startsWith(prefix) || k.includes('..'))) {
-    throw new HttpError(403, 'keys must live under your own prefix');
+  const b = req.body || {};
+  const action = b.method === 'GET' ? 'GET' : 'PUT';
+  let bucketName = BUCKET;
+  let keys;
+  if (b.kind !== undefined) {
+    if (!KINDS.includes(b.kind)) throw new HttpError(400, 'unknown kind');
+    if (!Array.isArray(b.names) || b.names.length === 0 || b.names.length > 100) throw new HttpError(400, '1–100 names required');
+    if (b.names.some((n) => typeof n !== 'string' || !NAME.test(n) || n.includes('..'))) throw new HttpError(400, 'bad name');
+    keys = b.names.map((n) => `${req.user.id}/${b.kind}/${n}`);
+  } else {
+    // Legacy form used by public/spike.html; goes away with the spike cleanup.
+    if (!LEGACY_BUCKETS.includes(b.bucket)) throw new HttpError(400, 'unknown bucket');
+    if (!Array.isArray(b.keys) || b.keys.length === 0 || b.keys.length > 100) throw new HttpError(400, '1–100 keys required');
+    const prefix = req.user.id + '/';
+    if (b.keys.some((k) => typeof k !== 'string' || k.length > 200 || !k.startsWith(prefix) || k.includes('..'))) {
+      throw new HttpError(403, 'keys must live under your own prefix');
+    }
+    bucketName = b.bucket;
+    keys = b.keys;
   }
-  const action = method === 'GET' ? 'GET' : 'PUT';
-  const b = req.admin.stratus().bucket(bucket);
-  const urls = await Promise.all(keys.map(async (k) => {
-    const r = await b.generatePreSignedUrl(k, action, { expiryIn: SIGN_EXPIRY_S });
-    return { key: k, url: r.signature };
+  const bucket = req.admin.stratus().bucket(bucketName);
+  const urls = await Promise.all(keys.map(async (k, i) => {
+    const r = await bucket.generatePreSignedUrl(k, action, { expiryIn: SIGN_EXPIRY_S });
+    return { name: b.names ? b.names[i] : undefined, key: k, url: r.signature };
   }));
-  res.json({ bucket, method: action, expiresIn: SIGN_EXPIRY_S, urls });
+  res.json({ method: action, expiresIn: SIGN_EXPIRY_S, urls });
 }));
 
 module.exports = router;

@@ -66,5 +66,26 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .minis { display: flex; gap: 6px; margin-left: auto; }
 .unsaved { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; border-radius: var(--r-ctl); background: var(--surface-2); color: var(--ink); font-size: 13px; }
 
+/* ── Journal ── */
+.vaultForm { display: flex; flex-direction: column; gap: 10px; }
+.dayGroup { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; }
+.dayGroup > :first-child { padding: 0 4px; }
+.entryHead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.entryTags { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.entryActions { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; flex-wrap: wrap; }
+.transcript { font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.note { width: 100%; border-radius: var(--r-ctl); border: 1px solid var(--hairline); background: var(--field); padding: 12px 14px; font: inherit; font-size: 16px; line-height: 1.5; color: var(--ink); resize: vertical; }
+.player { display: flex; align-items: center; gap: 10px; }
+.play { width: 44px; height: 44px; border-radius: var(--r-pill); border: 1px solid var(--hairline); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ink); background: var(--surface); }
+.play:disabled { opacity: 0.5; }
+.pageHead .lnk { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
+/* Room for the floating mic so the last entry is never hidden behind it. */
+.journalPage { padding-bottom: calc(176px + var(--inset-bottom)); }
+.fab { position: fixed; left: 0; right: 0; bottom: calc(78px + var(--inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 30; }
+.fab > * { pointer-events: auto; }
+.recBadge { font-size: 12px; background: var(--ink); color: var(--bone); padding: 4px 10px; border-radius: var(--r-pill); }
+.recTime { font-size: 13px; color: var(--rec); font-weight: 500; }
+@media (min-width: 900px) { .fab { left: 232px; bottom: 32px; } .journalPage { padding-bottom: 140px; } }
+
 .pushRow { display: flex; gap: 8px; align-items: center; }
 .pushInput { text-align: center; font-size: 24px !important; height: 56px !important; font-family: var(--font-display) !important; font-weight: 600; }

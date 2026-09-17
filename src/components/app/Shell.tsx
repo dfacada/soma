@@ -4,8 +4,10 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { Sidebar, SideNote, TabBar, type Section } from "@/components/ui";
+import { Button, Icon, Sidebar, SideNote, TabBar, type Section } from "@/components/ui";
+import { clock } from "@/lib/journal";
 import { isDevIdentity } from "@/lib/catalyst";
+import { useJournal } from "./Journal";
 import { useSession } from "./Session";
 import a from "./app.module.css";
 
@@ -20,6 +22,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const current = sectionOf(usePathname());
   const { me } = useSession();
+  const journal = useJournal();
   const go = (s: Section) => router.push(PATHS[s]);
 
   return (
@@ -28,7 +31,12 @@ export function Shell({ children }: { children: ReactNode }) {
         className={a.sidebar}
         current={current}
         onSelect={go}
-        footer={<SideNote>{me.email}<br />{me.profile.role === "admin" ? "Admin" : "Member"}{isDevIdentity ? " · dev identity" : ""}</SideNote>}
+        footer={<>
+          <Button variant={journal.recording ? "danger" : "journal"} block onClick={() => journal.toggleRecording(null)}>
+            <Icon name="mic" />{journal.recording ? `Stop · ${clock(journal.seconds)}` : "Record an entry"}
+          </Button>
+          <SideNote>{me.email}<br />{me.profile.role === "admin" ? "Admin" : "Member"}{isDevIdentity ? " · dev identity" : ""}</SideNote>
+        </>}
       />
       <div className={a.content}>{children}</div>
       <TabBar className={a.tabbar} current={current} onSelect={go} />

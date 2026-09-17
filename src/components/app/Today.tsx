@@ -4,10 +4,12 @@
 // Structure and copy follow the prototype's viewToday.
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Chip, DayGlyph, DayRing, Input, Medallion, Mini, RowHead, Sheet, Toast, type IconName, type MedallionState } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
 import { addDays, cap, dayKey, dayStatus, headline, noon, streak, WEEKDAYS } from "@/lib/today";
+import { clock } from "@/lib/journal";
+import { useJournal } from "./Journal";
 import { useSession } from "./Session";
 import { useDays } from "./useDays";
 import a from "./app.module.css";
@@ -19,6 +21,7 @@ const ACT_ICONS: Record<string, IconName> = { walk: "walk", gym: "barbell", run:
 export function Today() {
   const router = useRouter();
   const { settings, displayName, me, saveSettings } = useSession();
+  const journal = useJournal();
 
   // Re-evaluate "today" when the tab comes back, so a phone left open overnight rolls over.
   const [today, setToday] = useState(() => noon());
@@ -38,8 +41,13 @@ export function Today() {
 
   const closePush = useCallback(() => setPushSheet(false), []);
 
-  const st = useMemo(() => dayStatus(map?.[k], settings), [map, k, settings]);
-  const run = useMemo(() => (map ? streak(map, settings, today, WINDOW_DAYS) : { now: 0, best: settings.bestStreak }), [map, settings, today]);
+  // The server's count is from page load; the journal provider knows about entries recorded since, including
+  // ones still waiting to upload. Whichever is higher is the truth for today.
+  const entriesToday = Math.max(map?.[k]?.entries || 0, journal.countOn(k) || 0);
+  // Cheap enough to recompute every render: one day's status and a 60-day walk.
+  const days = map ? { ...map, [k]: { ...(map[k] || { entries: 0 }), entries: entriesToday } } : null;
+  const st = dayStatus(days?.[k], settings);
+  const run = days ? streak(days, settings, today, WINDOW_DAYS) : { now: 0, best: settings.bestStreak };
 
   // Best streak outlives the 60-day window by being remembered in settings.
   useEffect(() => {
@@ -55,9 +63,9 @@ export function Today() {
       </div>
     );
   }
-  if (!map) return <div className={a.page}><span className="eb">Loading today</span></div>;
+  if (!map || !days) return <div className={a.page}><span className="eb">Loading today</span></div>;
 
-  const data = map[k];
+  const data = days[k];
   const checkin = data?.checkin;
   const eaten = data?.log?.meals || {};
   const types = data?.activity?.types || {};
@@ -80,6 +88,17 @@ export function Today() {
     setCheckinOpen(clearing);
     if (!clearing) say(`Checked in: ${label}`);
   };
+
+  // ── Journal ──
+  const journalSub = journal.recording
+    ? "Listening. Tap again when you are done."
+    : journal.vault === "none"
+      ? "Tap to make your vault, then record."
+      : journal.vault === "locked"
+        ? (st.journalDone ? `${entriesToday} entr${entriesToday === 1 ? "y" : "ies"} today · unlock to add another` : "Tap to unlock your vault and record.")
+        : st.journalDone
+          ? `${entriesToday} entr${entriesToday === 1 ? "y" : "ies"} today · tap to add another`
+          : "Tap here to record. Two minutes is plenty.";
 
   // ── Food ──
   const foodSub = st.foodDone
@@ -133,7 +152,7 @@ export function Today() {
           <div className={a.week}>
             {[6, 5, 4, 3, 2, 1, 0].map((i) => {
               const d = addDays(today, -i);
-              const done = i === 0 ? st.doneCount : dayStatus(map[dayKey(d)], settings).doneCount;
+              const done = i === 0 ? st.doneCount : dayStatus(days[dayKey(d)], settings).doneCount;
               return (
                 <div key={i} className={`${a.weekDay} ${i === 0 ? a.weekToday : ""}`}>
                   <DayGlyph done={done} today={i === 0} />
@@ -178,13 +197,17 @@ export function Today() {
         )}
       </Card>
 
-      {/* The Journal card is the record button. Recording arrives with the Journal screen (Glimpse modules). */}
-      <Card onClick={() => (st.journalDone ? router.push("/journal/") : say("Recording arrives with the Journal screen"))} aria-label="Record a journal entry">
+      {/* The Journal card is the record button: no floating mic on Today. The mood picked above rides along. */}
+      <Card recording={journal.recording} onClick={() => journal.toggleRecording(checkin?.mood ?? null)} aria-label={journal.recording ? "Stop recording" : "Record a journal entry"}>
         <RowHead
-          lead={<Medallion domain="journal" icon="mic" state={st.journalDone ? "done" : "idle"} />}
+          lead={<Medallion domain="journal" icon="mic" state={journal.recording ? "rec" : st.journalDone ? "done" : "idle"} />}
           title="Journal"
-          sub={st.journalDone ? `${data!.entries} entr${data!.entries === 1 ? "y" : "ies"} today · tap to open` : "Voice entries arrive with the Journal screen."}
-          trail={<span className={a.lnk} style={{ color: "var(--journal)" }}>{st.journalDone ? "Open" : "Soon"}</span>}
+          sub={journalSub}
+          trail={journal.recording
+            ? <span className={`m ${a.recTime}`}>{clock(journal.seconds)}</span>
+            : st.journalDone
+              ? <button type="button" className={a.lnk} onClick={(e) => { e.stopPropagation(); router.push("/journal/"); }}>Open</button>
+              : <span className={a.lnk} style={{ color: "var(--journal)" }}>{journal.vault === "open" ? "Record" : journal.vault === "none" ? "Set up" : "Unlock"}</span>}
         />
       </Card>
 

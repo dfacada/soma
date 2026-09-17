@@ -124,6 +124,18 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   check('new entry without createdMs is 400', r.status === 400, r.text);
 
   console.log('sign');
+  r = await call('POST', '/sign', { kind: 'audio', method: 'PUT', names: ['test-entry-0001.enc'] });
+  check('signs by kind under own prefix', r.status === 200 && r.json.urls[0].key === '999000000000000001/audio/test-entry-0001.enc' && /^https:\/\//.test(r.json.urls[0].url), r.json);
+  const put = await fetch(r.json.urls[0].url, { method: 'PUT', body: new Uint8Array([1, 2, 3, 4]), headers: { 'Content-Type': 'application/octet-stream' } });
+  r = await call('POST', '/sign', { kind: 'audio', method: 'GET', names: ['test-entry-0001.enc'] });
+  const got = new Uint8Array(await (await fetch(r.json.urls[0].url)).arrayBuffer());
+  check('signed PUT then GET round-trips bytes', put.status === 200 && same([...got], [1, 2, 3, 4]), { put: put.status, got: [...got] });
+  r = await call('POST', '/sign', { kind: 'audio', names: ['../x.enc'] });
+  check('kind form refuses traversal in a name', r.status === 400, r.text);
+  r = await call('POST', '/sign', { kind: 'audio', names: ['a/b.enc'] });
+  check('kind form refuses a slash in a name', r.status === 400, r.text);
+  r = await call('POST', '/sign', { kind: 'secrets', names: ['x.enc'] });
+  check('unknown kind is 400', r.status === 400, r.text);
   r = await call('POST', '/sign', { bucket: 'soma-drafts', method: 'PUT', keys: ['999000000000000001/test.bin'] });
   check('signs a key under own prefix', r.status === 200 && /^https:\/\//.test(r.json.urls[0].url), r.json);
   r = await call('POST', '/sign', { bucket: 'soma-drafts', method: 'GET', keys: ['120218000000022011/spike-25mb.bin'] });
@@ -150,7 +162,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('DELETE', '/recipes/' + recipeId);
   check('recipe deletes', r.status === 200, r.text);
   r = await call('DELETE', '/entries/' + entryId);
-  check('entry deletes', r.status === 200 && r.json.deleted === true, r.json);
+  check('entry deletes, with its audio object', r.status === 200 && r.json.deleted === true && r.json.objects.includes('audio'), r.json);
   for (const res of ['checkins', 'weight', 'activity', 'day-logs']) {
     await call('DELETE', `/${res}/${day}`);
     await call('DELETE', `/${res}/${day2}`);
