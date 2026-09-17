@@ -1,4 +1,6 @@
-// Google Health (what the Fitbit Web API became in 2026). Steps only, read-only.
+// Google Health (what the Fitbit Web API became in 2026). Steps and sleep, read-only.
+// Steps are activity: stored in activity.steps, server-readable. Sleep is health data: this function reads it from
+// Google and hands it to the browser, which stores it as vault ciphertext, one blob a month (health_months).
 //
 // Google will not issue or refresh a token without the client secret, so those calls have to happen here. What
 // this function never does is keep a token: the refresh token goes straight back to the browser, which encrypts
@@ -9,7 +11,11 @@
 //   POST   /google-health/auth-url     { redirectUri, state } → { url }
 //   POST   /google-health/exchange     { code, redirectUri } → { refreshToken }
 //   PUT    /google-health/link         { ciphertext }
-//   POST   /google-health/sync         { refreshToken, from, to } → { days: [{ day, steps }] }
+//   POST   /google-health/sync         { refreshToken, from, to } → { days: [{ day, steps }], sleep: [night] | null }
+//                                       sleep is null when the sleep permission was not granted; nothing of it is stored here
+//   GET    /health-months?from=YYYY-MM&to=YYYY-MM   [{ month, ciphertext }]
+//   PUT    /health-months/:month       { ciphertext }
+//   DELETE /health-months/:month
 //   POST   /google-health/disconnect   { refreshToken? }   revokes at Google when it can, always forgets the link
 
 'use strict';
@@ -21,6 +27,9 @@ const { HttpError, select, upsert, needId, needDay, fitText } = require('../lib/
 const router = express.Router();
 const PROVIDER = 'google-health';
 const SCOPE = 'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly';
+// Asked for, but not required: Google lets people untick a permission, and steps still work without this one.
+const SLEEP_SCOPE = 'https://www.googleapis.com/auth/googlehealth.sleep.readonly';
+const SLEEP_URL = 'https://health.googleapis.com/v4/users/me/dataTypes/sleep/dataPoints';
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
@@ -63,7 +72,7 @@ router.post('/google-health/auth-url', member, wrap(async (req, res) => {
   if (typeof b.state !== 'string' || !/^[A-Za-z0-9_-]{16,64}$/.test(b.state)) throw new HttpError(400, 'bad state');
   const redirect = needRedirect(b.redirectUri);
   const q = new URLSearchParams({
-    client_id: config().id, redirect_uri: redirect, response_type: 'code', scope: SCOPE, state: b.state,
+    client_id: config().id, redirect_uri: redirect, response_type: 'code', scope: SCOPE + ' ' + SLEEP_SCOPE, state: b.state,
     // offline + consent: Google only hands out a refresh token when it shows the consent screen.
     access_type: 'offline', prompt: 'consent', include_granted_scopes: 'false'
   });
@@ -81,7 +90,7 @@ router.post('/google-health/exchange', member, wrap(async (req, res) => {
   }
   if (!r.json.refresh_token) throw new HttpError(502, 'Google sent no refresh token; remove Soma under myaccount.google.com/connections and connect again');
   if (!String(r.json.scope || '').split(' ').includes(SCOPE)) throw new HttpError(409, 'the activity permission was not ticked on Google\'s screen; connect again and allow it');
-  res.json({ refreshToken: r.json.refresh_token });
+  res.json({ refreshToken: r.json.refresh_token, sleep: String(r.json.scope || '').split(' ').includes(SLEEP_SCOPE) });
 }));
 
 router.put('/google-health/link', member, wrap(async (req, res) => {
@@ -104,6 +113,61 @@ function readPoint(p) {
   return { day: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`, steps: Math.min(steps, 1000000) };
 }
 // CivilDateTime is { date: { year, month, day }, time? }. A bare { year, month, day } is a 400 (found on the first real sync).
+// One sleep session → the night it belongs to: the local day you woke up on. Naps are left out.
+// Shape as Google's own CLI reads it: sleep.interval, sleep.metadata.nap, sleep.summary.{minutesAsleep,…,stagesSummary[]}.
+function readNight(p) {
+  const s = p.sleep || {};
+  const iv = s.interval || {}, sum = s.summary || {};
+  if ((s.metadata && s.metadata.nap) || !iv.endTime) return null;
+  const local = (iso, offset) => { const t = Date.parse(iso); return Number.isFinite(t) ? new Date(t + (parseInt(offset, 10) || 0) * 1000).toISOString() : null; };
+  const end = local(iv.endTime, iv.endUtcOffset), start = local(iv.startTime, iv.startUtcOffset);
+  const asleep = Math.round(Number(sum.minutesAsleep));
+  if (!end || !Number.isFinite(asleep) || asleep <= 0) return null;
+  const stage = (name) => Math.round((sum.stagesSummary || []).filter((x) => String(x.type || '').toUpperCase().includes(name)).reduce((n, x) => n + (Number(x.minutes) || 0), 0));
+  return {
+    day: end.slice(0, 10), asleep, awake: Math.round(Number(sum.minutesAwake)) || 0, inBed: Math.round(Number(sum.minutesInSleepPeriod)) || 0,
+    deep: stage('DEEP'), rem: stage('REM'), light: stage('LIGHT'), start: start ? start.slice(11, 16) : '', end: end.slice(11, 16)
+  };
+}
+// Two sessions ending on one day (woke at 4, slept again) are one night: minutes add up, the clock runs first start to last end.
+function mergeNights(list) {
+  const byDay = new Map();
+  for (const n of list.sort((a, b) => (a.day + a.end < b.day + b.end ? -1 : 1))) {
+    const had = byDay.get(n.day);
+    if (!had) { byDay.set(n.day, n); continue; }
+    for (const f of ['asleep', 'awake', 'inBed', 'deep', 'rem', 'light']) had[f] += n[f];
+    had.end = n.end;
+  }
+  return [...byDay.values()];
+}
+
+// Returns null when the token has no sleep permission: the caller treats that as "not granted", not as a failure.
+async function fetchSleep(accessToken, from, end) {
+  const filter = `sleep.interval.civil_end_time >= "${from}T00:00:00" AND sleep.interval.civil_end_time < "${end}T00:00:00"`;
+  const points = [];
+  let pageToken;
+  for (let page = 0; page < 8; page++) {
+    // Google caps sleep at 25 sessions a page.
+    const q = new URLSearchParams(Object.assign({ filter, pageSize: '25' }, pageToken ? { pageToken } : {}));
+    const r = await google(SLEEP_URL + '?' + q.toString(), { headers: { authorization: 'Bearer ' + accessToken, accept: 'application/json' } });
+    if (r.status === 401 || r.status === 403) return null;
+    if (!r.ok) {
+      const e = r.json && r.json.error;
+      console.error(JSON.stringify({ action: 'gh_sleep', status: r.status, error: e && e.message, details: e && e.details, from, end }));
+      throw new HttpError(502, 'Google Health did not return sleep' + (e && e.message ? ': ' + String(e.message).slice(0, 200) : ''));
+    }
+    points.push(...((r.json && r.json.dataPoints) || []));
+    pageToken = r.json && r.json.nextPageToken;
+    if (!pageToken) break;
+  }
+  const nights = points.map(readNight).filter(Boolean);
+  if (points.length && !nights.length) {
+    const s = points[0].sleep || {};
+    console.error(JSON.stringify({ action: 'gh_sleep_shape', keys: Object.keys(points[0]), sleep: Object.keys(s), interval: Object.keys(s.interval || {}), summary: Object.keys(s.summary || {}) }));
+  }
+  return mergeNights(nights);
+}
+
 const civil = (day) => ({ date: { year: Number(day.slice(0, 4)), month: Number(day.slice(5, 7)), day: Number(day.slice(8, 10)) } });
 
 router.post('/google-health/sync', member, wrap(async (req, res) => {
@@ -124,6 +188,8 @@ router.post('/google-health/sync', member, wrap(async (req, res) => {
 
   // The end of a civil range is exclusive, so ask for one day past `to`.
   const end = new Date(Date.parse(to) + 86400000).toISOString().slice(0, 10);
+  // Sleep runs alongside the steps pages. Its failure must not cost the steps, so it is settled, not awaited bare.
+  const sleeping = fetchSleep(t.json.access_token, from, end).then((nights) => ({ nights }), (error) => ({ error }));
   const points = [];
   let pageToken;
   for (let page = 0; page < 5; page++) {
@@ -166,7 +232,33 @@ router.post('/google-health/sync', member, wrap(async (req, res) => {
       for (const v of inserts) await upsert(req.admin, 'activity', `SELECT ROWID FROM activity WHERE ukey = '${v.ukey}'`, v);
     }
   }
-  res.json({ days, written: updates.length + inserts.length });
+  const slept = await sleeping;
+  res.json({ days, written: updates.length + inserts.length, sleep: slept.error ? null : slept.nights, sleepError: slept.error ? slept.error.message : null });
+}));
+
+// ── Encrypted health data, one blob per user per month. The server cannot read these and never tries. ──
+const needMonth = (v) => { if (typeof v !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(v)) throw new HttpError(400, 'month must be YYYY-MM'); return v; };
+
+router.get('/health-months', member, wrap(async (req, res) => {
+  const from = needMonth(req.query.from), to = needMonth(req.query.to);
+  if (from > to) throw new HttpError(400, 'from is after to');
+  const rows = await select(req.admin, 'health_months', `SELECT ym, ciphertext FROM health_months WHERE user_id = ${needId(req.user.id)} AND ym >= '${from}' AND ym <= '${to}' ORDER BY ym ASC LIMIT 36`);
+  res.json({ months: rows.map((r) => ({ month: r.ym, ciphertext: r.ciphertext })) });
+}));
+
+router.put('/health-months/:month', member, wrap(async (req, res) => {
+  const month = needMonth(req.params.month);
+  const ciphertext = fitText('ciphertext', (req.body || {}).ciphertext);
+  if (!ciphertext || !/^[A-Za-z0-9+/=]{40,}$/.test(ciphertext)) throw new HttpError(400, 'ciphertext must be base64');
+  const key = needId(req.user.id) + ':' + month;
+  await upsert(req.admin, 'health_months', `SELECT ROWID FROM health_months WHERE ukey = '${key}'`, { user_id: req.user.id, ym: month, ukey: key, ciphertext });
+  res.json({ ok: true });
+}));
+
+router.delete('/health-months/:month', member, wrap(async (req, res) => {
+  const rows = await select(req.admin, 'health_months', `SELECT ROWID FROM health_months WHERE ukey = '${needId(req.user.id)}:${needMonth(req.params.month)}'`);
+  if (rows[0]) await req.admin.datastore().table('health_months').deleteRow(rows[0].ROWID);
+  res.json({ deleted: Boolean(rows[0]) });
 }));
 
 router.post('/google-health/disconnect', member, wrap(async (req, res) => {
@@ -182,3 +274,5 @@ router.post('/google-health/disconnect', member, wrap(async (req, res) => {
 }));
 
 module.exports = router;
+// For scripts/test-health-parse.mjs: the parsers are pure.
+module.exports.parse = { readPoint, readNight, mergeNights };

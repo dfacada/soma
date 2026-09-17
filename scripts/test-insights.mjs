@@ -29,5 +29,31 @@ check("push-ups: total, best and target days", i.pushups, { days: 2, total: 140,
 check("weight change runs oldest to newest", i.weight, { first: 182.5, last: 181, change: -1.5, points: 2 });
 check("an empty window is all zeros, no NaN", JSON.stringify(insights({}, DEFAULT_SETTINGS, today, 30, 100)).includes("null,") || !JSON.stringify(insights({}, DEFAULT_SETTINGS, today, 30, 100)).includes("NaN"), true);
 
+// ── Sleep and "what best days have in common": four good days, four others, eight known nights.
+console.log("sleep and factors");
+const ci = (n, mood, habits = {}) => ({ day: day(n), mood, habits, counts: {} });
+const night = (asleep, start) => ({ asleep, awake: 30, inBed: asleep + 30, deep: 60, rem: 90, light: asleep - 150, start, end: "07:00" });
+const walk = DEFAULT_SETTINGS.activityTypes[0];
+const big = {}, nights = {};
+[["Focused", 470, "22:50", true, 9000], ["Great", 455, "23:10", true, 8500], ["Peaceful", 430, "23:40", true, 4000], ["Focused", 380, "00:20", false, 8200],
+ ["Down", 340, "01:10", false, 3000], ["Anxious", 350, "00:40", false, 2500], ["Normal", 400, "23:30", true, 5000], ["Tired", 300, "01:30", false, null]].forEach(([mood, asleep, start, walked, steps], n) => {
+  big[day(n)] = { checkin: ci(n, mood), activity: { day: day(n), pushups: null, types: { [walk.key]: walked }, steps }, entries: 0 };
+  nights[day(n)] = night(asleep, start);
+});
+const s = insights(big, DEFAULT_SETTINGS, today, 14, 100, nights);
+check("sleep: nights, average, the night before good and hard days", [s.sleep.nights, s.sleep.avg, s.sleep.goodAvg, s.sleep.hardAvg], [8, 391, 434, 345]);
+check("sleep buckets count checked-in nights and how many were good days", s.sleep.buckets.map((b) => [b.nights, b.good]), [[4, 1], [2, 1], [2, 2]]);
+check("hard days after a night under six hours", [s.sleep.hardShort, s.sleep.hardNights], [2, 2]);
+const f = (label) => s.factors.find((x) => x.label === label);
+check("a factor is counted on both sides", f("Slept 7 hours or more"), { label: "Slept 7 hours or more", good: 3, goodDays: 4, rest: 0, restDays: 4, lift: 0.75 });
+check("asleep before midnight reads the clock across midnight", [f("Asleep before midnight").good, f("Asleep before midnight").rest], [3, 1]);
+check("the activity type is a factor under its own name", [f(walk.name).good, f(walk.name).rest], [3, 1]);
+check("unknown steps are left out of both sides, not counted as a miss", [f("8,000 steps or more").goodDays, f("8,000 steps or more").restDays, f("8,000 steps or more").good], [4, 3, 3]);
+check("factors are sorted, strongest on good days first", s.factors[0].label, "Slept 7 hours or more");
+check("a factor with too few days on one side is not compared", f("Hit the push-up target"), undefined);
+check("steps average skips unknown days", s.steps, { days: 7, avg: Math.round((9000 + 8500 + 4000 + 8200 + 3000 + 2500 + 5000) / 7) });
+const bare = insights(big, DEFAULT_SETTINGS, today, 14, 100);
+check("without nights there is no sleep insight and no sleep factor", [bare.sleep, bare.factors.some((x) => x.label.startsWith("Slept"))], [null, false]);
+
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

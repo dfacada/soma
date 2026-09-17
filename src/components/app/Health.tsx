@@ -1,12 +1,13 @@
 "use client";
 
-// Google Health connection (Fitbit steps). Sits under the journal provider because the refresh token is vault
+// Google Health connection (Fitbit steps and sleep). Sits under the journal provider because the refresh token is vault
 // ciphertext: connecting and syncing both need the vault open. Steps land in the shared day map, so Activity
-// shows them the moment a sync returns.
+// shows them the moment a sync returns. Sleep never touches the day map: it is decrypted here, held in memory
+// while the vault is open, and written back as ciphertext a month at a time.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ApiError } from "@/lib/api";
-import { disconnect as dropLink, exchangeCode, fetchLink, lastSync, saveLink, stampSync, startConnect, syncSteps, takeOAuthReturn, SYNC_EVERY_MS, type HealthLink, type OAuthReturn, type Sealed } from "@/lib/health";
+import { disconnect as dropLink, exchangeCode, fetchLink, fetchMonths, lastSync, monthOf, noteSleepGranted, saveLink, saveMonth, sleepGranted, stampSync, startConnect, syncHealth, takeOAuthReturn, SYNC_EVERY_MS, type HealthLink, type Nights, type OAuthReturn, type Sealed } from "@/lib/health";
 import { addDays, dayKey, noon } from "@/lib/today";
 import { useDays } from "./Days";
 import { useJournal } from "./Journal";
@@ -17,6 +18,10 @@ type Health = {
   status: HealthStatus;
   syncing: boolean;
   lastSyncMs: number;
+  /** Nights by wake-up day. Null while the vault is closed or nothing is loaded yet. */
+  nights: Nights | null;
+  /** Whether Google lets this connection read sleep. Null until a sync has answered. */
+  sleepAllowed: boolean | null;
   connect: () => void;
   disconnect: () => Promise<void>;
   syncNow: () => void;
@@ -45,6 +50,14 @@ async function completeConnect(code: string, seal: (value: unknown) => Promise<s
   return { ciphertext, createdMs: Date.now() };
 }
 
+/** Every stored night in the months that cover the window. A month sealed by an older vault is skipped. */
+async function loadNights(unseal: <T>(b64: string) => Promise<T>): Promise<Nights> {
+  const today = noon();
+  const { months } = await fetchMonths(monthOf(dayKey(addDays(today, -BACKFILL_DAYS - 2))), monthOf(dayKey(today)));
+  const parts = await Promise.all(months.map((m) => unseal<Nights>(m.ciphertext).catch(() => ({} as Nights))));
+  return Object.assign({}, ...parts);
+}
+
 export function HealthProvider({ children }: { children: ReactNode }) {
   const { me } = useSession();
   const { vault, openVault, seal, unseal, say } = useJournal();
@@ -55,6 +68,9 @@ export function HealthProvider({ children }: { children: ReactNode }) {
   const [stale, setStale] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncMs, setLastSyncMs] = useState(() => lastSync(userId));
+  const [nights, setNights] = useState<Nights | null>(null);
+  const [sleepAllowed, setSleepAllowed] = useState<boolean | null>(() => sleepGranted(userId));
+  const held = useRef<Nights | null>(null);
   const busy = useRef(false);
 
   useEffect(() => {
@@ -72,8 +88,26 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       // Ciphertext from a vault that has since been replaced cannot be opened: the same fix as a revoked token.
       try { token = (await unseal<Sealed>(link.ciphertext)).refreshToken; } catch { setStale(true); return; }
       const today = noon();
-      const res = await syncSteps(token, dayKey(addDays(today, -span)), dayKey(today));
+      const res = await syncHealth(token, dayKey(addDays(today, -span)), dayKey(today));
       applySteps(res.days);
+      if (res.sleep) {
+        // Merge into what is stored, then re-seal only the months that changed. The stored months are loaded first,
+        // so a sync can never write a month back with nights missing.
+        const base = held.current ?? await loadNights(unseal);
+        const next = { ...base };
+        const touched = new Set<string>();
+        for (const { day, ...night } of res.sleep) {
+          if (JSON.stringify(next[day]) !== JSON.stringify(night)) { next[day] = night; touched.add(monthOf(day)); }
+        }
+        for (const month of touched) {
+          const slice = Object.fromEntries(Object.entries(next).filter(([day]) => monthOf(day) === month));
+          await saveMonth(month, await seal(slice));
+        }
+        held.current = next;
+        setNights(next);
+      }
+      // A failed sleep read says nothing about the permission; only a clean answer does.
+      if (!res.sleepError) { noteSleepGranted(userId, res.sleep !== null); setSleepAllowed(res.sleep !== null); }
       const now = Date.now();
       stampSync(userId, now);
       setLastSyncMs(now);
@@ -86,7 +120,7 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       busy.current = false;
       setSyncing(false);
     }
-  }, [userId, unseal, applySteps, say]);
+  }, [userId, seal, unseal, applySteps, say]);
 
   useEffect(() => {
     if (oauthReturn === undefined) oauthReturn = takeOAuthReturn();
@@ -103,6 +137,13 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       void sync(link, BACKFILL_DAYS, true);
     }, (e) => say(e instanceof ApiError ? e.message : "Couldn't finish connecting"));
   }, [vault, openVault, say, seal, sync]);
+
+  // Stored nights are readable as soon as the vault opens, connected or not, and gone the moment it locks.
+  useEffect(() => {
+    let alive = true;
+    if (vault === "open") loadNights(unseal).then((n) => { if (alive && !held.current) { held.current = n; setNights(n); } }, () => undefined);
+    return () => { alive = false; held.current = null; setNights(null); };
+  }, [vault, unseal, userId]);
 
   const link = info?.link ?? null;
   useEffect(() => {
@@ -128,6 +169,8 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       setStale(false);
       stampSync(userId, null);
       setLastSyncMs(0);
+      noteSleepGranted(userId, null);
+      setSleepAllowed(null);
       say(res.revoked ? "Disconnected, and access revoked at Google" : "Disconnected. To revoke access too, remove Soma in your Google account.");
     } catch { say("Couldn't disconnect"); }
   }, [link, vault, unseal, userId, say]);
@@ -139,6 +182,6 @@ export function HealthProvider({ children }: { children: ReactNode }) {
   }, [link, vault, openVault, sync, userId]);
 
   const status: HealthStatus = !info ? "loading" : !info.link ? (info.configured ? "off" : "unconfigured") : stale ? "reconnect" : "connected";
-  const value = useMemo<Health>(() => ({ status, syncing, lastSyncMs, connect, disconnect, syncNow }), [status, syncing, lastSyncMs, connect, disconnect, syncNow]);
+  const value = useMemo<Health>(() => ({ status, syncing, lastSyncMs, nights, sleepAllowed, connect, disconnect, syncNow }), [status, syncing, lastSyncMs, nights, sleepAllowed, connect, disconnect, syncNow]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

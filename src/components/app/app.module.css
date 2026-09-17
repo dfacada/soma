@@ -106,6 +106,12 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .actList { gap: 0 !important; }
 .actRow { display: flex; align-items: center; gap: 12px; min-height: 56px; }
 .actRow + .actRow { border-top: 1px solid var(--surface-2); }
+.factor { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; }
+.factor + .factor { border-top: 1px solid var(--surface-2); }
+.factorHead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; font-weight: 500; }
+.factorHead :global(.m) { font-size: 12px; font-weight: 400; white-space: nowrap; }
+.factorTrack { display: flex; flex-direction: column; gap: 2px; }
+.factorTrack i { display: block; height: 5px; min-width: 2px; border-radius: 999px; }
 .stepsRow { padding-top: 12px; border-top: 1px solid var(--surface-2); min-height: 44px; display: flex; flex-direction: column; justify-content: center; }
 .actDot { width: 8px; height: 8px; border-radius: var(--r-pill); flex-shrink: 0; }
 .roundIntro { display: flex; align-items: center; gap: 14px; }

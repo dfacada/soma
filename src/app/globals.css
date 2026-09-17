@@ -20,6 +20,7 @@
   /* Domain hues, equal weight. Used only where they carry information. */
   --journal: #5F5BBF;
   --journal-soft: #8F8CD3;
+  --journal-pale: #C9C7E9;
   --journal-tint: #ECEBF8;
   --journal-ink: #3F3C8F;
   --food: #2C8A5E;

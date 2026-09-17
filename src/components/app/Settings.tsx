@@ -139,11 +139,11 @@ const HEALTH_LINE = {
   loading: "Checking…",
   unconfigured: "Not available yet. David has to finish the Google setup first.",
   off: "Not connected.",
-  connected: "Connected. Steps refresh every half hour while Soma is open and your vault is unlocked.",
-  reconnect: "Google has ended the connection. Connect again to keep steps coming.",
+  connected: "Connected. Steps and sleep refresh every half hour while Soma is open and your vault is unlocked.",
+  reconnect: "Google has ended the connection. Connect again to keep steps and sleep coming.",
 } as const;
 
-/** Fitbit now reports through Google Health. Read-only, steps only; the token is stored as vault ciphertext. */
+/** Fitbit now reports through Google Health. Read-only steps and sleep; the token and the sleep are vault ciphertext. */
 function HealthCard({ steps, onSteps }: { steps: number; onSteps: (n: number) => void }) {
   const health = useHealth();
   const s = health.status;
@@ -152,16 +152,21 @@ function HealthCard({ steps, onSteps }: { steps: number; onSteps: (n: number) =>
   return (
     <Card>
       <span className="eb">Fitbit · Google Health</span>
-      <Field name="Steps from your tracker" help={HEALTH_LINE[s] + (s === "connected" && when ? ` Last synced ${when}.` : "")}>
+      <Field name="Steps and sleep from your tracker" help={HEALTH_LINE[s] + (s === "connected" && when ? ` Last synced ${when}.` : "")}>
         {s === "off" || s === "reconnect"
           ? <Button size="sm" variant="activity" onClick={health.connect}>{s === "off" ? "Connect" : "Reconnect"}</Button>
           : s === "connected" ? <Button size="sm" variant="secondary" disabled={health.syncing} onClick={health.syncNow}>{health.syncing ? "Syncing…" : "Sync now"}</Button> : null}
       </Field>
+      {s === "connected" && health.sleepAllowed === false && (
+        <Field name="Sleep is not included yet" help="This connection was made without the sleep permission. Reconnect and allow sleep on Google's screen; Insights then compares your days with the night before.">
+          <Button size="sm" variant="journal" onClick={health.connect}>Reconnect</Button>
+        </Field>
+      )}
       <Field name="Steps goal" help="The bar on Activity fills toward this.">
         <Commit numeric value={String(steps)} label="Steps goal" onCommit={(v) => { const n = Number(v); if (n >= 1000 && n <= 40000 && n !== steps) onSteps(n); }} />
       </Field>
       {linked && <div><button type="button" className={a.lnk} style={{ minHeight: 44 }} onClick={() => void health.disconnect()}>Disconnect</button></div>}
-      <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Fitbit moved to Google Health in 2026, so you sign in with the Google account your Fitbit uses. Soma asks for one permission, reading activity, and only keeps daily step totals. The connection is encrypted with your vault key; the server uses it for the moment of a sync and never stores it.</p>
+      <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Fitbit moved to Google Health in 2026, so you sign in with the Google account your Fitbit uses. Soma asks to read two things, activity and sleep, and keeps daily step totals and one line per night (time asleep, stages, bed and wake times). There is no sleep score: Google does not share Fitbit’s. Sleep and the connection itself are encrypted with your vault key, so the server cannot read either.</p>
     </Card>
   );
 }
