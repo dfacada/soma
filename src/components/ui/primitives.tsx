@@ -130,13 +130,13 @@ export function Stat({ label, value, note }: { label: string; value: ReactNode; 
 }
 
 /** `domain` paints the fill in that hue; `color` overrides it (the secondary food bar for carbs and fat). */
-export function Bar({ label, value, max, unit = "g", domain, color }: { label: string; value: number; max: number; unit?: string; domain?: Domain; color?: string }) {
+export function Bar({ label, value, max, unit = "g", domain, color, text }: { label: string; value: number; max: number; unit?: string; domain?: Domain; color?: string; /** Replaces the "value / max unit" readout. */ text?: string }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
     <div className={cx(s.bar, domain && s[domain])}>
       <div className={s.barHead}>
         <span>{label}</span>
-        <span>{value} / {max} {unit}</span>
+        <span>{text ?? `${value} / ${max} ${unit}`}</span>
       </div>
       <div className={s.barTrack} role="progressbar" aria-label={label} aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
         <div className={s.barFill} style={{ width: pct + "%", background: color }} />

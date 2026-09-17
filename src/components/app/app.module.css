@@ -135,6 +135,18 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .restCell { aspect-ratio: 1; min-height: 30px; border-radius: 6px; border: 1px solid var(--hairline); background: var(--surface); font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
 .restOn { background: var(--ink); border-color: var(--ink); color: var(--bone); }
 
+/* ── Insights ── */
+.signalHead { display: flex; align-items: center; gap: 8px; }
+.signalHead i { width: 8px; height: 8px; border-radius: var(--r-pill); }
+.signal { font-size: 14px; line-height: 1.55; }
+.moodRow { display: flex; align-items: center; gap: 10px; min-height: 24px; }
+.moodLabel { width: 92px; font-size: 13px; flex-shrink: 0; }
+.moodTrack { flex: 1; height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
+.moodFill { height: 100%; border-radius: var(--r-pill); background: var(--journal); }
+.statGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.privacy { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--r-card); background: var(--journal-tint); color: var(--journal-ink); font-size: 12px; line-height: 1.45; }
+.privacy svg { margin-top: 1px; }
+
 /* ── Settings and admin ── */
 .habitRow { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
 .habitRow + .habitRow { border-top: 1px solid var(--surface-2); }

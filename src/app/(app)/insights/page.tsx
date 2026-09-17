@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/app/Shell";
+import { InsightsScreen } from "@/components/app/Insights";
 
 export default function InsightsPage() {
-  return <ComingSoon title="Insights" note="Patterns across mood, food and activity, once there is some history to read." />;
+  return <InsightsScreen />;
 }

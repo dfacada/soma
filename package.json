@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node scripts/test-round.mjs && node --import ./scripts/ts-resolve.mjs scripts/test-insights.mjs",
+    "test:live": "node catalyst/test-api.js && node scripts/test-vault.mjs",
+    "check": "tsc --noEmit && eslint && npm test"
   },
   "dependencies": {
     "next": "16.3.5",
