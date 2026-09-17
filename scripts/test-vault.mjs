@@ -53,6 +53,18 @@ const down = new Uint8Array(await (await fetch(r.json.urls[0].url)).arrayBuffer(
 check("what Stratus holds is ciphertext", sameBytes(down, enc) && !sameBytes(down.slice(13, 13 + 64), big.slice(0, 64)));
 check("the other device decrypts it byte for byte", sameBytes(new Uint8Array(await decryptBytes(fresh, down)), big));
 
+// Re-saving is the common case (a note, a transcript). Stratus answers a second PUT to the same key with 409
+// unless it carries `overwrite: true`; this is the bug that broke the first real transcription.
+const again2 = await encryptBytes(key, new TextEncoder().encode("edited"));
+r = await call("POST", "/sign", { kind: "audio", method: "PUT", names: ["vault-test-0001.enc"] });
+const bare = await fetch(r.json.urls[0].url, { method: "PUT", body: again2, headers: { "Content-Type": "application/octet-stream" } });
+check("a second PUT without the overwrite header is refused", bare.status === 409, bare.status);
+r = await call("POST", "/sign", { kind: "audio", method: "PUT", names: ["vault-test-0001.enc"] });
+const over = await fetch(r.json.urls[0].url, { method: "PUT", body: again2, headers: { "Content-Type": "application/octet-stream", overwrite: "true" } });
+r = await call("POST", "/sign", { kind: "audio", method: "GET", names: ["vault-test-0001.enc"] });
+const reread = new TextDecoder().decode(await decryptBytes(fresh, new Uint8Array(await (await fetch(r.json.urls[0].url)).arrayBuffer())));
+check("with the header the object is replaced and decrypts to the new content", over.status === 200 && reread === "edited", { status: over.status, reread });
+
 // cleanup: an entry row is what owns the object, so create one and delete it
 await call("PUT", "/entries/vault-test-0001", { createdMs: 981158400000, hasAudio: true });
 r = await call("DELETE", "/entries/vault-test-0001");

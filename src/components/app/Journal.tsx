@@ -149,7 +149,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     try {
       const text = await transcribe(entry.id, audio);
       const next: JournalEntry = { ...entry, transcript: text, transcriptStatus: text ? "done" : "none", updatedAt: new Date().toISOString() };
-      await saveEntry(k, next);
+      // Two different failures, two different messages: the transcript exists at this point, it just is not stored yet.
+      try { await saveEntry(k, next); }
+      catch { return say("Transcribed, but the transcript couldn't be saved. Try again."); }
       setLoaded((cur) => cur && cur.map((l) => (l.meta.id === entry.id ? { ...l, entry: next } : l)));
       say(text ? "Transcript ready" : "Nothing could be made out in that recording");
     } catch (e) {

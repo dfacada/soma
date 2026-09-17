@@ -92,6 +92,9 @@ Pass: a job submitted from `soma_api` sleeps 60 s, then writes a row to a `jobs`
 
 - **Stratus deletes are asynchronous (found 2026-09-17).** `bucket.deleteObject()` resolves at once but the object stays listable and downloadable for a minute or two (the SDK call is a PUT that schedules the delete, with an optional TTL). `putObject(..., { overwrite: true })` takes effect immediately. Anything that must be unreadable now gets overwritten first.
 
+- **A signed PUT to an existing key is refused (found 2026-09-17).** Stratus answers `409 key_already_exists` unless the request carries the header `overwrite: true`. The bucket's CORS does allow that header from an allowed origin. Every re-save (a note, a transcript, a retried upload) hits this, so the app sends the header on every PUT (`PUT_HEADERS` in `src/lib/journal.ts`). Found when David's first real transcription succeeded on the server (104 chars in 855 ms) and then failed to save in the browser.
+- The MCP `List_All_Functions` call returns every function's environment variables in clear text. Do not call it casually; the dev keys it exposed were rotated.
+
 ## What is left (needs David)
 
 1. Bucket CORS, console only: Stratus → `soma-drafts` → Configurations → Bucket CORS → add `https://soma-onkasary.onslate.com` for GET and PUT. Repeat for the other three buckets when convenient.

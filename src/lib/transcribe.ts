@@ -3,6 +3,7 @@
 // comes back here to be encrypted into the entry. Nothing readable is kept on the server afterwards.
 
 import { api, ApiError } from "./api";
+import { PUT_HEADERS } from "./journal";
 
 type Job = { id: string; status: "queued" | "running" | "done" | "failed"; error: string | null; result: string | null };
 type Signed = { urls: { name: string; url: string }[] };
@@ -39,7 +40,8 @@ async function signedUrl(method: "PUT" | "GET", name: string) {
 export async function transcribe(entryId: string, audio: Blob): Promise<string> {
   const source = `tx-${entryId}.${extension(audio.type || "")}`;
   // fetch rejects (rather than returning a status) when the network or CORS stops the request.
-  const put = await fetch(await signedUrl("PUT", source), { method: "PUT", body: audio, headers: { "Content-Type": "application/octet-stream" } }).catch(() => null);
+  // overwrite: a second attempt reuses the name, and the first attempt's blanked object can still exist for a minute.
+  const put = await fetch(await signedUrl("PUT", source), { method: "PUT", body: audio, headers: PUT_HEADERS }).catch(() => null);
   if (!put || !put.ok) throw new TranscribeError("upload_failed", "The recording could not be sent for transcription.");
 
   let job: Job;

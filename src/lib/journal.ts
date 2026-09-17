@@ -14,8 +14,12 @@ async function signed(kind: Kind, method: "PUT" | "GET", names: string[]) {
   return new Map(res.urls.map((u) => [u.name, u.url]));
 }
 
+// Stratus refuses a PUT to a key that already exists (409 key_already_exists) unless it carries `overwrite: true`.
+// Every write here may be a re-save (a note, a transcript, a retried upload), so the header is always sent.
+export const PUT_HEADERS = { "Content-Type": "application/octet-stream", overwrite: "true" };
+
 async function putObject(url: string, bytes: Uint8Array) {
-  const res = await fetch(url, { method: "PUT", body: bytes as BodyInit, headers: { "Content-Type": "application/octet-stream" } });
+  const res = await fetch(url, { method: "PUT", body: bytes as BodyInit, headers: PUT_HEADERS });
   if (!res.ok) throw new Error(`upload failed (${res.status})`);
 }
 
