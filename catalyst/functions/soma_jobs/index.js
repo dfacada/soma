@@ -14,6 +14,14 @@
 
 const catalyst = require('zcatalyst-sdk-node');
 const nudge = require('./nudge');
+const { writeLog } = require('./log');
+
+const RETAIN_DAYS = 30;
+// Rides on the 15-minute nudge cron: a small bite each run keeps the log at a month without a job of its own.
+async function pruneLogs(app) {
+  const old = (await app.zcql().executeZCQLQuery(`SELECT ROWID FROM logs WHERE created_ms < ${Date.now() - RETAIN_DAYS * 86400000} LIMIT 100`)).map((r) => r.logs.ROWID);
+  if (old.length) await app.datastore().table('logs').deleteRows(old);
+}
 
 const BUCKET = 'soma-drafts';
 const GROQ_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
@@ -82,6 +90,7 @@ async function transcribe(app, params) {
     const code = e instanceof JobError ? e.code : 'internal';
     await table.updateRow({ ROWID: rowId, status: 'failed', result_ref: 'error:' + code }).catch(() => undefined);
     console.error(JSON.stringify({ action: 'transcribe_failed', row: rowId, code, error: e.message, ms: Date.now() - started }));
+    await writeLog(app, { source: 'job', area: 'transcribe', event: code, message: e.message, detail: { row: rowId, ms: Date.now() - started }, userId: params.user_id, test: String(params.user_id) === '999000000000000001' });
   } finally {
     // The plaintext audio never outlives the attempt.
     await shred(bucket, prefix + params.source);
@@ -103,13 +112,14 @@ module.exports = async (jobRequest, context) => {
   try {
     const params = jobRequest.getAllJobParams() || {};
     if (params.type === 'transcribe') await transcribe(app, params);
-    else if (params.type === 'nudge') await nudge.run(app, params);
+    else if (params.type === 'nudge') { await nudge.run(app, params); if (params.test !== '1') await pruneLogs(app).catch(() => undefined); }
     else await spike(app, params, context, started);
     // A failed transcription is a handled outcome recorded on the row, not a failed job: retrying it would
     // find the audio already deleted.
     context.closeWithSuccess();
   } catch (e) {
     console.error(JSON.stringify({ action: 'job_crashed', error: e.message, ms: Date.now() - started }));
+    await writeLog(app, { source: 'job', area: 'jobs', event: 'crash', message: e.message, detail: { stack: String(e.stack || '').split(String.fromCharCode(10)).slice(0, 8).join(' | ') } });
     context.closeWithFailure();
   }
 };

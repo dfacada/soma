@@ -9,7 +9,8 @@ import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
 import { PALETTES, type ThemeMode } from "@/lib/look";
 import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX } from "@/lib/opening";
-import type { Habit, Settings } from "@/lib/settings";
+import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
+import { planMeals, type Habit, type Settings } from "@/lib/settings";
 import { Button, Card, Chip, Field, Input, Pill, Segmented, Switch, Toast } from "@/components/ui";
 import { Admin } from "./Admin";
 import { useHealth } from "./Health";
@@ -21,7 +22,6 @@ import a from "./app.module.css";
 const digits = (v: string, max = 5) => v.replace(/\D/g, "").slice(0, max);
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "x" + Date.now();
 // Defaults from HANDOFF §6: kcal, protein, carbs, fat.
-const PLANS = { standard: [2100, 200, 150, 75], paleo: [2100, 175, 145, 85], keto: [2100, 180, 23, 140] } as const;
 const KCAL_PRESETS = [1800, 2000, 2100, 2200, 2400, 2600];
 
 export function SettingsScreen() {
@@ -34,7 +34,9 @@ export function SettingsScreen() {
 
   const g = settings.goals;
   // Which plan the four targets currently match, if any.
-  const plan = (Object.keys(PLANS) as (keyof typeof PLANS)[]).find((p) => PLANS[p][0] === g.kcal && PLANS[p][1] === g.protein && PLANS[p][2] === g.carbs && PLANS[p][3] === g.fat) || "custom";
+  const active = MEAL_PLANS[settings.mealPlan];
+  const t = active.targets;
+  const onPlanTargets = t.kcal === g.kcal && t.protein === g.protein && t.carbs === g.carbs && t.fat === g.fat;
   const moodsOn = settings.moods.filter((m) => m.on).length;
 
   return (
@@ -109,10 +111,17 @@ export function SettingsScreen() {
 
       <Card>
         <span className="eb">Food · targets</span>
-        <Field name="Plan" help="Resets the four targets to the plan's defaults.">
-          <Segmented label="Plan" value={plan as string} onChange={(p) => { const d = PLANS[p as keyof typeof PLANS]; void save({ goals: { ...g, kcal: d[0], protein: d[1], carbs: d[2], fat: d[3] } }, `Targets set to the ${p} plan`); }}
-            options={[{ value: "standard", label: "Standard" }, { value: "paleo", label: "Paleo" }, { value: "keto", label: "Keto" }]} />
+        <Field name="Meal plan" help={`${active.badge}. Sets the four planned meals; your targets stay as they are.`}>
+          <Segmented label="Meal plan" value={settings.mealPlan} onChange={(p) => void save({ mealPlan: p as MealPlanId, plan: planMeals(p as MealPlanId, settings.bowl) }, `${MEAL_PLANS[p as MealPlanId].name} plan`)}
+            options={(Object.keys(MEAL_PLANS) as MealPlanId[]).map((id) => ({ value: id, label: MEAL_PLANS[id].name }))} />
         </Field>
+        {settings.mealPlan === "standard" && (
+          <Field name="Bowl build" help={BOWL_VARIANTS[settings.bowl].desc}>
+            <Segmented label="Bowl build" value={settings.bowl} onChange={(v) => void save({ bowl: v as BowlId, plan: planMeals("standard", v as BowlId) }, BOWL_VARIANTS[v as BowlId].name)}
+              options={(Object.keys(BOWL_VARIANTS) as BowlId[]).map((id) => ({ value: id, label: BOWL_VARIANTS[id].short }))} />
+          </Field>
+        )}
+        {!onPlanTargets && <div><button type="button" className={a.lnk} style={{ minHeight: 44 }} onClick={() => void save({ goals: { ...g, ...t } }, `Targets set to the ${active.name} plan`)}>Use the {active.name} plan&apos;s targets: {t.kcal.toLocaleString("en-US")} kcal · {t.protein} P · {t.carbs} C · {t.fat} F</button></div>}
         <div className={a.chips}>
           {KCAL_PRESETS.map((n) => (
             <Chip key={n} kind="habit" label={n.toLocaleString("en-US")} on={g.kcal === n}
@@ -136,7 +145,7 @@ export function SettingsScreen() {
       <Card>
         <span className="eb">Food · quick snacks</span>
         <div className={a.chips}>
-          {settings.snacks.map((s, i) => <Pill key={s.name + i} label={`${s.name} · ${s.kcal}`} onRemove={() => void save({ snacks: settings.snacks.filter((_, j) => j !== i) })} />)}
+          {settings.snacks.map((s, i) => <Pill key={s.name + i} label={`${s.name} · ${s.kcal}${s.protein ? ` · ${s.protein}P` : ""}`} onRemove={() => void save({ snacks: settings.snacks.filter((_, j) => j !== i) })} />)}
         </div>
         <SnackForm onAdd={(name, kcal) => void save({ snacks: [...settings.snacks, { name, kcal }] }, `Added ${name}`)} />
       </Card>

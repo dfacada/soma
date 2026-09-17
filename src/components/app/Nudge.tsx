@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
+import { report, watchUncaught } from "@/lib/log";
 import { disablePush, enablePush, pushState, refreshPush, sendTest, type PushState } from "@/lib/push";
 import { Button, Card, Field, Input, Switch } from "@/components/ui";
 import { useSession } from "./Session";
@@ -18,6 +19,12 @@ const LINE: Record<PushState | "checking", string> = {
   off: "Not on for this device yet.",
   on: "On for this device.",
 };
+
+/** Uncaught errors and unhandled rejections anywhere in the signed-in app go to the log (src/lib/log.ts). */
+export function LogKeeper() {
+  useEffect(() => watchUncaught(), []);
+  return null;
+}
 
 export function NudgeKeeper() {
   const { settings } = useSession();
@@ -45,10 +52,11 @@ export function NudgeCard({ say }: { say: (m: string) => void }) {
     try {
       const state = await enablePush();
       setDevice(state);
+      if (state !== "on") report("push", "not_enabled", undefined, { state }, "warn");
       if (state !== "on") return say(state === "blocked" ? "Notifications are blocked on this device" : state === "needs-install" ? "Add Soma to your Home Screen first" : "Notifications were not allowed");
       if (!on) await saveSettings({ nudge: { on: true, time } });
       say(`You'll get a nudge at ${time} if the day is still open`);
-    } catch (e) { say(e instanceof ApiError || e instanceof Error ? e.message : "Couldn't turn notifications on"); }
+    } catch (e) { report("push", "enable_failed", e); say(e instanceof ApiError || e instanceof Error ? e.message : "Couldn't turn notifications on"); }
     finally { setBusy(false); }
   }, [on, time, saveSettings, say]);
 

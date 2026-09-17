@@ -1,26 +1,25 @@
 "use client";
 
-// Admin section of Settings: approvals, users, error reports, feedback. Only rendered for admins, and every
+// Admin section of Settings: approvals, users, the log (LogView.tsx), feedback. Only rendered for admins, and every
 // route behind it checks the admin role again on the server. Status colours are allowed here and only here.
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button, Card, Row, Tag } from "@/components/ui";
+import { LogView } from "./LogView";
 import { useSession } from "./Session";
 import a from "./app.module.css";
 
 type AdminProfile = { userId: string; email: string; displayName: string; role: "admin" | "member"; status: "pending" | "active" | "disabled"; createdAt: string };
-type ErrorItem = { id: string; userId: string; message: string; context: string | null; detail: string | null; createdAt: string };
 type FeedbackItem = { id: string; userId: string; body: string; createdAt: string };
-type Data = { profiles: AdminProfile[]; errors: ErrorItem[]; feedback: FeedbackItem[] };
+type Data = { profiles: AdminProfile[]; feedback: FeedbackItem[] };
 
 async function fetchAll(): Promise<Data> {
-  const [p, e, f] = await Promise.all([
+  const [p, f] = await Promise.all([
     api<{ profiles: AdminProfile[] }>("GET", "/admin/profiles"),
-    api<{ items: ErrorItem[] }>("GET", "/admin/errors"),
     api<{ items: FeedbackItem[] }>("GET", "/admin/feedback"),
   ]);
-  return { profiles: p.profiles, errors: e.items, feedback: f.items };
+  return { profiles: p.profiles, feedback: f.items };
 }
 
 // Data Store timestamps are project-local with no offset; show the date part as written rather than guess a zone.
@@ -83,14 +82,7 @@ export function Admin({ say }: { say: (m: string) => void }) {
         })}
       </Card>
 
-      <Card>
-        <div className={a.entryHead}><span className="eb" style={{ color: "var(--ink)" }}>Errors</span>{data.errors.length > 0 && <Tag tone="critical">{data.errors.length} open</Tag>}</div>
-        {data.errors.length === 0 && <p className="muted" style={{ fontSize: 13 }}>No open error reports.</p>}
-        {data.errors.map((e) => (
-          <Row key={e.id} name={e.message} sub={`${e.context || "no context"} · ${who(e.userId)} · ${when(e.createdAt)}`}
-            trail={<Button size="sm" variant="secondary" disabled={busy === e.id} onClick={() => act(e.id, () => api("POST", `/admin/errors/${e.id}/resolve`), "Resolved")}>Resolve</Button>} />
-        ))}
-      </Card>
+      <LogView />
 
       <Card>
         <span className="eb" style={{ color: "var(--ink)" }}>Feedback</span>

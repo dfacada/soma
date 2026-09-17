@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Icon, MicButton, Tag } from "@/components/ui";
+import { report } from "@/lib/log";
 import { clock } from "@/lib/journal";
 import { dayKey } from "@/lib/today";
 import { useJournal, type Item } from "./Journal";
@@ -79,7 +80,7 @@ function EntryCard({ item }: { item: Item }) {
   async function save() {
     setSaving(true);
     try { await j.saveText(item.id, text.trim()); setEditing(false); j.say("Note saved"); }
-    catch { j.say("Couldn't save the note"); }
+    catch (e) { report("journal", "note_save_failed", e); j.say("Couldn't save the note"); }
     finally { setSaving(false); }
   }
 
@@ -138,30 +139,64 @@ function EntryCard({ item }: { item: Item }) {
   );
 }
 
+// A few milliseconds of silence. iOS only lets an <audio> element play if play() was called on it during a tap,
+// and the recording is not ready during the tap: it still has to be downloaded and decrypted. So the tap plays
+// this, which "blesses" the element, and the same element is then given the real recording.
+const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
 /** Downloads and decrypts the audio on first play, then keeps the object URL for the life of the card. */
 function Player({ id }: { id: string }) {
   const j = useJournal();
   const audio = useRef<HTMLAudioElement | null>(null);
   const url = useRef<string | null>(null);
-  const [state, setState] = useState<"idle" | "loading" | "playing" | "paused">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "ready" | "playing" | "paused">("idle");
   const [pos, setPos] = useState(0);
 
   useEffect(() => () => { audio.current?.pause(); if (url.current) URL.revokeObjectURL(url.current); }, []);
 
   const toggle = useCallback(async () => {
-    if (state === "playing") { audio.current?.pause(); return setState("paused"); }
-    if (audio.current) { await audio.current.play(); return setState("playing"); }
+    const el = audio.current;
+    if (state === "playing") { el?.pause(); return setState("paused"); }
+    // Loaded already: this play() runs inside the tap, which every browser allows.
+    if (el && url.current) {
+      try { await el.play(); setState("playing"); }
+      catch (e) { report("journal", "playback_failed", e, { stage: "replay", mime: el.dataset.mime || "" }); j.say("Couldn't play this recording"); }
+      return;
+    }
     setState("loading");
+    let stage = "unlock", mime = "", bytes = 0;
     try {
-      url.current = URL.createObjectURL(await j.audioFor(id));
-      const el = audio.current = new Audio(url.current);
-      el.ontimeupdate = () => setPos(el.currentTime);
-      el.onended = () => { setState("paused"); setPos(0); };
-      await el.play();
-      setState("playing");
-    } catch {
+      const fresh = audio.current = new Audio();
+      fresh.preload = "auto";
+      fresh.ontimeupdate = () => setPos(fresh.currentTime);
+      fresh.onended = () => { setState("paused"); setPos(0); };
+      // Still inside the tap. A refusal here is not fatal: the second tap, once loaded, always works.
+      fresh.src = SILENCE;
+      const blessed = fresh.play().then(() => true, () => false);
+
+      stage = "download";
+      const blob = await j.audioFor(id);
+      mime = blob.type; bytes = blob.size;
+      fresh.dataset.mime = mime;
+      url.current = URL.createObjectURL(blob);
+      await blessed;
+      fresh.pause();
+      fresh.src = url.current;
+      stage = "play";
+      try { await fresh.play(); setState("playing"); }
+      catch (e) {
+        // The tap ran out while decrypting. The recording is loaded now, so one more tap plays it at once.
+        if ((e as { name?: string })?.name !== "NotAllowedError") throw e;
+        report("journal", "playback_needs_second_tap", e, { mime, bytes }, "warn");
+        setState("ready");
+        j.say("Ready. Tap play.");
+      }
+    } catch (e) {
+      report("journal", "playback_failed", e, { stage, mime, bytes, canPlay: mime ? new Audio().canPlayType(mime.split(";")[0]) || "no" : "" });
+      if (url.current) { URL.revokeObjectURL(url.current); url.current = null; }
+      audio.current = null;
       setState("idle");
-      j.say("Couldn't play this recording");
+      j.say(stage === "download" ? "Couldn't load this recording" : "Couldn't play this recording");
     }
   }, [state, id, j]);
 
@@ -170,7 +205,7 @@ function Player({ id }: { id: string }) {
       <button type="button" className={a.play} onClick={() => void toggle()} aria-label={state === "playing" ? "Pause" : "Play"} disabled={state === "loading"}>
         <Icon name={state === "playing" ? "pause" : "play"} size={16} />
       </button>
-      <span className="m muted" style={{ fontSize: 12 }}>{state === "loading" ? "Decrypting…" : state === "idle" ? "Play recording" : clock(pos)}</span>
+      <span className="m muted" style={{ fontSize: 12 }}>{state === "loading" ? "Decrypting…" : state === "idle" ? "Play recording" : state === "ready" ? "Tap to play" : clock(pos)}</span>
     </div>
   );
 }

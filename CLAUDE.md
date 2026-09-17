@@ -16,6 +16,8 @@ Start with `docs/HANDOFF.md`. It carries every decision made during design, the 
 - Push-up target is **per person** (default 100 a day, flat, no ramp). Rest days carry the streak.
 - A day closes on five things, in card order: weight, check-in, journal, all four meals, any activity. Weight is per-person (`requireWeight`, on by default); off means four.
 - The day-closing rule lives twice: `src/lib/today.ts` (the app) and `catalyst/functions/soma_jobs/nudge.js` `leftToday` (the evening nudge). Change one, change the other.
+- **Every failure is logged.** A `catch` that tells the user something went wrong must also call `report(area, event, error)` (`src/lib/log.ts`); server code that absorbs a failure calls `writeLog` (`lib/log.js`, copied byte for byte into `soma_jobs/`). Never put journal text, a passphrase, a token or a key in a log. David reads it in Settings → Admin → Log.
+- Food data (`src/lib/food-data.ts`) is generated from the Macros repo by `scripts/import-macros-data.mjs`. Never edit it by hand and never add invented sample meals.
 - Today is the actionable screen: every daily task completes with a tap there. The Journal card is the record button (no floating mic on Today; voice only).
 - Commit and push to `master` directly. No feature branches.
 

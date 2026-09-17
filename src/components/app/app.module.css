@@ -114,6 +114,12 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 @keyframes openingIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes openingRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .opening, .openingText, .openingNote, .openingGo { animation: none; } }
+.recipe { display: flex; flex-direction: column; gap: 10px; }
+.recipe ul, .recipe ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
+.logFilters { display: flex; flex-wrap: wrap; gap: 8px; }
+.logItem { border-top: 1px solid var(--surface-2); }
+.logItemHead { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; padding: 10px 0; min-height: 44px; color: var(--ink); text-align: left; }
+.logDetail { margin: 0 0 10px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-2); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
 .logRow { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
 .logRow + .logRow { border-top: 1px solid var(--surface-2); }
 .logEmpty { opacity: 0.55; }

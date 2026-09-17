@@ -1,7 +1,7 @@
 import { DaysProvider } from "@/components/app/Days";
 import { HealthProvider } from "@/components/app/Health";
 import { JournalProvider } from "@/components/app/Journal";
-import { NudgeKeeper } from "@/components/app/Nudge";
+import { LogKeeper, NudgeKeeper } from "@/components/app/Nudge";
 import { Opening } from "@/components/app/Opening";
 import { RoundsProvider } from "@/components/app/Rounds";
 import { SessionGate } from "@/components/app/Session";
@@ -15,6 +15,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <SessionGate>
       <Opening />
       <NudgeKeeper />
+      <LogKeeper />
       <DaysProvider>
         <RoundsProvider>
           <JournalProvider>

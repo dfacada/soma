@@ -11,6 +11,7 @@
 'use strict';
 
 const webpush = require('web-push');
+const { writeLog } = require('./log');
 
 const MEALS = ['breakfast', 'lunch', 'snack', 'dinner'];
 const WINDOW_MIN = 120; // how long after the chosen time a late cron run may still nudge
@@ -72,7 +73,7 @@ async function dayFacts(app, uid, local, now) {
 
 async function run(app, params) {
   const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
-  if (!pub || !priv) { console.error(JSON.stringify({ action: 'nudge', error: 'VAPID keys are not set' })); return; }
+  if (!pub || !priv) { console.error(JSON.stringify({ action: 'nudge', error: 'VAPID keys are not set' })); await writeLog(app, { source: 'job', area: 'push', event: 'not_configured', message: 'VAPID keys are not set' }); return; }
   webpush.setVapidDetails(SUBJECT, pub, priv);
 
   const test = params.test === '1' && /^\d{1,19}$/.test(String(params.user_id));
@@ -118,6 +119,7 @@ async function run(app, params) {
         tally.failed++;
         const fails = (Number(sub.fails) || 0) + 1;
         console.error(JSON.stringify({ action: 'nudge_send', status: e.statusCode || null, error: String(e.body || e.message).slice(0, 200) }));
+        await writeLog(app, { source: 'job', area: 'push', event: 'send_failed', message: String(e.body || e.message).slice(0, 200), status: e.statusCode || undefined, detail: { fails, host: (() => { try { return new URL(sub.endpoint).hostname; } catch (_e) { return null; } })() }, userId: uid, test: uid === '999000000000000001' });
         if (fails >= 8) await table.deleteRow(sub.ROWID).catch(() => undefined); else await table.updateRow({ ROWID: sub.ROWID, fails }).catch(() => undefined);
       }
     }

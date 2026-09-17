@@ -23,6 +23,9 @@
 const express = require('express');
 const { member, wrap } = require('../lib/auth');
 const { HttpError, select, upsert, needId, needDay, fitText } = require('../lib/db');
+const { writeLog } = require('../lib/log');
+
+const note = (req, event, message, detail, level) => writeLog(req.admin, { level: level || 'error', source: 'api', area: 'google-health', event, message, detail, userId: req.user.id, test: req.user.id === '999000000000000001' });
 
 const router = express.Router();
 const PROVIDER = 'google-health';
@@ -86,6 +89,7 @@ router.post('/google-health/exchange', member, wrap(async (req, res) => {
   const r = await google(TOKEN_URL, form({ code, client_id: id, client_secret: secret, redirect_uri: redirect, grant_type: 'authorization_code' }));
   if (!r.ok) {
     console.error(JSON.stringify({ action: 'gh_exchange', status: r.status, error: r.json && r.json.error }));
+    await note(req, 'exchange_refused', 'Google refused the sign-in code', { status: r.status, error: r.json && r.json.error }, 'warn');
     throw new HttpError(r.status === 400 ? 400 : 502, 'Google refused the sign-in code; try connecting again');
   }
   if (!r.json.refresh_token) throw new HttpError(502, 'Google sent no refresh token; remove Soma under myaccount.google.com/connections and connect again');
@@ -181,7 +185,7 @@ router.post('/google-health/sync', member, wrap(async (req, res) => {
   const t = await google(TOKEN_URL, form({ refresh_token: refreshToken, client_id: id, client_secret: secret, grant_type: 'refresh_token' }));
   // invalid_grant: revoked, expired (7 days while the consent screen is in Testing), or the password changed.
   if (!t.ok) {
-    if (t.json && t.json.error === 'invalid_grant') throw new HttpError(409, 'reconnect');
+    if (t.json && t.json.error === 'invalid_grant') { await note(req, 'token_dead', 'Google ended the connection (revoked, expired, or 7-day Testing limit)', { error: 'invalid_grant' }, 'warn'); throw new HttpError(409, 'reconnect'); }
     console.error(JSON.stringify({ action: 'gh_refresh', status: t.status, error: t.json && t.json.error }));
     throw new HttpError(502, 'Google would not refresh the connection');
   }
@@ -200,6 +204,7 @@ router.post('/google-health/sync', member, wrap(async (req, res) => {
     if (!r.ok) {
       const message = r.json && r.json.error && r.json.error.message;
       console.error(JSON.stringify({ action: 'gh_steps', status: r.status, error: message, details: r.json && r.json.error && r.json.error.details, from, end }));
+      await note(req, 'steps_failed', message || 'Google Health did not return steps', { status: r.status, details: r.json && r.json.error && r.json.error.details, from, end });
       if (r.status === 401 || r.status === 403) throw new HttpError(409, 'reconnect');
       throw new HttpError(502, 'Google Health did not return steps' + (message ? ': ' + String(message).slice(0, 200) : ''));
     }
@@ -233,6 +238,8 @@ router.post('/google-health/sync', member, wrap(async (req, res) => {
     }
   }
   const slept = await sleeping;
+  if (slept.error) await note(req, 'sleep_failed', slept.error.message, { from, end });
+  if (points.length && !days.length) await note(req, 'steps_unreadable', 'Google returned step points that could not be read', { keys: Object.keys(points[0]) });
   res.json({ days, written: updates.length + inserts.length, sleep: slept.error ? null : slept.nights, sleepError: slept.error ? slept.error.message : null });
 }));
 

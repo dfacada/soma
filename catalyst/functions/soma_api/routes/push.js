@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const express = require('express');
 const { member, wrap } = require('../lib/auth');
 const { HttpError, select, upsert, needId } = require('../lib/db');
+const { writeLog } = require('../lib/log');
 
 const router = express.Router();
 const MAX_DEVICES = 8;
@@ -60,6 +61,7 @@ router.post('/push/test', member, wrap(async (req, res) => {
     await req.admin.jobScheduling().job().submitJob({ job_name: 'nt_' + Date.now().toString(36), target_type: 'Function', target_name: 'soma_jobs', jobpool_name: 'soma_jobs', params: { type: 'nudge', test: '1', user_id: req.user.id } });
   } catch (e) {
     console.error(JSON.stringify({ action: 'push_test', error: e.message }));
+    await writeLog(req.admin, { source: 'api', area: 'push', event: 'test_queue_failed', message: e.message, userId: req.user.id });
     throw new HttpError(502, 'could not queue the test');
   }
   res.status(202).json({ queued: true });

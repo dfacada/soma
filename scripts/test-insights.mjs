@@ -24,7 +24,7 @@ check("good days: two, both with activity, one with all meals", i.good, { days: 
 check("hard day over the drinks limit", i.hard, { days: 1, withActivity: 0, withAllMeals: 0, overLimit: 1, limitLabel: "Drinks" });
 check("activity baseline across checked-in days", i.baselineActivity, 0.5);
 check("mood mix is sorted by count", i.moods.map((m) => m.label).sort(), ["Down", "Focused", "Great", "Normal"]);
-check("food: snapshots plus extras; a bare `true` falls back to the plan", i.food, { loggedDays: 2, avgKcal: Math.round((2100 + 470) / 2), avgProtein: Math.round((170 + 22) / 2), onTarget: 1 });
+check("food: snapshots plus extras; a bare `true` falls back to the plan", i.food, { loggedDays: 2, avgKcal: Math.round((2100 + DEFAULT_SETTINGS.plan.breakfast.kcal) / 2), avgProtein: Math.round((170 + DEFAULT_SETTINGS.plan.breakfast.protein) / 2), onTarget: 1 });
 check("push-ups: total, best and target days", i.pushups, { days: 2, total: 140, best: 100, hitDays: 1 });
 check("weight change runs oldest to newest", i.weight, { first: 182.5, last: 181, change: -1.5, points: 2 });
 check("an empty window is all zeros, no NaN", JSON.stringify(insights({}, DEFAULT_SETTINGS, today, 30, 100)).includes("null,") || !JSON.stringify(insights({}, DEFAULT_SETTINGS, today, 30, 100)).includes("NaN"), true);

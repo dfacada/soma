@@ -2,6 +2,7 @@
 // absolute and every request carries the raw Catalyst token (or, under `next dev`, the test key).
 
 import { authToken, forgetToken, DEV_TEST_KEY, isDevIdentity } from "./catalyst";
+import { report } from "./log";
 
 export const API_BASE = "https://soma-939530195.development.catalystserverless.com/server/soma_api/execute";
 
@@ -14,12 +15,20 @@ async function identity(): Promise<Record<string, string>> {
 }
 
 export async function api<T>(method: "GET" | "PUT" | "POST" | "DELETE", path: string, body?: unknown): Promise<T> {
+  const where = path.split("?")[0];
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(API_BASE + path, {
-      method,
-      headers: { ...(await identity()), ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(API_BASE + path, {
+        method,
+        headers: { ...(await identity()), ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    } catch (e) {
+      // Never reached the server: offline, a dropped connection, or sign-in that could not produce a token.
+      report("api", "unreachable", e, { method, path: where }, navigator.onLine ? "error" : "warn");
+      throw e;
+    }
     // A cached token can expire mid-session: drop it and try once more with a fresh one.
     if (res.status === 401 && attempt === 0 && !isDevIdentity) { forgetToken(); continue; }
     const text = await res.text();
@@ -27,6 +36,10 @@ export async function api<T>(method: "GET" | "PUT" | "POST" | "DELETE", path: st
     try { json = text ? JSON.parse(text) : null; } catch { /* non-JSON error page from the gateway */ }
     if (!res.ok) {
       const message = (json as { error?: string } | null)?.error || `request failed (${res.status})`;
+      // Every failed call is logged, except the answers that are part of normal life: not signed in (401), nothing
+      // logged for that day (a GET's 404), and the conflicts the screens handle themselves (409).
+      const expected = res.status === 401 || res.status === 409 || (res.status === 404 && method === "GET");
+      if (!expected) report("api", res.status >= 500 ? "server_error" : "refused", message, { method, path: where, status: res.status }, res.status >= 500 ? "error" : "warn");
       throw new ApiError(res.status, message, json);
     }
     return json as T;

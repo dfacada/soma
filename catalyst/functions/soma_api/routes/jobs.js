@@ -10,6 +10,7 @@
 const express = require('express');
 const { member, wrap } = require('../lib/auth');
 const { HttpError, select, needId, needToken } = require('../lib/db');
+const { writeLog } = require('../lib/log');
 
 const router = express.Router();
 const BUCKET = 'soma-drafts';
@@ -51,6 +52,7 @@ router.post('/jobs', member, wrap(async (req, res) => {
   } catch (e) {
     await req.admin.datastore().table('jobs').updateRow({ ROWID: row.ROWID, status: 'failed', result_ref: 'error:queue_unavailable' });
     console.error(JSON.stringify({ action: 'job_submit', error: e.message }));
+    await writeLog(req.admin, { source: 'api', area: 'jobs', event: 'queue_unavailable', message: e.message, userId: req.user.id });
     throw new HttpError(502, 'could not queue the job');
   }
   res.status(201).json(shape(row));

@@ -34,19 +34,6 @@ router.delete('/recipes/:id', member, wrap(async (req, res) => {
   res.json({ deleted: true });
 }));
 
-// ── Client error reports. Never let the reporter itself fail on size: clip instead of refusing ──
-const clip = (v, max) => (typeof v === 'string' ? v.slice(0, max) : null);
-router.post('/errors', member, wrap(async (req, res) => {
-  const b = req.body || {};
-  if (typeof b.message !== 'string' || !b.message) throw new HttpError(400, 'message is required');
-  await req.admin.datastore().table('errors').insertRow({
-    user_id: req.user.id, message: clip(b.message, 255), context: clip(b.context, 100), detail: clip(b.detail, TEXT_MAX),
-    // Rows from the synthetic test member are filed as handled so test runs never reach the admin inbox.
-    resolved: isTestUser(req) ? 'true' : 'false'
-  });
-  res.status(201).json({ ok: true });
-}));
-
 router.post('/feedback', member, wrap(async (req, res) => {
   const body = fitText('body', req.body && req.body.body);
   if (!body || !body.trim()) throw new HttpError(400, 'body is required');

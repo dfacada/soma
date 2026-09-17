@@ -77,6 +77,7 @@ async function withUser(req, res, next) {
     next();
   } catch (e) {
     console.error(JSON.stringify({ action: 'load_profile', user: req.user.id, error: e.message }));
+    void require('./log').writeLog(req.admin, { source: 'api', area: 'auth', event: 'profile_load_failed', message: e.message, userId: req.user.id, status: 500 });
     res.status(500).json({ error: 'internal error' });
   }
 }

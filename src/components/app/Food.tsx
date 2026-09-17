@@ -1,12 +1,14 @@
 "use client";
 
-// Food: today's calories and macros, the four planned meals, anything off-plan, and weight.
+// Food: today's calories and macros, the four planned meals, anything off-plan, the recipe book, and weight.
+// The plans, recipes and quick snacks are David's own, generated from the Macros repo (src/lib/food-data.ts).
 // Follows the prototype's viewFood. Two deliberate differences: carbs and fat are real sums (the prototype
 // faked them from calories), and off-plan items are entered by hand until the Claude estimator has a key.
 
 import { useCallback, useEffect, useState } from "react";
 import { api, type Extra } from "@/lib/api";
-import { MEALS, STARTER_RECIPES, type Meal, type PlannedMeal } from "@/lib/settings";
+import { BOWL_VARIANTS, MEAL_PLANS, RECIPES, type Recipe } from "@/lib/food-data";
+import { MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
 import { addDays, cap, dayKey, dayStatus } from "@/lib/today";
 import { Bar, Button, Card, Chip, Input, ProgressRing, Row, Sheet, Toast } from "@/components/ui";
 import { useDays } from "./Days";
@@ -22,6 +24,8 @@ export function Food() {
   const { settings, saveSettings } = useSession();
   const { map, error, reload, unsaved, retry, change, today, todayKey: k } = useDays();
   const [swap, setSwap] = useState<Meal | null>(null);
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const closeRecipe = useCallback(() => setRecipe(null), []);
   const [toast, setToast] = useState<string | null>(null);
   const say = useCallback((m: string) => { setToast(m); window.setTimeout(() => setToast(null), 1800); }, []);
   const closeSwap = useCallback(() => setSwap(null), []);
@@ -82,10 +86,11 @@ export function Food() {
               <span className="eb" style={{ color: "var(--ink)" }}>{cap(m)}</span>
               <span className="m" style={{ fontSize: 12, color: done ? "var(--food)" : "var(--muted)" }}>{shown.kcal} kcal · {done ? "eaten" : "planned"}</span>
             </div>
-            <Row name={shown.name} sub={`${shown.protein} g protein`} value={<span style={{ color: done ? "var(--ink)" : "var(--muted)" }}>{shown.kcal}</span>} />
+            <Row name={shown.name} sub={`${shown.protein} g protein${shown.carbs !== undefined ? ` · ${shown.carbs} g carbs · ${shown.fat ?? 0} g fat` : ""}`} value={<span style={{ color: done ? "var(--ink)" : "var(--muted)" }}>{shown.kcal}</span>} />
             <div className={a.rowButtons}>
               <Button size="sm" variant={done ? "secondary" : "food"} onClick={() => change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; })}>{done ? "Undo" : "Mark eaten"}</Button>
               {!done && <Button size="sm" variant="secondary" onClick={() => setSwap(m)}>Swap meal</Button>}
+              {findRecipe(shown.name, settings.mealPlan) && <Button size="sm" variant="secondary" onClick={() => setRecipe(findRecipe(shown.name, settings.mealPlan))}>Recipe</Button>}
             </div>
           </Card>
         );
@@ -102,10 +107,23 @@ export function Food() {
         ))}
         {settings.snacks.length > 0 && (
           <div className={a.chips}>
-            {settings.snacks.map((s) => <Chip key={s.name} kind="habit" label={s.name} onClick={() => addExtra({ name: s.name, kcal: s.kcal, protein: s.protein })} />)}
+            {settings.snacks.map((s) => <Chip key={s.name} kind="habit" label={s.name} onClick={() => addExtra({ name: s.name, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat })} />)}
           </div>
         )}
         <ExtraForm onAdd={addExtra} />
+      </Card>
+
+      <Card>
+        <div className={a.entryHead}>
+          <span className="eb" style={{ color: "var(--ink)" }}>Recipes</span>
+          <span className="muted" style={{ fontSize: 12 }}>{MEAL_PLANS[settings.mealPlan].name} plan and any-plan dishes</span>
+        </div>
+        {RECIPES.filter((r) => r.group === settings.mealPlan || r.group === "general").map((r) => (
+          <button key={r.id} type="button" className={a.pickRow} onClick={() => setRecipe(r)}>
+            <span className={a.pickName}><span style={{ fontWeight: 500 }}>{r.name}</span><span className="muted" style={{ fontSize: 12 }}>{r.isMealPrep ? `Meal prep · makes ${r.servings}` : r.servings > 1 ? `Makes ${r.servings}` : "Single serving"}{r.time ? ` · ${r.time}` : ""}</span></span>
+            <span className="m" style={{ fontSize: 13 }}>{r.kcal}</span>
+          </button>
+        ))}
       </Card>
 
       <Weight days={Array.from({ length: 30 }, (_, i) => dayKey(addDays(today, i - 29))).map((d) => map[d]?.weight)} current={map[k]?.weight}
@@ -114,7 +132,34 @@ export function Food() {
       <Sheet open={swap !== null} title={swap ? `Swap ${swap}` : ""} onClose={closeSwap}>
         {swap && <RecipePicker current={settings.plan[swap].name} onPick={(r) => void pick(swap, r)} />}
       </Sheet>
+      <Sheet open={recipe !== null} title={recipe?.name || ""} onClose={closeRecipe}>
+        {recipe && <RecipeBody r={recipe} />}
+      </Sheet>
       <Toast message={toast} />
+    </div>
+  );
+}
+
+/** The recipe behind a planned meal. Looked for in the active plan's recipes first, since two plans have a
+ *  "Post-Workout Shake"; the plan names a bowl by the dish, the book by its full title. */
+function findRecipe(name: string, plan: string): Recipe | null {
+  const stem = name.replace(/ Bowl$/, "");
+  for (const pool of [RECIPES.filter((r) => r.group === plan), RECIPES.filter((r) => r.group === "general"), RECIPES]) {
+    const hit = pool.find((r) => r.name === name) || pool.find((r) => r.name.startsWith(stem) || r.name.endsWith(name));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function RecipeBody({ r }: { r: Recipe }) {
+  return (
+    <div className={a.recipe}>
+      <p className="m" style={{ fontSize: 13 }}>{r.kcal} kcal · {r.protein} P · {r.carbs} C · {r.fat} F <span className="muted">per serving{r.servings > 1 ? ` · makes ${r.servings}` : ""}{r.fixedPortion ? " · fixed portion" : ""}</span></p>
+      <span className="eb">Ingredients</span>
+      <ul>{r.ingredients.map((x) => <li key={x}>{x}</li>)}</ul>
+      <span className="eb">Steps</span>
+      <ol>{r.steps.map((x) => <li key={x}>{x}</li>)}</ol>
+      {r.notes && <><span className="eb">Notes</span><p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>{r.notes}</p></>}
     </div>
   );
 }
@@ -167,7 +212,7 @@ function Weight({ days, current, onLog }: { days: (number | undefined)[]; curren
 
 type Saved = { id: string; recipe: PlannedMeal };
 
-/** The user's own recipes first, then the starter book. New recipes are saved to /recipes. */
+/** The user's own recipes first, then the Macros recipe book and the two bowl builds. New recipes are saved to /recipes. */
 function RecipePicker({ current, onPick }: { current: string; onPick: (r: PlannedMeal) => void }) {
   const [mine, setMine] = useState<Saved[] | null>(null);
   const [adding, setAdding] = useState(false);
@@ -193,7 +238,9 @@ function RecipePicker({ current, onPick }: { current: string; onPick: (r: Planne
     catch { setBusy(false); }
   }
 
-  const list: PlannedMeal[] = [...(mine || []).map((m) => m.recipe), ...STARTER_RECIPES.filter((s) => !(mine || []).some((m) => m.recipe.name === s.name))];
+  const book: PlannedMeal[] = [...Object.values(BOWL_VARIANTS), ...RECIPES].map(({ name, kcal, protein, carbs, fat }) => ({ name, kcal, protein, carbs, fat }));
+  const seen = new Set<string>();
+  const list: PlannedMeal[] = [...(mine || []).map((m) => m.recipe), ...book].filter((r) => !seen.has(r.name) && seen.add(r.name));
 
   return (
     <>

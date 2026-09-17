@@ -9,7 +9,9 @@
 
 const express = require('express');
 const { withUser } = require('./lib/auth');
+const catalyst = require('zcatalyst-sdk-node');
 const { HttpError } = require('./lib/db');
+const { writeLog } = require('./lib/log');
 
 const app = express();
 app.disable('x-powered-by');
@@ -46,15 +48,33 @@ app.use(require('./routes/rounds'));
 app.use(require('./routes/jobs'));
 app.use(require('./routes/health'));
 app.use(require('./routes/push'));
+app.use(require('./routes/logs'));
 app.use(require('./routes/admin'));
 app.use('/spike', require('./spike'));
 
 app.use((_req, res) => res.status(404).json({ error: 'no such route' }));
-app.use((err, _req, res, _next) => {
+// Anything that ends as a 5xx goes into the log: a crash (500) and the 502/503s this API raises on purpose when
+// Google, Groq or the job queue lets it down. 4xx are the caller's mistakes and are reported by the browser.
+function logFailure(req, err, status) {
+  let admin = req.admin;
+  try { admin = admin || catalyst.initialize(req, { scope: 'admin' }); } catch (_e) { return; }
+  const area = (req.path.split('/')[1] || 'api').replace(/[^a-z0-9-]/gi, '');
+  void writeLog(admin, {
+    level: 'error', source: 'api', area, event: status === 500 ? 'crash' : 'http_' + status, status,
+    message: err.message, detail: { method: req.method, path: req.path, stack: status === 500 ? String(err.stack || '').split('\n').slice(0, 8).join('\n') : undefined },
+    userId: req.user && req.user.id, test: Boolean(req.user && req.user.id === '999000000000000001')
+  });
+}
+
+app.use((err, req, res, _next) => {
   if (err && err.type === 'entity.parse.failed') return res.status(400).json({ error: 'body is not valid JSON' });
   if (err && err.type === 'entity.too.large') return res.status(413).json({ error: 'body is too large' });
   // An HttpError is a message written for the caller, whatever its status (502 and 503 included).
-  if (err instanceof HttpError || (err && err.status && err.status < 500)) return res.status(err.status).json({ error: err.message });
+  if (err instanceof HttpError || (err && err.status && err.status < 500)) {
+    if (err.status >= 500) logFailure(req, err, err.status);
+    return res.status(err.status).json({ error: err.message });
+  }
+  logFailure(req, err, 500);
   console.error(JSON.stringify({ action: 'unhandled', error: err.message, stack: err.stack }));
   res.status(500).json({ error: 'internal error' });
 });

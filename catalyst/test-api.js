@@ -276,6 +276,16 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('GET', '/google-health');
   check('…and it is gone', r.status === 200 && r.json.link === null, r.json);
 
+  console.log('log');
+  r = await call('POST', '/logs', { area: 'journal', message: 'no event' });
+  check('a log line needs an event', r.status === 400, r.text);
+  r = await call('POST', '/logs', { level: 'error', area: 'journal', event: 'playback_failed', message: 'NotAllowedError', detail: JSON.stringify({ stage: 'play', mime: 'audio/mp4' }) });
+  check('the app can report a failure', r.status === 201 && r.json.ok === true, r.json);
+  r = await call('GET', '/admin/logs');
+  check('only an admin can read the log', r.status === 403, r.text);
+  r = await call('GET', '/admin/logs/summary');
+  check('…or its summary', r.status === 403, r.text);
+
   console.log('push');
   r = await call('GET', '/push');
   check('the VAPID public key is served, never the private one', r.status === 200 && r.json.configured === true && /^[A-Za-z0-9_-]{80,}$/.test(r.json.publicKey) && !JSON.stringify(r.json).toLowerCase().includes('private'), r.json);

@@ -9,6 +9,7 @@ import { isDevIdentity } from "@/lib/catalyst";
 import { deleteEntry, loadAudio, loadEntries, newEntry, saveEntry, type LoadedEntry } from "@/lib/journal";
 import { Recorder, toneStream } from "@/lib/recorder";
 import { clearDraft, deletePending, listOrphanDrafts, listPending, putPending, type JournalEntry, type PendingRecording } from "@/lib/recovery";
+import { report } from "@/lib/log";
 import { opened as openingDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
 import { transcribe, TranscribeError } from "@/lib/transcribe";
@@ -106,11 +107,14 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       try {
         await saveEntry(k, rec.entry, rec.audio);
         await deletePending(rec.id);
-      } catch {
+      } catch (e) {
+        report("journal", "upload_failed", e, { attempts: rec.attempts + 1, audioBytes: rec.audio?.size ?? 0, mime: rec.entry.audioMime });
         await putPending({ ...rec, attempts: rec.attempts + 1, lastAttemptAt: Date.now() }).catch(() => undefined);
       }
     }
-    const [left, fresh] = await Promise.all([listPending(userId).catch(() => []), loadEntries(k).catch(() => null)]);
+    const [left, fresh] = await Promise.all([listPending(userId).catch(() => []), loadEntries(k).catch((e) => { report("journal", "entries_load_failed", e); return null; })]);
+    const unreadable = fresh ? fresh.filter((l) => !l.entry).length : 0;
+    if (unreadable) report("journal", "entries_unreadable", undefined, { count: unreadable, of: fresh!.length }, "warn");
     setPending(left);
     if (fresh) setLoaded(fresh);
     return left.length;
@@ -168,10 +172,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       const next: JournalEntry = { ...entry, transcript: text, transcriptStatus: text ? "done" : "none", updatedAt: new Date().toISOString() };
       // Two different failures, two different messages: the transcript exists at this point, it just is not stored yet.
       try { await saveEntry(k, next); }
-      catch { return say("Transcribed, but the transcript couldn't be saved. Try again."); }
+      catch (e) { report("journal", "transcript_save_failed", e); return say("Transcribed, but the transcript couldn't be saved. Try again."); }
       setLoaded((cur) => cur && cur.map((l) => (l.meta.id === entry.id ? { ...l, entry: next } : l)));
       say(text ? "Transcript ready" : "Nothing could be made out in that recording");
     } catch (e) {
+      report("journal", "transcription_failed", e, { code: e instanceof TranscribeError ? e.code : "unknown", audioBytes: audio.size, mime: audio.type });
       say(e instanceof TranscribeError ? e.message : "Transcription failed. Try again.");
     } finally {
       setTranscribing((t) => t.filter((x) => x !== entry.id));
@@ -194,12 +199,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     try {
       await putPending({ id: "pending_" + entry.id, userId, entry, audio: rec.audio, attempts: 0, lastAttemptAt: null });
       await clearDraft(rec.draftId);
-    } catch {
+    } catch (e) {
       say("This recording could not be saved on this device");
-      void api("POST", "/errors", { message: "idb_write_failed", context: "journal.stop" }).catch(() => undefined);
+      report("journal", "device_save_failed", e, { audioBytes: rec.audio.size, mime: rec.audio.type, seconds: rec.seconds });
       return;
     }
     setPending((p) => [...p, { id: "pending_" + entry.id, userId, entry, audio: rec.audio, attempts: 0, lastAttemptAt: null }]);
+    if (rec.interrupted) report("journal", "recording_interrupted", undefined, { seconds: rec.seconds, audioBytes: rec.audio.size }, "warn");
     say(rec.interrupted ? "The microphone was interrupted · saved what was recorded" : "Entry saved · uploading…");
     const left = await flushPending();
     if (left) return say("Saved on this device · will upload automatically");
@@ -218,6 +224,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       recorder.current = null;
       const name = (e as { name?: string })?.name;
+      // A refused permission is the person's choice, not a fault; everything else is.
+      report("journal", "recording_start_failed", e, undefined, name === "NotAllowedError" ? "warn" : "error");
       say(name === "NotAllowedError" ? "Microphone access is needed to record" : name === "NotFoundError" ? "No microphone found" : "Could not start recording");
     }
   }, [userId, say]);
@@ -234,7 +242,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     try {
       if (meta.current) {
         const k = await unlockVault(pass, meta.current);
-        if (!k) return "That passphrase is not right.";
+        if (!k) { report("vault", "wrong_passphrase", undefined, undefined, "warn"); return "That passphrase is not right."; }
         sessionStorage.setItem(SESSION_KEY + userId, await exportKey(k));
         setSheet(false);
         await opened(k);
@@ -254,7 +262,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       setSheet(false);
       await opened(made.key);
       return null;
-    } catch {
+    } catch (e) {
+      report("vault", meta.current ? "unlock_failed" : "create_failed", e);
       return "Could not reach the server. Try again.";
     } finally { setBusy(false); }
   }, [userId, opened]);

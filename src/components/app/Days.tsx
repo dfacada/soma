@@ -7,6 +7,7 @@
 // can never land out of order. A save that keeps failing surfaces as `unsaved` with a retry; local state is kept.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { report } from "@/lib/log";
 import { api, type ActivityDay, type Checkin, type DayLog, type Days } from "@/lib/api";
 import { addDays, dayKey, emptyDay, indexDays, noon, type DayMap } from "@/lib/today";
 
@@ -76,7 +77,9 @@ function useDaysState(today: Date, windowDays: number) {
         }
       } while (slot.dirty);
       failed.current.delete(key);
-    } catch {
+    } catch (e) {
+      // Each attempt is already in the log as an API failure; this line says the app gave up and the change is unsaved.
+      report("days", "save_gave_up", e, { resource, day });
       failed.current.add(key);
     } finally {
       slot.inFlight = false;

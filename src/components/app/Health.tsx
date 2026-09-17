@@ -7,6 +7,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ApiError } from "@/lib/api";
+import { report } from "@/lib/log";
 import { disconnect as dropLink, exchangeCode, fetchLink, fetchMonths, lastSync, monthOf, noteSleepGranted, saveLink, saveMonth, sleepGranted, stampSync, startConnect, syncHealth, takeOAuthReturn, SYNC_EVERY_MS, type HealthLink, type Nights, type OAuthReturn, type Sealed } from "@/lib/health";
 import { addDays, dayKey, noon } from "@/lib/today";
 import { useDays } from "./Days";
@@ -87,7 +88,7 @@ export function HealthProvider({ children }: { children: ReactNode }) {
     try {
       let token: string;
       // Ciphertext from a vault that has since been replaced cannot be opened: the same fix as a revoked token.
-      try { token = (await unseal<Sealed>(link.ciphertext)).refreshToken; } catch { setStale(true); return; }
+      try { token = (await unseal<Sealed>(link.ciphertext)).refreshToken; } catch (e) { report("health", "link_unreadable", e, undefined, "warn"); setStale(true); return; }
       const today = noon();
       const res = await syncHealth(token, dayKey(addDays(today, -span)), dayKey(today));
       applySteps(res.days);
@@ -115,6 +116,7 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       setStale(false);
       if (!quiet) say(res.days.length ? "Steps synced" : "Synced. Google has no steps for these days yet.");
     } catch (e) {
+      if (!(e instanceof ApiError)) report("health", "sync_failed", e, { quiet });
       if (e instanceof ApiError && e.status === 409) { setStale(true); if (!quiet) say("Google needs you to connect again"); }
       else if (!quiet) say(e instanceof ApiError ? e.message : "Couldn't sync steps");
     } finally {
