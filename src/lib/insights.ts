@@ -145,3 +145,40 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
   if (weights.length >= 2) out.weight = { first: weights[0], last: weights[weights.length - 1], change: Math.round((weights[weights.length - 1] - weights[0]) * 10) / 10, points: weights.length };
   return out;
 }
+
+/** One line of the plain record: what the scale said, whether the day closed, and what was actually done. */
+export type LogRow = {
+  day: string; weight: number | null; mood: string | null;
+  closed: boolean; done: number; total: number;
+  /** What kept the day open, in card order: "Weight", "Check-in", "Journal", "2 meals", "Activity". */
+  missed: string[];
+  /** "100 push-ups", then each activity type logged, then steps when known. */
+  did: string[];
+  /** Nothing at all was logged that day. */
+  empty: boolean;
+};
+
+/** Newest first. Days before the first thing ever logged in the window are left off: they are not misses, they are before. */
+export function dayLog(map: DayMap, settings: Settings, today: Date, windowDays: number): LogRow[] {
+  const rows: LogRow[] = [];
+  for (let i = 0; i < windowDays; i++) {
+    const day = dayKey(addDays(today, -i));
+    const d = map[day];
+    const st = dayStatus(d, settings);
+    const missed: string[] = [];
+    if (st.weightRequired && !st.weightDone) missed.push("Weight");
+    if (!st.checkinDone) missed.push("Check-in");
+    if (!st.journalDone) missed.push("Journal");
+    if (!st.foodDone) missed.push(st.leftMeals.length === 4 ? "Food" : `${st.leftMeals.length} meal${st.leftMeals.length === 1 ? "" : "s"}`);
+    if (!st.activityDone) missed.push("Activity");
+    const did: string[] = [];
+    if (st.pushups > 0) did.push(`${st.pushups.toLocaleString("en-US")} push-ups`);
+    for (const t of settings.activityTypes) if (d?.activity?.types[t.key]) did.push(t.name);
+    const steps = d?.activity?.steps;
+    if (steps !== null && steps !== undefined && steps > 0) did.push(`${steps.toLocaleString("en-US")} steps`);
+    const empty = st.doneCount === 0 && st.meals === 0 && st.weight === null && did.length === 0;
+    rows.push({ day, weight: st.weight, mood: d?.checkin?.mood ?? null, closed: st.closed, done: st.doneCount, total: st.taskCount, missed, did, empty });
+  }
+  while (rows.length && rows[rows.length - 1].empty) rows.pop();
+  return rows;
+}

@@ -1,11 +1,15 @@
 "use client";
 
-// Insights: what the last few weeks actually looked like. Counts only; no claims the data cannot support.
+// Insights: what the last week, month, two months or year actually looked like. It opens with the plain record,
+// one line a day (weight, closed or not and why not, what was done), because that is the part with no room for
+// flattery. Counts only; no claims the data cannot support.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { insights, type Factor } from "@/lib/insights";
-import { Bar, Button, Card, Icon, Segmented, Stat } from "@/components/ui";
+import { api, type Days } from "@/lib/api";
+import { dayLog, insights, type Factor, type LogRow } from "@/lib/insights";
+import { addDays, dayKey, indexDays, WEEKDAYS, type DayMap } from "@/lib/today";
+import { Bar, Button, Card, DayGlyph, Icon, Segmented, Stat } from "@/components/ui";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
 import { useJournal } from "./Journal";
@@ -19,6 +23,18 @@ const of = (n: number, total: number) => `${n} of ${total}`;
 const hm = (min: number) => `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}m`;
 /** A difference smaller than this between good days and the rest is not worth a line. */
 const LIFT = 0.15;
+type Range = "7" | "30" | "60" | "365";
+const RANGE_LABEL: Record<Range, string> = { "7": "7 days", "30": "30 days", "60": "60 days", "365": "year" };
+const LOG_PREVIEW = 7;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** The shared day map holds 60 days, which every other screen needs. A year is fetched here, only when asked for. */
+async function fetchYear(today: Date): Promise<DayMap> {
+  const from = addDays(today, -365);
+  const start = new Date(from); start.setHours(0, 0, 0, 0);
+  const end = new Date(today); end.setHours(23, 59, 59, 999);
+  return indexDays(await api<Days>("GET", `/days?from=${dayKey(from)}&to=${dayKey(today)}&fromMs=${start.getTime()}&toMs=${end.getTime()}`));
+}
 
 export function InsightsScreen() {
   const { settings } = useSession();
@@ -26,13 +42,31 @@ export function InsightsScreen() {
   const { target } = useRounds();
   const health = useHealth();
   const { vault, openVault } = useJournal();
-  const [range, setRange] = useState<"14" | "30" | "60">("30");
+  const [range, setRange] = useState<Range>("30");
+  const [year, setYear] = useState<DayMap | null>(null);
+  const [yearError, setYearError] = useState(false);
+  const [allDays, setAllDays] = useState(false);
+  const todayKey = dayKey(today);
+
+  useEffect(() => {
+    if (range !== "365" || year) return;
+    let alive = true;
+    fetchYear(today).then((y) => { if (alive) setYear(y); }, () => { if (alive) setYearError(true); });
+    return () => { alive = false; };
+    // todayKey, not the Date object: a new Date each render must not refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range, year, todayKey]);
 
   if (error) return <div className={a.page}><span className="d" style={{ fontSize: 28 }}>Couldn&apos;t load insights</span><p className="muted">{error}</p><div><Button onClick={reload}>Try again</Button></div></div>;
   if (!map) return <div className={a.page}><span className="eb">Loading</span></div>;
 
   const n = Number(range);
-  const i = insights(map, settings, today, n, target, health.nights);
+  const waiting = range === "365" && !year && !yearError;
+  // The live 60 days go on top of the fetched year, so a tap made a minute ago on Today is already counted here.
+  const data = range === "365" && year ? { ...year, ...map } : map;
+  const i = insights(data, settings, today, n, target, health.nights);
+  const log = dayLog(data, settings, today, n);
+  const closedDays = log.filter((r) => r.closed).length;
   const more = i.factors.filter((f) => f.lift >= LIFT).slice(0, 6);
   const less = i.factors.filter((f) => f.lift <= -LIFT).slice(-3).reverse();
   const linked = health.status === "connected" || health.status === "reconnect";
@@ -43,11 +77,23 @@ export function InsightsScreen() {
     <div className={a.page}>
       <div className={a.pageHead}>
         <div>
-          <div className="eb">Last {n} days · {i.closed} closed</div>
+          <div className="eb">{waiting ? "Loading a year…" : `Last ${RANGE_LABEL[range]} · ${i.closed} closed`}</div>
           <div className={`d ${a.pageTitle}`}>Insights</div>
         </div>
-        <Segmented label="Window" value={range} onChange={setRange} options={[{ value: "14", label: "14d" }, { value: "30", label: "30d" }, { value: "60", label: "60d" }]} />
+        <Segmented label="Window" value={range} onChange={(v) => { setRange(v as Range); setAllDays(false); }} options={[{ value: "7", label: "7d" }, { value: "30", label: "30d" }, { value: "60", label: "60d" }, { value: "365", label: "1y" }]} />
       </div>
+
+      {yearError && <div className={a.unsaved} role="alert"><span>Couldn&apos;t load the year. Showing the last 60 days.</span><Button size="sm" variant="secondary" onClick={() => setYearError(false)}>Retry</Button></div>}
+
+      <Card>
+        <div className={a.entryHead}>
+          <span className="eb" style={{ color: "var(--ink)" }}>Day by day</span>
+          <span className="muted" style={{ fontSize: 11 }}>{log.length ? `${closedDays} of ${log.length} closed` : ""}</span>
+        </div>
+        {log.length === 0 && <p className={a.signal}>Nothing logged in this window yet.</p>}
+        {(allDays ? log : log.slice(0, LOG_PREVIEW)).map((r) => <LogLine key={r.day} r={r} today={todayKey} />)}
+        {log.length > LOG_PREVIEW && <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={() => setAllDays((v) => !v)}>{allDays ? "Show the last week only" : `Show all ${log.length} days`}</button>}
+      </Card>
 
       <Card>
         <span className="eb" style={{ color: "var(--ink)" }}>How often each thing got done</span>
@@ -158,6 +204,24 @@ function FactorRow({ f }: { f: Factor }) {
         <i style={{ width: rest + "%", background: "var(--hairline)" }} />
       </div>
       <span className="muted" style={{ fontSize: 11 }}>{of(f.good, f.goodDays)} best days · {of(f.rest, f.restDays)} other days</span>
+    </div>
+  );
+}
+
+/** A day as it was: the scale, closed or what kept it open, and what was done. Nothing is rounded up. */
+function LogLine({ r, today }: { r: LogRow; today: string }) {
+  const d = new Date(Number(r.day.slice(0, 4)), Number(r.day.slice(5, 7)) - 1, Number(r.day.slice(8, 10)), 12);
+  return (
+    <div className={`${a.logRow} ${r.empty ? a.logEmpty : ""}`}>
+      <div className={a.logDate}><span className="eb" style={{ color: r.day === today ? "var(--ink)" : undefined }}>{r.day === today ? "Today" : WEEKDAYS[d.getDay()]}</span><span className="m" style={{ fontSize: 12 }}>{MONTHS[d.getMonth()]} {d.getDate()}</span></div>
+      <div className={a.logBody}>
+        <div className={a.logTop}>
+          <span className="m" style={{ fontSize: 14, fontWeight: 500 }}>{r.weight !== null ? `${r.weight} lb` : "no weight"}</span>
+          <span className={r.closed ? a.logClosed : a.logOpen}>{r.empty ? "nothing logged" : r.closed ? "closed" : `${r.done}/${r.total} · missed ${r.missed.join(", ").toLowerCase()}`}</span>
+        </div>
+        {!r.empty && <span className="muted" style={{ fontSize: 12 }}>{r.did.length ? r.did.join(" · ") : "no activity"}{r.mood ? ` · ${r.mood.toLowerCase()}` : ""}</span>}
+      </div>
+      <DayGlyph done={r.done} total={r.total} />
     </div>
   );
 }

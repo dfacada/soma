@@ -4,7 +4,7 @@
 
 const express = require('express');
 const { member, wrap } = require('../lib/auth');
-const { HttpError, select, needId, needDay, packJson, unpackJson, fitText, bool } = require('../lib/db');
+const { HttpError, select, selectAll, needId, needDay, packJson, unpackJson, fitText, bool } = require('../lib/db');
 
 const router = express.Router();
 
@@ -48,14 +48,16 @@ router.get('/days', member, wrap(async (req, res) => {
   const to = needDay(req.query.to);
   if (from > to) throw new HttpError(400, 'from is after to');
   const uid = needId(req.user.id);
-  const where = `WHERE user_id = ${uid} AND day >= '${from}' AND day <= '${to}' ORDER BY day ASC LIMIT 300`;
+  // Insights asks for a year. ZCQL gives 300 rows a query, so every set is paged; the window is capped instead.
+  if ((Date.parse(to) - Date.parse(from)) / 86400000 > 400) throw new HttpError(400, 'at most 400 days a request');
+  const where = `WHERE user_id = ${uid} AND day >= '${from}' AND day <= '${to}' ORDER BY day ASC`;
 
-  const jobs = SETS.map(([, table, cols]) => select(req.admin, table, `SELECT ${cols} FROM ${table} ${where}`));
+  const jobs = SETS.map(([, table, cols]) => selectAll(req.admin, table, `SELECT ${cols} FROM ${table} ${where}`, 600));
   if (req.query.fromMs !== undefined || req.query.toMs !== undefined) {
     const fromMs = needId(req.query.fromMs, 'fromMs');
     const toMs = needId(req.query.toMs, 'toMs');
-    jobs.push(select(req.admin, 'entries',
-      `SELECT entry_id, created_ms, has_audio, has_photo, transcript_status FROM entries WHERE user_id = ${uid} AND created_ms >= ${fromMs} AND created_ms <= ${toMs} ORDER BY created_ms DESC LIMIT 300`));
+    jobs.push(selectAll(req.admin, 'entries',
+      `SELECT entry_id, created_ms, has_audio, has_photo, transcript_status FROM entries WHERE user_id = ${uid} AND created_ms >= ${fromMs} AND created_ms <= ${toMs} ORDER BY created_ms DESC`, 1500));
   }
   const results = await Promise.all(jobs);
 

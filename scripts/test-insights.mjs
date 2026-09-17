@@ -1,5 +1,5 @@
 // Insight counts.  node --import ./scripts/ts-resolve.mjs scripts/test-insights.mjs
-import { insights } from "../src/lib/insights.ts";
+import { dayLog, insights } from "../src/lib/insights.ts";
 import { DEFAULT_SETTINGS } from "../src/lib/settings.ts";
 
 let passed = 0; const failures = [];
@@ -54,6 +54,17 @@ check("a factor with too few days on one side is not compared", f("Hit the push-
 check("steps average skips unknown days", s.steps, { days: 7, avg: Math.round((9000 + 8500 + 4000 + 8200 + 3000 + 2500 + 5000) / 7) });
 const bare = insights(big, DEFAULT_SETTINGS, today, 14, 100);
 check("without nights there is no sleep insight and no sleep factor", [bare.sleep, bare.factors.some((x) => x.label.startsWith("Slept"))], [null, false]);
+
+// ── The plain record: one row a day, newest first.
+console.log("day log");
+const log = dayLog(map, DEFAULT_SETTINGS, today, 14);
+check("runs newest first and stops at the first day anything was logged", log.map((r) => r.day), [day(0), day(1), day(2), day(3)]);
+check("a closed day: weight, five of five, nothing missed, what was done", log[0], { day: day(0), weight: 181, mood: "Focused", closed: true, done: 5, total: 5, missed: [], did: ["100 push-ups", "Walk"], empty: false });
+check("an open day names what kept it open, in card order", [log[1].closed, log[1].done, log[1].missed, log[1].did], [false, 1, ["Weight", "Journal", "3 meals", "Activity"], []]);
+check("no meals at all reads as Food, not 4 meals", log[2].missed, ["Journal", "Food"]);
+check("steps show when known", dayLog(big, DEFAULT_SETTINGS, today, 14)[0].did, ["Walk", "9,000 steps"]);
+check("a gap inside the record stays in as an empty day", dayLog({ [day(0)]: map[day(0)], [day(2)]: map[day(2)] }, DEFAULT_SETTINGS, today, 14).map((r) => r.empty), [false, true, false]);
+check("weight not required: it is not listed as missed", dayLog(map, { ...DEFAULT_SETTINGS, requireWeight: false }, today, 14)[1].missed, ["Journal", "3 meals", "Activity"]);
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

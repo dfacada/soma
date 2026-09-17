@@ -53,7 +53,8 @@ async function completeConnect(code: string, seal: (value: unknown) => Promise<s
 /** Every stored night in the months that cover the window. A month sealed by an older vault is skipped. */
 async function loadNights(unseal: <T>(b64: string) => Promise<T>): Promise<Nights> {
   const today = noon();
-  const { months } = await fetchMonths(monthOf(dayKey(addDays(today, -BACKFILL_DAYS - 2))), monthOf(dayKey(today)));
+  // A year of months, thirteen rows at most: Insights can look back that far.
+  const { months } = await fetchMonths(monthOf(dayKey(addDays(today, -366))), monthOf(dayKey(today)));
   const parts = await Promise.all(months.map((m) => unseal<Nights>(m.ciphertext).catch(() => ({} as Nights))));
   return Object.assign({}, ...parts);
 }

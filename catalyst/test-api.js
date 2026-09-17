@@ -221,6 +221,11 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('POST', '/feedback', { body: 'test feedback' });
   check('feedback saves', r.status === 201, r.text);
 
+  r = await call('GET', '/days?from=2000-06-01&to=2001-06-01&fromMs=0&toMs=1');
+  check('/days takes a year at a time', r.status === 200 && r.json.activity.some((x) => x.day === day), r.json);
+  r = await call('GET', '/days?from=1999-01-01&to=2001-06-01');
+  check('…and refuses much more than that', r.status === 400, r.text);
+
   console.log('google health');
   r = await call('GET', '/google-health');
   check('link status reads, nothing linked', r.status === 200 && typeof r.json.configured === 'boolean' && r.json.link === null, r.json);
