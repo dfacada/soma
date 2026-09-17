@@ -56,7 +56,9 @@ export async function transcribe(entryId: string, audio: Blob): Promise<string> 
     if (job.status === "failed" || !job.result) throw new TranscribeError(job.error || "failed", explain(job.error || "failed"));
     const res = await fetch(await signedUrl("GET", job.result));
     if (!res.ok) throw new TranscribeError("result_missing", explain("failed"));
-    return String(((await res.json()) as { text?: string }).text || "").trim();
+    const text = String(((await res.json()) as { text?: string }).text || "").trim();
+    // Whisper answers silence or noise with a stray "." or similar; with no letter or digit in it, that is not a transcript.
+    return /[\p{L}\p{N}]/u.test(text) ? text : "";
   } finally {
     // Removes the row and blanks whatever the job left behind, whether this succeeded or not.
     void api("DELETE", `/jobs/${job.id}`).catch(() => undefined);
