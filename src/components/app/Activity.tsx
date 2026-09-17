@@ -1,13 +1,15 @@
 "use client";
 
 // Activity: today's list, the round (chain grid, progress) and the leaderboard. Follows the prototype's
-// viewActivity. Steps are left out until Fitbit is connected.
+// viewActivity. Steps come from Google Health (Fitbit) once connected in Settings; they inform, they do not close the day.
 
 import { useCallback, useState } from "react";
 import { chain, dayIndexOf, defaultRestDays, isRestDay, leaderboard, phaseOf, setBreakdown, type Log, type Member } from "@/lib/round";
 import { dayStatus, streak } from "@/lib/today";
-import { Button, Card, Field, Input, Sheet, Switch, Tag, Toast } from "@/components/ui";
+import Link from "next/link";
+import { Bar, Button, Card, Field, Input, Sheet, Switch, Tag, Toast } from "@/components/ui";
 import { useDays } from "./Days";
+import { useHealth } from "./Health";
 import { PushSheet } from "./PushSheet";
 import { useRounds, type RoundRow } from "./Rounds";
 import { useSession } from "./Session";
@@ -20,6 +22,7 @@ export function Activity() {
   const { me, settings } = useSession();
   const { map, error, reload, unsaved, retry, change, today, todayKey: k, windowDays } = useDays();
   const rounds = useRounds();
+  const health = useHealth();
   const [pushSheet, setPushSheet] = useState(false);
   const [manage, setManage] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -32,6 +35,7 @@ export function Activity() {
 
   const st = dayStatus(map[k], settings);
   const types = map[k]?.activity?.types || {};
+  const steps = map[k]?.activity?.steps ?? null;
   const run = streak(map, settings, today, windowDays).now;
   const { target, restToday: rest, current } = rounds;
   const isAdmin = me.profile.role === "admin";
@@ -64,6 +68,13 @@ export function Activity() {
           return <ActRow key={t.key} name={t.name} done={done} sub={done ? "Logged" : "Any amount counts"}
             action={done ? <button type="button" className={a.lnk} onClick={toggle}>Undo</button> : <Button size="sm" variant="secondary" onClick={toggle}>Log</Button>} />;
         })}
+        {steps !== null || health.status === "connected" ? (
+          <div className={a.stepsRow}>
+            <Bar label="Steps" value={steps ?? 0} max={settings.goals.steps} color="var(--activity)" text={`${(steps ?? 0).toLocaleString("en-US")} / ${settings.goals.steps.toLocaleString("en-US")}`} />
+          </div>
+        ) : health.status === "off" || health.status === "reconnect" ? (
+          <div className={a.stepsRow}><Link href="/settings/" className={a.lnk}>{health.status === "off" ? "Connect Fitbit in Settings to see steps" : "Reconnect Fitbit in Settings to keep steps coming"}</Link></div>
+        ) : null}
       </Card>
 
       {rounds.loading ? <span className="eb">Loading the round</span> : current ? (

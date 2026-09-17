@@ -104,11 +104,23 @@ function useDaysState(today: Date, windowDays: number) {
     void flush(resource, day);
   }, [flush]);
 
+  // Steps arrive from the Google Health sync, which has already stored them: update the map, save nothing.
+  const applySteps = useCallback((list: { day: string; steps: number }[]) => {
+    const next = { ...latest.current };
+    for (const { day, steps } of list) {
+      const cur = next[day] || emptyDay();
+      if (!cur.activity && steps === 0) continue;
+      next[day] = { ...cur, activity: { day, pushups: null, types: {}, ...cur.activity, steps } };
+    }
+    latest.current = next;
+    setMap(next);
+  }, []);
+
   const retry = useCallback(() => {
     [...failed.current].forEach((key) => { const i = key.indexOf(":"); void flush(key.slice(0, i) as Resource, key.slice(i + 1)); });
   }, [flush]);
 
-  return useMemo(() => ({ map, error, reload: load, unsaved, retry, change }), [map, error, load, unsaved, retry, change]);
+  return useMemo(() => ({ map, error, reload: load, unsaved, retry, change, applySteps }), [map, error, load, unsaved, retry, change, applySteps]);
 }
 
 type DaysValue = ReturnType<typeof useDaysState> & { today: Date; todayKey: string; windowDays: number };

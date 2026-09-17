@@ -1,7 +1,7 @@
 "use client";
 
 // Settings (docs/HANDOFF.md §6). Every control saves on change; nothing has a Save button.
-// Sections still to come with their features: notifications, Fitbit, exports and import, rounds, passphrase change.
+// Sections still to come with their features: notifications, exports and import, rounds, passphrase change.
 
 import { useCallback, useRef, useState } from "react";
 import { api } from "@/lib/api";
@@ -9,6 +9,7 @@ import { isDevIdentity } from "@/lib/catalyst";
 import type { Habit, Settings } from "@/lib/settings";
 import { Button, Card, Chip, Field, Input, Pill, Segmented, Switch, Toast } from "@/components/ui";
 import { Admin } from "./Admin";
+import { useHealth } from "./Health";
 import { useJournal } from "./Journal";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -112,6 +113,8 @@ export function SettingsScreen() {
           onAdd={(name) => { if (settings.activityTypes.some((t) => t.name.toLowerCase() === name.toLowerCase())) return say("That one is already there"); void save({ activityTypes: [...settings.activityTypes, { key: slug(name), name }] }, `Added ${name}`); }} />
       </Card>
 
+      <HealthCard steps={g.steps} onSteps={(n) => void save({ goals: { ...g, steps: n } }, `Steps goal set to ${n.toLocaleString("en-US")}`)} />
+
       <Card>
         <span className="eb">Journal &amp; vault</span>
         <Field name="Vault" help={journal.vault === "open" ? "Open on this device until the tab closes." : journal.vault === "none" ? "Not created yet." : "Locked."}>
@@ -129,6 +132,37 @@ export function SettingsScreen() {
 
       <Toast message={toast} />
     </div>
+  );
+}
+
+const HEALTH_LINE = {
+  loading: "Checking…",
+  unconfigured: "Not available yet. David has to finish the Google setup first.",
+  off: "Not connected.",
+  connected: "Connected. Steps refresh every half hour while Soma is open and your vault is unlocked.",
+  reconnect: "Google has ended the connection. Connect again to keep steps coming.",
+} as const;
+
+/** Fitbit now reports through Google Health. Read-only, steps only; the token is stored as vault ciphertext. */
+function HealthCard({ steps, onSteps }: { steps: number; onSteps: (n: number) => void }) {
+  const health = useHealth();
+  const s = health.status;
+  const linked = s === "connected" || s === "reconnect";
+  const when = health.lastSyncMs ? new Date(health.lastSyncMs).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
+  return (
+    <Card>
+      <span className="eb">Fitbit · Google Health</span>
+      <Field name="Steps from your tracker" help={HEALTH_LINE[s] + (s === "connected" && when ? ` Last synced ${when}.` : "")}>
+        {s === "off" || s === "reconnect"
+          ? <Button size="sm" variant="activity" onClick={health.connect}>{s === "off" ? "Connect" : "Reconnect"}</Button>
+          : s === "connected" ? <Button size="sm" variant="secondary" disabled={health.syncing} onClick={health.syncNow}>{health.syncing ? "Syncing…" : "Sync now"}</Button> : null}
+      </Field>
+      <Field name="Steps goal" help="The bar on Activity fills toward this.">
+        <Commit numeric value={String(steps)} label="Steps goal" onCommit={(v) => { const n = Number(v); if (n >= 1000 && n <= 40000 && n !== steps) onSteps(n); }} />
+      </Field>
+      {linked && <div><button type="button" className={a.lnk} style={{ minHeight: 44 }} onClick={() => void health.disconnect()}>Disconnect</button></div>}
+      <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Fitbit moved to Google Health in 2026, so you sign in with the Google account your Fitbit uses. Soma asks for one permission, reading activity, and only keeps daily step totals. The connection is encrypted with your vault key; the server uses it for the moment of a sync and never stores it.</p>
+    </Card>
   );
 }
 

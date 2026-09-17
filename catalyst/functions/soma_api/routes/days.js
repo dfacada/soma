@@ -39,7 +39,9 @@ const RESOURCES = {
   }),
   activity: dayStore('activity', {
     pushups: Object.assign({ col: 'pushups' }, number('pushups', 0, 100000, true)),
-    types: Object.assign({ col: 'types_json' }, json('types', {}))
+    types: Object.assign({ col: 'types_json' }, json('types', {})),
+    // Written by the Google Health sync (routes/health.js); a member may also set it by hand.
+    steps: Object.assign({ col: 'steps' }, number('steps', 0, 1000000, true))
   })
 };
 

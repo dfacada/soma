@@ -35,10 +35,11 @@ router.put('/settings', member, wrap(async (req, res) => {
 // ── GET /days?from&to: everything logged in a date window, in one round trip. ──
 // Today needs the last week for its strip and streak; Insights will ask for more. Entries are matched
 // by createdMs, so the client passes the window's epoch bounds for its own timezone.
+const num = (v) => (v === null || v === '' || v === undefined ? null : Number(v));
 const SETS = [
   ['checkins', 'checkins', 'day, mood, habits_json, counts_json', (r) => ({ day: r.day, mood: r.mood || null, habits: unpackJson(r.habits_json, {}), counts: unpackJson(r.counts_json, {}) })],
   ['dayLogs', 'day_logs', 'day, meals_json, extras_json', (r) => ({ day: r.day, meals: unpackJson(r.meals_json, {}), extras: unpackJson(r.extras_json, []) })],
-  ['activity', 'activity', 'day, pushups, types_json', (r) => ({ day: r.day, pushups: r.pushups === null || r.pushups === '' || r.pushups === undefined ? null : Number(r.pushups), types: unpackJson(r.types_json, {}) })],
+  ['activity', 'activity', 'day, pushups, types_json, steps', (r) => ({ day: r.day, pushups: num(r.pushups), types: unpackJson(r.types_json, {}), steps: num(r.steps) })],
   ['weight', 'weight', 'day, value', (r) => ({ day: r.day, value: Number(r.value) })]
 ];
 

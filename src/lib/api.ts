@@ -42,7 +42,8 @@ export type Eaten = { name: string; kcal: number; protein: number; carbs?: numbe
 export type Extra = { name: string; kcal: number; protein?: number; carbs?: number; fat?: number };
 /** A meal slot holds a snapshot of what was eaten, so swapping the plan later never rewrites past days. */
 export type DayLog = { day: string; meals: Record<string, Eaten | boolean>; extras: Extra[] };
-export type ActivityDay = { day: string; pushups: number | null; types: Record<string, boolean> };
+/** `steps` is written by the Google Health sync, never by a day save. */
+export type ActivityDay = { day: string; pushups: number | null; types: Record<string, boolean>; steps?: number | null };
 export type EntryMeta = { id: string; createdMs: number; hasAudio: boolean; hasPhoto: boolean; transcriptStatus: string };
 export type Days = {
   from: string; to: string;

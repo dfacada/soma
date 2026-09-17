@@ -11,7 +11,7 @@ import { Recorder, toneStream } from "@/lib/recorder";
 import { clearDraft, deletePending, listOrphanDrafts, listPending, putPending, type JournalEntry, type PendingRecording } from "@/lib/recovery";
 import { dayKey } from "@/lib/today";
 import { transcribe, TranscribeError } from "@/lib/transcribe";
-import { createVault, exportKey, importKey, unlockVault, type VaultMeta } from "@/lib/vault-crypto";
+import { createVault, decryptJson, encryptJson, exportKey, fromB64, importKey, toB64, unlockVault, type VaultMeta } from "@/lib/vault-crypto";
 import { Button, Input, Sheet, Toast } from "@/components/ui";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -38,6 +38,10 @@ type Journal = {
   cloudOn: boolean;
   transcribeEntry: (id: string) => void;
   say: (message: string) => void;
+  /** Small secrets kept outside the journal (the Google Health token): vault-encrypt to base64 and back.
+   *  Both reject while the vault is closed. The key itself never leaves this provider. */
+  seal: (value: unknown) => Promise<string>;
+  unseal: <T>(b64: string) => Promise<T>;
 };
 
 const Ctx = createContext<Journal | null>(null);
@@ -286,13 +290,22 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return [...local, ...remote].sort((x, y) => y.createdMs - x.createdMs);
   }, [vault, loaded, pending]);
 
+  const seal = useCallback(async (value: unknown) => {
+    if (!key.current) throw new Error("vault is closed");
+    return toB64(await encryptJson(key.current, value));
+  }, []);
+  const unseal = useCallback(async <T,>(b64: string) => {
+    if (!key.current) throw new Error("vault is closed");
+    return decryptJson<T>(key.current, fromB64(b64));
+  }, []);
+
   const countOn = useCallback((day: string) => (items ? items.filter((i) => dayKey(new Date(i.createdMs)) === day).length : null), [items]);
   const openVault = useCallback(() => setSheet(true), []);
   const closeSheet = useCallback(() => setSheet(false), []);
 
   const value = useMemo<Journal>(
-    () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say }),
-    [vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say],
+    () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal }),
+    [vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal],
   );
 
   return (
