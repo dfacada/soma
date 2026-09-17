@@ -43,3 +43,6 @@ next-env.d.ts
 # catalyst functions
 catalyst/functions/*/node_modules/
 catalyst/functions/*/.build/
+
+# function secrets, merged into catalyst-config.json at deploy time by catalyst/deploy.js
+catalyst/secrets.json

@@ -3,9 +3,7 @@
     "name": "soma_api",
     "stack": "node24",
     "type": "advancedio",
-    "env_variables": {
-      "SPIKE_KEY": "8276cc6f43eabad1a914cf283ce88807c697"
-    }
+    "env_variables": {}
   },
   "execution": {
     "main": "index.js"

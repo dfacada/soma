@@ -52,6 +52,7 @@
   <section>
     <h2>3 · API with token</h2>
     <button id="btnMe">GET /me (all three ways)</button>
+    <button id="btnAdmin" class="ghost">GET /admin/profiles</button>
   </section>
 
   <section>
@@ -159,6 +160,13 @@
       await tryMe('Authorization: Bearer', { headers: { Authorization: 'Bearer ' + tok } });
     }
     await tryMe('cookies only', { credentials: 'include' });
+  });
+
+  run('btnAdmin', async function () {
+    try {
+      var res = await fetch(API + '/admin/profiles', { headers: { Authorization: await token() } });
+      log('/admin/profiles →', res.status, (await res.text()).slice(0, 600));
+    } catch (e) { log('/admin/profiles failed:', errText(e)); }
   });
 
   async function sha256(buf) {

@@ -2,7 +2,7 @@
 // Every route resolves the caller first and scopes every query by user_id;
 // Catalyst Data Store has no row-level security, so this layer is the security boundary.
 //
-// Spike skeleton: /health, /me and /sign. Grow route by route per docs/HANDOFF.md §5.
+// So far: /health, /me, /sign and /admin/profiles. Grow route by route per docs/HANDOFF.md §5.
 // Keep handlers under the 30 s Advanced I/O timeout; anything longer becomes a job.
 
 'use strict';
@@ -56,10 +56,64 @@ async function withUser(req, res, next) {
       status: user.status || null
     };
     req.admin = catalyst.initialize(req, { scope: 'admin' });
+  } catch (e) {
+    return res.status(401).json({ error: 'not signed in' });
+  }
+  try {
+    req.profile = await loadProfile(req.admin, req.user);
     next();
   } catch (e) {
-    res.status(401).json({ error: 'not signed in' });
+    console.error(JSON.stringify({ action: 'load_profile', user: req.user.id, error: e.message }));
+    res.status(500).json({ error: 'internal error' });
   }
+}
+
+// Approval lives in our own profiles table: Catalyst sign-up has no "pending" state.
+// A user's first authenticated call creates their profile as pending; ADMIN_EMAILS start as active admins.
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean);
+const STATUSES = ['pending', 'active', 'disabled'];
+const isId = (v) => /^\d{1,19}$/.test(String(v));
+
+async function findProfile(admin, userId) {
+  if (!isId(userId)) throw new Error('bad user id');
+  const rows = await admin.zcql().executeZCQLQuery(
+    'SELECT ROWID, user_id, email, display_name, role, status, CREATEDTIME FROM profiles WHERE user_id = ' + userId
+  );
+  return rows.length ? rows[0].profiles : null;
+}
+
+async function loadProfile(admin, user) {
+  let row = await findProfile(admin, user.id);
+  if (!row) {
+    const isAdmin = ADMIN_EMAILS.includes(String(user.email || '').toLowerCase());
+    try {
+      row = await admin.datastore().table('profiles').insertRow({
+        user_id: user.id,
+        email: user.email,
+        display_name: (user.name || '').slice(0, 100),
+        role: isAdmin ? 'admin' : 'member',
+        status: isAdmin ? 'active' : 'pending'
+      });
+      console.log(JSON.stringify({ action: 'profile_created', user: user.id, status: row.status }));
+    } catch (e) {
+      // user_id is unique: a concurrent first request won the insert.
+      row = await findProfile(admin, user.id);
+      if (!row) throw e;
+    }
+  }
+  return { rowId: String(row.ROWID), displayName: row.display_name || '', role: row.role, status: row.status };
+}
+
+// Express 4 does not route a rejected async handler to the error middleware on its own.
+const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
+
+function requireActive(req, res, next) {
+  if (req.profile.status !== 'active') return res.status(403).json({ error: 'account ' + req.profile.status, status: req.profile.status });
+  next();
+}
+function requireAdmin(req, res, next) {
+  if (req.profile.role !== 'admin') return res.status(403).json({ error: 'admin only' });
+  next();
 }
 
 // Public. Lets the spike confirm the deploy and the /execute prefix handling.
@@ -67,13 +121,40 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true, fn: 'soma_api', node: process.version, at: new Date().toISOString() });
 });
 
+// The one route a pending user can call: the app shows "waiting for approval" from profile.status.
 app.get('/me', withUser, (req, res) => {
-  res.json(req.user);
+  res.json({ id: req.user.id, email: req.user.email, name: req.user.name, profile: req.profile });
 });
+
+// Admin: list profiles (optionally by status) and move a user between pending, active and disabled.
+app.get('/admin/profiles', withUser, requireActive, requireAdmin, wrap(async (req, res) => {
+  const status = req.query.status;
+  if (status !== undefined && !STATUSES.includes(status)) return res.status(400).json({ error: 'unknown status' });
+  const where = status ? " WHERE status = '" + status + "'" : '';
+  const rows = await req.admin.zcql().executeZCQLQuery(
+    'SELECT ROWID, user_id, email, display_name, role, status, CREATEDTIME FROM profiles' + where + ' ORDER BY CREATEDTIME DESC LIMIT 200'
+  );
+  res.json({ profiles: rows.map((r) => ({
+    userId: String(r.profiles.user_id), email: r.profiles.email, displayName: r.profiles.display_name || '',
+    role: r.profiles.role, status: r.profiles.status, createdAt: r.profiles.CREATEDTIME
+  })) });
+}));
+
+app.post('/admin/profiles/:userId/status', withUser, requireActive, requireAdmin, wrap(async (req, res) => {
+  const status = req.body && req.body.status;
+  if (!isId(req.params.userId)) return res.status(400).json({ error: 'bad user id' });
+  if (!STATUSES.includes(status) || status === 'pending') return res.status(400).json({ error: 'status must be active or disabled' });
+  if (req.params.userId === req.user.id) return res.status(409).json({ error: 'you cannot change your own status' });
+  const target = await findProfile(req.admin, req.params.userId);
+  if (!target) return res.status(404).json({ error: 'no such user' });
+  await req.admin.datastore().table('profiles').updateRow({ ROWID: target.ROWID, status });
+  console.log(JSON.stringify({ action: 'profile_status', by: req.user.id, user: req.params.userId, from: target.status, to: status }));
+  res.json({ userId: req.params.userId, status });
+}));
 
 // Batch pre-signed URLs so 20 MB audio and draft chunks never pass through this function.
 // Keys must live under the caller's own prefix. Expiry is 15 minutes.
-app.post('/sign', withUser, async (req, res) => {
+app.post('/sign', withUser, requireActive, async (req, res) => {
   const { bucket, keys, method } = req.body || {};
   if (!BUCKETS.includes(bucket)) return res.status(400).json({ error: 'unknown bucket' });
   if (!Array.isArray(keys) || keys.length === 0 || keys.length > 100) {
