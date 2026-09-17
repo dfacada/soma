@@ -52,6 +52,12 @@ export function useJournal() {
 }
 
 const SESSION_KEY = "soma-ck-v1.";
+// Set once the opening prompt has been shown in this tab, so a reload or a manual lock never asks twice.
+const ASKED_KEY = "soma-vault-asked.";
+function askOnce(userId: string): boolean {
+  try { if (sessionStorage.getItem(ASKED_KEY + userId)) return false; sessionStorage.setItem(ASKED_KEY + userId, "1"); return true; }
+  catch { return false; }
+}
 
 /** Vault metadata, or null when this user has not made a vault yet. */
 async function fetchMeta(): Promise<VaultMeta | null> {
@@ -69,6 +75,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const { me, settings } = useSession();
   const userId = me.id;
   const cloudOn = settings.cloudTranscription;
+  const askOnOpen = useRef(settings.unlockOnOpen);
 
   const [vault, setVault] = useState<VaultState>("checking");
   const [loaded, setLoaded] = useState<LoadedEntry[] | null>(null);
@@ -133,7 +140,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     void Promise.all([fetchMeta(), restoreKey(userId)]).then(([m, k]) => {
       if (!alive) return;
       meta.current = m;
-      if (m && k) void opened(k); else setVault(m ? "locked" : "none");
+      if (m && k) { void opened(k); return; }
+      setVault(m ? "locked" : "none");
+      // Opening the app is the moment to unlock: the vault now gates the health sync and sleep as well as the journal.
+      // Only for a vault that exists; creating one stays with the Journal card, where it is explained.
+      if (m && askOnOpen.current && askOnce(userId)) setSheet(true);
     }).catch(() => { if (alive) setVault("locked"); });
     return () => { alive = false; };
   }, [userId, opened]);
@@ -312,14 +323,14 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={value}>
       {children}
       <Sheet open={sheet} title={vault === "none" ? "Create your vault" : "Unlock your vault"} onClose={closeSheet}>
-        <VaultForm creating={vault === "none"} busy={busy} onSubmit={submitPassphrase} />
+        <VaultForm creating={vault === "none"} busy={busy} onSubmit={submitPassphrase} onSkip={closeSheet} />
       </Sheet>
       <Toast message={toast} />
     </Ctx.Provider>
   );
 }
 
-function VaultForm({ creating, busy, onSubmit }: { creating: boolean; busy: boolean; onSubmit: (pass: string) => Promise<string | null> }) {
+function VaultForm({ creating, busy, onSubmit, onSkip }: { creating: boolean; busy: boolean; onSubmit: (pass: string) => Promise<string | null>; onSkip: () => void }) {
   const [pass, setPass] = useState("");
   const [again, setAgain] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -337,12 +348,13 @@ function VaultForm({ creating, busy, onSubmit }: { creating: boolean; busy: bool
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
         {creating
           ? "Your journal is encrypted on this device before it is uploaded. The passphrase never leaves it, so nobody can read your entries, David included. It also cannot be reset: if you forget it, the entries are gone."
-          : "Your journal is encrypted with a passphrase only you know. Enter it to record and read entries on this device."}
+          : "Your journal, your sleep and your Fitbit connection are encrypted with a passphrase only you know. Enter it to record, read entries and sync on this device. Food, weight, check-in and activity work without it."}
       </p>
       <Input type="password" autoComplete={creating ? "new-password" : "current-password"} placeholder="Vault passphrase" aria-label="Vault passphrase" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus />
       {creating && <Input type="password" autoComplete="new-password" placeholder="Repeat the passphrase" aria-label="Repeat the passphrase" value={again} onChange={(e) => setAgain(e.target.value)} />}
       {error && <p role="alert" className={a.noteBad}>{error}</p>}
       <Button type="submit" variant="journal" block disabled={busy}>{busy ? (creating ? "Creating…" : "Unlocking…") : creating ? "Create vault" : "Unlock"}</Button>
+      {!creating && <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={onSkip}>Not now</button>}
     </form>
   );
 }

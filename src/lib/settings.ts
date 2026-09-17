@@ -22,6 +22,8 @@ export type Settings = {
   cloudTranscription: boolean;
   /** Logging weight is one of the things that closes the day. On unless the user switches it off. */
   requireWeight: boolean;
+  /** Ask for the vault passphrase when the app opens, once per tab, dismissible. The vault gates the journal, sleep and the health sync. */
+  unlockOnOpen: boolean;
 };
 
 export const MEALS: Meal[] = ["breakfast", "lunch", "snack", "dinner"];
@@ -52,6 +54,7 @@ export const DEFAULT_SETTINGS: Settings = {
   bestStreak: 0,
   cloudTranscription: false,
   requireWeight: true,
+  unlockOnOpen: true,
 };
 
 /** The starter recipe book from the prototype. A user's own recipes (GET /recipes) are listed ahead of these. */
@@ -81,5 +84,6 @@ export function mergeSettings(stored: unknown): Settings {
     bestStreak: Math.round(num(s.bestStreak, 0)),
     cloudTranscription: s.cloudTranscription === true,
     requireWeight: s.requireWeight !== false,
+    unlockOnOpen: s.unlockOnOpen !== false,
   };
 }
