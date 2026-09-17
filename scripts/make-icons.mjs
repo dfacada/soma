@@ -1,10 +1,10 @@
 // Draws the app icons: the five-segment day ring (weight, check-in, journal, food, activity, in card order) with
-// rounded ends, on a warm ink gradient. No image library: each pixel is tested against the ring geometry,
+// rounded ends, on bone (David, 2026-09-17: the black background "is not that great"). No image library: each pixel is tested against the ring geometry,
 // 4×4 supersampled, and written as a PNG with Node's zlib.   node scripts/make-icons.mjs
 import fs from "node:fs";
 import zlib from "node:zlib";
 
-const TOP = [0x2b, 0x28, 0x23], BOTTOM = [0x12, 0x11, 0x0f];
+const TOP = [0xfb, 0xfa, 0xf7], BOTTOM = [0xe9, 0xe6, 0xdd]; // bone, the page colour, a touch deeper at the foot
 const SEGMENTS = [[0x8b, 0xc4, 0xa6], [0x5f, 0x5b, 0xbf], [0x8f, 0x8c, 0xd3], [0x2c, 0x8a, 0x5e], [0xb7, 0x69, 0x2a]];
 const GAP_DEG = 7;  // clear space between the rounded ends
 
