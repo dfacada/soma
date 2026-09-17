@@ -74,6 +74,7 @@ function EntryCard({ item }: { item: Item }) {
   const [text, setText] = useState(e?.transcript || "");
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const working = j.transcribing.includes(item.id);
 
   async function save() {
     setSaving(true);
@@ -114,9 +115,16 @@ function EntryCard({ item }: { item: Item }) {
         </>
       ) : (
         <>
-          {e.transcript ? <p className={a.transcript}>{e.transcript}</p> : <p className="muted" style={{ fontSize: 13 }}>No transcript yet. Transcription is not switched on; you can write a note instead.</p>}
+          {e.transcript
+            ? <p className={a.transcript}>{e.transcript}</p>
+            : working
+              ? <p className="muted" style={{ fontSize: 13 }}>Transcribing… this usually takes a few seconds.</p>
+              : <p className="muted" style={{ fontSize: 13 }}>{j.cloudOn ? "No transcript yet." : "No transcript. Cloud transcription is off; turn it on in Settings, or write a note."}</p>}
           <div className={a.entryActions}>
-            {!item.pending && <button type="button" className={a.lnk} onClick={() => setEditing(true)}>{e.transcript ? "Edit note" : "Add a note"}</button>}
+            <span className={a.rowButtons}>
+              {!item.pending && <button type="button" className={a.lnk} onClick={() => setEditing(true)}>{e.transcript ? "Edit" : "Add a note"}</button>}
+              {!item.pending && e.hasAudio && j.cloudOn && !working && <button type="button" className={a.lnk} style={{ color: "var(--journal)" }} onClick={() => j.transcribeEntry(item.id)}>{e.transcript ? "Transcribe again" : "Transcribe"}</button>}
+            </span>
             {confirming ? (
               <span className={a.rowButtons}>
                 <Button size="sm" variant="danger" onClick={() => void j.remove(item.id).then(() => j.say("Entry deleted"), () => j.say("Couldn't delete the entry"))}>Delete for good</Button>

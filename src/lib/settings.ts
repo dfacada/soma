@@ -18,6 +18,8 @@ export type Settings = {
   /** Per person, flat, no ramp. Round membership will carry its own target once rounds exist. */
   pushupTarget: number;
   bestStreak: number;
+  /** Off until the user opts in: transcription is the one thing that sends plaintext audio off the device. */
+  cloudTranscription: boolean;
 };
 
 export const MEALS: Meal[] = ["breakfast", "lunch", "snack", "dinner"];
@@ -46,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   activityTypes: [{ key: "walk", name: "Walk" }, { key: "gym", name: "Gym" }, { key: "run", name: "Run" }],
   pushupTarget: 100,
   bestStreak: 0,
+  cloudTranscription: false,
 };
 
 /** The starter recipe book from the prototype. A user's own recipes (GET /recipes) are listed ahead of these. */
@@ -73,5 +76,6 @@ export function mergeSettings(stored: unknown): Settings {
     activityTypes: list(s.activityTypes, d.activityTypes),
     pushupTarget: Math.max(1, Math.round(num(s.pushupTarget, d.pushupTarget))),
     bestStreak: Math.round(num(s.bestStreak, 0)),
+    cloudTranscription: s.cloudTranscription === true,
   };
 }

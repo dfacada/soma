@@ -90,6 +90,8 @@ Pass: a job submitted from `soma_api` sleeps 60 s, then writes a row to a `jobs`
 
 - Slate propagation: for ~10 s after "Deploy is Live", **new** paths can 404 while existing ones already serve the new build. Wait before judging a deploy.
 
+- **Stratus deletes are asynchronous (found 2026-09-17).** `bucket.deleteObject()` resolves at once but the object stays listable and downloadable for a minute or two (the SDK call is a PUT that schedules the delete, with an optional TTL). `putObject(..., { overwrite: true })` takes effect immediately. Anything that must be unreadable now gets overwritten first.
+
 ## What is left (needs David)
 
 1. Bucket CORS, console only: Stratus → `soma-drafts` → Configurations → Bucket CORS → add `https://soma-onkasary.onslate.com` for GET and PUT. Repeat for the other three buckets when convenient.

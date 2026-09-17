@@ -7,7 +7,7 @@ import { useCallback, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
 import type { Habit, Settings } from "@/lib/settings";
-import { Button, Card, Chip, Field, Input, Pill, Segmented, Toast } from "@/components/ui";
+import { Button, Card, Chip, Field, Input, Pill, Segmented, Switch, Toast } from "@/components/ui";
 import { Admin } from "./Admin";
 import { useJournal } from "./Journal";
 import { useSession } from "./Session";
@@ -109,6 +109,9 @@ export function SettingsScreen() {
         <span className="eb">Journal &amp; vault</span>
         <Field name="Vault" help={journal.vault === "open" ? "Open on this device until the tab closes." : journal.vault === "none" ? "Not created yet." : "Locked."}>
           {journal.vault === "open" ? <Button size="sm" variant="secondary" onClick={() => { journal.lock(); say("Vault locked"); }}>Lock</Button> : <Button size="sm" variant="journal" onClick={journal.openVault}>{journal.vault === "none" ? "Create" : "Unlock"}</Button>}
+        </Field>
+        <Field name="Cloud transcription" help="Off by default. When on, each recording is sent to Groq to be transcribed, then blanked and deleted from the server; the transcript is encrypted into the entry on this device.">
+          <Switch checked={settings.cloudTranscription} label="Cloud transcription" onChange={(v) => void save({ cloudTranscription: v }, v ? "Cloud transcription on" : "Cloud transcription off")} />
         </Field>
         <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Entries and audio are encrypted on this device with AES-256-GCM before upload; the key comes from your passphrase and never leaves the browser. Food, activity and check-ins are readable by the server so leaderboards and admin fixes work.</p>
       </Card>

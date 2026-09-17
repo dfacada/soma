@@ -178,6 +178,34 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('POST', '/sign', { bucket: 'soma-drafts', keys: ['999000000000000001/../120218000000022011/x'] });
   check('refuses path traversal', r.status === 403, r.text);
 
+  console.log('jobs');
+  r = await call('POST', '/jobs', { type: 'mine-bitcoin', entryId: 'test-entry-0001', source: 'tx-test-entry-0001.webm' });
+  check('unknown job type is 400', r.status === 400, r.text);
+  r = await call('POST', '/jobs', { type: 'transcribe', entryId: 'test-entry-0001', source: '../../etc/passwd' });
+  check('a source that is not a tx- file is 400', r.status === 400, r.text);
+  r = await call('POST', '/sign', { kind: 'drafts', method: 'PUT', names: ['tx-test-entry-0001.webm'] });
+  await fetch(r.json.urls[0].url, { method: 'PUT', body: new Uint8Array(2048), headers: { 'Content-Type': 'application/octet-stream' } });
+  r = await call('POST', '/jobs', { type: 'transcribe', entryId: 'test-entry-0001', source: 'tx-test-entry-0001.webm' });
+  check('transcribe job queues', r.status === 201 && r.json.status === 'queued', r.json);
+  const jobId = r.json && r.json.id;
+  let job = null;
+  for (let i = 0; i < 30 && jobId; i++) {
+    await new Promise((res) => setTimeout(res, 2000));
+    job = (await call('GET', '/jobs/' + jobId)).json;
+    if (job.status === 'done' || job.status === 'failed') break;
+  }
+  // Without a provider key the job must fail cleanly; with one, 2 KB of zeros is not audio and the provider says so.
+  check('the job finishes with a recorded outcome', job && job.status === 'failed' && ['not_configured', 'provider_error'].includes(job.error), job);
+  r = await call('POST', '/sign', { kind: 'drafts', method: 'GET', names: ['tx-test-entry-0001.webm'] });
+  // Stratus deletes are scheduled, so the object can still exist for a minute: what matters is that it was blanked.
+  const gone = await fetch(r.json.urls[0].url);
+  const left = gone.status === 404 ? 0 : (await gone.arrayBuffer()).byteLength;
+  check('the plaintext audio is unreadable the moment the job ends', left <= 1, { status: gone.status, bytes: left });
+  r = await call('GET', '/jobs/120218000000022006');
+  check("someone else's job is 404", r.status === 404, r.text);
+  r = await call('DELETE', '/jobs/' + jobId);
+  check('job deletes', r.status === 200, r.text);
+
   console.log('recipes, errors, feedback');
   r = await call('POST', '/recipes', { recipe: { name: 'Bowl', kcal: 640 } });
   check('recipe creates', r.status === 201 && r.json.recipe.kcal === 640, r.json);

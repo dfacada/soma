@@ -10,6 +10,7 @@ import { deleteEntry, loadAudio, loadEntries, newEntry, saveEntry, type LoadedEn
 import { Recorder, toneStream } from "@/lib/recorder";
 import { clearDraft, deletePending, listOrphanDrafts, listPending, putPending, type JournalEntry, type PendingRecording } from "@/lib/recovery";
 import { dayKey } from "@/lib/today";
+import { transcribe, TranscribeError } from "@/lib/transcribe";
 import { createVault, exportKey, importKey, unlockVault, type VaultMeta } from "@/lib/vault-crypto";
 import { Button, Input, Sheet, Toast } from "@/components/ui";
 import { useSession } from "./Session";
@@ -32,6 +33,10 @@ type Journal = {
   saveText: (id: string, text: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
   audioFor: (id: string) => Promise<Blob>;
+  /** Entry ids with a transcription in flight. */
+  transcribing: string[];
+  cloudOn: boolean;
+  transcribeEntry: (id: string) => void;
   say: (message: string) => void;
 };
 
@@ -57,8 +62,9 @@ async function restoreKey(userId: string): Promise<CryptoKey | null> {
 }
 
 export function JournalProvider({ children }: { children: ReactNode }) {
-  const { me } = useSession();
+  const { me, settings } = useSession();
   const userId = me.id;
+  const cloudOn = settings.cloudTranscription;
 
   const [vault, setVault] = useState<VaultState>("checking");
   const [loaded, setLoaded] = useState<LoadedEntry[] | null>(null);
@@ -68,6 +74,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [transcribing, setTranscribing] = useState<string[]>([]);
 
   const key = useRef<CryptoKey | null>(null);
   const meta = useRef<VaultMeta | null>(null);
@@ -133,6 +140,25 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("online", online);
   }, [flushPending]);
 
+  // ── Transcription (opt-in). Takes the entry and its audio directly so it can run straight after an upload,
+  // before React state has caught up. The transcript is encrypted into the entry like any other edit. ──
+  const runTranscription = useCallback(async (entry: JournalEntry, audio: Blob) => {
+    const k = key.current;
+    if (!k) return;
+    setTranscribing((t) => [...t, entry.id]);
+    try {
+      const text = await transcribe(entry.id, audio);
+      const next: JournalEntry = { ...entry, transcript: text, transcriptStatus: text ? "done" : "none", updatedAt: new Date().toISOString() };
+      await saveEntry(k, next);
+      setLoaded((cur) => cur && cur.map((l) => (l.meta.id === entry.id ? { ...l, entry: next } : l)));
+      say(text ? "Transcript ready" : "Nothing could be made out in that recording");
+    } catch (e) {
+      say(e instanceof TranscribeError ? e.message : "Transcription failed. Try again.");
+    } finally {
+      setTranscribing((t) => t.filter((x) => x !== entry.id));
+    }
+  }, [say]);
+
   // ── Recording ──
   useEffect(() => {
     if (!recording) return;
@@ -157,8 +183,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     setPending((p) => [...p, { id: "pending_" + entry.id, userId, entry, audio: rec.audio, attempts: 0, lastAttemptAt: null }]);
     say(rec.interrupted ? "The microphone was interrupted · saved what was recorded" : "Entry saved · uploading…");
     const left = await flushPending();
-    if (left) say("Saved on this device · will upload automatically");
-  }, [userId, flushPending, say]);
+    if (left) return say("Saved on this device · will upload automatically");
+    if (cloudOn) void runTranscription(entry, rec.audio);
+  }, [userId, flushPending, say, cloudOn, runTranscription]);
   useEffect(() => { stopRef.current = () => { void stop(); }; }, [stop]);
 
   const start = useCallback(async (mood: string | null) => {
@@ -243,6 +270,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return loadAudio(key.current, id, found.entry?.audioMime || "audio/webm");
   }, [pending, loaded]);
 
+  const transcribeEntry = useCallback((id: string) => {
+    const found = loaded?.find((l) => l.meta.id === id)?.entry;
+    if (!found || transcribing.includes(id)) return;
+    void audioFor(id).then((audio) => runTranscription(found, audio), () => say("Couldn't load that recording"));
+  }, [loaded, transcribing, audioFor, runTranscription, say]);
+
   const items = useMemo<Item[] | null>(() => {
     if (vault !== "open" || !loaded) return null;
     const uploaded = new Set(loaded.map((l) => l.meta.id));
@@ -256,8 +289,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const closeSheet = useCallback(() => setSheet(false), []);
 
   const value = useMemo<Journal>(
-    () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, say }),
-    [vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, say],
+    () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say }),
+    [vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say],
   );
 
   return (
