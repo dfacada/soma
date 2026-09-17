@@ -19,7 +19,7 @@ Pass: `npm run build` in the repo root produces `out/`, Slate serves it at `/`, 
 
 - Connect the GitHub repo to Slate; framework Next.js; build `npm run build`; output `out`.
 - If Slate insists on a framework build and refuses a static folder, that is still a pass (we have a build). If it cannot serve `out/` at all, fallback is classic Web Client Hosting for dev and Slate revisited later.
-- Add custom domain `soma.davidfacada.com`; note the CNAME target Slate gives you. Add that CNAME at the davidfacada.com DNS host. SSL is issued by Slate.
+- ~~Add custom domain `soma.davidfacada.com`.~~ Dropped 2026-09-16: Soma stays on the Slate-provided `https://soma-onkasary.onslate.com`.
 
 ## 2. Auth session reaches the API
 
@@ -84,7 +84,7 @@ Pass: a job submitted from `soma_api` sleeps 60 s, then writes a row to a `jobs`
 1. Bucket CORS, console only: Stratus → `soma-drafts` → Configurations → Bucket CORS → add `https://soma-onkasary.onslate.com` for GET and PUT. Repeat for the other three buckets when convenient.
 2. Open `https://soma-onkasary.onslate.com/spike.html` on the iPhone in Safari. Sign up, confirm by email, sign in, tap **GET /me**, tap **Upload, download, compare**, tap **Copy log** and paste the log into the session. That closes items 2 and 3.
 3. Slate → soma → Configuration → General Settings → Cache → Disable, so the headers can be re-read (caveat B).
-4. Custom domain: Slate → soma → Domains → add `soma.davidfacada.com`, note the CNAME target, add it at the DNS host. Then the custom domain needs the same three allow-lists: Authorized Domains, bucket CORS, and a repeat of step 2 from that origin.
+4. ~~Custom domain.~~ Dropped: staying on the onslate.com URL. Instead, before inviting anyone, confirm the Production hostname.
 5. Export `analyze-entry` from the Glimpse Supabase dashboard.
 
 After that: delete the `/spike/*` routes, `SPIKE_KEY`, `public/spike.html`, the `spike_text` table and `soma-drafts/spike/*` objects.

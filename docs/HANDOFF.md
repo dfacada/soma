@@ -16,7 +16,7 @@ Source for all three lives in `C:\Users\david\Downloads\Claude\` (`Glimpse`, `Ma
 
 ## 2. Decisions (all approved by David)
 
-- **Name** Soma. **Domain** soma.davidfacada.com (David owns davidfacada.com; DNS not yet pointed at Catalyst).
+- **Name** Soma. **URL** `https://soma-onkasary.onslate.com`, the domain Slate provides. No custom domain (decided 2026-09-16): nothing to set up, and it is already the authorized origin for auth, API CORS and bucket CORS. The origin is permanent once people install the PWA (install, session and IndexedDB drafts are all bound to it), so confirm what URL the Production environment serves **before** inviting anyone.
 - **Platform** Zoho Catalyst, final. Build Soma directly there. Verified constraints: Advanced I/O functions time out at 30 s; Data Store has no row-level security; Data Store Text columns cap at 10,000 chars; Slate and functions are **different origins**, so the app calls the API by absolute URL with a bearer token from the Web SDK (see `catalyst/SPIKE.md` findings log).
 - **Fresh start, no data migration** (decided 2026-09-16). Glimpse, Macros and the Push-Up Challenge stay exactly where they are on Vercel + Supabase, live, with their data. Nothing is exported, converted or deleted. Soma starts empty: everyone signs up again, creates a new vault passphrase, reconnects Fitbit, and the admin creates the round anew. See §7 for what that means in practice. Glimpse *code* is still lifted as modules; that is reuse, not migration.
 - **Tabs** Today · Journal · Food · Activity · Insights, plus Settings behind the avatar. "Challenge" was renamed Activity.
@@ -41,7 +41,7 @@ Source for all three lives in `C:\Users\david\Downloads\Claude\` (`Glimpse`, `Ma
 1. **Design system, ~1 week** — tokens and components from the prototype: card, chip, tile, medallion, ring, sheet, settings field kit, tab bar, sidebar. Storybook optional; a `/kit` route showing every component is enough.
 2. **Data model + API, ~1 week** — Catalyst Express function `soma_api` (§5), Data Store tables, Stratus buckets, jobs for transcription and analysis, nightly cron for error pruning.
 3. **Screens, 4–5 weeks, hardest rules first** — Today + Settings shell → Activity (port push-up rules out of Postgres triggers into the API) → Food → Journal (lift Glimpse modules) → Insights → Admin.
-4. **Beta and launch, ~1 week** — David uses it solo first, then the 8 users sign up on soma.davidfacada.com. The old apps stay up untouched; people move over when they are ready. No decommission step.
+4. **Beta and launch, ~1 week** — David uses it solo first, then the 8 users sign up on the onslate.com URL. The old apps stay up untouched; people move over when they are ready. No decommission step.
 
 ## 5. Data model and API (first cut)
 
@@ -91,14 +91,14 @@ No migration script, no rehearsal, no cutover window, no decommission. The old a
 - **Vault** new passphrase, new salt, new key. Old Glimpse entries are not on Soma. Anyone who wants their old journal as a file uses Glimpse's own Markdown/JSON export, which keeps working.
 - **Round** the admin creates the round on Soma (same name and start date if the group wants continuity). Days before Soma launch are unscored, not migrated. Best streak and best chain start at zero; say so in the sign-up email.
 - **Food** plans, targets, recipes and quick snacks are re-entered. Defaults from §6 cover the common case.
-- **Fitbit** register `soma.davidfacada.com` as a redirect URI at dev.fitbit.com; users connect once.
+- **Fitbit** register the onslate.com URL as a redirect URI at dev.fitbit.com; users connect once.
 - **Secrets** Groq, Anthropic and Fitbit keys are set fresh in Catalyst. The old apps keep their own; nothing is rotated.
 - **`analyze-entry`** the edge function exists in production but not in the Glimpse repo. Still worth exporting from the Supabase dashboard once, purely to reuse the prompt and response shape when writing the Catalyst job.
 - **Formats** the Stratus object layout `[0x01][iv 12][ciphertext]` and the table names in §5 are kept because Glimpse's crypto code already produces them, not because anything old has to load.
 
 ## 8. Open items
 
-- DNS for davidfacada.com: which registrar/DNS host, so the CNAME for `soma` can be added when Slate gives its target.
+- Production URL: Development serves `https://soma-onkasary.onslate.com`. Find out whether Production keeps that hostname before the first invite; if it differs, the three allow-lists (Authorized Domains, bucket CORS, Fitbit redirect) move with it.
 - Slate: answered. `catalyst deploy slate soma -ni` from `catalyst/` uploads the local `out/` as a static app (no GitHub link needed). Dev URL `https://soma-onkasary.onslate.com`. **Slate sends `cache-control: public, max-age=31536000` on every file including HTML**; see `catalyst/SPIKE.md` for the mitigation to settle before the PWA shell ships.
 - How to inject function secrets at deploy time, since `catalyst deploy` replaces the environment with `catalyst-config.json` and console-set values do not survive.
 - Catalyst project: `soma`, id 120218000000014077, org 939530195. Dev function base: `https://soma-939530195.development.catalystserverless.com/server/soma_api/execute`.

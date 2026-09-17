@@ -2,7 +2,7 @@
 
 # Soma
 
-One app that replaces three: **Glimpse** (encrypted voice journal), **Macros** (food, weight, activity) and **100 Daily Pushup Challenge** (push-up rounds with a leaderboard). Target platform is **Zoho Catalyst**, replacing Vercel + Supabase. Domain: **soma.davidfacada.com**. Solo project; David is the only developer and also the admin.
+One app that replaces three: **Glimpse** (encrypted voice journal), **Macros** (food, weight, activity) and **100 Daily Pushup Challenge** (push-up rounds with a leaderboard). Target platform is **Zoho Catalyst**, replacing Vercel + Supabase. URL: **soma-onkasary.onslate.com** (the Slate-provided domain; no custom domain, decided 2026-09-16). Solo project; David is the only developer and also the admin.
 
 Start with `docs/HANDOFF.md`. It carries every decision made during design, the build plan, the Catalyst spike checklist and the data model. The working prototype in `docs/prototype/soma-prototype.html` **is the spec**: open it in a browser (it runs standalone, state in localStorage). The design canvas source is in `docs/design/`.
 
