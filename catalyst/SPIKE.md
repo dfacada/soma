@@ -88,6 +88,8 @@ Pass: a job submitted from `soma_api` sleeps 60 s, then writes a row to a `jobs`
 - **Secrets mechanism in place.** `node deploy.js soma_api` injected `SPIKE_KEY` and `ADMIN_EMAILS` from `secrets.json`; the live function has them (spike route answers 200), the committed `catalyst-config.json` has `env_variables: {}`. A bare `catalyst deploy` would now wipe them, so functions always go through `deploy.js`.
 - **Approval flow deployed**: `profiles` table (id `120218000000020030`, `user_id` unique), profile bootstrap in `withUser`, `requireActive` on `/sign`, admin routes. Unauthenticated calls to `/me`, `/admin/profiles` and the status route all return 401. The signed-in path is checked from the spike page (**GET /me** shows `profile`, **GET /admin/profiles** lists users).
 
+- Slate propagation: for ~10 s after "Deploy is Live", **new** paths can 404 while existing ones already serve the new build. Wait before judging a deploy.
+
 ## What is left (needs David)
 
 1. Bucket CORS, console only: Stratus → `soma-drafts` → Configurations → Bucket CORS → add `https://soma-onkasary.onslate.com` for GET and PUT. Repeat for the other three buckets when convenient.

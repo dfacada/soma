@@ -1,49 +1,97 @@
+/* Soma tokens and base styles. Source of truth: docs/design/System.dc.html and the prototype's CSS.
+   Components read these variables only, so theme and accent palettes can be swapped from one place. */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* Neutrals: ink on bone */
+  --bone: #F4F3EF;
+  --surface: #FFFFFF;
+  --surface-2: #ECEAE3;
+  --side: #EFECE4;
+  --field: #FAF9F6;
+  --hairline: #DCD9D0;
+  --hairline-soft: #E4E0D6;
+  --faint: #8A857B;
+  --muted: #6E6A62;
+  --ink-2: #4A4741;
+  --ink: #1B1A17;
+
+  /* Domain hues, equal weight. Used only where they carry information. */
+  --journal: #5F5BBF;
+  --journal-soft: #8F8CD3;
+  --journal-tint: #ECEBF8;
+  --journal-ink: #3F3C8F;
+  --food: #2C8A5E;
+  --food-bar: #8BC4A6;
+  --food-tint: #E6F2EB;
+  --food-ink: #1F5F41;
+  --activity: #B7692A;
+  --activity-tint: #F6EBDF;
+  --activity-ink: #7D451A;
+  --rec: #B0392E;
+
+  /* Status: admin screens only, never on the daily screens */
+  --critical: #8E2F24;
+  --critical-bg: #F3DCD7;
+  --warning: #7A5A0E;
+  --warning-bg: #F5EBD3;
+
+  --r-card: 16px;
+  --r-ctl: 12px;
+  --r-sm: 10px;
+  --r-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(27, 26, 23, 0.04), 0 8px 22px rgba(27, 26, 23, 0.05);
+  --shadow-lift: 0 1px 2px rgba(27, 26, 23, 0.06);
+
+  --inset-top: env(safe-area-inset-top, 0px);
+  --inset-bottom: env(safe-area-inset-bottom, 0px);
+
+  --font-display: var(--font-bricolage), "Arial Narrow", sans-serif;
+  --font-body: var(--font-figtree), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { box-sizing: border-box; }
 
-html {
-  height: 100%;
-}
+html, body { height: 100%; }
 
-html,
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--bone);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
-* {
-  box-sizing: border-box;
+p { margin: 0; }
+svg { display: block; flex-shrink: 0; }
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
   padding: 0;
   margin: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+/* Type roles. Display: dates, titles and the one number a screen is about. Mono: labels and every number. */
+.d { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; line-height: 1.05; }
+.m { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eb { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

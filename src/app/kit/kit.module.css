@@ -1,0 +1,39 @@
+.page { max-width: 1000px; margin: 0 auto; padding: calc(28px + var(--inset-top)) 16px calc(72px + var(--inset-bottom)); display: flex; flex-direction: column; gap: 28px; }
+.head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+.wordmark { font-size: 56px; letter-spacing: -0.02em; }
+.note { font-size: 13px; color: var(--ink-2); line-height: 1.5; max-width: 560px; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 999px; }
+
+.sec { display: flex; flex-direction: column; gap: 14px; padding-top: 24px; border-top: 1px solid var(--hairline); }
+.grid6 { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 14px; }
+.swatch { display: flex; flex-direction: column; gap: 6px; }
+.swatchBox { height: 56px; border-radius: 10px; border: 1px solid rgba(27, 26, 23, 0.08); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; }
+.swatchName { font-size: 12px; font-weight: 500; }
+.swatchHex { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+.type { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 12px 32px; align-items: baseline; }
+@media (max-width: 640px) { .type { grid-template-columns: 1fr; gap: 4px 0; } .type > :nth-child(odd) { margin-top: 12px; } }
+
+.specimens { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px 32px; align-items: start; }
+.specimen { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.wrap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.phoneCol { display: flex; flex-direction: column; gap: 12px; max-width: 402px; }
+.icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+.iconCell { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 4px; border-radius: 12px; background: var(--surface); border: 1px solid var(--hairline-soft); font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+.iconCell svg { color: var(--ink); }
+
+/* A transformed ancestor becomes the containing block for position: fixed, so the real
+   tab bar and sidebar can be shown in place without covering the page. */
+.frame { position: relative; transform: translateZ(0); border: 1px solid var(--hairline); border-radius: 16px; overflow: hidden; background: var(--bone); }
+.tabFrame { height: 120px; max-width: 402px; }
+.sideFrame { height: 520px; width: 232px; }
+.sideFrame > nav { height: 100%; }
+
+.hero { border-radius: 22px; padding: 20px; display: flex; gap: 18px; align-items: center; background: linear-gradient(180deg, #FFFFFF 0%, #F7F5EF 100%); box-shadow: 0 14px 30px rgba(27, 26, 23, 0.10); max-width: 402px; transition: background 0.6s ease, color 0.6s ease; }
+.heroClosed { background: linear-gradient(180deg, #1B1A17 0%, #2A2620 100%); color: var(--bone); }
+.heroClosed .heroSub { color: #B8B1A4; }
+.heroSub { color: var(--muted); font-size: 13px; }
+.week { display: flex; justify-content: space-between; gap: 4px; max-width: 402px; }
+.weekDay { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 40px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }

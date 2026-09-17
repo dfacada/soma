@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Not the Next app: Catalyst functions and scripts are CommonJS Node, docs hold the prototype.
+    "catalyst/**",
+    "docs/**",
+    ".claude/**",
   ]),
 ]);
 

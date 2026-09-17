@@ -38,7 +38,7 @@ Source for all three lives in `C:\Users\david\Downloads\Claude\` (`Glimpse`, `Ma
 ## 4. Build plan (~7–9 weeks)
 
 0. **Catalyst spike, 2–3 days** — see `catalyst/SPIKE.md`. Do not start screens until it passes.
-1. **Design system, ~1 week** — tokens and components from the prototype: card, chip, tile, medallion, ring, sheet, settings field kit, tab bar, sidebar. Storybook optional; a `/kit` route showing every component is enough.
+1. **Design system, ~1 week** (kit built 2026-09-16: `src/components/ui/`, live at `/kit`; still to come as screens need them: chain grid, leaderboard row, day strip, hero, audio player, dark theme and the six accent palettes) — tokens and components from the prototype: card, chip, tile, medallion, ring, sheet, settings field kit, tab bar, sidebar. Storybook optional; a `/kit` route showing every component is enough.
 2. **Data model + API, ~1 week** — Catalyst Express function `soma_api` (§5), Data Store tables, Stratus buckets, jobs for transcription and analysis, nightly cron for error pruning.
 3. **Screens, 4–5 weeks, hardest rules first** — Today + Settings shell → Activity (port push-up rules out of Postgres triggers into the API) → Food → Journal (lift Glimpse modules) → Insights → Admin.
 4. **Beta and launch, ~1 week** — David uses it solo first, then the 8 users sign up on the onslate.com URL. The old apps stay up untouched; people move over when they are ready. No decommission step.
