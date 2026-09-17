@@ -70,7 +70,7 @@ export function SettingsScreen() {
 
       <Card>
         <span className="eb">Opening words</span>
-        <Field name="Show when Soma opens" help="One of these fills the screen each time you open Soma, before anything else. They take turns. A tap goes on.">
+        <Field name="Show when Soma opens" help="The first time you open Soma each day, one of these fills the screen before anything else. They take turns. A tap goes on.">
           <Switch checked={settings.opening.on} label="Show opening words" onChange={(v) => void save({ opening: { ...settings.opening, on: v } }, v ? "Opening words on" : "Opening words off")} />
         </Field>
         {settings.opening.phrases.map((p, i) => (

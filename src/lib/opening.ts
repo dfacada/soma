@@ -1,5 +1,6 @@
 // The words that meet you when Soma opens (David, 2026-09-17: "inspirational quotes that pop up before you do
-// anything"). One phrase, full screen, once per app open; they take turns. Anything else that wants attention on
+// anything"). One phrase, full screen, once a day on each device (David, same day: "should happen once a day
+// only"): the first open of the day gets the words, every later one goes straight in. They take turns by day. Anything else that wants attention on
 // opening (the vault prompt) waits for `opened`, so two things never land on the screen at once.
 
 export type Phrase = { text: string; note?: string };
@@ -16,12 +17,15 @@ let release: () => void = () => undefined;
 export const opened = new Promise<void>((resolve) => { release = resolve; });
 export const markOpened = () => release();
 
-const SHOWN = "soma-opening-shown", TURN = "soma-opening-turn";
+const SHOWN = "soma-opening-day", TURN = "soma-opening-turn";
+const pad = (n: number) => (n < 10 ? "0" : "") + n;
+/** The local calendar day, so "once a day" turns over at the user's midnight, not UTC's. */
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 
-/** Whether this app open has had its words yet. Per tab: a reload does not show them again. */
-export function alreadyShown(): boolean { try { return sessionStorage.getItem(SHOWN) === "1"; } catch { return true; } }
+/** Whether today has had its words yet on this device. Without storage (a private window) they are simply skipped. */
+export function alreadyShown(): boolean { try { return localStorage.getItem(SHOWN) === today(); } catch { return true; } }
 
-/** The phrases take turns across opens rather than coming up at random, so neither goes missing for a week.
+/** The phrases take turns from one day to the next rather than coming up at random, so neither goes missing for a week.
  *  Reading whose turn it is changes nothing; `noteShown` is what moves it on. */
 export function peekPhrase(phrases: Phrase[]): Phrase {
   let turn = 0;
@@ -30,9 +34,9 @@ export function peekPhrase(phrases: Phrase[]): Phrase {
 }
 
 let noted = false;
-/** Once per page load, however many times effects run: marks this open as done and passes the turn on. */
+/** Once per page load, however many times effects run: marks today as done and passes the turn on. */
 export function noteShown() {
   if (noted) return;
   noted = true;
-  try { sessionStorage.setItem(SHOWN, "1"); localStorage.setItem(TURN, String((Number(localStorage.getItem(TURN)) || 0) + 1)); } catch { /* private window */ }
+  try { localStorage.setItem(SHOWN, today()); localStorage.setItem(TURN, String((Number(localStorage.getItem(TURN)) || 0) + 1)); } catch { /* private window */ }
 }
