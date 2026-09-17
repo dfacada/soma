@@ -41,6 +41,7 @@ app.use(require('./routes/me'));
 app.use(require('./routes/days'));
 app.use(require('./routes/journal'));
 app.use(require('./routes/misc'));
+app.use(require('./routes/rounds'));
 app.use(require('./routes/admin'));
 app.use('/spike', require('./spike'));
 

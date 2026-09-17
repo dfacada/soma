@@ -5,11 +5,13 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card, Chip, DayGlyph, DayRing, Input, Medallion, Mini, RowHead, Sheet, Toast, type IconName, type MedallionState } from "@/components/ui";
+import { Button, Card, Chip, DayGlyph, DayRing, Medallion, Mini, RowHead, Toast, type IconName, type MedallionState } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
 import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS } from "@/lib/today";
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
+import { PushSheet } from "./PushSheet";
+import { useRounds } from "./Rounds";
 import { useSession } from "./Session";
 import { useDays } from "./Days";
 import a from "./app.module.css";
@@ -21,6 +23,7 @@ export function Today() {
   const router = useRouter();
   const { settings, displayName, me, saveSettings } = useSession();
   const journal = useJournal();
+  const rounds = useRounds();
 
   const { map, error, reload, unsaved, retry, change, today, todayKey: k, windowDays: WINDOW_DAYS } = useDays();
   const [checkinOpen, setCheckinOpen] = useState<boolean | null>(null);
@@ -60,7 +63,9 @@ export function Today() {
   const eaten = data?.log?.meals || {};
   const types = data?.activity?.types || {};
   const head = headline(st, run.now, new Date().getHours());
-  const target = settings.pushupTarget;
+  // In a running round the target is the one I joined with; otherwise my own setting. Rest days have none.
+  const target = rounds.target;
+  const rest = rounds.restToday;
   const initials = (displayName || me.email).split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   // ── Check-in ──
@@ -99,14 +104,14 @@ export function Today() {
   const foodState: MedallionState = st.foodDone ? "done" : st.meals ? "part" : "idle";
 
   // ── Activity ──
-  const pushLine = st.pushups >= target ? `${st.pushups} push-ups, target hit` : st.pushups > 0 ? `${st.pushups} of ${target} push-ups` : `${target} push-ups to do`;
+  const pushLine = rest ? (st.pushups > 0 ? `${st.pushups} push-ups on a rest day` : "rest day for push-ups") : st.pushups >= target ? `${st.pushups} push-ups, target hit` : st.pushups > 0 ? `${st.pushups} of ${target} push-ups` : `${target} push-ups to do`;
   const actSub = `${st.acts ? `${st.acts} of ${st.actTotal} logged` : "Nothing yet"} · ${pushLine}`;
   const actState: MedallionState = st.acts === st.actTotal ? "done" : st.acts ? "part" : "idle";
 
   const savePushups = (n: number) => {
     change("activity", k, (d) => { d.activity.pushups = n; });
     setPushSheet(false);
-    say(n >= target ? `Target hit · ${n} push-ups` : n ? `${n} push-ups logged` : "Push-ups cleared");
+    say(n >= target && !rest ? `Target hit · ${n} push-ups` : n ? `${n} push-ups logged` : "Push-ups cleared");
   };
 
   return (
@@ -226,8 +231,8 @@ export function Today() {
           sub={actSub}
         />
             <div className={a.minis}>
-              <Mini domain="activity" label={`Push-ups: ${st.pushups} of ${target}`} state={st.pushups > 0 ? "on" : "due"} onClick={() => setPushSheet(true)}>
-                <span className="d" style={{ fontSize: (st.pushups || target) > 99 ? 12 : 15 }}>{st.pushups > 0 ? st.pushups : target}</span>
+              <Mini domain="activity" label={rest ? `Push-ups: rest day, ${st.pushups} logged` : `Push-ups: ${st.pushups} of ${target}`} state={st.pushups > 0 ? "on" : rest ? "empty" : "due"} onClick={() => setPushSheet(true)}>
+                <span className="d" style={{ fontSize: (st.pushups || target) > 99 ? 12 : 15 }}>{st.pushups > 0 ? st.pushups : rest ? "—" : target}</span>
               </Mini>
               {settings.activityTypes.map((t) => (
                 <Mini key={t.key} domain="activity" icon={ACT_ICONS[t.key] || "pulse"} label={t.name} state={types[t.key] ? "on" : "empty"}
@@ -237,39 +242,8 @@ export function Today() {
         </div>
       </Card>
 
-      <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} onSave={savePushups} />
+      <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={rounds.dayNumber} onSave={savePushups} />
       <Toast message={toast} />
     </div>
-  );
-}
-
-function PushSheet({ open, onClose, ...form }: { open: boolean; onClose: () => void; current: number; target: number; onSave: (n: number) => void }) {
-  // The form only mounts while the sheet is open, so its field is seeded fresh on every open.
-  return (
-    <Sheet open={open} title="Push-ups today" onClose={onClose}>
-      <PushForm {...form} />
-    </Sheet>
-  );
-}
-
-function PushForm({ current, target, onSave }: { current: number; target: number; onSave: (n: number) => void }) {
-  const [value, setValue] = useState(current > 0 ? String(current) : "");
-  const n = parseInt(value, 10);
-  const nudge = (by: number) => setValue(String(Math.max(0, (Number.isNaN(n) ? target : n) + by)));
-
-  return (
-    <>
-      <p className="muted" style={{ fontSize: 13 }}>The target is <strong style={{ color: "var(--ink)" }}>{target}</strong> a day, in as many sets as you like. Enter what you actually did.</p>
-      <form className={a.pushRow} onSubmit={(e) => { e.preventDefault(); if (!Number.isNaN(n) && n >= 0) onSave(Math.min(n, 100000)); }}>
-        <Button variant="secondary" style={{ width: 52, padding: 0 }} onClick={() => nudge(-5)} aria-label="Minus 5">−5</Button>
-        <Input className={a.pushInput} inputMode="numeric" pattern="[0-9]*" value={value} placeholder={String(target)} aria-label="Push-ups today" onChange={(e) => setValue(e.target.value.replace(/\D/g, "").slice(0, 6))} />
-        <Button variant="secondary" style={{ width: 52, padding: 0 }} onClick={() => nudge(5)} aria-label="Plus 5">+5</Button>
-      </form>
-      <div className={a.rowButtons}>
-        <Button variant="activity" style={{ flex: 1 }} onClick={() => onSave(target)}>Hit the target · {target}</Button>
-        <Button style={{ flex: 1 }} disabled={Number.isNaN(n)} onClick={() => onSave(Math.min(n, 100000))}>Save</Button>
-      </div>
-      {current > 0 && <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={() => onSave(0)}>Clear today&apos;s push-ups</button>}
-    </>
   );
 }

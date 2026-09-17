@@ -102,6 +102,39 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .macroRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .macroRow input { padding: 0 8px; text-align: center; }
 
+/* ── Activity ── */
+.actList { gap: 0 !important; }
+.actRow { display: flex; align-items: center; gap: 12px; min-height: 56px; }
+.actRow + .actRow { border-top: 1px solid var(--surface-2); }
+.actDot { width: 8px; height: 8px; border-radius: var(--r-pill); flex-shrink: 0; }
+.roundIntro { display: flex; align-items: center; gap: 14px; }
+.roundRing { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+.grid { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 4px; }
+.cell { display: block; aspect-ratio: 1; border-radius: 4px; }
+.cell_hit { background: var(--activity); }
+.cell_miss { background: var(--surface); border: 1px solid var(--hairline); }
+.cell_rest { background: var(--surface-2); }
+.cell_today { background: var(--surface); border: 2px solid var(--activity); }
+.cell_future { background: var(--bone); border: 1px solid var(--surface-2); }
+.cell_futureRest { background: var(--surface-2); opacity: 0.6; }
+.cell_before { background: transparent; border: 1px dashed var(--surface-2); }
+.gridFoot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend { display: flex; gap: 10px; font-size: 11px; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.legend .cell { width: 10px; height: 10px; }
+.board { gap: 2px !important; }
+.lb { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.lb + .lb { border-top: 1px solid var(--surface-2); }
+.lbYou { background: var(--activity-tint); margin: 0 -16px; padding: 0 16px; color: var(--activity-ink); }
+.lbRank { width: 20px; font-size: 12px; color: var(--muted); }
+.lbName { flex: 1; min-width: 0; font-weight: 500; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lbStat { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.lbPts { font-size: 13px; width: 40px; text-align: right; }
+.lbYou .lbRank, .lbYou .lbStat { color: var(--activity-ink); }
+.restGrid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; max-height: 36dvh; overflow: auto; }
+.restCell { aspect-ratio: 1; min-height: 30px; border-radius: 6px; border: 1px solid var(--hairline); background: var(--surface); font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
+.restOn { background: var(--ink); border-color: var(--ink); color: var(--bone); }
+
 /* ── Settings and admin ── */
 .habitRow { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
 .habitRow + .habitRow { border-top: 1px solid var(--surface-2); }

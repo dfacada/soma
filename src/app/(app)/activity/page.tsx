@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/app/Shell";
+import { Activity } from "@/components/app/Activity";
 
 export default function ActivityPage() {
-  return <ComingSoon title="Activity" note="Push-up rounds, the chain and the leaderboard. Log push-ups from Today for now." />;
+  return <Activity />;
 }

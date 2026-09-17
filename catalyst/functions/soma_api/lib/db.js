@@ -48,6 +48,18 @@ async function select(admin, table, sql) {
   return rows.map((r) => r[table]).filter(Boolean);
 }
 
+// ZCQL returns at most 300 rows a query. For reads that can exceed that (a round's logs: members × days),
+// page with LIMIT offset, count. `sql` must carry its own ORDER BY and no LIMIT. Capped so it cannot run away.
+async function selectAll(admin, table, sql, maxRows = 6000) {
+  const out = [];
+  for (let offset = 0; offset < maxRows; offset += 300) {
+    const page = await select(admin, table, `${sql} LIMIT ${offset}, 300`);
+    out.push(...page);
+    if (page.length < 300) break;
+  }
+  return out;
+}
+
 // Insert, or update the row that already owns this unique key. Unique columns make the
 // race between two first writes safe: the loser's insert fails and it updates instead.
 async function upsert(admin, table, findSql, values) {
@@ -122,5 +134,5 @@ async function ownedRow(admin, table, cols, userId, rowId) {
 
 module.exports = {
   HttpError, TEXT_MAX, isId, isDay, isToken, needId, needDay, needToken,
-  packJson, unpackJson, fitText, bool, select, upsert, dayStore, listOwned, ownedRow
+  packJson, unpackJson, fitText, bool, select, selectAll, upsert, dayStore, listOwned, ownedRow
 };

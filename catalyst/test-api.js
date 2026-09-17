@@ -101,6 +101,41 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('GET', '/days?from=2001-02-28&to=2001-02-01');
   check('/days with reversed range is 400', r.status === 400, r.text);
 
+  console.log('rounds');
+  r = await call('GET', '/rounds');
+  const testRound = r.status === 200 && r.json.rounds.find((x) => x.name === '__test_round__');
+  if (!testRound) {
+    console.log('  skip (no __test_round__ row; only an admin can create one)');
+  } else {
+    const rid = testRound.id;
+    await call('DELETE', `/rounds/${rid}/me`);
+    check('rounds list carries the round', testRound.lengthDays === 28 && same(testRound.restDays, [7, 14, 21, 28]) && testRound.joinOpen === true, testRound);
+    r = await call('POST', '/rounds', { name: 'nope', startDate: '2001-02-01', lengthDays: 10 });
+    check('a member cannot create a round', r.status === 403, r.text);
+    r = await call('PUT', `/rounds/${rid}`, { name: 'hijack' });
+    check('a member cannot edit a round', r.status === 403, r.text);
+    r = await call('POST', `/rounds/${rid}/join`, { dailyTarget: 0, today: '2001-02-03' });
+    check('a zero target is 400', r.status === 400, r.text);
+    r = await call('POST', `/rounds/${rid}/join`, { dailyTarget: 100, today: '2001-02-03' });
+    check('join sets target and start day from the date the caller names', r.status === 201 && r.json.dailyTarget === 100 && r.json.startDay === 3 && r.json.status === 'active', r.json);
+    r = await call('POST', `/rounds/${rid}/join`, { dailyTarget: 100, today: '2001-02-03' });
+    check('joining twice is 409', r.status === 409, r.text);
+    r = await call('PUT', `/rounds/${rid}/me`, { dailyTarget: 60 });
+    check('own target can change', r.status === 200 && r.json.dailyTarget === 60, r.json);
+    r = await call('GET', `/rounds/${rid}/board`);
+    const mine = r.json && r.json.logs['999000000000000001'];
+    check('board maps activity rows to day numbers', r.status === 200 && mine && mine[3] === 100 && r.json.members[0].displayName === 'Test User' && r.json.members[0].dailyTarget === 60, r.json);
+    r = await call('DELETE', `/rounds/${rid}/members/120218000000022011`);
+    check('a member cannot remove someone else', r.status === 403, r.text);
+    r = await call('DELETE', `/rounds/${rid}/me`);
+    check('leaving marks the membership removed', r.status === 200 && r.json.status === 'removed', r.json);
+    r = await call('POST', `/rounds/${rid}/join`, { dailyTarget: 80, today: '2001-02-20' });
+    check('rejoining keeps the original start day and join order', r.status === 201 && r.json.startDay === 3 && r.json.joinSeq === 1 && r.json.dailyTarget === 80, r.json);
+    await call('DELETE', `/rounds/${rid}/me`);
+  }
+  r = await call('GET', '/rounds/999/board');
+  check('an unknown round is 404', r.status === 404, r.text);
+
   console.log('vault and entries');
   const vault = { salt: 'c2FsdHNhbHRzYWx0c2FsdA==', verifierIv: 'aXZpdml2aXZpdml2', verifierCt: 'Y2lwaGVydGV4dA==' };
   await call('PUT', '/vault-meta', Object.assign({ replace: true }, vault));
