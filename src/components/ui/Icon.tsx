@@ -79,6 +79,7 @@ const PATHS = {
     </>
   ),
   close: <path d="M6 6l12 12M18 6L6 18" />,
+  pulse: <path d="M3 12h4l3-7 4 14 3-7h4" />,
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof PATHS;

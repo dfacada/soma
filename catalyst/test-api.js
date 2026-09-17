@@ -86,6 +86,21 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('PUT', '/day-logs/' + day, { meals: { breakfast: true }, extras: [{ name: 'Apple 🍎', kcal: 95 }] });
   check('day-log saves', r.status === 200 && r.json.meals.breakfast === true && r.json.extras[0].kcal === 95, r.json);
 
+  console.log('settings and /days');
+  r = await call('PUT', '/settings', { settings: { pushupTarget: 60, habits: [{ id: 'read', label: 'Read 📚' }] }, displayName: 'Test User' });
+  check('settings save', r.status === 200, r.text);
+  r = await call('GET', '/settings');
+  check('settings round-trip', r.status === 200 && r.json.settings.pushupTarget === 60 && r.json.settings.habits[0].label === 'Read 📚' && r.json.displayName === 'Test User', r.json);
+  r = await call('PUT', '/settings', { settings: [1, 2] });
+  check('array settings is 400', r.status === 400, r.text);
+  r = await call('PUT', '/settings', { displayName: '   ' });
+  check('blank displayName is 400', r.status === 400, r.text);
+  r = await call('GET', '/days?from=2001-02-01&to=2001-02-28&fromMs=0&toMs=4102444800000');
+  check('/days returns every set', r.status === 200 && same(r.json.checkins.map((d) => d.day), [day, day2]) && r.json.weight[0].value === 182.4
+    && r.json.activity[0].pushups === 100 && r.json.dayLogs[0].meals.breakfast === true && Array.isArray(r.json.entries), r.json);
+  r = await call('GET', '/days?from=2001-02-28&to=2001-02-01');
+  check('/days with reversed range is 400', r.status === 400, r.text);
+
   console.log('vault and entries');
   const vault = { salt: 'c2FsdHNhbHRzYWx0c2FsdA==', verifierIv: 'aXZpdml2aXZpdml2', verifierCt: 'Y2lwaGVydGV4dA==' };
   await call('PUT', '/vault-meta', Object.assign({ replace: true }, vault));
@@ -140,6 +155,9 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     await call('DELETE', `/${res}/${day}`);
     await call('DELETE', `/${res}/${day2}`);
   }
+  // Local dev runs as this same member (see src/lib/catalyst.ts): leave it on default settings.
+  r = await call('PUT', '/settings', { settings: {} });
+  check('settings reset', r.status === 200, r.text);
   r = await call('GET', `/checkins?from=2001-01-01&to=2001-12-31`);
   check('test days are gone', r.status === 200 && r.json.days.length === 0, r.json);
 

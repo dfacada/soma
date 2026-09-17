@@ -46,7 +46,7 @@ export function ProgressRing({ value, max, size = 96, width = 9, color, label }:
   return (
     <svg width={size} height={size} viewBox="0 0 96 96" role="img" aria-label={`${label}: ${value} of ${max}`}>
       <circle cx="48" cy="48" r={r} fill="none" stroke="var(--surface-2)" strokeWidth={width} />
-      <circle className={s.ringSeg} cx="48" cy="48" r={r} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeDasharray={`${(f * c).toFixed(1)} ${c.toFixed(1)}`} transform="rotate(-90 48 48)" />
+      {f > 0 && <circle className={s.ringSeg} cx="48" cy="48" r={r} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeDasharray={`${(f * c).toFixed(1)} ${c.toFixed(1)}`} transform="rotate(-90 48 48)" />}
     </svg>
   );
 }
@@ -65,7 +65,8 @@ export function DayGlyph({ done, today = false }: { done: number; today?: boolea
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" role="img" aria-label={`${done} of 4 done`}>
       <circle cx="14" cy="14" r="11" fill="none" stroke={stroke} strokeOpacity={today ? 0.35 : 0.18} strokeWidth="4" />
-      <circle cx="14" cy="14" r="11" fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round" strokeDasharray={`${((clamp(done / 4)) * 69.1).toFixed(1)} 100`} transform="rotate(-90 14 14)" />
+      {/* A zero-length dash with round caps still paints its cap as a dot, so nothing is drawn at zero. */}
+      {done > 0 && <circle cx="14" cy="14" r="11" fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round" strokeDasharray={`${((clamp(done / 4)) * 69.1).toFixed(1)} 100`} transform="rotate(-90 14 14)" />}
     </svg>
   );
 }

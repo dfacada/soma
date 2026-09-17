@@ -21,19 +21,9 @@ app.use((req, _res, next) => {
   next();
 });
 
-// CORS only for local dev. In Development/Production the gateway injects CORS for Authorized Domains;
-// adding headers here as well would duplicate them and break every browser call.
-app.use((req, res, next) => {
-  const origin = req.headers.origin || '';
-  if (/^http:\/\/localhost(:\d+)?$/.test(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') return res.status(204).end();
-  }
-  next();
-});
+// No CORS code here on purpose. The Catalyst gateway answers preflights itself and injects the CORS headers
+// for every origin in Authentication → Authorized Domains (the Slate URL and localhost:3000 for dev).
+// Setting them here as well duplicates the headers, and browsers reject a duplicated Allow-Origin.
 
 app.use(express.json({ limit: '1mb' }));
 
@@ -47,6 +37,7 @@ app.get('/me', withUser, (req, res) => {
   res.json({ id: req.user.id, email: req.user.email, name: req.user.name, profile: req.profile });
 });
 
+app.use(require('./routes/me'));
 app.use(require('./routes/days'));
 app.use(require('./routes/journal'));
 app.use(require('./routes/misc'));

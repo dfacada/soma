@@ -87,11 +87,12 @@ export function Medallion({ domain, state = "idle", icon }: { domain: Domain; st
 }
 
 // ── Mini: one tap slot inside a Today card ──
-type MiniProps = { domain: Domain; icon: IconName; label: string; state?: "empty" | "on" | "due"; onClick?: () => void };
-export function Mini({ domain, icon, label, state = "empty", onClick }: MiniProps) {
+type MiniProps = { domain: Domain; icon?: IconName; label: string; state?: "empty" | "on" | "due"; onClick?: () => void; disabled?: boolean; children?: ReactNode };
+/** Shows `children` when given (the push-up count), otherwise the icon. */
+export function Mini({ domain, icon, label, state = "empty", onClick, disabled, children }: MiniProps) {
   return (
-    <button type="button" aria-label={label} aria-pressed={state === "on"} onClick={onClick} className={cx(s.mini, s[domain], state === "on" && s.miniOn, state === "due" && s.miniDue)}>
-      <Icon name={icon} />
+    <button type="button" aria-label={label} title={label} aria-pressed={state === "on"} disabled={disabled} onClick={onClick} className={cx(s.mini, s[domain], state === "on" && s.miniOn, state === "due" && s.miniDue)}>
+      {children ?? (icon && <Icon name={icon} />)}
     </button>
   );
 }

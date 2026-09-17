@@ -1,0 +1,70 @@
+/* App chrome and Today-specific layout. Component styles live in ui/ui.module.css. */
+
+/* ── Shell: tab bar on phones, sidebar from 900px ── */
+.shell { display: flex; min-height: 100dvh; }
+.sidebar { display: none; }
+.content { flex: 1; min-width: 0; }
+@media (min-width: 900px) {
+  .sidebar { display: flex; }
+  .tabbar { display: none; }
+}
+
+.page { display: flex; flex-direction: column; gap: 12px; padding: calc(18px + var(--inset-top)) 16px calc(88px + var(--inset-bottom)); max-width: 560px; margin: 0 auto; }
+.pageHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 4px 4px 0; }
+.pageTitle { font-size: 32px; }
+@media (min-width: 900px) {
+  .page { max-width: 760px; padding: 36px 40px 64px; }
+}
+
+/* ── Gate screens ── */
+.centered { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; }
+.wordmark { font-size: 56px; letter-spacing: -0.02em; }
+.rowButtons { display: flex; gap: 8px; flex-wrap: wrap; }
+.centered .rowButtons { justify-content: center; }
+
+.signin { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: calc(48px + var(--inset-top)) 16px calc(32px + var(--inset-bottom)); }
+.signinHead { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* Catalyst injects an iframe with no height of its own. */
+.login { width: 100%; max-width: 420px; min-height: 460px; background: var(--surface); border: 1px solid var(--hairline-soft); border-radius: var(--r-card); box-shadow: var(--shadow-card); overflow: hidden; }
+.login iframe { width: 100% !important; height: 460px !important; border: none !important; display: block; }
+.signupForm { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 10px; background: var(--surface); border: 1px solid var(--hairline-soft); border-radius: var(--r-card); box-shadow: var(--shadow-card); padding: 16px; }
+.link { min-height: 44px; padding: 0 8px; font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.noteOk, .noteBad { max-width: 420px; font-size: 13px; padding: 10px 14px; border-radius: var(--r-ctl); }
+.noteOk { background: var(--food-tint); color: var(--food-ink); }
+.noteBad { background: var(--critical-bg); color: var(--critical); }
+
+/* ── Today hero: full-bleed on phones, a rounded card on desktop ── */
+.hero { margin: calc(-18px - var(--inset-top)) -16px 0; padding: calc(18px + var(--inset-top)) 16px 18px; border-radius: 0 0 30px 30px; display: flex; flex-direction: column; gap: 14px; background: linear-gradient(180deg, #FFFFFF 0%, #F7F5EF 100%); color: var(--ink); box-shadow: 0 14px 30px rgba(27, 26, 23, 0.10); transition: background 0.6s ease, color 0.6s ease; --hero-muted: var(--muted); --hero-line: var(--surface-2); --hero-chip: var(--bone); }
+.heroClosed { background: linear-gradient(180deg, #1B1A17 0%, #2A2620 100%); color: var(--bone); --hero-muted: #B8B1A4; --hero-line: rgba(255, 255, 255, 0.12); --hero-chip: rgba(255, 255, 255, 0.1); }
+@media (min-width: 900px) { .hero { margin: 0; border-radius: 22px; padding: 24px 28px; } }
+.heroMuted { color: var(--hero-muted); }
+.heroTop { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
+.avatar { position: relative; width: 32px; height: 32px; border-radius: var(--r-pill); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; background: var(--ink); color: var(--bone); }
+.avatar::before { content: ""; position: absolute; inset: -6px; }
+.heroClosed .avatar { background: var(--bone); color: var(--ink); }
+.heroMain { display: flex; align-items: center; gap: 16px; }
+.ringWrap { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+.ringLabel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+.heroText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.todos { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 2px; }
+.todo { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 8px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 500; background: var(--hero-chip); }
+.todo i { width: 8px; height: 8px; border-radius: var(--r-pill); }
+.heroFoot { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--hero-line); }
+.streakRow { display: flex; justify-content: space-between; align-items: baseline; padding-top: 8px; }
+.week { display: flex; justify-content: space-between; align-items: flex-end; gap: 4px; }
+.weekDay { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 40px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+.weekDay svg { opacity: 1; }
+.weekToday { opacity: 1; font-weight: 600; }
+
+/* ── Today cards ── */
+.lnk { position: relative; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
+.checkin { display: flex; flex-direction: column; gap: 8px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.task { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+.task > :first-child { flex: 1 1 200px; min-width: 0; }
+.minis { display: flex; gap: 6px; margin-left: auto; }
+.unsaved { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; border-radius: var(--r-ctl); background: var(--surface-2); color: var(--ink); font-size: 13px; }
+
+.pushRow { display: flex; gap: 8px; align-items: center; }
+.pushInput { text-align: center; font-size: 24px !important; height: 56px !important; font-family: var(--font-display) !important; font-weight: 600; }
