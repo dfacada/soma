@@ -146,6 +146,23 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('PUT', '/vault-meta', Object.assign({}, vault, { salt: 'not base64!' }));
   check('non-base64 salt is 400', r.status === 400, r.text);
 
+  console.log('vault passkeys');
+  await call('DELETE', '/vault-passkeys');
+  const pk = { id: 'dGVzdC1wYXNza2V5LWNyZWRlbnRpYWw', wrapped: 'AXdyYXBwZWR3cmFwcGVkd3JhcHBlZHdyYXBwZWQ=' };
+  r = await call('PUT', '/vault-passkeys', pk);
+  check('passkey saves', r.status === 200, r.text);
+  r = await call('PUT', '/vault-passkeys', Object.assign({}, pk, { wrapped: 'AXJld3JhcHBlZHJld3JhcHBlZHJld3JhcHBlZA==' }));
+  r = await call('GET', '/vault-passkeys');
+  check('same passkey replaces, not duplicates', r.status === 200 && r.json.passkeys.length === 1 && r.json.passkeys[0].id === pk.id && r.json.passkeys[0].wrapped.startsWith('AXJld'), r.json);
+  r = await call('PUT', '/vault-passkeys', { id: 'short', wrapped: pk.wrapped });
+  check('bad credential id is 400', r.status === 400, r.text);
+  r = await call('PUT', '/vault-passkeys', { id: pk.id + '/x', wrapped: pk.wrapped });
+  check('credential id with a quote-able char is 400', r.status === 400, r.text);
+  r = await call('DELETE', '/vault-passkeys');
+  check('passkeys forgotten', r.status === 200 && r.json.removed === 1, r.json);
+  r = await call('GET', '/vault-passkeys');
+  check('no passkeys after delete', r.status === 200 && r.json.passkeys.length === 0, r.json);
+
   const entryId = 'test-entry-0001';
   r = await call('PUT', '/entries/' + entryId, { createdMs: 981158400000, hasAudio: true, audioSize: 123456, audioMime: 'audio/webm', transcriptStatus: 'pending' });
   check('entry creates', r.status === 200 && r.json.hasAudio === true && r.json.hasPhoto === false && r.json.audioSize === 123456, r.json);

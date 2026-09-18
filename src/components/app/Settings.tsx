@@ -7,6 +7,7 @@ import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
+import { report } from "@/lib/log";
 import { PALETTES, type ThemeMode } from "@/lib/look";
 import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX } from "@/lib/opening";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
@@ -172,6 +173,7 @@ export function SettingsScreen() {
         <Field name="Vault" help={journal.vault === "open" ? "Open on this device until the tab closes." : journal.vault === "none" ? "Not created yet." : "Locked."}>
           {journal.vault === "open" ? <Button size="sm" variant="secondary" onClick={() => { journal.lock(); say("Vault locked"); }}>Lock</Button> : <Button size="sm" variant="journal" onClick={journal.openVault}>{journal.vault === "none" ? "Create" : "Unlock"}</Button>}
         </Field>
+        <PasskeyField say={say} />
         <Field name="Ask when Soma opens" help="On: Soma asks for your passphrase once each time you open it, so your journal, sleep and Fitbit sync are ready. You can always tap Not now.">
           <Switch checked={settings.unlockOnOpen} label="Ask for the vault when Soma opens" onChange={(v) => void save({ unlockOnOpen: v }, v ? "Soma will ask when it opens" : "Soma will not ask on opening")} />
         </Field>
@@ -316,5 +318,34 @@ function Feedback({ say }: { say: (m: string) => void }) {
         <div><Button type="submit" variant="secondary" disabled={busy || !body.trim()}>{busy ? "Sending…" : "Send feedback"}</Button></div>
       </form>
     </Card>
+  );
+}
+
+/** Face ID for the vault: a passkey on this device wraps the vault key. Hidden where the browser cannot do it. */
+function PasskeyField({ say }: { say: (m: string) => void }) {
+  const journal = useJournal();
+  const { supported, name, count } = journal.passkey;
+  const [busy, setBusy] = useState(false);
+  if (!supported || journal.vault === "none") return null;
+
+  const add = async () => { setBusy(true); say(await journal.addPasskey()); setBusy(false); };
+  const off = async () => {
+    setBusy(true);
+    try { await journal.removePasskeys(); say(`${name} unlock turned off`); }
+    catch (e) { report("vault", "passkeys_remove_failed", e); say("Could not turn it off. Try again."); }
+    finally { setBusy(false); }
+  };
+  const open = journal.vault === "open";
+  const help = count
+    ? `On. Your passkey syncs with your keychain, so other devices signed in to it can use ${name} too. Add this device if it has no button on the unlock sheet.`
+    : open ? `Unlock with ${name} instead of typing your passphrase. The passphrase still works and is still the only way back if you lose the passkey.`
+      : `Unlock the vault first, then set up ${name}.`;
+  return (
+    <Field name={`Unlock with ${name}`} help={help}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        {open && <Button size="sm" variant={count ? "secondary" : "journal"} disabled={busy} onClick={() => void add()}>{count ? "Add this device" : "Set up"}</Button>}
+        {count > 0 && <Button size="sm" variant="secondary" disabled={busy} onClick={() => void off()}>Turn off</Button>}
+      </div>
+    </Field>
   );
 }

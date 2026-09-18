@@ -14,6 +14,7 @@ import { opened as openingDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
 import { transcribe, TranscribeError } from "@/lib/transcribe";
 import { createVault, decryptJson, encryptJson, exportKey, fromB64, importKey, toB64, unlockVault, type VaultMeta } from "@/lib/vault-crypto";
+import { enrolPasskey, forgetPasskeys, listPasskeys, passkeyName, passkeySupported, PasskeyError, unlockWithPasskey, type StoredPasskey } from "@/lib/vault-passkey";
 import { Button, Input, Sheet, Toast } from "@/components/ui";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -44,6 +45,12 @@ type Journal = {
    *  Both reject while the vault is closed. The key itself never leaves this provider. */
   seal: (value: unknown) => Promise<string>;
   unseal: <T>(b64: string) => Promise<T>;
+  /** Passkey unlock (Face ID on an iPhone). `name` is what the device calls it; `count` is how many are set up. */
+  passkey: { supported: boolean; name: string; count: number };
+  /** Set up a passkey on this device. Needs the open vault and a tap. Resolves to a message for the person. */
+  addPasskey: () => Promise<string>;
+  /** Forget every passkey's wrapped key; the passphrase is then the only way in. */
+  removePasskeys: () => Promise<void>;
 };
 
 const Ctx = createContext<Journal | null>(null);
@@ -74,7 +81,7 @@ async function restoreKey(userId: string): Promise<CryptoKey | null> {
 }
 
 export function JournalProvider({ children }: { children: ReactNode }) {
-  const { me, settings } = useSession();
+  const { me, settings, displayName } = useSession();
   const userId = me.id;
   const cloudOn = settings.cloudTranscription;
   const askOnOpen = useRef(settings.unlockOnOpen);
@@ -88,6 +95,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [sheet, setSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [transcribing, setTranscribing] = useState<string[]>([]);
+  const [passkeys, setPasskeys] = useState<StoredPasskey[]>([]);
+  const [pkSupported, setPkSupported] = useState(false);
 
   const key = useRef<CryptoKey | null>(null);
   const meta = useRef<VaultMeta | null>(null);
@@ -145,6 +154,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     void Promise.all([fetchMeta(), restoreKey(userId)]).then(([m, k]) => {
       if (!alive) return;
       meta.current = m;
+      // Which passkeys can open this vault. Not knowing only hides the Face ID button; the passphrase still works.
+      if (m) void listPasskeys().then((p) => { if (alive) setPasskeys(p); }, (e) => report("vault", "passkeys_load_failed", e, undefined, "warn"));
       if (m && k) { void opened(k); return; }
       setVault(m ? "locked" : "none");
       // Opening the app is the moment to unlock: the vault now gates the health sync and sleep as well as the journal.
@@ -154,6 +165,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     }).catch(() => { if (alive) setVault("locked"); });
     return () => { alive = false; };
   }, [userId, opened]);
+
+  useEffect(() => { void passkeySupported().then(setPkSupported); }, []);
 
   useEffect(() => {
     const online = () => { void flushPending(); };
@@ -268,6 +281,44 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     } finally { setBusy(false); }
   }, [userId, opened]);
 
+  const submitPasskey = useCallback(async (): Promise<string | null> => {
+    if (!meta.current) return null;
+    setBusy(true);
+    try {
+      const k = await unlockWithPasskey(passkeys, meta.current);
+      sessionStorage.setItem(SESSION_KEY + userId, await exportKey(k));
+      setSheet(false);
+      await opened(k);
+      return null;
+    } catch (e) {
+      const code = e instanceof PasskeyError ? e.code : "failed";
+      if (code === "cancelled") return null;
+      report("vault", "passkey_unlock_" + code, e, { passkeys: passkeys.length }, code === "failed" ? "error" : "warn");
+      return e instanceof PasskeyError ? e.message : "Something went wrong with the passkey. Try again.";
+    } finally { setBusy(false); }
+  }, [passkeys, userId, opened]);
+
+  const addPasskey = useCallback(async (): Promise<string> => {
+    if (!key.current) return "Unlock the vault first.";
+    const name = passkeyName();
+    try {
+      const made = await enrolPasskey(key.current, { id: userId, email: me.email, name: displayName || me.name }, passkeys);
+      setPasskeys((p) => [...p.filter((x) => x.id !== made.id), made]);
+      return `${name} unlocks your vault now`;
+    } catch (e) {
+      const code = e instanceof PasskeyError ? e.code : "failed";
+      if (code === "cancelled") return "Cancelled";
+      if (code === "already") return `${name} already unlocks your vault on this device`;
+      report("vault", "passkey_setup_" + code, e, { passkeys: passkeys.length }, code === "failed" ? "error" : "warn");
+      return e instanceof PasskeyError ? e.message : "Could not set up the passkey. Try again.";
+    }
+  }, [userId, me.email, me.name, displayName, passkeys]);
+
+  const removePasskeys = useCallback(async () => {
+    await forgetPasskeys();
+    setPasskeys([]);
+  }, []);
+
   const lock = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY + userId);
     key.current = null;
@@ -325,23 +376,30 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const openVault = useCallback(() => setSheet(true), []);
   const closeSheet = useCallback(() => setSheet(false), []);
 
+  const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), count: passkeys.length }), [pkSupported, passkeys.length]);
+
   const value = useMemo<Journal>(
-    () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal }),
-    [vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal],
+    () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys }),
+    [vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys],
   );
 
   return (
     <Ctx.Provider value={value}>
       {children}
       <Sheet open={sheet} title={vault === "none" ? "Create your vault" : "Unlock your vault"} onClose={closeSheet}>
-        <VaultForm creating={vault === "none"} busy={busy} onSubmit={submitPassphrase} onSkip={closeSheet} />
+        <VaultForm creating={vault === "none"} busy={busy} onSubmit={submitPassphrase} onSkip={closeSheet}
+          passkeyName={vault === "locked" && pkSupported && passkeys.length ? passkey.name : null} onPasskey={submitPasskey} />
       </Sheet>
       <Toast message={toast} />
     </Ctx.Provider>
   );
 }
 
-function VaultForm({ creating, busy, onSubmit, onSkip }: { creating: boolean; busy: boolean; onSubmit: (pass: string) => Promise<string | null>; onSkip: () => void }) {
+function VaultForm({ creating, busy, onSubmit, onSkip, passkeyName, onPasskey }: {
+  creating: boolean; busy: boolean; onSubmit: (pass: string) => Promise<string | null>; onSkip: () => void;
+  /** Set when a passkey can open this vault here: its button leads and the passphrase is the fallback. */
+  passkeyName: string | null; onPasskey: () => Promise<string | null>;
+}) {
   const [pass, setPass] = useState("");
   const [again, setAgain] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -361,10 +419,15 @@ function VaultForm({ creating, busy, onSubmit, onSkip }: { creating: boolean; bu
           ? "Your journal is encrypted on this device before it is uploaded. The passphrase never leaves it, so nobody can read your entries, David included. It also cannot be reset: if you forget it, the entries are gone."
           : "Your journal, your sleep and your Fitbit connection are encrypted with a passphrase only you know. Enter it to record, read entries and sync on this device. Food, weight, check-in and activity work without it."}
       </p>
-      <Input type="password" autoComplete={creating ? "new-password" : "current-password"} placeholder="Vault passphrase" aria-label="Vault passphrase" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus />
+      {passkeyName && <>
+        <Button type="button" variant="journal" block disabled={busy} onClick={async () => setError(await onPasskey())}>{busy ? "Unlocking…" : `Unlock with ${passkeyName}`}</Button>
+        <p className="eb" style={{ textAlign: "center" }}>or your passphrase</p>
+      </>}
+      {/* No autofocus next to the passkey button: on a phone the keyboard would cover it. */}
+      <Input type="password" autoComplete={creating ? "new-password" : "current-password"} placeholder="Vault passphrase" aria-label="Vault passphrase" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus={!passkeyName} />
       {creating && <Input type="password" autoComplete="new-password" placeholder="Repeat the passphrase" aria-label="Repeat the passphrase" value={again} onChange={(e) => setAgain(e.target.value)} />}
       {error && <p role="alert" className={a.noteBad}>{error}</p>}
-      <Button type="submit" variant="journal" block disabled={busy}>{busy ? (creating ? "Creating…" : "Unlocking…") : creating ? "Create vault" : "Unlock"}</Button>
+      <Button type="submit" variant={passkeyName ? "secondary" : "journal"} block disabled={busy}>{busy ? (creating ? "Creating…" : "Unlocking…") : creating ? "Create vault" : "Unlock"}</Button>
       {!creating && <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={onSkip}>Not now</button>}
     </form>
   );

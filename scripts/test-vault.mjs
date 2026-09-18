@@ -4,7 +4,7 @@
 //   node scripts/test-vault.mjs
 
 import fs from "node:fs";
-import { createVault, unlockVault, encryptBytes, decryptBytes, encryptJson, decryptJson, exportKey, importKey } from "../src/lib/vault-crypto.ts";
+import { createVault, unlockVault, encryptBytes, decryptBytes, encryptJson, decryptJson, exportKey, importKey, checkKey, wrapVaultKey, unwrapVaultKey } from "../src/lib/vault-crypto.ts";
 
 const BASE = "https://soma-939530195.development.catalystserverless.com/server/soma_api/execute";
 const KEY = JSON.parse(fs.readFileSync(new URL("../catalyst/secrets.json", import.meta.url), "utf8")).soma_api.TEST_KEY;
@@ -34,6 +34,17 @@ check("another key cannot decrypt", await decryptBytes(other, packed).then(() =>
 check("plaintext does not appear in the ciphertext", !Buffer.from(packed).toString("latin1").includes("Walk"));
 const again = await importKey(await exportKey(key));
 check("session-cached key still decrypts", JSON.stringify(await decryptJson(again, packed)) === JSON.stringify(entry));
+
+console.log("passkey wrap");
+const prf = crypto.getRandomValues(new Uint8Array(32)); // stand-in for a passkey's PRF output
+const wrapped = await wrapVaultKey(key, prf);
+check("wrapped key fits the API's 200-char limit", wrapped.length <= 200, wrapped.length);
+const unwrapped = await unwrapVaultKey(wrapped, prf);
+check("unwrapped key decrypts the vault's data", JSON.stringify(await decryptJson(unwrapped, packed)) === JSON.stringify(entry));
+check("unwrapped key passes the verifier", await checkKey(unwrapped, meta));
+check("another passkey's secret cannot unwrap", await unwrapVaultKey(wrapped, crypto.getRandomValues(new Uint8Array(32))).then(() => false, () => true));
+check("a key wrapped for another vault fails the verifier", !(await checkKey(await unwrapVaultKey(await wrapVaultKey(other, prf), prf), meta)));
+check("raw key bytes do not appear in the wrapped form", !atob(wrapped).includes(atob(await exportKey(key)).slice(0, 8)));
 
 console.log("end to end: API + Stratus");
 let r = await call("PUT", "/vault-meta", { ...meta, replace: true });
