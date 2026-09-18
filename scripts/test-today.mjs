@@ -20,9 +20,9 @@ console.log("weight as a closing task");
 check("weight is required by default", required.requireWeight, true);
 let st = dayStatus(full("d", undefined), required);
 check("everything but weight: four of five, not closed", [st.doneCount, st.taskCount, st.closed, st.weightDone], [4, 5, false, false]);
-check("…and the ring has five segments, weight first, as the cards are ordered", st.ring.map((r) => [r.key, r.value]), [["weight", 0], ["checkin", 1], ["journal", 1], ["food", 1], ["activity", 0.25]]);
-// Activity is done with one of its four logged, but its segment only fills a quarter, as in the prototype.
-check("…progress counts the partial activity segment", Math.round(st.progress * 100), 65);
+check("…and the ring has five segments, weight first, as the cards are ordered", st.ring.map((r) => [r.key, r.value]), [["weight", 0], ["checkin", 1], ["journal", 1], ["food", 1], ["activity", 1]]);
+// One logged activity fills the whole segment: with weight missing that is four of five.
+check("…one activity fills its segment whole", Math.round(st.progress * 100), 80);
 check("…and the headline asks for it", [headline(st, 0, 9).big, headline(st, 0, 9).todos.map((t) => t.label)], ["One to go", ["Weight"]]);
 st = dayStatus(full("d", 182.4), required);
 check("with weight logged the day closes at five of five", [st.doneCount, st.taskCount, st.closed, st.weight], [5, 5, true, 182.4]);

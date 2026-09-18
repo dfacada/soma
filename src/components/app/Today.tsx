@@ -121,8 +121,9 @@ export function Today() {
 
   // ── Activity ──
   const pushLine = rest ? (st.pushups > 0 ? `${st.pushups} push-ups on a rest day` : "rest day for push-ups") : st.pushups >= target ? `${st.pushups} push-ups, target hit` : st.pushups > 0 ? `${st.pushups} of ${target} push-ups` : `${target} push-ups to do`;
-  const actSub = `${st.acts ? `${st.acts} of ${st.actTotal} logged` : "Nothing yet"} · ${pushLine}`;
-  const actState: MedallionState = st.acts === st.actTotal ? "done" : st.acts ? "part" : "idle";
+  // One activity closes the task; the count is still shown for the record.
+  const actSub = `${st.acts ? `Done · ${st.acts} of ${st.actTotal} logged` : "Nothing yet"} · ${pushLine}`;
+  const actState: MedallionState = st.acts ? "done" : "idle";
 
   const savePushups = (n: number) => {
     change("activity", k, (d) => { d.activity.pushups = n; });

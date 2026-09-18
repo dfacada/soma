@@ -41,7 +41,7 @@ export type DayStatus = {
   /** How many tasks close the day: 5 with weight required, 4 without. */
   taskCount: number;
   closed: boolean;
-  /** 0–1; food and activity count partially */
+  /** 0–1; food counts meal by meal. Activity is whole or nothing: one logged activity is the task done (David, 2026-09-17). */
   progress: number;
   /** One segment per task, in the order they sit on Today. */
   ring: { key: TaskKey; value: number; color: string }[];
@@ -73,7 +73,7 @@ export function dayStatus(data: DayData | undefined, settings: Settings): DaySta
     { key: "checkin", value: checkinDone ? 1 : 0, color: "var(--journal)" },
     { key: "journal", value: journalDone ? 1 : 0, color: "var(--journal-soft)" },
     { key: "food", value: meals / 4, color: "var(--food)" },
-    { key: "activity", value: acts / actTotal, color: "var(--activity)" },
+    { key: "activity", value: activityDone ? 1 : 0, color: "var(--activity)" },
   ];
   const taskCount = ring.length;
   const doneCount = [checkinDone, journalDone, foodDone, activityDone, weightRequired && weightDone].filter(Boolean).length;
