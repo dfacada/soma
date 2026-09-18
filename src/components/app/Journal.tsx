@@ -14,7 +14,7 @@ import { opened as openingDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
 import { transcribe, TranscribeError } from "@/lib/transcribe";
 import { createVault, decryptJson, encryptJson, exportKey, fromB64, importKey, toB64, unlockVault, type VaultMeta } from "@/lib/vault-crypto";
-import { enrolPasskey, forgetPasskeys, listPasskeys, passkeyName, passkeySupported, PasskeyError, unlockWithPasskey, type StoredPasskey } from "@/lib/vault-passkey";
+import { enrolPasskey, finishEnrolment, forgetPasskeys, listPasskeys, passkeyName, passkeySupported, PasskeyError, unlockWithPasskey, type StoredPasskey } from "@/lib/vault-passkey";
 import { Button, Input, Sheet, Toast } from "@/components/ui";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -46,9 +46,10 @@ type Journal = {
   seal: (value: unknown) => Promise<string>;
   unseal: <T>(b64: string) => Promise<T>;
   /** Passkey unlock (Face ID on an iPhone). `name` is what the device calls it; `count` is how many are set up. */
-  passkey: { supported: boolean; name: string; count: number };
-  /** Set up a passkey on this device. Needs the open vault and a tap. Resolves to a message for the person. */
-  addPasskey: () => Promise<string>;
+  passkey: { supported: boolean; name: string; count: number; pending: boolean };
+  /** Set up a passkey on this device, or finish one that is `pending` (made, secret not read yet). Needs the open
+   *  vault and a tap. Resolves to the outcome and a sentence for the person. */
+  addPasskey: () => Promise<{ ok: boolean; message: string }>;
   /** Forget every passkey's wrapped key; the passphrase is then the only way in. */
   removePasskeys: () => Promise<void>;
 };
@@ -97,6 +98,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [transcribing, setTranscribing] = useState<string[]>([]);
   const [passkeys, setPasskeys] = useState<StoredPasskey[]>([]);
   const [pkSupported, setPkSupported] = useState(false);
+  const [pkPending, setPkPending] = useState<string | null>(null);
 
   const key = useRef<CryptoKey | null>(null);
   const meta = useRef<VaultMeta | null>(null);
@@ -298,21 +300,30 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     } finally { setBusy(false); }
   }, [passkeys, userId, opened]);
 
-  const addPasskey = useCallback(async (): Promise<string> => {
-    if (!key.current) return "Unlock the vault first.";
+  const addPasskey = useCallback(async (): Promise<{ ok: boolean; message: string }> => {
+    if (!key.current) return { ok: false, message: "Unlock the vault first." };
     const name = passkeyName();
     try {
-      const made = await enrolPasskey(key.current, { id: userId, email: me.email, name: displayName || me.name }, passkeys);
-      setPasskeys((p) => [...p.filter((x) => x.id !== made.id), made]);
-      return `${name} unlocks your vault now`;
+      const r = pkPending
+        ? { done: await finishEnrolment(key.current, pkPending) }
+        : await enrolPasskey(key.current, { id: userId, email: me.email, name: displayName || me.name }, passkeys);
+      if ("pendingId" in r) {
+        setPkPending(r.pendingId);
+        report("vault", "passkey_setup_pending", undefined, undefined, "info");
+        return { ok: true, message: `Passkey made. Tap Finish for one more ${name} to switch it on.` };
+      }
+      setPkPending(null);
+      setPasskeys((p) => [...p.filter((x) => x.id !== r.done.id), r.done]);
+      return { ok: true, message: `${name} unlocks your vault now` };
     } catch (e) {
       const code = e instanceof PasskeyError ? e.code : "failed";
-      if (code === "cancelled") return "Cancelled";
-      if (code === "already") return `${name} already unlocks your vault on this device`;
-      report("vault", "passkey_setup_" + code, e, { passkeys: passkeys.length }, code === "failed" ? "error" : "warn");
-      return e instanceof PasskeyError ? e.message : "Could not set up the passkey. Try again.";
+      if (code === "cancelled") return { ok: false, message: "Cancelled" };
+      if (code === "already") return { ok: true, message: `${name} already unlocks your vault on this device` };
+      if (code === "unsupported") setPkPending(null);
+      report("vault", "passkey_setup_" + code, e, { passkeys: passkeys.length, finishing: Boolean(pkPending) }, code === "failed" ? "error" : "warn");
+      return { ok: false, message: e instanceof PasskeyError ? e.message : "Could not set up the passkey. Try again." };
     }
-  }, [userId, me.email, me.name, displayName, passkeys]);
+  }, [userId, me.email, me.name, displayName, passkeys, pkPending]);
 
   const removePasskeys = useCallback(async () => {
     await forgetPasskeys();
@@ -376,7 +387,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const openVault = useCallback(() => setSheet(true), []);
   const closeSheet = useCallback(() => setSheet(false), []);
 
-  const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), count: passkeys.length }), [pkSupported, passkeys.length]);
+  const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), count: passkeys.length, pending: Boolean(pkPending) }), [pkSupported, passkeys.length, pkPending]);
 
   const value = useMemo<Journal>(
     () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys }),

@@ -321,31 +321,36 @@ function Feedback({ say }: { say: (m: string) => void }) {
   );
 }
 
-/** Face ID for the vault: a passkey on this device wraps the vault key. Hidden where the browser cannot do it. */
+/** Face ID for the vault: a passkey on this device wraps the vault key. Hidden where the browser cannot do it.
+ *  The outcome stays on screen under the row: a toast is gone before Face ID's sheet has slid away. */
 function PasskeyField({ say }: { say: (m: string) => void }) {
   const journal = useJournal();
-  const { supported, name, count } = journal.passkey;
+  const { supported, name, count, pending } = journal.passkey;
   const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ ok: boolean; message: string } | null>(null);
   if (!supported || journal.vault === "none") return null;
 
-  const add = async () => { setBusy(true); say(await journal.addPasskey()); setBusy(false); };
+  const add = async () => { setBusy(true); setNote(await journal.addPasskey()); setBusy(false); };
   const off = async () => {
-    setBusy(true);
+    setBusy(true); setNote(null);
     try { await journal.removePasskeys(); say(`${name} unlock turned off`); }
-    catch (e) { report("vault", "passkeys_remove_failed", e); say("Could not turn it off. Try again."); }
+    catch (e) { report("vault", "passkeys_remove_failed", e); setNote({ ok: false, message: "Could not turn it off. Try again." }); }
     finally { setBusy(false); }
   };
   const open = journal.vault === "open";
   const help = count
     ? `On. Your passkey syncs with your keychain, so other devices signed in to it can use ${name} too. Add this device if it has no button on the unlock sheet.`
-    : open ? `Unlock with ${name} instead of typing your passphrase. The passphrase still works and is still the only way back if you lose the passkey.`
+    : open ? `Unlock with ${name} instead of typing your passphrase. If asked where to save the passkey, choose Apple Passwords: password managers like Keeper can't do this yet. The passphrase still works and is still the only way back.`
       : `Unlock the vault first, then set up ${name}.`;
   return (
-    <Field name={`Unlock with ${name}`} help={help}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-        {open && <Button size="sm" variant={count ? "secondary" : "journal"} disabled={busy} onClick={() => void add()}>{count ? "Add this device" : "Set up"}</Button>}
-        {count > 0 && <Button size="sm" variant="secondary" disabled={busy} onClick={() => void off()}>Turn off</Button>}
-      </div>
-    </Field>
+    <>
+      <Field name={`Unlock with ${name}`} help={help}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {open && <Button size="sm" variant={count && !pending ? "secondary" : "journal"} disabled={busy} onClick={() => void add()}>{pending ? "Finish" : count ? "Add this device" : "Set up"}</Button>}
+          {count > 0 && <Button size="sm" variant="secondary" disabled={busy} onClick={() => void off()}>Turn off</Button>}
+        </div>
+      </Field>
+      {note && <p role={note.ok ? "status" : "alert"} className={note.ok ? "muted" : a.noteBad} style={{ fontSize: 13, lineHeight: 1.5 }}>{note.message}</p>}
+    </>
   );
 }

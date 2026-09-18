@@ -9,6 +9,8 @@ import { api } from "./api";
 import { checkKey, unwrapVaultKey, wrapVaultKey, type VaultMeta } from "./vault-crypto";
 
 export type StoredPasskey = { id: string; wrapped: string; createdMs: number };
+/** Set-up either finished, or made the passkey and needs one more tap to read its secret. */
+export type Enrolment = { done: StoredPasskey } | { pendingId: string };
 
 /** A failure with a sentence for the person. `cancelled` is their choice (or a timeout) and is not a fault. */
 export class PasskeyError extends Error {
@@ -74,7 +76,9 @@ async function evaluate(ids: string[]): Promise<{ id: string; secret: Uint8Array
   })) as PublicKeyCredential | null;
   if (!cred) throw new PasskeyError("cancelled", "Cancelled");
   const first = (cred.getClientExtensionResults() as WithPrf).prf?.results?.first;
-  if (!first) throw new PasskeyError("unsupported", "This passkey can't unlock the vault in this browser.");
+  // Most often a third-party password manager holding the passkey (Keeper, on David's iPhone): iOS lets it answer,
+  // but it does not implement PRF. Apple Passwords (iCloud Keychain) does.
+  if (!first) throw new PasskeyError("unsupported", "This passkey can't unlock the vault. If a password manager like Keeper saved it, set up again and save the passkey to Apple Passwords instead.");
   return { id: b64url(cred.rawId), secret: toBytes(first) };
 }
 
@@ -82,8 +86,13 @@ async function evaluate(ids: string[]): Promise<{ id: string; secret: Uint8Array
  * Create a passkey on this device and store the vault key wrapped by it. `existing` goes in as excludeCredentials,
  * so a device that already holds a synced Soma passkey is told so instead of getting a second one.
  * Needs a tap (the browser requires one) and the open vault's key.
+ *
+ * What creation reports about PRF is not trusted: on iOS 26 in a Home Screen app it returns neither a secret nor
+ * `enabled` (seen 2026-09-18 on David's iPhone). So without a secret the passkey is asked for one straight away.
+ * The browser may refuse that second prompt for want of a fresh tap; then the caller shows a Finish button.
  */
-export async function enrolPasskey(key: CryptoKey, user: { id: string; email: string; name: string }, existing: StoredPasskey[]): Promise<StoredPasskey> {
+export async function enrolPasskey(key: CryptoKey, user: { id: string; email: string; name: string }, existing: StoredPasskey[]): Promise<Enrolment> {
+  let id: string;
   try {
     const salt = await prfSalt();
     const cred = (await navigator.credentials.create({
@@ -99,20 +108,28 @@ export async function enrolPasskey(key: CryptoKey, user: { id: string; email: st
       },
     })) as PublicKeyCredential | null;
     if (!cred) throw new PasskeyError("cancelled", "Cancelled");
-    const id = b64url(cred.rawId);
-    const prf = (cred.getClientExtensionResults() as WithPrf).prf;
-    if (!prf?.enabled && !prf?.results?.first) {
-      // The passkey exists but cannot give a secret here. Ask the browser to hide it where it can.
-      const signal = (PublicKeyCredential as unknown as { signalUnknownCredential?: (o: { rpId: string; credentialId: string }) => Promise<void> }).signalUnknownCredential;
-      void signal?.call(PublicKeyCredential, { rpId: location.hostname, credentialId: id }).catch(() => undefined);
-      throw new PasskeyError("unsupported", "This browser made the passkey but can't use it to unlock. Use your passphrase here.");
-    }
-    // Some browsers return the secret at creation; Safari asks once more.
-    const secret = prf.results?.first ? toBytes(prf.results.first) : (await evaluate([id])).secret;
-    const stored = { id, wrapped: await wrapVaultKey(key, secret), createdMs: Date.now() };
-    await api("PUT", "/vault-passkeys", { id: stored.id, wrapped: stored.wrapped });
-    return stored;
+    id = b64url(cred.rawId);
+    const first = (cred.getClientExtensionResults() as WithPrf).prf?.results?.first;
+    if (first) return { done: await store(key, id, toBytes(first)) };
   } catch (e) { throw asPasskeyError(e); }
+  try { return { done: await store(key, id, (await evaluate([id])).secret) }; }
+  catch (e) {
+    const err = asPasskeyError(e);
+    if (err.code === "cancelled") return { pendingId: id };
+    throw err;
+  }
+}
+
+/** The second half of set-up, on its own tap: one Face ID to read the new passkey's secret. */
+export async function finishEnrolment(key: CryptoKey, id: string): Promise<StoredPasskey> {
+  try { return await store(key, id, (await evaluate([id])).secret); }
+  catch (e) { throw asPasskeyError(e); }
+}
+
+async function store(key: CryptoKey, id: string, secret: Uint8Array): Promise<StoredPasskey> {
+  const stored = { id, wrapped: await wrapVaultKey(key, secret), createdMs: Date.now() };
+  await api("PUT", "/vault-passkeys", { id: stored.id, wrapped: stored.wrapped });
+  return stored;
 }
 
 /** Face ID → the vault key, checked against the vault's verifier before it is handed back. */
