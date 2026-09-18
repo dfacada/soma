@@ -146,22 +146,60 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('PUT', '/vault-meta', Object.assign({}, vault, { salt: 'not base64!' }));
   check('non-base64 salt is 400', r.status === 400, r.text);
 
-  console.log('vault passkeys');
-  await call('DELETE', '/vault-passkeys');
-  const pk = { id: 'dGVzdC1wYXNza2V5LWNyZWRlbnRpYWw', wrapped: 'AXdyYXBwZWR3cmFwcGVkd3JhcHBlZHdyYXBwZWQ=' };
-  r = await call('PUT', '/vault-passkeys', pk);
-  check('passkey saves', r.status === 200, r.text);
-  r = await call('PUT', '/vault-passkeys', Object.assign({}, pk, { wrapped: 'AXJld3JhcHBlZHJld3JhcHBlZHJld3JhcHBlZA==' }));
-  r = await call('GET', '/vault-passkeys');
-  check('same passkey replaces, not duplicates', r.status === 200 && r.json.passkeys.length === 1 && r.json.passkeys[0].id === pk.id && r.json.passkeys[0].wrapped.startsWith('AXJld'), r.json);
-  r = await call('PUT', '/vault-passkeys', { id: 'short', wrapped: pk.wrapped });
-  check('bad credential id is 400', r.status === 400, r.text);
-  r = await call('PUT', '/vault-passkeys', { id: pk.id + '/x', wrapped: pk.wrapped });
-  check('credential id with a quote-able char is 400', r.status === 400, r.text);
-  r = await call('DELETE', '/vault-passkeys');
-  check('passkeys forgotten', r.status === 200 && r.json.removed === 1, r.json);
-  r = await call('GET', '/vault-passkeys');
-  check('no passkeys after delete', r.status === 200 && r.json.passkeys.length === 0, r.json);
+  console.log('vault passkeys (a simulated passkey, real P-256 signatures)');
+  {
+    const nodeCrypto = require('crypto');
+    const ORIGIN = 'http://localhost:3000';
+    const b64u = (b) => Buffer.from(b).toString('base64url');
+    const sha = (b) => nodeCrypto.createHash('sha256').update(b).digest();
+    const { publicKey, privateKey } = nodeCrypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+    const credId = b64u(nodeCrypto.randomBytes(20));
+    const clientData = (type, challenge, origin) => Buffer.from(JSON.stringify({ type, challenge: b64u(Buffer.from(challenge, 'utf8')), origin: origin || ORIGIN }));
+    const authData = (flags, rp) => Buffer.concat([sha(rp || 'localhost'), Buffer.from([flags]), Buffer.from([0, 0, 0, 0])]);
+    const assertion = (challenge, opts) => {
+      const o = opts || {};
+      const cd = clientData(o.type || 'webauthn.get', challenge, o.origin);
+      const ad = authData(o.flags === undefined ? 0x05 : o.flags, o.rp);
+      const sig = nodeCrypto.sign('sha256', Buffer.concat([ad, sha(cd)]), o.key || privateKey);
+      return { challenge, id: o.id || credId, clientDataJSON: b64u(cd), authenticatorData: b64u(ad), signature: b64u(sig) };
+    };
+    const challenge = async (purpose) => (await call('POST', '/vault-passkeys/challenge', { purpose })).json.challenge;
+
+    await call('DELETE', '/vault-passkeys');
+    let ch = await challenge('register');
+    r = await call('POST', '/vault-passkeys/register', { challenge: ch, id: credId, clientDataJSON: b64u(clientData('webauthn.create', ch)), publicKey: b64u(publicKey.export({ format: 'der', type: 'spki' })), alg: -7 });
+    const share = r.json && r.json.share;
+    check('passkey registers and returns a 32-byte share', r.status === 200 && Buffer.from(share || '', 'base64url').length === 32, r.text);
+    r = await call('GET', '/vault-passkeys');
+    check('list shows the passkey and never the share', r.status === 200 && r.json.passkeys.length === 1 && r.json.passkeys[0].id === credId && !r.text.includes(share), r.text);
+
+    ch = await challenge('unlock');
+    r = await call('POST', '/vault-passkeys/unlock', assertion(ch));
+    check('a valid Face ID signature gets the share', r.status === 200 && r.json.share === share, r.text);
+    r = await call('POST', '/vault-passkeys/unlock', assertion(ch));
+    check('the same challenge cannot be used twice', r.status === 400, r.text);
+    r = await call('POST', '/vault-passkeys/unlock', assertion(await challenge('unlock'), { flags: 0x01 }));
+    check('no user verification (no Face ID) is refused', r.status === 403, r.text);
+    r = await call('POST', '/vault-passkeys/unlock', assertion(await challenge('unlock'), { key: nodeCrypto.generateKeyPairSync('ec', { namedCurve: 'P-256' }).privateKey }));
+    check('a signature from another key is refused', r.status === 403, r.text);
+    r = await call('POST', '/vault-passkeys/unlock', assertion(await challenge('register')));
+    check('a register challenge cannot unlock', r.status === 400, r.text);
+    const good = await challenge('unlock');
+    r = await call('POST', '/vault-passkeys/unlock', assertion(good.replace(/.$/, (c) => (c === 'A' ? 'B' : 'A'))));
+    check('a forged challenge is refused', r.status === 400, r.text);
+    r = await call('POST', '/vault-passkeys/unlock', assertion(good, { origin: 'https://evil.example' }));
+    check('another origin is refused', r.status === 400, r.text);
+    r = await call('POST', '/vault-passkeys/unlock', assertion(good, { rp: 'evil.example' }));
+    check('another relying party is refused', r.status === 400, r.text);
+    r = await call('POST', '/vault-passkeys/unlock', assertion(await challenge('unlock'), { id: b64u(nodeCrypto.randomBytes(20)) }));
+    check('an unknown passkey is 404', r.status === 404, r.text);
+    r = await call('POST', '/vault-passkeys/register', { challenge: 'x', id: 'short' });
+    check('bad register body is 400', r.status === 400, r.text);
+    r = await call('DELETE', '/vault-passkeys/' + credId);
+    check('this device forgotten', r.status === 200 && r.json.removed === 1, r.json);
+    r = await call('POST', '/vault-passkeys/unlock', assertion(await challenge('unlock')));
+    check('a forgotten passkey gets nothing', r.status === 404, r.text);
+  }
 
   const entryId = 'test-entry-0001';
   r = await call('PUT', '/entries/' + entryId, { createdMs: 981158400000, hasAudio: true, audioSize: 123456, audioMime: 'audio/webm', transcriptStatus: 'pending' });

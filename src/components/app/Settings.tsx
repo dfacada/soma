@@ -3,11 +3,12 @@
 // Settings (docs/HANDOFF.md §6). Every control saves on change; nothing has a Save button.
 // Sections still to come with their features: exports and import, rounds, passphrase change.
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
 import { report } from "@/lib/log";
+import { prepareChallenge } from "@/lib/vault-passkey";
 import { PALETTES, type ThemeMode } from "@/lib/look";
 import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX } from "@/lib/opening";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
@@ -321,34 +322,35 @@ function Feedback({ say }: { say: (m: string) => void }) {
   );
 }
 
-/** Face ID for the vault: a passkey on this device wraps the vault key. Hidden where the browser cannot do it.
- *  The outcome stays on screen under the row: a toast is gone before Face ID's sheet has slid away. */
+/** Face ID for the vault, on this device: works with any passkey provider (Keeper included). Hidden where the
+ *  browser cannot do it. The outcome stays under the row: a toast is gone before Face ID's sheet has slid away. */
 function PasskeyField({ say }: { say: (m: string) => void }) {
   const journal = useJournal();
-  const { supported, name, count, pending } = journal.passkey;
+  const { supported, name, here } = journal.passkey;
+  const open = journal.vault === "open";
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; message: string } | null>(null);
+  // iOS allows the passkey prompt only just after a tap, so the challenge is fetched before it.
+  useEffect(() => { if (supported && open && !here) prepareChallenge("register"); }, [supported, open, here]);
   if (!supported || journal.vault === "none") return null;
 
   const add = async () => { setBusy(true); setNote(await journal.addPasskey()); setBusy(false); };
   const off = async () => {
     setBusy(true); setNote(null);
-    try { await journal.removePasskeys(); say(`${name} unlock turned off`); }
+    try { await journal.removePasskeys(); say(`${name} turned off on this device`); }
     catch (e) { report("vault", "passkeys_remove_failed", e); setNote({ ok: false, message: "Could not turn it off. Try again." }); }
     finally { setBusy(false); }
   };
-  const open = journal.vault === "open";
-  const help = count
-    ? `On. Your passkey syncs with your keychain, so other devices signed in to it can use ${name} too. Add this device if it has no button on the unlock sheet.`
-    : open ? `Unlock with ${name} instead of typing your passphrase. If asked where to save the passkey, choose Apple Passwords: password managers like Keeper can't do this yet. The passphrase still works and is still the only way back.`
+  const help = here
+    ? `On for this device. Each phone or computer is set up on its own. Your passphrase still works everywhere.`
+    : open ? `Unlock with ${name} instead of typing your passphrase. Works with Keeper or Apple Passwords. The passphrase still works and is still the only way back.`
       : `Unlock the vault first, then set up ${name}.`;
   return (
     <>
       <Field name={`Unlock with ${name}`} help={help}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          {open && <Button size="sm" variant={count && !pending ? "secondary" : "journal"} disabled={busy} onClick={() => void add()}>{pending ? "Finish" : count ? "Add this device" : "Set up"}</Button>}
-          {count > 0 && <Button size="sm" variant="secondary" disabled={busy} onClick={() => void off()}>Turn off</Button>}
-        </div>
+        {here
+          ? <Button size="sm" variant="secondary" disabled={busy} onClick={() => void off()}>Turn off</Button>
+          : open && <Button size="sm" variant="journal" disabled={busy} onClick={() => void add()}>{busy ? "Setting up…" : "Set up"}</Button>}
       </Field>
       {note && <p role={note.ok ? "status" : "alert"} className={note.ok ? "muted" : a.noteBad} style={{ fontSize: 13, lineHeight: 1.5 }}>{note.message}</p>}
     </>

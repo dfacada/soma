@@ -70,26 +70,31 @@ export async function unlockVault(passphrase: string, meta: VaultMeta): Promise<
 export async function exportKey(key: CryptoKey) { return toB64(new Uint8Array(await crypto.subtle.exportKey("raw", key))); }
 export function importKey(b64: string) { return crypto.subtle.importKey("raw", fromB64(b64) as BufferSource, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]); }
 
-// ── Passkey unlock. A passkey's PRF output (32 secret bytes, released only after Face ID or Touch ID) is stretched
-// with HKDF into a wrapping key, and the vault key is stored encrypted under it, in the same [0x01][iv][ct] form.
-// The passphrase stays the root: this is a second way to reach the same key, never a replacement for it.
+// ── Face ID unlock (vault-passkey.ts). The vault key is sealed twice on the device: first under a device key that
+// cannot be exported (it lives in this browser's IndexedDB), then under a 32-byte share the server releases only for
+// a valid Face ID signature. Neither half opens it alone. The passphrase stays the root: this is a second way to the
+// same key, never a replacement for it.
 
-const WRAP_INFO = "soma-vault-passkey-wrap-v1";
+const SHARE_INFO = "soma-vault-device-share-v1";
 
-async function wrappingKey(secret: Uint8Array): Promise<CryptoKey> {
-  if (secret.length < 32) throw new Error("passkey secret is too short");
-  const base = await crypto.subtle.importKey("raw", secret as BufferSource, "HKDF", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new Uint8Array(32), info: new TextEncoder().encode(WRAP_INFO) }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+async function shareKey(share: Uint8Array): Promise<CryptoKey> {
+  if (share.length < 32) throw new Error("share is too short");
+  const base = await crypto.subtle.importKey("raw", share as BufferSource, "HKDF", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new Uint8Array(32), info: new TextEncoder().encode(SHARE_INFO) }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 
-/** The vault key encrypted under a passkey's PRF secret, as base64 (84 chars). */
-export async function wrapVaultKey(key: CryptoKey, secret: Uint8Array): Promise<string> {
+/** A fresh device key: AES-256-GCM, not extractable, so it can be used here but never read out. */
+export const newDeviceKey = () => crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+
+/** The vault key sealed under the device key, then under the server's share. Base64. */
+export async function sealForDevice(key: CryptoKey, deviceKey: CryptoKey, share: Uint8Array): Promise<string> {
   const raw = new Uint8Array(await crypto.subtle.exportKey("raw", key));
-  return toB64(await encryptBytes(await wrappingKey(secret), raw));
+  return toB64(await encryptBytes(await shareKey(share), await encryptBytes(deviceKey, raw)));
 }
 
-/** Throws when the secret is not the one the key was wrapped with. */
-export async function unwrapVaultKey(wrapped: string, secret: Uint8Array): Promise<CryptoKey> {
-  const raw = await decryptBytes(await wrappingKey(secret), fromB64(wrapped));
+/** Throws when either half is not the one the key was sealed with. */
+export async function openOnDevice(sealed: string, deviceKey: CryptoKey, share: Uint8Array): Promise<CryptoKey> {
+  const inner = await decryptBytes(await shareKey(share), fromB64(sealed));
+  const raw = await decryptBytes(deviceKey, inner);
   return crypto.subtle.importKey("raw", raw, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
 }

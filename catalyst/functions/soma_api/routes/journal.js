@@ -4,7 +4,6 @@
 
 'use strict';
 
-const crypto = require('crypto');
 const express = require('express');
 const { member, wrap } = require('../lib/auth');
 const { HttpError, select, upsert, needId, needToken, fitText, bool } = require('../lib/db');
@@ -48,47 +47,6 @@ router.put('/vault-meta', member, wrap(async (req, res) => {
   if (existing && b.replace !== true) throw new HttpError(409, 'vault already exists');
   await upsert(req.admin, 'vault_meta', find, values);
   res.json({ ok: true, replaced: Boolean(existing) });
-}));
-
-// ── Passkey unlock (Face ID, Touch ID): the vault key wrapped by a key only one passkey can produce (WebAuthn PRF).
-// Stored in vault_tokens (provider 'passkey', one row per passkey). The credential id and the wrapped bytes open
-// nothing without the passkey itself, which never leaves the person's devices.
-//   GET    /vault-passkeys    { passkeys: [{ id, wrapped, createdMs }] }
-//   PUT    /vault-passkeys    { id, wrapped }
-//   DELETE /vault-passkeys    forgets them all (the passkeys stay in the person's keychain, unused)
-const PASSKEY = 'passkey';
-const MAX_PASSKEYS = 8;
-const CRED_ID = /^[A-Za-z0-9_-]{16,512}$/;
-const passkeyUkey = (userId, credId) => needId(userId) + ':' + PASSKEY + ':' + crypto.createHash('sha256').update(credId).digest('hex').slice(0, 40);
-const myPasskeys = (req) => select(req.admin, 'vault_tokens',
-  `SELECT ROWID, ciphertext, created_ms FROM vault_tokens WHERE user_id = ${needId(req.user.id)} AND provider = '${PASSKEY}' LIMIT ${MAX_PASSKEYS + 1}`);
-
-router.get('/vault-passkeys', member, wrap(async (req, res) => {
-  const rows = await myPasskeys(req);
-  const passkeys = [];
-  for (const r of rows) {
-    try { const p = JSON.parse(r.ciphertext); passkeys.push({ id: p.id, wrapped: p.wrapped, createdMs: Number(r.created_ms) }); }
-    catch (_e) { /* a row this code did not write */ }
-  }
-  res.json({ passkeys });
-}));
-
-router.put('/vault-passkeys', member, wrap(async (req, res) => {
-  const b = req.body || {};
-  if (typeof b.id !== 'string' || !CRED_ID.test(b.id)) throw new HttpError(400, 'id must be a base64url credential id');
-  if (typeof b.wrapped !== 'string' || b.wrapped.length > 200 || !B64.test(b.wrapped)) throw new HttpError(400, 'wrapped must be base64');
-  const key = passkeyUkey(req.user.id, b.id);
-  const find = `SELECT ROWID FROM vault_tokens WHERE ukey = '${key}'`;
-  const exists = (await select(req.admin, 'vault_tokens', find))[0];
-  if (!exists && (await myPasskeys(req)).length >= MAX_PASSKEYS) throw new HttpError(409, 'too many passkeys; turn passkey unlock off and on again');
-  await upsert(req.admin, 'vault_tokens', find, { user_id: req.user.id, provider: PASSKEY, ukey: key, ciphertext: JSON.stringify({ id: b.id, wrapped: b.wrapped }), created_ms: Date.now() });
-  res.json({ ok: true });
-}));
-
-router.delete('/vault-passkeys', member, wrap(async (req, res) => {
-  const rows = await myPasskeys(req);
-  for (const r of rows) await req.admin.datastore().table('vault_tokens').deleteRow(r.ROWID);
-  res.json({ removed: rows.length });
 }));
 
 // ── Entry metadata ──

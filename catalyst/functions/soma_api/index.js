@@ -43,6 +43,7 @@ app.get('/me', withUser, (req, res) => {
 app.use(require('./routes/me'));
 app.use(require('./routes/days'));
 app.use(require('./routes/journal'));
+app.use(require('./routes/passkeys'));
 app.use(require('./routes/misc'));
 app.use(require('./routes/rounds'));
 app.use(require('./routes/jobs'));

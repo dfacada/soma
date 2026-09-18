@@ -14,7 +14,7 @@ import { opened as openingDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
 import { transcribe, TranscribeError } from "@/lib/transcribe";
 import { createVault, decryptJson, encryptJson, exportKey, fromB64, importKey, toB64, unlockVault, type VaultMeta } from "@/lib/vault-crypto";
-import { enrolPasskey, finishEnrolment, forgetPasskeys, listPasskeys, passkeyName, passkeySupported, PasskeyError, unlockWithPasskey, type StoredPasskey } from "@/lib/vault-passkey";
+import { enrolledHere, enrolPasskey, forgetThisDevice, passkeyName, passkeySupported, PasskeyError, prepareChallenge, unlockWithPasskey } from "@/lib/vault-passkey";
 import { Button, Input, Sheet, Toast } from "@/components/ui";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -45,12 +45,11 @@ type Journal = {
    *  Both reject while the vault is closed. The key itself never leaves this provider. */
   seal: (value: unknown) => Promise<string>;
   unseal: <T>(b64: string) => Promise<T>;
-  /** Passkey unlock (Face ID on an iPhone). `name` is what the device calls it; `count` is how many are set up. */
-  passkey: { supported: boolean; name: string; count: number; pending: boolean };
-  /** Set up a passkey on this device, or finish one that is `pending` (made, secret not read yet). Needs the open
-   *  vault and a tap. Resolves to the outcome and a sentence for the person. */
+  /** Face ID unlock on this device (any passkey provider). `name` is what the device calls it. */
+  passkey: { supported: boolean; name: string; here: boolean };
+  /** Set up Face ID on this device. Needs the open vault and a tap. Resolves to the outcome and a sentence. */
   addPasskey: () => Promise<{ ok: boolean; message: string }>;
-  /** Forget every passkey's wrapped key; the passphrase is then the only way in. */
+  /** Turn Face ID off on this device; the passphrase is then the only way in here. */
   removePasskeys: () => Promise<void>;
 };
 
@@ -96,9 +95,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [sheet, setSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [transcribing, setTranscribing] = useState<string[]>([]);
-  const [passkeys, setPasskeys] = useState<StoredPasskey[]>([]);
   const [pkSupported, setPkSupported] = useState(false);
-  const [pkPending, setPkPending] = useState<string | null>(null);
+  const [pkHere, setPkHere] = useState(false);
 
   const key = useRef<CryptoKey | null>(null);
   const meta = useRef<VaultMeta | null>(null);
@@ -156,8 +154,6 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     void Promise.all([fetchMeta(), restoreKey(userId)]).then(([m, k]) => {
       if (!alive) return;
       meta.current = m;
-      // Which passkeys can open this vault. Not knowing only hides the Face ID button; the passphrase still works.
-      if (m) void listPasskeys().then((p) => { if (alive) setPasskeys(p); }, (e) => report("vault", "passkeys_load_failed", e, undefined, "warn"));
       if (m && k) { void opened(k); return; }
       setVault(m ? "locked" : "none");
       // Opening the app is the moment to unlock: the vault now gates the health sync and sleep as well as the journal.
@@ -169,6 +165,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   }, [userId, opened]);
 
   useEffect(() => { void passkeySupported().then(setPkSupported); }, []);
+  useEffect(() => { void enrolledHere(userId).then(setPkHere); }, [userId]);
+  // iOS allows the passkey prompt only just after a tap, so the challenge is fetched as the sheet opens.
+  useEffect(() => { if (sheet && pkHere && pkSupported) prepareChallenge("unlock"); }, [sheet, pkHere, pkSupported]);
 
   useEffect(() => {
     const online = () => { void flushPending(); };
@@ -287,7 +286,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     if (!meta.current) return null;
     setBusy(true);
     try {
-      const k = await unlockWithPasskey(passkeys, meta.current);
+      const k = await unlockWithPasskey(userId, meta.current);
       sessionStorage.setItem(SESSION_KEY + userId, await exportKey(k));
       setSheet(false);
       await opened(k);
@@ -295,40 +294,31 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       const code = e instanceof PasskeyError ? e.code : "failed";
       if (code === "cancelled") return null;
-      report("vault", "passkey_unlock_" + code, e, { passkeys: passkeys.length }, code === "failed" ? "error" : "warn");
-      return e instanceof PasskeyError ? e.message : "Something went wrong with the passkey. Try again.";
+      if (code === "stale") setPkHere(await enrolledHere(userId));
+      report("vault", "passkey_unlock_" + code, e, undefined, code === "failed" ? "error" : "warn");
+      return e instanceof PasskeyError ? e.message : "Something went wrong with Face ID. Try again.";
     } finally { setBusy(false); }
-  }, [passkeys, userId, opened]);
+  }, [userId, opened]);
 
   const addPasskey = useCallback(async (): Promise<{ ok: boolean; message: string }> => {
     if (!key.current) return { ok: false, message: "Unlock the vault first." };
     const name = passkeyName();
     try {
-      const r = pkPending
-        ? { done: await finishEnrolment(key.current, pkPending) }
-        : await enrolPasskey(key.current, { id: userId, email: me.email, name: displayName || me.name }, passkeys);
-      if ("pendingId" in r) {
-        setPkPending(r.pendingId);
-        report("vault", "passkey_setup_pending", undefined, undefined, "info");
-        return { ok: true, message: `Passkey made. Tap Finish for one more ${name} to switch it on.` };
-      }
-      setPkPending(null);
-      setPasskeys((p) => [...p.filter((x) => x.id !== r.done.id), r.done]);
-      return { ok: true, message: `${name} unlocks your vault now` };
+      await enrolPasskey(key.current, { id: userId, email: me.email, name: displayName || me.name });
+      setPkHere(true);
+      return { ok: true, message: `${name} unlocks your vault on this device now` };
     } catch (e) {
       const code = e instanceof PasskeyError ? e.code : "failed";
       if (code === "cancelled") return { ok: false, message: "Cancelled" };
-      if (code === "already") return { ok: true, message: `${name} already unlocks your vault on this device` };
-      if (code === "unsupported") setPkPending(null);
-      report("vault", "passkey_setup_" + code, e, { passkeys: passkeys.length, finishing: Boolean(pkPending) }, code === "failed" ? "error" : "warn");
-      return { ok: false, message: e instanceof PasskeyError ? e.message : "Could not set up the passkey. Try again." };
+      report("vault", "passkey_setup_" + code, e, undefined, code === "failed" ? "error" : "warn");
+      return { ok: false, message: e instanceof PasskeyError ? e.message : "Could not set up Face ID. Try again." };
     }
-  }, [userId, me.email, me.name, displayName, passkeys, pkPending]);
+  }, [userId, me.email, me.name, displayName]);
 
   const removePasskeys = useCallback(async () => {
-    await forgetPasskeys();
-    setPasskeys([]);
-  }, []);
+    await forgetThisDevice(userId);
+    setPkHere(false);
+  }, [userId]);
 
   const lock = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY + userId);
@@ -387,7 +377,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const openVault = useCallback(() => setSheet(true), []);
   const closeSheet = useCallback(() => setSheet(false), []);
 
-  const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), count: passkeys.length, pending: Boolean(pkPending) }), [pkSupported, passkeys.length, pkPending]);
+  const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), here: pkHere }), [pkSupported, pkHere]);
 
   const value = useMemo<Journal>(
     () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys }),
@@ -399,7 +389,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       {children}
       <Sheet open={sheet} title={vault === "none" ? "Create your vault" : "Unlock your vault"} onClose={closeSheet}>
         <VaultForm creating={vault === "none"} busy={busy} onSubmit={submitPassphrase} onSkip={closeSheet}
-          passkeyName={vault === "locked" && pkSupported && passkeys.length ? passkey.name : null} onPasskey={submitPasskey} />
+          passkeyName={vault === "locked" && pkSupported && pkHere ? passkey.name : null} onPasskey={submitPasskey} />
       </Sheet>
       <Toast message={toast} />
     </Ctx.Provider>
