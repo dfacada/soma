@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, Ref, SelectHTMLAttributes } from "react";
 import { Icon, type IconName } from "./Icon";
 import s from "./ui.module.css";
 
@@ -185,7 +185,8 @@ export function Field({ name, help, children }: { name: string; help?: string; c
   );
 }
 
-export function Input({ compact, className, ...rest }: InputHTMLAttributes<HTMLInputElement> & { compact?: boolean }) {
+// `ref` is a plain prop in React 19; declared here so a caller can focus the field (Food's "Ate something else").
+export function Input({ compact, className, ...rest }: InputHTMLAttributes<HTMLInputElement> & { compact?: boolean; ref?: Ref<HTMLInputElement> }) {
   return <input className={cx(s.input, compact && s.inputCompact, className)} {...rest} />;
 }
 

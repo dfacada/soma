@@ -6,7 +6,7 @@
 // faked them from calories). Off-plan items are typed in plain words: Soma answers from what it already knows
 // (food-match.ts) and asks the estimator (routes/food.js) only for something new.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, type Extra } from "@/lib/api";
 import { knownFoods, matchFood, type Known } from "@/lib/food-match";
 import { report } from "@/lib/log";
@@ -27,6 +27,15 @@ export function Food() {
   const { settings, saveSettings } = useSession();
   const { map, error, reload, unsaved, retry, change, today, todayKey: k } = useDays();
   const [swap, setSwap] = useState<Meal | null>(null);
+  // Which slot the form below will fill: a meal, or null for an off-plan item. A meal card's "Ate something else"
+  // sets it and sends you to the form.
+  const [slot, setSlot] = useState<Meal | null>(null);
+  const field = useRef<HTMLInputElement>(null);
+  const ateSomethingElse = useCallback((m: Meal) => {
+    setSlot(m);
+    field.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    field.current?.focus({ preventScroll: true });
+  }, []);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const closeRecipe = useCallback(() => setRecipe(null), []);
   const [toast, setToast] = useState<string | null>(null);
@@ -50,6 +59,12 @@ export function Food() {
   const g = settings.goals;
 
   const addExtra = (x: Extra) => { change("day-logs", k, (d) => { d.log.extras = [...d.log.extras, x]; }); say(`Added · ${x.kcal} kcal`); };
+  // What you ate in place of the plan: the slot holds a snapshot, so the plan itself is untouched and the meal counts.
+  const setMeal = (m: Meal, x: PlannedMeal) => {
+    const had = eaten[m];
+    change("day-logs", k, (d) => { d.log.meals[m] = { ...x }; });
+    say(had ? `${cap(m)} replaced · ${x.kcal} kcal` : `${cap(m)} · ${x.kcal} kcal`);
+  };
 
   async function pick(meal: Meal, recipe: PlannedMeal) {
     setSwap(null);
@@ -101,6 +116,7 @@ export function Food() {
             <div className={a.rowButtons}>
               <Button size="sm" variant={done ? "secondary" : "food"} onClick={() => change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; })}>{done ? "Undo" : "Mark eaten"}</Button>
               {!done && <Button size="sm" variant="secondary" onClick={() => setSwap(m)}>Swap meal</Button>}
+              <Button size="sm" variant="secondary" onClick={() => ateSomethingElse(m)}>Ate something else</Button>
               {findRecipe(shown.name, settings.mealPlan) && <Button size="sm" variant="secondary" onClick={() => setRecipe(findRecipe(shown.name, settings.mealPlan))}>Recipe</Button>}
             </div>
           </Card>
@@ -121,7 +137,7 @@ export function Food() {
             {settings.snacks.map((s) => <Chip key={s.name} kind="habit" label={s.name} onClick={() => addExtra({ name: s.name, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat })} />)}
           </div>
         )}
-        <ExtraForm onAdd={addExtra} known={known} estimateOn={settings.foodEstimate} />
+        <ExtraForm onAdd={addExtra} onMeal={setMeal} eaten={eaten} known={known} estimateOn={settings.foodEstimate} slot={slot} onSlot={setSlot} fieldRef={field} />
       </Card>
 
       <Card>
@@ -184,8 +200,21 @@ const draftOf = (item: { name: string; kcal: number; protein?: number; carbs?: n
 /**
  * Type what you ate; the four numbers come back filled and editable, and nothing is logged until you tap Add.
  * Known food answers instantly and offline; only something new goes to the estimator, and only with it switched on.
+ *
+ * What you typed can land in two places: as one of the four meals, in place of the plan (the slot keeps a snapshot,
+ * so the meal counts towards closing the day and the plan itself is untouched), or as an off-plan item.
  */
-function ExtraForm({ onAdd, known, estimateOn }: { onAdd: (x: Extra) => void; known: Known[]; estimateOn: boolean }) {
+function ExtraForm({ onAdd, onMeal, eaten, known, estimateOn, slot, onSlot, fieldRef }: {
+  onAdd: (x: Extra) => void;
+  onMeal: (m: Meal, x: PlannedMeal) => void;
+  eaten: Record<string, unknown>;
+  known: Known[];
+  estimateOn: boolean;
+  /** Where what you type will land: a meal slot, or null for an off-plan item. Owned above, so a meal card can set it. */
+  slot: Meal | null;
+  onSlot: (m: Meal | null) => void;
+  fieldRef: React.RefObject<HTMLInputElement | null>;
+}) {
   const [text, setText] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -213,11 +242,14 @@ function ExtraForm({ onAdd, known, estimateOn }: { onAdd: (x: Extra) => void; kn
   function add() {
     if (!draft || draft.kcal === "") return;
     const n = (v: string) => (v === "" ? undefined : Number(v));
-    onAdd({ name: draft.name.trim().slice(0, 80) || text.trim().slice(0, 80), kcal: Number(draft.kcal), protein: n(draft.protein), carbs: n(draft.carbs), fat: n(draft.fat) });
-    setDraft(null); setText(""); setError(null);
+    const name = draft.name.trim().slice(0, 80) || text.trim().slice(0, 80);
+    const kcal = Number(draft.kcal);
+    if (slot) onMeal(slot, { name, kcal, protein: Number(draft.protein) || 0, carbs: Number(draft.carbs) || 0, fat: Number(draft.fat) || 0 });
+    else onAdd({ name, kcal, protein: n(draft.protein), carbs: n(draft.carbs), fat: n(draft.fat) });
+    setDraft(null); setText(""); setError(null); onSlot(null);
   }
 
-  const field = (key: "kcal" | "protein" | "carbs" | "fat", label: string) => (
+  const macro = (key: "kcal" | "protein" | "carbs" | "fat", label: string) => (
     <label key={key} className={a.macroField}>
       <span className="eb">{label}</span>
       <Input aria-label={label} inputMode="numeric" pattern="[0-9]*" value={draft![key]}
@@ -226,9 +258,9 @@ function ExtraForm({ onAdd, known, estimateOn }: { onAdd: (x: Extra) => void; kn
   );
 
   return (
-    <>
+    <div>
       <form className={a.extraForm} onSubmit={look}>
-        <Input placeholder={estimateOn ? "What did you eat?" : "What did you eat?"} aria-label="What did you eat" value={text} maxLength={200}
+        <Input ref={fieldRef} placeholder="What did you eat?" aria-label="What did you eat" value={text} maxLength={200}
           onChange={(e) => { setText(e.target.value); if (draft) setDraft(null); }} />
         <Button type="submit" variant="food" disabled={!text.trim() || busy}>{busy ? "…" : draft ? "Redo" : "Look up"}</Button>
       </form>
@@ -240,15 +272,24 @@ function ExtraForm({ onAdd, known, estimateOn }: { onAdd: (x: Extra) => void; kn
             <span className="muted" style={{ fontSize: 12 }}>{draft.from}</span>
           </div>
           <div className={a.macroFields}>
-            {field("kcal", "kcal")}{field("protein", "protein")}{field("carbs", "carbs")}{field("fat", "fat")}
+            {macro("kcal", "kcal")}{macro("protein", "protein")}{macro("carbs", "carbs")}{macro("fat", "fat")}
+          </div>
+          <div>
+            <span className="eb">Log it as</span>
+            <div className={a.chips} style={{ marginTop: 6 }}>
+              <Chip kind="habit" label="Something else" on={slot === null} onClick={() => onSlot(null)} />
+              {MEALS.map((m) => <Chip key={m} kind="habit" label={cap(m)} on={slot === m} onClick={() => onSlot(m)} />)}
+            </div>
           </div>
           <div className={a.extraForm}>
-            <Button variant="food" block disabled={draft.kcal === ""} onClick={add}>Add</Button>
-            <Button variant="secondary" onClick={() => { setDraft(null); setError(null); }}>Cancel</Button>
+            <Button variant="food" block disabled={draft.kcal === ""} onClick={add}>
+              {slot ? (eaten[slot] ? `Replace ${slot}` : `Log as ${slot}`) : "Add"}
+            </Button>
+            <Button variant="secondary" onClick={() => { setDraft(null); setError(null); onSlot(null); }}>Cancel</Button>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
