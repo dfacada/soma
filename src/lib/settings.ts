@@ -27,6 +27,8 @@ export type Settings = {
   bestStreak: number;
   /** Off until the user opts in: transcription is the one thing that sends plaintext audio off the device. */
   cloudTranscription: boolean;
+  /** Let Claude estimate calories and macros for food typed in plain words. Known food is matched on the device first. */
+  foodEstimate: boolean;
   /** Logging weight is one of the things that closes the day. On unless the user switches it off. */
   requireWeight: boolean;
   /** Ask for the vault passphrase when the app opens, once per tab, dismissible. The vault gates the journal, sleep and the health sync. */
@@ -65,6 +67,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pushupTarget: 100,
   bestStreak: 0,
   cloudTranscription: false,
+  foodEstimate: true,
   requireWeight: true,
   unlockOnOpen: true,
   theme: "light",
@@ -104,6 +107,7 @@ export function mergeSettings(stored: unknown): Settings {
     pushupTarget: Math.max(1, Math.round(num(s.pushupTarget, d.pushupTarget))),
     bestStreak: Math.round(num(s.bestStreak, 0)),
     cloudTranscription: s.cloudTranscription === true,
+    foodEstimate: s.foodEstimate !== false,
     requireWeight: s.requireWeight !== false,
     unlockOnOpen: s.unlockOnOpen !== false,
     theme: THEME_MODES.includes(s.theme as ThemeMode) ? (s.theme as ThemeMode) : d.theme,

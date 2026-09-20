@@ -150,6 +150,9 @@ export function SettingsScreen() {
           {settings.snacks.map((s, i) => <Pill key={s.name + i} label={`${s.name} · ${s.kcal}${s.protein ? ` · ${s.protein}P` : ""}`} onRemove={() => void save({ snacks: settings.snacks.filter((_, j) => j !== i) })} />)}
         </div>
         <SnackForm onAdd={(name, kcal) => void save({ snacks: [...settings.snacks, { name, kcal }] }, `Added ${name}`)} />
+        <Field name="Estimate what I type" help="On: type an off-plan item in plain words and Claude fills the calories and macros for you to check. Your plan, recipes, quick snacks and anything you logged before are matched on this device first and never sent. Off: you type the numbers.">
+          <Switch checked={settings.foodEstimate} label="Estimate food I type" onChange={(v) => void save({ foodEstimate: v }, v ? "Estimates on" : "Estimates off")} />
+        </Field>
       </Card>
 
       <Card>

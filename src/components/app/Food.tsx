@@ -2,11 +2,14 @@
 
 // Food: today's calories and macros, the four planned meals, anything off-plan, the recipe book, and weight.
 // The plans, recipes and quick snacks are David's own, generated from the Macros repo (src/lib/food-data.ts).
-// Follows the prototype's viewFood. Two deliberate differences: carbs and fat are real sums (the prototype
-// faked them from calories), and off-plan items are entered by hand until the Claude estimator has a key.
+// Follows the prototype's viewFood, with one deliberate difference: carbs and fat are real sums (the prototype
+// faked them from calories). Off-plan items are typed in plain words: Soma answers from what it already knows
+// (food-match.ts) and asks the estimator (routes/food.js) only for something new.
 
-import { useCallback, useEffect, useState } from "react";
-import { api, type Extra } from "@/lib/api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { api, ApiError, type Extra } from "@/lib/api";
+import { knownFoods, matchFood, type Known } from "@/lib/food-match";
+import { report } from "@/lib/log";
 import { BOWL_VARIANTS, MEAL_PLANS, RECIPES, type Recipe } from "@/lib/food-data";
 import { MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
 import { addDays, cap, dayKey, dayStatus } from "@/lib/today";
@@ -29,6 +32,14 @@ export function Food() {
   const [toast, setToast] = useState<string | null>(null);
   const say = useCallback((m: string) => { setToast(m); window.setTimeout(() => setToast(null), 1800); }, []);
   const closeSwap = useCallback(() => setSwap(null), []);
+
+  // What Soma can answer without asking: the book, the plan, your snacks, and every off-plan item in the 60 days
+  // already loaded. Same name twice keeps the newest, so a correction you made yesterday is what comes back today.
+  const known = useMemo(() => {
+    const seen = new Map<string, Extra>();
+    for (const day of Object.keys(map || {}).sort()) for (const x of map![day]?.log?.extras || []) seen.set(x.name.toLowerCase(), x);
+    return knownFoods({ logged: [...seen.values()], snacks: settings.snacks, plan: Object.values(settings.plan) });
+  }, [map, settings.snacks, settings.plan]);
 
   if (error) return <div className={a.page}><span className="d" style={{ fontSize: 28 }}>Couldn&apos;t load food</span><p className="muted">{error}</p><div><Button onClick={reload}>Try again</Button></div></div>;
   if (!map) return <div className={a.page}><span className="eb">Loading</span></div>;
@@ -110,7 +121,7 @@ export function Food() {
             {settings.snacks.map((s) => <Chip key={s.name} kind="habit" label={s.name} onClick={() => addExtra({ name: s.name, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat })} />)}
           </div>
         )}
-        <ExtraForm onAdd={addExtra} />
+        <ExtraForm onAdd={addExtra} known={known} estimateOn={settings.foodEstimate} />
       </Card>
 
       <Card>
@@ -164,16 +175,80 @@ function RecipeBody({ r }: { r: Recipe }) {
   );
 }
 
-function ExtraForm({ onAdd }: { onAdd: (x: Extra) => void }) {
-  const [name, setName] = useState("");
-  const [kcal, setKcal] = useState("");
-  const ok = name.trim() && kcal !== "";
+type Draft = { name: string; kcal: string; protein: string; carbs: string; fat: string; from: string };
+
+const FROM: Record<Known["source"], string> = { logged: "from what you logged before", snack: "from your quick snacks", plan: "from your plan", recipe: "from the recipe book" };
+const draftOf = (item: { name: string; kcal: number; protein?: number; carbs?: number; fat?: number }, from: string): Draft =>
+  ({ name: item.name, kcal: String(item.kcal), protein: String(item.protein ?? ""), carbs: String(item.carbs ?? ""), fat: String(item.fat ?? ""), from });
+
+/**
+ * Type what you ate; the four numbers come back filled and editable, and nothing is logged until you tap Add.
+ * Known food answers instantly and offline; only something new goes to the estimator, and only with it switched on.
+ */
+function ExtraForm({ onAdd, known, estimateOn }: { onAdd: (x: Extra) => void; known: Known[]; estimateOn: boolean }) {
+  const [text, setText] = useState("");
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function look(e: React.FormEvent) {
+    e.preventDefault();
+    const said = text.trim();
+    if (!said || busy) return;
+    setError(null);
+    const hit = matchFood(said, known);
+    if (hit?.exact) return setDraft(draftOf(hit.item, FROM[hit.item.source]));
+    if (!estimateOn) return setDraft(hit ? draftOf(hit.item, `close to ${hit.item.name}`) : { name: said.slice(0, 80), kcal: "", protein: "", carbs: "", fat: "", from: "your numbers" });
+    setBusy(true);
+    try {
+      const got = await api<{ name: string; kcal: number; protein: number; carbs: number; fat: number; note: string }>("POST", "/food/estimate", { text: said });
+      setDraft(draftOf(got, got.note || "estimated"));
+    } catch (err) {
+      report("food", "estimate_failed", err, undefined, err instanceof ApiError && err.status < 500 ? "warn" : "error");
+      setError(err instanceof ApiError ? err.message : "Couldn't estimate that. Type the numbers instead.");
+      setDraft(hit ? draftOf(hit.item, `close to ${hit.item.name}`) : { name: said.slice(0, 80), kcal: "", protein: "", carbs: "", fat: "", from: "your numbers" });
+    } finally { setBusy(false); }
+  }
+
+  function add() {
+    if (!draft || draft.kcal === "") return;
+    const n = (v: string) => (v === "" ? undefined : Number(v));
+    onAdd({ name: draft.name.trim().slice(0, 80) || text.trim().slice(0, 80), kcal: Number(draft.kcal), protein: n(draft.protein), carbs: n(draft.carbs), fat: n(draft.fat) });
+    setDraft(null); setText(""); setError(null);
+  }
+
+  const field = (key: "kcal" | "protein" | "carbs" | "fat", label: string) => (
+    <label key={key} className={a.macroField}>
+      <span className="eb">{label}</span>
+      <Input aria-label={label} inputMode="numeric" pattern="[0-9]*" value={draft![key]}
+        onChange={(e) => setDraft((d) => d && { ...d, [key]: digits(e.target.value, 4) })} />
+    </label>
+  );
+
   return (
-    <form className={a.extraForm} onSubmit={(e) => { e.preventDefault(); if (!ok) return; onAdd({ name: name.trim().slice(0, 80), kcal: Number(kcal) }); setName(""); setKcal(""); }}>
-      <Input placeholder="What did you eat?" aria-label="What did you eat" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
-      <Input className={a.kcalInput} placeholder="kcal" aria-label="Calories" inputMode="numeric" pattern="[0-9]*" value={kcal} onChange={(e) => setKcal(digits(e.target.value, 4))} />
-      <Button type="submit" disabled={!ok}>Add</Button>
-    </form>
+    <>
+      <form className={a.extraForm} onSubmit={look}>
+        <Input placeholder={estimateOn ? "What did you eat?" : "What did you eat?"} aria-label="What did you eat" value={text} maxLength={200}
+          onChange={(e) => { setText(e.target.value); if (draft) setDraft(null); }} />
+        <Button type="submit" variant="food" disabled={!text.trim() || busy}>{busy ? "…" : draft ? "Redo" : "Look up"}</Button>
+      </form>
+      {error && <p role="alert" className={a.noteBad} style={{ fontSize: 13 }}>{error}</p>}
+      {draft && (
+        <div className={a.draft}>
+          <div className={a.draftHead}>
+            <Input aria-label="Name" value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => d && { ...d, name: e.target.value })} />
+            <span className="muted" style={{ fontSize: 12 }}>{draft.from}</span>
+          </div>
+          <div className={a.macroFields}>
+            {field("kcal", "kcal")}{field("protein", "protein")}{field("carbs", "carbs")}{field("fat", "fat")}
+          </div>
+          <div className={a.extraForm}>
+            <Button variant="food" block disabled={draft.kcal === ""} onClick={add}>Add</Button>
+            <Button variant="secondary" onClick={() => { setDraft(null); setError(null); }}>Cancel</Button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
