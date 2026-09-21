@@ -13,11 +13,13 @@ import { PALETTES, type ThemeMode } from "@/lib/look";
 import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX } from "@/lib/opening";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
 import { planMeals, type Habit, type Settings } from "@/lib/settings";
-import { Button, Card, Chip, Field, Input, Pill, Segmented, Switch, Toast } from "@/components/ui";
+import { Button, Card, Chip, Field, Input, Pill, Segmented, Sheet, Switch, Toast } from "@/components/ui";
 import { Admin } from "./Admin";
 import { useHealth } from "./Health";
 import { NudgeCard } from "./Nudge";
 import { useJournal } from "./Journal";
+import { ReleaseList } from "./WhatsNew";
+import { CHANGES, releaseDate } from "@/lib/changelog";
 import { useSession } from "./Session";
 import a from "./app.module.css";
 
@@ -186,6 +188,8 @@ export function SettingsScreen() {
         </Field>
         <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Entries and audio are encrypted on this device with AES-256-GCM before upload; the key comes from your passphrase and never leaves the browser. Food, activity and check-ins are readable by the server so leaderboards and admin fixes work.</p>
       </Card>
+
+      <ChangesCard />
 
       <Feedback say={say} />
 
@@ -357,5 +361,22 @@ function PasskeyField({ say }: { say: (m: string) => void }) {
       </Field>
       {note && <p role={note.ok ? "status" : "alert"} className={note.ok ? "muted" : a.noteBad} style={{ fontSize: 13, lineHeight: 1.5 }}>{note.message}</p>}
     </>
+  );
+}
+
+/** Every change ever made to Soma, newest first (src/lib/changelog.ts). What's new shows the unseen ones on opening. */
+function ChangesCard() {
+  const [open, setOpen] = useState(false);
+  const latest = CHANGES[0];
+  return (
+    <Card>
+      <span className="eb">What&apos;s new</span>
+      <Field name={latest.title} help={`Latest update, ${releaseDate(latest.date)}. ${CHANGES.length} updates so far.`}>
+        <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>See all changes</Button>
+      </Field>
+      <Sheet open={open} title="Every change" onClose={() => setOpen(false)}>
+        <ReleaseList releases={CHANGES} />
+      </Sheet>
+    </Card>
   );
 }

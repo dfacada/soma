@@ -2,12 +2,18 @@
 
 // Today is the actionable screen: every daily task completes with a tap here (docs/HANDOFF.md).
 // Structure and copy follow the prototype's viewToday.
+//
+// Backfill: tap one of the six earlier days in the week strip and every card edits that day instead, under a bar
+// that says so. The streak and the round stay on today. On a past day the journal can also be written, not only
+// recorded, and the entry is filed under that day marked "added later".
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card, Chip, DayGlyph, DayRing, Medallion, Mini, RowHead, Toast, type IconName, type MedallionState } from "@/components/ui";
+import { Button, Card, Chip, DayGlyph, DayRing, Medallion, Mini, RowHead, Sheet, Toast, type IconName, type MedallionState } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
 import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS } from "@/lib/today";
+import { report } from "@/lib/log";
+import { DayBanner, longDay } from "./DayBanner";
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
 import { PushSheet } from "./PushSheet";
@@ -26,7 +32,8 @@ export function Today() {
   const journal = useJournal();
   const rounds = useRounds();
 
-  const { map, error, reload, unsaved, retry, change, today, todayKey: k, windowDays: WINDOW_DAYS } = useDays();
+  const { map, error, reload, unsaved, retry, change, today, viewKey: k, view, isToday, setView, windowDays: WINDOW_DAYS } = useDays();
+  const [writing, setWriting] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState<boolean | null>(null);
   const [pushSheet, setPushSheet] = useState(false);
   const [weightSheet, setWeightSheet] = useState(false);
@@ -65,10 +72,20 @@ export function Today() {
   const checkin = data?.checkin;
   const eaten = data?.log?.meals || {};
   const types = data?.activity?.types || {};
-  const head = headline(st, run.now, new Date().getHours());
+  const now = headline(st, run.now, new Date().getHours());
+  // A past day gets its date and what is missing, not "good afternoon".
+  const head = isToday ? now : {
+    big: longDay(view),
+    sub: st.closed ? "Closed. Nothing left to fill in." : `${st.doneCount} of ${st.taskCount} done. Fill in what is missing.`,
+    todos: now.todos,
+  };
   // In a running round the target is the one I joined with; otherwise my own setting. Rest days have none.
-  const target = rounds.target;
-  const rest = rounds.restToday;
+  const forDay = rounds.forDay(k);
+  const target = forDay.target;
+  const rest = forDay.rest;
+  // Push-ups count for the round only when logged within two days (the server decides; this is only for the words).
+  const lateForRound = k < dayKey(addDays(today, -2));
+  const when = isToday ? "today" : "that day";
   const initials = (displayName || me.email).split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   // ── Check-in ──
@@ -93,10 +110,10 @@ export function Today() {
     : journal.vault === "none"
       ? "Tap to make your vault, then record."
       : journal.vault === "locked"
-        ? (st.journalDone ? `${entriesToday} entr${entriesToday === 1 ? "y" : "ies"} today · unlock to add another` : "Tap to unlock your vault and record.")
+        ? (st.journalDone ? `${entriesToday} entr${entriesToday === 1 ? "y" : "ies"} ${when} · unlock to add another` : "Tap to unlock your vault and record.")
         : st.journalDone
-          ? `${entriesToday} entr${entriesToday === 1 ? "y" : "ies"} today · tap to add another`
-          : "Tap here to record. Two minutes is plenty.";
+          ? `${entriesToday} entr${entriesToday === 1 ? "y" : "ies"} ${when} · tap to add another`
+          : isToday ? "Tap here to record. Two minutes is plenty." : "Tap to record, or write, for that day. It is marked added later.";
 
   // ── Food ──
   const foodSub = st.foodDone
@@ -109,10 +126,10 @@ export function Today() {
   // ── Weight ──
   // The most recent weight before today, for the one-tap "same as last" and the change since.
   let lastWeight: number | null = null;
-  for (let i = 1; i <= WINDOW_DAYS && lastWeight === null; i++) lastWeight = days[dayKey(addDays(today, -i))]?.weight ?? null;
+  for (let i = 1; i <= WINDOW_DAYS && lastWeight === null; i++) lastWeight = days[dayKey(addDays(view, -i))]?.weight ?? null;
   const weightSub = st.weight !== null
     ? `${st.weight} lb${lastWeight === null ? "" : st.weight === lastWeight ? " · same as last" : ` · ${st.weight < lastWeight ? "↓" : "↑"}${Math.abs(st.weight - lastWeight).toFixed(1)} since last`}`
-    : lastWeight !== null ? `Last ${lastWeight} lb · tap to log today` : "Tap to log today’s weight.";
+    : lastWeight !== null ? `Last ${lastWeight} lb · tap to log ${when}` : `Tap to log ${isToday ? "today’s" : "that day’s"} weight.`;
   const saveWeight = (v: number | null) => {
     change("weight", k, (d) => { d.weight.value = v; });
     setWeightSheet(false);
@@ -128,7 +145,7 @@ export function Today() {
   const savePushups = (n: number) => {
     change("activity", k, (d) => { d.activity.pushups = n; });
     setPushSheet(false);
-    say(n >= target && !rest ? `Target hit · ${n} push-ups` : n ? `${n} push-ups logged` : "Push-ups cleared");
+    say(lateForRound && n ? `${n} push-ups saved to your record · too late to count for the round` : n >= target && !rest ? `Target hit · ${n} push-ups` : n ? `${n} push-ups logged` : "Push-ups cleared");
   };
 
   return (
@@ -161,20 +178,24 @@ export function Today() {
             <span style={{ fontSize: 14 }}><span className="d" style={{ fontSize: 22 }}>{run.now}</span> <span className={a.heroMuted}>full day{run.now === 1 ? "" : "s"} in a row</span></span>
             <span className={a.heroMuted} style={{ fontSize: 12 }}>Best <span className="m">{run.best}</span></span>
           </div>
-          <div className={a.week}>
+          <div className={a.week} role="group" aria-label="Pick a day to fill in">
             {[6, 5, 4, 3, 2, 1, 0].map((i) => {
               const d = addDays(today, -i);
-              const done = i === 0 ? st.doneCount : dayStatus(days[dayKey(d)], settings).doneCount;
+              const dk = dayKey(d);
+              const done = dk === k ? st.doneCount : dayStatus(days[dk], settings).doneCount;
               return (
-                <div key={i} className={`${a.weekDay} ${i === 0 ? a.weekToday : ""}`}>
+                <button key={i} type="button" className={`${a.weekDay} ${i === 0 ? a.weekToday : ""} ${dk === k ? a.weekPicked : ""}`}
+                  aria-pressed={dk === k} aria-label={i === 0 ? "Today" : `Fill in ${longDay(d)}`} onClick={() => setView(i === 0 ? null : dk)}>
                   <DayGlyph done={done} total={st.taskCount} today={i === 0} />
                   <span>{i === 0 ? "Today" : WEEKDAYS[d.getDay()]}</span>
-                </div>
+                </button>
               );
             })}
           </div>
         </div>
       </section>
+
+      {!isToday && <DayBanner view={view} onBack={() => setView(null)} />}
 
       {unsaved && (
         <div className={a.unsaved} role="alert">
@@ -184,7 +205,7 @@ export function Today() {
       )}
 
       {/* Weight comes first: it is the one task with a right time of day, before anything is eaten. */}
-      <Card onClick={() => setWeightSheet(true)} aria-label="Log today’s weight">
+      <Card onClick={() => setWeightSheet(true)} aria-label={isToday ? "Log today’s weight" : `Log weight for ${longDay(view)}`}>
         <RowHead
           lead={<Medallion domain="food" icon="scale" state={st.weight !== null ? "done" : "idle"} />}
           title="Weight"
@@ -220,16 +241,18 @@ export function Today() {
       </Card>
 
       {/* The Journal card is the record button: no floating mic on Today. The mood picked above rides along. */}
-      <Card recording={journal.recording} onClick={() => journal.toggleRecording(checkin?.mood ?? null)} aria-label={journal.recording ? "Stop recording" : "Record a journal entry"}>
+      <Card recording={journal.recording} onClick={() => journal.toggleRecording(checkin?.mood ?? null, isToday ? undefined : k)} aria-label={journal.recording ? "Stop recording" : isToday ? "Record a journal entry" : `Record a journal entry for ${longDay(view)}`}>
         <RowHead
           lead={<Medallion domain="journal" icon="mic" state={journal.recording ? "rec" : st.journalDone ? "done" : "idle"} />}
           title="Journal"
           sub={journalSub}
           trail={journal.recording
             ? <span className={`m ${a.recTime}`}>{clock(journal.seconds)}</span>
-            : st.journalDone
-              ? <button type="button" className={a.lnk} onClick={(e) => { e.stopPropagation(); router.push("/journal/"); }}>Open</button>
-              : <span className={a.lnk} style={{ color: "var(--journal)" }}>{journal.vault === "open" ? "Record" : journal.vault === "none" ? "Set up" : "Unlock"}</span>}
+            : !isToday && journal.vault === "open"
+              ? <button type="button" className={a.lnk} style={{ color: "var(--journal)" }} onClick={(e) => { e.stopPropagation(); setWriting(true); }}>Write</button>
+              : st.journalDone
+                ? <button type="button" className={a.lnk} onClick={(e) => { e.stopPropagation(); router.push("/journal/"); }}>Open</button>
+                : <span className={a.lnk} style={{ color: "var(--journal)" }}>{journal.vault === "open" ? "Record" : journal.vault === "none" ? "Set up" : "Unlock"}</span>}
         />
       </Card>
 
@@ -270,8 +293,32 @@ export function Today() {
       </Card>
 
       <WeightSheet open={weightSheet} onClose={closeWeight} current={st.weight} last={lastWeight} onSave={saveWeight} />
-      <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={rounds.dayNumber} onSave={savePushups} />
+      <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={forDay.dayNumber} onSave={savePushups}
+        day={isToday ? undefined : longDay(view)} late={lateForRound} />
+      <WriteSheet open={writing} day={longDay(view)} onClose={() => setWriting(false)}
+        onSave={async (text) => {
+          try { await journal.writeEntry(text, checkin?.mood ?? null, k); setWriting(false); return null; }
+          catch (e) { report("journal", "backfill_write_failed", e); return "Couldn’t save that entry. Try again."; }
+        }} />
       <Toast message={toast} />
     </div>
+  );
+}
+
+/** Writing a journal entry for a past day: plain text, filed under that day and marked added later. */
+function WriteSheet({ open, day, onClose, onSave }: { open: boolean; day: string; onClose: () => void; onSave: (text: string) => Promise<string | null> }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Sheet open={open} title={`Journal for ${day}`} onClose={onClose}>
+      <div className={a.vaultForm}>
+        <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>Encrypted like every entry. It is filed under that day and marked added later.</p>
+        <textarea className={a.writeBox} aria-label="Journal entry" value={text} maxLength={5000} rows={7} onChange={(e) => setText(e.target.value)} placeholder="What happened that day?" />
+        {error && <p role="alert" className={a.noteBad}>{error}</p>}
+        <Button variant="journal" block disabled={!text.trim() || busy}
+          onClick={async () => { setBusy(true); const err = await onSave(text); setBusy(false); setError(err); if (!err) setText(""); }}>{busy ? "Saving…" : "Save entry"}</Button>
+      </div>
+    </Sheet>
   );
 }

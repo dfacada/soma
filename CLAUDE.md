@@ -19,6 +19,8 @@ Start with `docs/HANDOFF.md`. It carries every decision made during design, the 
 - **Every failure is logged.** A `catch` that tells the user something went wrong must also call `report(area, event, error)` (`src/lib/log.ts`); server code that absorbs a failure calls `writeLog` (`lib/log.js`, copied byte for byte into `soma_jobs/`). Never put journal text, a passphrase, a token or a key in a log. David reads it in Settings → Admin → Log.
 - Food data (`src/lib/food-data.ts`) is generated from the Macros repo by `scripts/import-macros-data.mjs`. Never edit it by hand and never add invented sample meals.
 - Today is the actionable screen: every daily task completes with a tap there. The Journal card is the record button (no floating mic on Today; voice only).
+- **Every change a user can notice adds a line to `src/lib/changelog.ts` in the same commit**, in plain words for the person using the app (not a commit message). Same day: add an item to that day's release. New day: a new release at the top with a new id. Never change a shipped id. What's new shows unseen releases once on opening; Settings → What's new keeps them all.
+- Backfill reaches today and the six days before it (`viewKey` in `Days.tsx`), never further. Streaks and rounds always run on today. Push-ups count for a round only via `round_pushups`, which the API sets itself and only within two days (`countsForRound` in `routes/days.js`).
 - Commit and push to `master` directly. No feature branches.
 
 ## Design tokens

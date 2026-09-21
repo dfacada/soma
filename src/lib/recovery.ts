@@ -22,6 +22,8 @@ export type JournalEntry = {
   audioMime: string;
   audioDuration: number; // seconds
   recovered?: boolean;
+  /** Filed under an earlier day from Today's backfill: createdAt is that day, the entry was made later. */
+  addedLater?: boolean;
   updatedAt?: string | null;
 };
 export type PendingRecording = { id: string; userId: string; entry: JournalEntry; audio: Blob; attempts: number; lastAttemptAt: number | null };

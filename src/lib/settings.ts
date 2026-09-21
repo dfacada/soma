@@ -25,6 +25,8 @@ export type Settings = {
   /** Per person, flat, no ramp. Round membership will carry its own target once rounds exist. */
   pushupTarget: number;
   bestStreak: number;
+  /** The newest changelog release this person has seen (src/lib/changelog.ts); "" = never seen one. */
+  seenChanges: string;
   /** Off until the user opts in: transcription is the one thing that sends plaintext audio off the device. */
   cloudTranscription: boolean;
   /** Let Claude estimate calories and macros for food typed in plain words. Known food is matched on the device first. */
@@ -66,6 +68,7 @@ export const DEFAULT_SETTINGS: Settings = {
   activityTypes: [{ key: "walk", name: "Walk" }, { key: "gym", name: "Gym" }, { key: "run", name: "Run" }],
   pushupTarget: 100,
   bestStreak: 0,
+  seenChanges: "",
   cloudTranscription: false,
   foodEstimate: true,
   requireWeight: true,
@@ -106,6 +109,7 @@ export function mergeSettings(stored: unknown): Settings {
     activityTypes: list(s.activityTypes, d.activityTypes),
     pushupTarget: Math.max(1, Math.round(num(s.pushupTarget, d.pushupTarget))),
     bestStreak: Math.round(num(s.bestStreak, 0)),
+    seenChanges: typeof s.seenChanges === "string" ? s.seenChanges.slice(0, 40) : "",
     cloudTranscription: s.cloudTranscription === true,
     foodEstimate: s.foodEstimate !== false,
     requireWeight: s.requireWeight !== false,

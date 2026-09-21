@@ -83,6 +83,13 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   check('activity saves', r.status === 200 && r.json.pushups === 100 && r.json.types.walk === 30, r.json);
   r = await call('PUT', '/activity/' + day, { pushups: 12.5 });
   check('fractional pushups is 400', r.status === 400, r.text);
+  // Backfill: push-ups count for the round only when logged within two days; the record takes them either way.
+  r = await call('PUT', '/activity/' + day, { pushups: 100, roundPushups: 999 });
+  check('push-ups logged years late: the record has them, the round does not', r.status === 200 && r.json.pushups === 100 && r.json.roundPushups == null, r.json);
+  const nowDay = new Date().toISOString().slice(0, 10);
+  r = await call('PUT', '/activity/' + nowDay, { pushups: 40, roundPushups: 999 });
+  check('push-ups logged on the day count for the round, and the client cannot set that', r.status === 200 && r.json.roundPushups === 40, r.json);
+  await call('DELETE', '/activity/' + nowDay);
   r = await call('PUT', '/day-logs/' + day, { meals: { breakfast: true }, extras: [{ name: 'Apple 🍎', kcal: 95 }] });
   check('day-log saves', r.status === 200 && r.json.meals.breakfast === true && r.json.extras[0].kcal === 95, r.json);
 

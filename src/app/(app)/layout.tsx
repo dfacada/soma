@@ -6,6 +6,7 @@ import { Opening } from "@/components/app/Opening";
 import { RoundsProvider } from "@/components/app/Rounds";
 import { SessionGate } from "@/components/app/Session";
 import { Shell } from "@/components/app/Shell";
+import { WhatsNew } from "@/components/app/WhatsNew";
 
 // Everything in this group needs a signed-in, approved user. /kit stays outside it.
 // The journal provider sits above the screens so a recording keeps going while you change tabs.
@@ -14,6 +15,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SessionGate>
       <Opening />
+      <WhatsNew />
       <NudgeKeeper />
       <LogKeeper />
       <DaysProvider>

@@ -100,6 +100,7 @@ function EntryCard({ item }: { item: Item }) {
         <span className={a.entryTags}>
           {e.mood && <Tag tone="journal">{e.mood.toLowerCase()}</Tag>}
           {e.recovered && <Tag>recovered</Tag>}
+          {e.addedLater && <Tag>added later</Tag>}
           {item.pending && <Tag>waiting to upload</Tag>}
         </span>
       </div>

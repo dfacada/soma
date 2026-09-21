@@ -17,6 +17,12 @@ let release: () => void = () => undefined;
 export const opened = new Promise<void>((resolve) => { release = resolve; });
 export const markOpened = () => release();
 
+let releaseNews: () => void = () => undefined;
+/** Resolves once What's new has been shown and closed, or straight away when there is nothing new. It waits for
+ *  `opened` itself, so the vault prompt waits on this alone: opening words, then What's new, then the vault. */
+export const newsDone = new Promise<void>((resolve) => { releaseNews = resolve; });
+export const markNewsDone = () => releaseNews();
+
 const SHOWN = "soma-opening-day", TURN = "soma-opening-turn";
 const pad = (n: number) => (n < 10 ? "0" : "") + n;
 /** The local calendar day, so "once a day" turns over at the user's midnight, not UTC's. */

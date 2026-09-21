@@ -18,6 +18,8 @@ type Rounds = {
   /** The round in focus: the running one I am in, else the newest one I could join or am in. */
   current: RoundRow | null;
   board: Board | null;
+  /** Target, rest day and round day for any day (backfill uses this for the day being filled in). */
+  forDay: (key: string) => { target: number; rest: boolean; dayNumber: number | null };
   /** My push-up target today: the round's if I am in a running one, else my own setting. */
   target: number;
   /** True when today is a rest day in a round I am in. */
@@ -77,13 +79,16 @@ export function RoundsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Rounds>(() => {
     const rounds = state?.rounds || [];
     const current = pick(rounds, todayKey);
-    const inRunning = current?.me?.status === "active" && phaseOf(current, todayKey) === "running";
-    const dayNumber = current && inRunning ? dayIndexOf(current, todayKey) : null;
+    const forDay = (key: string) => {
+      const inRunning = current?.me?.status === "active" && phaseOf(current, key) === "running";
+      const dayNumber = current && inRunning ? dayIndexOf(current, key) : null;
+      return { target: inRunning ? current!.me!.dailyTarget : settings.pushupTarget, rest: Boolean(current && dayNumber && isRestDay(current, dayNumber)), dayNumber };
+    };
+    const now = forDay(todayKey);
     return {
       loading: state === null, rounds, current, board: state?.board || null,
-      target: inRunning ? current!.me!.dailyTarget : settings.pushupTarget,
-      restToday: Boolean(current && dayNumber && isRestDay(current, dayNumber)),
-      dayNumber, reload, join, setTarget, leave, create, update,
+      target: now.target, restToday: now.rest, dayNumber: now.dayNumber, forDay,
+      reload, join, setTarget, leave, create, update,
     };
   }, [state, todayKey, settings.pushupTarget, reload, join, setTarget, leave, create, update]);
 

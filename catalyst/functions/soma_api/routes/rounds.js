@@ -152,14 +152,15 @@ router.get('/rounds/:id/board', member, wrap(async (req, res) => {
   if (ids.length) {
     const end = addDays(round.start_date, Number(round.length_days) - 1);
     const [rows, profiles] = await Promise.all([
-      selectAll(req.admin, 'activity', `SELECT user_id, day, pushups FROM activity WHERE day >= '${round.start_date}' AND day <= '${end}' AND user_id IN (${ids.join(', ')}) ORDER BY ROWID ASC`),
+      // round_pushups, not pushups: a backfill logged more than two days late is the member's record, not the round's.
+      selectAll(req.admin, 'activity', `SELECT user_id, day, round_pushups FROM activity WHERE day >= '${round.start_date}' AND day <= '${end}' AND user_id IN (${ids.join(', ')}) ORDER BY ROWID ASC`),
       select(req.admin, 'profiles', `SELECT user_id, display_name FROM profiles WHERE user_id IN (${ids.join(', ')}) LIMIT 300`)
     ]);
     names = new Map(profiles.map((p) => [String(p.user_id), p.display_name || 'Member']));
     for (const r of rows) {
       // No push-up count means only other activity was logged that day: not a push-up log at all.
-      if (r.pushups === null || r.pushups === undefined || r.pushups === '') continue;
-      (logs[String(r.user_id)] ||= {})[dayIndex(round.start_date, r.day)] = Number(r.pushups);
+      if (r.round_pushups === null || r.round_pushups === undefined || r.round_pushups === '') continue;
+      (logs[String(r.user_id)] ||= {})[dayIndex(round.start_date, r.day)] = Number(r.round_pushups);
     }
   }
   res.json({ round: shapeRound(round), members: members.map((m) => ({ ...shapeMember(m), displayName: names.get(String(m.user_id)) || 'Member' })), logs });

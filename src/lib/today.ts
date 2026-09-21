@@ -11,6 +11,8 @@ const pad = (n: number) => (n < 10 ? "0" : "") + n;
 export const dayKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 export function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 export function noon(d = new Date()) { const x = new Date(d); x.setHours(12, 0, 0, 0); return x; }
+/** "YYYY-MM-DD" → that local day at noon (clear of any daylight-saving edge). */
+export function fromKey(key: string) { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d, 12, 0, 0, 0); }
 export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export type DayData = { checkin?: Checkin; log?: DayLog; activity?: ActivityDay; weight?: number; entries: number };

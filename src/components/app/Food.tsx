@@ -14,6 +14,7 @@ import { BOWL_VARIANTS, MEAL_PLANS, RECIPES, type Recipe } from "@/lib/food-data
 import { MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
 import { addDays, cap, dayKey, dayStatus } from "@/lib/today";
 import { Bar, Button, Card, Chip, Input, ProgressRing, Row, Sheet, Toast } from "@/components/ui";
+import { DayBanner } from "./DayBanner";
 import { useDays } from "./Days";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -25,7 +26,8 @@ const digits = (v: string, max = 5) => v.replace(/\D/g, "").slice(0, max);
 
 export function Food() {
   const { settings, saveSettings } = useSession();
-  const { map, error, reload, unsaved, retry, change, today, todayKey: k } = useDays();
+  // Follows the day picked on Today (backfill).
+  const { map, error, reload, unsaved, retry, change, today, viewKey: k, view, isToday, setView } = useDays();
   const [swap, setSwap] = useState<Meal | null>(null);
   // Which slot the form below will fill: a meal, or null for an off-plan item. A meal card's "Ate something else"
   // sets it and sends you to the form.
@@ -79,11 +81,12 @@ export function Food() {
     <div className={a.page}>
       <div className={a.pageHead}>
         <div>
-          <div className="eb">{WEEKDAY[today.getDay()]} · {MONTH[today.getMonth()]} {today.getDate()}</div>
+          <div className="eb">{WEEKDAY[view.getDay()]} · {MONTH[view.getMonth()]} {view.getDate()}</div>
           <div className={`d ${a.pageTitle}`}>Food</div>
         </div>
       </div>
 
+      {!isToday && <DayBanner view={view} onBack={() => setView(null)} />}
       {unsaved && <div className={a.unsaved} role="alert"><span>Some changes are not saved yet.</span><Button size="sm" variant="secondary" onClick={retry}>Retry</Button></div>}
 
       <Card className={a.summary}>

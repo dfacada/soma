@@ -5,9 +5,10 @@
 
 import { useCallback, useState } from "react";
 import { chain, dayIndexOf, defaultRestDays, isRestDay, leaderboard, phaseOf, setBreakdown, type Log, type Member } from "@/lib/round";
-import { dayStatus, streak } from "@/lib/today";
+import { addDays, dayKey, dayStatus, streak } from "@/lib/today";
 import Link from "next/link";
 import { Bar, Button, Card, Field, Input, Sheet, Switch, Tag, Toast } from "@/components/ui";
+import { DayBanner, longDay } from "./DayBanner";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
 import { PushSheet } from "./PushSheet";
@@ -20,7 +21,8 @@ const BADGE: Record<string, string> = { crown: "leading", streak: "streak", hits
 
 export function Activity() {
   const { me, settings } = useSession();
-  const { map, error, reload, unsaved, retry, change, today, todayKey: k, windowDays } = useDays();
+  // The list follows the day picked on Today (backfill); the round, the chain and the board stay on today.
+  const { map, error, reload, unsaved, retry, change, today, todayKey, viewKey: k, view, isToday, setView, windowDays } = useDays();
   const rounds = useRounds();
   const health = useHealth();
   const [pushSheet, setPushSheet] = useState(false);
@@ -37,13 +39,15 @@ export function Activity() {
   const types = map[k]?.activity?.types || {};
   const steps = map[k]?.activity?.steps ?? null;
   const run = streak(map, settings, today, windowDays).now;
-  const { target, restToday: rest, current } = rounds;
+  const { current } = rounds;
+  const { target, rest } = rounds.forDay(k);
+  const lateForRound = k < dayKey(addDays(today, -2));
   const isAdmin = me.profile.role === "admin";
 
   const savePushups = (n: number) => {
     change("activity", k, (d) => { d.activity.pushups = n; });
     setPushSheet(false);
-    say(n >= target && !rest ? `Target hit · ${n} push-ups` : n ? `${n} push-ups logged` : "Push-ups cleared");
+    say(lateForRound && n ? `${n} push-ups saved to your record · too late to count for the round` : n >= target && !rest ? `Target hit · ${n} push-ups` : n ? `${n} push-ups logged` : "Push-ups cleared");
   };
   const sr = setBreakdown(target);
 
@@ -51,11 +55,12 @@ export function Activity() {
     <div className={a.page}>
       <div className={a.pageHead}>
         <div>
-          <div className="eb">{st.acts} of {st.actTotal} logged today · {run ? `${run} full day${run === 1 ? "" : "s"} in a row` : "a full day starts the run"}</div>
+          <div className="eb">{st.acts} of {st.actTotal} logged {isToday ? "today" : "that day"} · {run ? `${run} full day${run === 1 ? "" : "s"} in a row` : "a full day starts the run"}</div>
           <div className={`d ${a.pageTitle}`}>Activity</div>
         </div>
       </div>
 
+      {!isToday && <DayBanner view={view} onBack={() => setView(null)} />}
       {unsaved && <div className={a.unsaved} role="alert"><span>Some changes are not saved yet.</span><Button size="sm" variant="secondary" onClick={retry}>Retry</Button></div>}
 
       <Card className={a.actList}>
@@ -87,9 +92,10 @@ export function Activity() {
         </Card>
       )}
 
-      <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={rounds.dayNumber} onSave={savePushups} />
+      <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={rounds.forDay(k).dayNumber} onSave={savePushups}
+        day={isToday ? undefined : longDay(view)} late={lateForRound} />
       <Sheet open={manage} title={current && !current.archived ? "Manage round" : "Start a round"} onClose={closeManage}>
-        <ManageRound round={current} todayKey={k} say={say} onDone={closeManage} />
+        <ManageRound round={current} todayKey={todayKey} say={say} onDone={closeManage} />
       </Sheet>
       <Toast message={toast} />
     </div>

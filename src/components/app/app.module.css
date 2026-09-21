@@ -55,6 +55,9 @@
 .weekDay { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 40px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
 .weekDay svg { opacity: 1; }
 .weekToday { opacity: 1; font-weight: 600; }
+/* The week strip picks the day to fill in: every day is a button, the one being shown is ringed. */
+button.weekDay { background: none; border: 0; color: inherit; font: inherit; padding: 6px 0; min-height: 44px; border-radius: 10px; cursor: pointer; }
+.weekPicked { opacity: 1; font-weight: 600; box-shadow: inset 0 0 0 1.5px currentColor; }
 
 /* ── Today cards ── */
 .lnk { position: relative; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
@@ -202,3 +205,12 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .macroFields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .macroField { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .macroField input { text-align: center; padding-left: 6px; padding-right: 6px; }
+
+/* Backfill: the bar that says which earlier day every card is editing. */
+.dayBanner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: var(--r-card); background: var(--journal-tint, var(--surface-2)); border: 1px solid var(--journal); }
+.writeBox { width: 100%; font: inherit; font-size: 16px; line-height: 1.5; padding: 12px; border: 1px solid var(--hairline); border-radius: var(--r-ctl); background: var(--surface); color: var(--ink); resize: vertical; }
+
+/* What's new, and the full list in Settings. */
+.releases { display: flex; flex-direction: column; gap: 18px; }
+.release { display: flex; flex-direction: column; gap: 6px; }
+.release ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }

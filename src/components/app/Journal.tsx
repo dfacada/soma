@@ -6,11 +6,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
-import { deleteEntry, loadAudio, loadEntries, newEntry, saveEntry, type LoadedEntry } from "@/lib/journal";
+import { deleteEntry, loadAudio, loadEntries, newEntry, onDay, saveEntry, textEntry, type LoadedEntry } from "@/lib/journal";
 import { Recorder, toneStream } from "@/lib/recorder";
 import { clearDraft, deletePending, listOrphanDrafts, listPending, putPending, type JournalEntry, type PendingRecording } from "@/lib/recovery";
 import { report } from "@/lib/log";
-import { opened as openingDone } from "@/lib/opening";
+import { newsDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
 import { transcribe, TranscribeError } from "@/lib/transcribe";
 import { createVault, decryptJson, encryptJson, exportKey, fromB64, importKey, toB64, unlockVault, type VaultMeta } from "@/lib/vault-crypto";
@@ -30,7 +30,10 @@ type Journal = {
   busy: boolean;
   /** Entries on a local day, including ones still waiting to upload. Null while the vault is closed. */
   countOn: (day: string) => number | null;
-  toggleRecording: (mood: string | null) => void;
+  /** Start or stop recording. `day` (YYYY-MM-DD) files the entry under an earlier day, marked added later. */
+  toggleRecording: (mood: string | null, day?: string) => void;
+  /** Save a written entry (no audio), optionally filed under an earlier day. Rejects while the vault is closed. */
+  writeEntry: (text: string, mood: string | null, day?: string) => Promise<void>;
   openVault: () => void;
   lock: () => void;
   saveText: (id: string, text: string) => Promise<void>;
@@ -102,6 +105,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const meta = useRef<VaultMeta | null>(null);
   const recorder = useRef<Recorder | null>(null);
   const moodAtStart = useRef<string | null>(null);
+  const dayAtStart = useRef<string | undefined>(undefined);
   const toastTimer = useRef<number | undefined>(undefined);
   const stopRef = useRef<() => void>(() => undefined);
 
@@ -159,7 +163,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       // Opening the app is the moment to unlock: the vault now gates the health sync and sleep as well as the journal.
       // Only for a vault that exists; creating one stays with the Journal card, where it is explained.
       // …but after the opening words, never on top of them.
-      if (m && askOnOpen.current && askOnce(userId)) void openingDone.then(() => { if (alive) setSheet(true); });
+      // After the opening words and What's new, never on top of them.
+      if (m && askOnOpen.current && askOnce(userId)) void newsDone.then(() => { if (alive) setSheet(true); });
     }).catch(() => { if (alive) setVault("locked"); });
     return () => { alive = false; };
   }, [userId, opened]);
@@ -208,7 +213,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     const rec = await recorder.current?.stop();
     setRecording(false); setSeconds(0);
     if (!rec) return;
-    const entry = newEntry(rec.audio, rec.seconds, moodAtStart.current);
+    const day = dayAtStart.current;
+    const entry = newEntry(rec.audio, rec.seconds, moodAtStart.current, day ? { createdAt: onDay(day), addedLater: true } : {});
     // Buffer first: if this fails the recording is not safe and we must not say it is.
     try {
       await putPending({ id: "pending_" + entry.id, userId, entry, audio: rec.audio, attempts: 0, lastAttemptAt: null });
@@ -227,8 +233,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   }, [userId, flushPending, say, cloudOn, runTranscription]);
   useEffect(() => { stopRef.current = () => { void stop(); }; }, [stop]);
 
-  const start = useCallback(async (mood: string | null) => {
+  const start = useCallback(async (mood: string | null, day?: string) => {
     moodAtStart.current = mood;
+    dayAtStart.current = day;
     const r = recorder.current = new Recorder(userId, () => stopRef.current());
     try {
       // No microphone in a dev sandbox: ?tone records a test tone instead. Never available to real users.
@@ -244,11 +251,21 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     }
   }, [userId, say]);
 
-  const toggleRecording = useCallback((mood: string | null) => {
+  const toggleRecording = useCallback((mood: string | null, day?: string) => {
     if (recording) return void stop();
     if (vault !== "open") return setSheet(true);
-    void start(mood);
+    void start(mood, day);
   }, [recording, vault, start, stop]);
+
+  const writeEntry = useCallback(async (text: string, mood: string | null, day?: string) => {
+    const k = key.current;
+    if (!k) { setSheet(true); throw new Error("vault is closed"); }
+    const entry = textEntry(text.trim(), mood, day ? { createdAt: onDay(day), addedLater: true } : {});
+    try { await saveEntry(k, entry); }
+    catch (e) { report("journal", "written_save_failed", e, { chars: entry.transcript.length, backfill: Boolean(day) }); throw e; }
+    await flushPending();
+    say("Entry saved");
+  }, [flushPending, say]);
 
   // ── Vault ──
   const submitPassphrase = useCallback(async (pass: string): Promise<string | null> => {
@@ -380,8 +397,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), here: pkHere }), [pkSupported, pkHere]);
 
   const value = useMemo<Journal>(
-    () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys }),
-    [vault, items, recording, seconds, busy, countOn, toggleRecording, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys],
+    () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys }),
+    [vault, items, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys],
   );
 
   return (

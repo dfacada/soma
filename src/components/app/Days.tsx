@@ -5,15 +5,20 @@
 // Taps update local state immediately. Saves are serialized per (resource, day): while one is in flight the
 // next tap only marks it dirty, and the latest state is sent once the first returns, so a quick double tap
 // can never land out of order. A save that keeps failing surfaces as `unsaved` with a retry; local state is kept.
+//
+// Backfill: the screens edit `viewKey`, which is today unless the person picked one of the six days before it
+// (the week strip on Today). Anything older is out of reach on purpose. Streaks and rounds still run on `todayKey`.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { report } from "@/lib/log";
 import { api, type ActivityDay, type Checkin, type DayLog, type Days } from "@/lib/api";
-import { addDays, dayKey, emptyDay, indexDays, noon, type DayMap } from "@/lib/today";
+import { addDays, dayKey, emptyDay, fromKey, indexDays, noon, type DayMap } from "@/lib/today";
 
 type Resource = "checkins" | "day-logs" | "activity" | "weight";
 type Draft = { checkin: Checkin; log: DayLog; activity: ActivityDay; weight: { value: number | null } };
 const WINDOW_DAYS = 60;
+/** Today and the six days before it can be filled in. */
+export const BACKFILL_DAYS = 7;
 type Slot = { inFlight: boolean; dirty: boolean };
 const RETRY_MS = [1000, 3000];
 
@@ -126,7 +131,13 @@ function useDaysState(today: Date, windowDays: number) {
   return useMemo(() => ({ map, error, reload: load, unsaved, retry, change, applySteps }), [map, error, load, unsaved, retry, change, applySteps]);
 }
 
-type DaysValue = ReturnType<typeof useDaysState> & { today: Date; todayKey: string; windowDays: number };
+type DaysValue = ReturnType<typeof useDaysState> & {
+  today: Date; todayKey: string; windowDays: number;
+  /** The day the screens are showing and editing: today, or one of the six before it. */
+  viewKey: string; view: Date; isToday: boolean;
+  /** Pick a day to fill in; null (or today's key) goes back to today. Days outside the window are ignored. */
+  setView: (key: string | null) => void;
+};
 const Ctx = createContext<DaysValue | null>(null);
 
 export function useDays() {
@@ -144,6 +155,15 @@ export function DaysProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("visibilitychange", roll);
   }, []);
   const state = useDaysState(today, WINDOW_DAYS);
-  const value = useMemo(() => ({ ...state, today, todayKey: dayKey(today), windowDays: WINDOW_DAYS }), [state, today]);
+  const [picked, setPicked] = useState<string | null>(null);
+  const todayKey = dayKey(today);
+  // A pick that has fallen out of the window (the phone slept for days) quietly becomes today again.
+  const earliest = dayKey(addDays(today, -(BACKFILL_DAYS - 1)));
+  const viewKey = picked && picked >= earliest && picked < todayKey ? picked : todayKey;
+  const setView = useCallback((key: string | null) => setPicked(key), []);
+  const value = useMemo(() => ({
+    ...state, today, todayKey, windowDays: WINDOW_DAYS,
+    viewKey, view: viewKey === todayKey ? today : fromKey(viewKey), isToday: viewKey === todayKey, setView,
+  }), [state, today, todayKey, viewKey, setView]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
