@@ -19,6 +19,7 @@ export const CHANGES: Release[] = [
       "On a past day the journal card can record or take a written entry. It is filed under that day and marked \"added later\".",
       "Push-ups logged up to two days late still count for the round. Older ones go to your own record and streak, but not the leaderboard, so nobody can pad a week at the end.",
       "What's new: this screen. It shows once after each update, and every change ever made is in Settings.",
+      "The day picked in the week strip now sits in a soft pill that fits its label, so TODAY no longer spills over the edge.",
     ],
   },
   {

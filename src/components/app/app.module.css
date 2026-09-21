@@ -56,8 +56,9 @@
 .weekDay svg { opacity: 1; }
 .weekToday { opacity: 1; font-weight: 600; }
 /* The week strip picks the day to fill in: every day is a button, the one being shown is ringed. */
-button.weekDay { background: none; border: 0; color: inherit; font: inherit; padding: 6px 0; min-height: 44px; border-radius: 10px; cursor: pointer; }
-.weekPicked { opacity: 1; font-weight: 600; box-shadow: inset 0 0 0 1.5px currentColor; }
+button.weekDay { background: none; border: 0; color: inherit; font: inherit; width: auto; min-width: 40px; padding: 6px 5px; min-height: 44px; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* A soft pill, sized to its label ("TODAY" is wider than the glyph), in whatever colour the hero text is. */
+.weekPicked { opacity: 1; font-weight: 600; background: color-mix(in oklab, currentColor 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, currentColor 18%, transparent); }
 
 /* ── Today cards ── */
 .lnk { position: relative; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
