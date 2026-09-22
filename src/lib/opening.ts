@@ -17,6 +17,12 @@ let release: () => void = () => undefined;
 export const opened = new Promise<void>((resolve) => { release = resolve; });
 export const markOpened = () => release();
 
+let releaseInstall: (shown: boolean) => void = () => undefined;
+/** Resolves once the install splash has been shown and closed, or straight away when there is none to show; the
+ *  value says whether it showed, so What's new can wait for the next open instead of stacking behind it. */
+export const installDone = new Promise<boolean>((resolve) => { releaseInstall = resolve; });
+export const markInstallDone = (shown: boolean) => releaseInstall(shown);
+
 let releaseNews: () => void = () => undefined;
 /** Resolves once What's new has been shown and closed, or straight away when there is nothing new. It waits for
  *  `opened` itself, so the vault prompt waits on this alone: opening words, then What's new, then the vault. */

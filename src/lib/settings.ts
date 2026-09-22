@@ -27,6 +27,8 @@ export type Settings = {
   bestStreak: number;
   /** The newest changelog release this person has seen (src/lib/changelog.ts); "" = never seen one. */
   seenChanges: string;
+  /** Whether they have been shown how to put Soma on their Home Screen (or are already running it from there). */
+  seenInstall: boolean;
   /** Off until the user opts in: transcription is the one thing that sends plaintext audio off the device. */
   cloudTranscription: boolean;
   /** Let Claude estimate calories and macros for food typed in plain words. Known food is matched on the device first. */
@@ -69,6 +71,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pushupTarget: 100,
   bestStreak: 0,
   seenChanges: "",
+  seenInstall: false,
   cloudTranscription: false,
   foodEstimate: true,
   requireWeight: true,
@@ -110,6 +113,7 @@ export function mergeSettings(stored: unknown): Settings {
     pushupTarget: Math.max(1, Math.round(num(s.pushupTarget, d.pushupTarget))),
     bestStreak: Math.round(num(s.bestStreak, 0)),
     seenChanges: typeof s.seenChanges === "string" ? s.seenChanges.slice(0, 40) : "",
+    seenInstall: s.seenInstall === true,
     cloudTranscription: s.cloudTranscription === true,
     foodEstimate: s.foodEstimate !== false,
     requireWeight: s.requireWeight !== false,

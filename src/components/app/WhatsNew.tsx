@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CHANGES, releaseDate, unseen, type Release } from "@/lib/changelog";
 import { report } from "@/lib/log";
-import { markNewsDone, opened } from "@/lib/opening";
+import { installDone, markNewsDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
 import { Button, Sheet } from "@/components/ui";
 import { useSession } from "./Session";
@@ -22,9 +22,10 @@ export function WhatsNew() {
 
   useEffect(() => {
     let alive = true;
-    void opened.then(() => {
+    void installDone.then((installShown) => {
       if (!alive) return;
-      const list = unseen(seen.current, dayKey(new Date()));
+      // One thing an open: if the install splash ran, these notes keep until next time.
+      const list = installShown ? [] : unseen(seen.current, dayKey(new Date()));
       if (list.length) setShow(list);
       else markNewsDone();
     });

@@ -374,6 +374,9 @@ function ChangesCard() {
       <Field name={latest.title} help={`Latest update, ${releaseDate(latest.date)}. ${CHANGES.length} updates so far.`}>
         <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>See all changes</Button>
       </Field>
+      <Field name="Soma on your Home Screen" help="An icon, full screen, and the evening reminder. The steps for your phone, and a link you can send to someone else.">
+        <Link href="/install/" className={a.lnk}>How to install</Link>
+      </Field>
       <Sheet open={open} title="Every change" onClose={() => setOpen(false)}>
         <ReleaseList releases={CHANGES} />
       </Sheet>
