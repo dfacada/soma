@@ -258,9 +258,17 @@ function WeightCard({ series, label, current, onLog }: { series: { day: string; 
 
   /** The logged day nearest the pointer, in the SVG's own coordinates. */
   const nearest = (clientX: number) => {
-    const box = plot.current?.getBoundingClientRect();
-    if (!box || !marks.length) return null;
-    const px = ((clientX - box.left) / box.width) * 326;
+    const svg = plot.current;
+    if (!svg || !marks.length) return null;
+    // Through the SVG's own matrix, never from the element's width: the drawing is centred inside the box when the
+    // card is wider than the viewBox, and assuming it fills the width put every pointer too far left (David,
+    // 2026-09-23: "hovering over the dots stops working and it's like the alignment is off").
+    const ctm = svg.getScreenCTM();
+    const box = svg.getBoundingClientRect();
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = box.top + box.height / 2;
+    const px = ctm ? point.matrixTransform(ctm.inverse()).x : ((clientX - box.left) / box.width) * 326;
     let best = 0;
     for (let i = 1; i < marks.length; i++) if (Math.abs(x(marks[i].idx) - px) < Math.abs(x(marks[best].idx) - px)) best = i;
     return best;
@@ -288,8 +296,10 @@ function WeightCard({ series, label, current, onLog }: { series: { day: string; 
               : <span className="muted">not logged today</span>}
         </span>
       </div>
+      {/* height auto, not 56: the viewBox keeps its shape, so the drawing fills the card instead of sitting
+          letterboxed in the middle of it on a wide screen. It grows a little taller there, which is no loss. */}
       {marks.length > 1 ? (
-        <svg ref={plot} className={a.trend} viewBox="0 0 326 56" style={{ width: "100%", height: 56, touchAction: "pan-y" }} role="img" tabIndex={0}
+        <svg ref={plot} className={a.trend} viewBox="0 0 326 56" style={{ width: "100%", height: "auto", display: "block", touchAction: "pan-y" }} role="img" tabIndex={0}
           aria-label={`Weight over the last ${label}, from ${first} to ${weights[weights.length - 1]} pounds. Use the arrow keys to hear each day.`}
           onPointerMove={move} onPointerDown={move} onPointerLeave={() => setAt(null)} onBlur={() => setAt(null)} onKeyDown={keys}>
           <path d="M0 48 L326 48" stroke="var(--surface-2)" /><path d="M0 8 L326 8" stroke="var(--surface-2)" />
