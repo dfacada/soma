@@ -5,21 +5,30 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { report } from "@/lib/log";
+import { since } from "@/lib/today";
 import { Button, Card, Row, Tag } from "@/components/ui";
 import { LogView } from "./LogView";
 import { useSession } from "./Session";
 import a from "./app.module.css";
 
-type AdminProfile = { userId: string; email: string; displayName: string; role: "admin" | "member"; status: "pending" | "active" | "disabled"; createdAt: string };
+type AdminProfile = { userId: string; email: string; displayName: string; role: "admin" | "member"; status: "pending" | "active" | "disabled"; createdAt: string; lastSeenMs: number | null };
+/** One member's last fortnight, loaded only when an admin asks for it. */
+type UserActivity = {
+  userId: string; days: number; lastSeenMs: number | null; lastLoggedDay: string | null;
+  activeDays: number; entries: number; steps: number; pushups: number;
+  recent: { day: string; weight: boolean; checkin: boolean; meals: number; activity: boolean; entries: number }[];
+};
 type FeedbackItem = { id: string; userId: string; body: string; createdAt: string };
-type Data = { profiles: AdminProfile[]; feedback: FeedbackItem[] };
+type Data = { profiles: AdminProfile[]; feedback: FeedbackItem[]; at: number };
 
 async function fetchAll(): Promise<Data> {
   const [p, f] = await Promise.all([
     api<{ profiles: AdminProfile[] }>("GET", "/admin/profiles"),
     api<{ items: FeedbackItem[] }>("GET", "/admin/feedback"),
   ]);
-  return { profiles: p.profiles, feedback: f.items };
+  // The clock reading that goes with this data, so "last seen" and "this week" are steady across renders.
+  return { profiles: p.profiles, feedback: f.items, at: Date.now() };
 }
 
 // Data Store timestamps are project-local with no offset; show the date part as written rather than guess a zone.
@@ -48,7 +57,9 @@ export function Admin({ say }: { say: (m: string) => void }) {
   if (!data) return <Card><span className="eb">Admin</span><p className="muted">Loading…</p></Card>;
 
   const pending = data.profiles.filter((p) => p.status === "pending");
-  const users = data.profiles.filter((p) => p.status !== "pending");
+  // Most recently seen first: an activity monitor should open on whoever is around.
+  const users = data.profiles.filter((p) => p.status !== "pending").sort((x, y) => (y.lastSeenMs || 0) - (x.lastSeenMs || 0));
+  const activeWeek = users.filter((p) => p.lastSeenMs && p.lastSeenMs > data.at - 7 * 86400000).length;
   const who = (id: string) => data.profiles.find((p) => p.userId === id)?.email || id;
   const setStatus = (p: AdminProfile, status: "active" | "disabled", done: string) => act(p.userId, () => api("POST", `/admin/profiles/${p.userId}/status`, { status }), done);
 
@@ -64,15 +75,20 @@ export function Admin({ say }: { say: (m: string) => void }) {
       </Card>
 
       <Card>
-        <span className="eb" style={{ color: "var(--ink)" }}>Users</span>
+        <div className={a.entryHead}>
+          <span className="eb" style={{ color: "var(--ink)" }}>Users</span>
+          <span className="m muted" style={{ fontSize: 12 }}>{activeWeek} of {users.length} seen this week</span>
+        </div>
         {users.map((p) => {
           const self = p.userId === me.id;
           return (
             <div key={p.userId} className={a.adminUser}>
-              <Row name={p.displayName || p.email} sub={p.email}
+              <Row name={p.displayName || p.email} sub={`${p.email} · last seen ${since(p.lastSeenMs, data.at)}`}
                 trail={<span className={a.entryTags}>{p.role === "admin" && <Tag tone="journal">admin</Tag>}{p.status === "disabled" && <Tag tone="critical">disabled</Tag>}{self && <Tag>you</Tag>}</span>} />
+              <UserActivityView userId={p.userId} />
               {!self && (
                 <div className={a.rowButtons}>
+
                   <Button size="sm" variant="secondary" disabled={busy === p.userId} onClick={() => setStatus(p, p.status === "active" ? "disabled" : "active", p.status === "active" ? `Disabled ${p.email}` : `Re-enabled ${p.email}`)}>{p.status === "active" ? "Disable" : "Re-enable"}</Button>
                   <Button size="sm" variant="secondary" disabled={busy === p.userId} onClick={() => act(p.userId, () => api("POST", `/admin/profiles/${p.userId}/role`, { role: p.role === "admin" ? "member" : "admin" }), p.role === "admin" ? `${p.email} is now a member` : `${p.email} is now an admin`)}>{p.role === "admin" ? "Make member" : "Make admin"}</Button>
                 </div>
@@ -98,5 +114,41 @@ export function Admin({ say }: { say: (m: string) => void }) {
         ))}
       </Card>
     </>
+  );
+}
+
+/** What a member has been doing: loaded when the admin asks, never with the list (five reads a user). */
+function UserActivityView({ userId }: { userId: string }) {
+  const [state, setState] = useState<UserActivity | "loading" | "failed" | null>(null);
+
+  const load = async () => {
+    setState("loading");
+    try { setState(await api<UserActivity>("GET", `/admin/profiles/${userId}/activity`)); }
+    catch (e) { report("admin", "activity_load_failed", e); setState("failed"); }
+  };
+
+  if (state === null) return <button type="button" className={a.lnk} onClick={() => void load()}>Activity</button>;
+  if (state === "loading") return <span className="muted" style={{ fontSize: 12 }}>Loading…</span>;
+  if (state === "failed") return <button type="button" className={a.lnk} onClick={() => void load()}>Couldn&apos;t load · try again</button>;
+
+  return (
+    <div className={a.userActivity}>
+      <span className="m muted" style={{ fontSize: 12 }}>
+        {state.activeDays} active day{state.activeDays === 1 ? "" : "s"} of {state.days} · {state.entries} journal entr{state.entries === 1 ? "y" : "ies"}
+        {state.pushups > 0 && ` · ${state.pushups.toLocaleString("en-US")} push-ups`}
+        {state.steps > 0 && ` · ${state.steps.toLocaleString("en-US")} steps`}
+      </span>
+      {state.recent.length === 0
+        ? <span className="muted" style={{ fontSize: 12 }}>Nothing logged in the last fortnight.</span>
+        : state.recent.map((d) => (
+          <div key={d.day} className={a.userDay}>
+            <span className="m" style={{ fontSize: 12 }}>{d.day.slice(5)}</span>
+            <span className="muted" style={{ fontSize: 12 }}>
+              {[d.weight && "weight", d.checkin && "check-in", d.meals ? `${d.meals} meal${d.meals === 1 ? "" : "s"}` : null, d.activity && "activity", d.entries ? `${d.entries} entr${d.entries === 1 ? "y" : "ies"}` : null].filter(Boolean).join(" · ")}
+            </span>
+          </div>
+        ))}
+      <button type="button" className={a.lnk} onClick={() => setState(null)}>Hide</button>
+    </div>
   );
 }

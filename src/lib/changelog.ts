@@ -11,6 +11,15 @@ export type Release = { id: string; date: string; title: string; items: string[]
 
 export const CHANGES: Release[] = [
   {
+    id: "2026-09-22",
+    date: "2026-09-22",
+    title: "Sharing Soma, and who is using it",
+    items: [
+      "A page to send anyone joining: soma-onkasary.onslate.com/install/ shows how to add Soma to a Home Screen on an iPhone, an Android phone or a computer, and what to do once they are in.",
+      "For the admin: Settings \u2192 Admin \u2192 Users now shows when each person last used Soma, most recent first, and how many were around this week. Tap Activity on someone to see their last fortnight: which days they logged, how many journal entries, push-ups and steps.",
+    ],
+  },
+  {
     id: "2026-09-21",
     date: "2026-09-21",
     title: "Fill in the last week",

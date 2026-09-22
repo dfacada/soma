@@ -118,3 +118,19 @@ export function headline(st: DayStatus, streakNow: number, hour: number): { big:
   if (todos.length === 1) return { big: "One to go", sub: `${todos[0].label} closes the day.`, todos };
   return { big: `${todos.length} to go`, sub: "Tap them below.", todos };
 }
+
+/** "just now", "14 minutes ago", "3 hours ago", "yesterday", "5 days ago", then the date. Null is "never". */
+export function since(ms: number | null | undefined, now = Date.now()): string {
+  if (!ms) return "never";
+  const secs = Math.round((now - ms) / 1000);
+  if (secs < 0) return "just now";
+  if (secs < 90) return "just now";
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins} minutes ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor((now - ms) / 86400000);
+  if (days === 1) return "yesterday";
+  if (days < 14) return `${days} days ago`;
+  return "on " + new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}

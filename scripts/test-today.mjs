@@ -1,5 +1,5 @@
 // What closes a day.  node --import ./scripts/ts-resolve.mjs scripts/test-today.mjs
-import { dayStatus, headline, streak } from "../src/lib/today.ts";
+import { dayStatus, headline, since, streak } from "../src/lib/today.ts";
 import { DEFAULT_SETTINGS } from "../src/lib/settings.ts";
 
 let passed = 0; const failures = [];
@@ -41,3 +41,16 @@ check("…and does not when it is optional", streak(map, optional, today, 60).no
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);
+
+console.log("how long since");
+const T = Date.parse("2026-09-22T12:00:00Z");
+const ago = (mins) => since(T - mins * 60000, T);
+check("a minute ago reads as just now", ago(1), "just now");
+check("minutes", ago(14), "14 minutes ago");
+check("one hour", ago(60), "1 hour ago");
+check("hours", ago(300), "5 hours ago");
+check("yesterday", ago(60 * 30), "yesterday");
+check("days", ago(60 * 24 * 5), "5 days ago");
+check("older than a fortnight falls back to the date", ago(60 * 24 * 40), "on 13 Aug");
+check("never seen", since(null, T), "never");
+check("a clock that ran ahead is not negative", since(T + 60000, T), "just now");

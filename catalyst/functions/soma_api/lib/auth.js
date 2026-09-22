@@ -22,14 +22,25 @@ function isTestCall(req) {
     crypto.timingSafeEqual(Buffer.from(given), Buffer.from(TEST_KEY));
 }
 
-const PROFILE_COLS = 'ROWID, user_id, email, display_name, role, status, CREATEDTIME';
+const PROFILE_COLS = 'ROWID, user_id, email, display_name, role, status, last_seen_ms, CREATEDTIME';
+
+// "Last seen" is the last authenticated call, which is what an admin actually wants: sessions last for weeks, so a
+// real sign-in almost never happens. Written at most once an hour per user, because Data Store bills every update
+// and one per request would be thousands a day. It never blocks or fails a request.
+const SEEN_EVERY_MS = 60 * 60 * 1000;
+function touchSeen(admin, row) {
+  const now = Date.now();
+  if (Number(row.last_seen_ms || 0) > now - SEEN_EVERY_MS) return;
+  void admin.datastore().table('profiles').updateRow({ ROWID: row.ROWID, last_seen_ms: now })
+    .catch((e) => console.error(JSON.stringify({ action: 'touch_seen', user: String(row.user_id), error: e.message })));
+}
 
 async function findProfile(admin, userId) {
   const rows = await select(admin, 'profiles', `SELECT ${PROFILE_COLS} FROM profiles WHERE user_id = ${needId(userId, 'user id')}`);
   return rows[0] || null;
 }
 
-async function loadProfile(admin, user, startActive) {
+async function loadProfile(admin, user, startActive, seen) {
   let row = await findProfile(admin, user.id);
   if (!row) {
     const isAdmin = ADMIN_EMAILS.includes(String(user.email || '').toLowerCase());
@@ -39,7 +50,8 @@ async function loadProfile(admin, user, startActive) {
         email: user.email,
         display_name: (user.name || '').slice(0, 100),
         role: isAdmin ? 'admin' : 'member',
-        status: isAdmin || startActive ? 'active' : 'pending'
+        status: isAdmin || startActive ? 'active' : 'pending',
+        last_seen_ms: Date.now()
       });
       console.log(JSON.stringify({ action: 'profile_created', user: user.id, status: row.status }));
     } catch (e) {
@@ -48,7 +60,8 @@ async function loadProfile(admin, user, startActive) {
       if (!row) throw e;
     }
   }
-  return { rowId: String(row.ROWID), displayName: row.display_name || '', role: row.role, status: row.status };
+  else if (seen) touchSeen(admin, row);
+  return { rowId: String(row.ROWID), displayName: row.display_name || '', role: row.role, status: row.status, lastSeenMs: Number(row.last_seen_ms || 0) || null };
 }
 
 // Resolve the signed-in app user for this request.
@@ -72,7 +85,8 @@ async function withUser(req, res, next) {
     return res.status(401).json({ error: 'not signed in' });
   }
   try {
-    req.profile = await loadProfile(req.admin, req.user, test);
+    // The synthetic test identity is not a person: it never moves anyone's last seen.
+    req.profile = await loadProfile(req.admin, req.user, test, !test);
     if (test) req.profile.role = 'member';
     next();
   } catch (e) {
@@ -99,4 +113,4 @@ const admin = [withUser, requireActive, requireAdmin];
 
 const isTestUser = (req) => req.user && req.user.id === TEST_USER.id;
 
-module.exports = { isTestUser, withUser, requireActive, requireAdmin, wrap, member, admin, findProfile, STATUSES, PROFILE_COLS };
+module.exports = { isTestUser, withUser, requireActive, requireAdmin, wrap, member, admin, findProfile, STATUSES, PROFILE_COLS, SEEN_EVERY_MS };

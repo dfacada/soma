@@ -1,0 +1,23 @@
+/* /install/, the page David emails. Same frame as the legal pages, with cards for each platform's steps. */
+
+.page { max-width: 680px; margin: 0 auto; padding: 32px 20px 64px; display: flex; flex-direction: column; gap: 12px; }
+.back { align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; text-decoration: none; color: var(--ink); }
+.wordmark { font-size: 22px; }
+.title { font-size: 34px; line-height: 1.1; margin: 8px 0 0; }
+.lead { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink); }
+
+.linkBox { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: var(--r-card); background: var(--surface-2); }
+.linkRow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.link { font-size: 16px; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.copy { min-height: 44px; padding: 0 16px; border-radius: var(--r-ctl); border: 1px solid var(--hairline); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; cursor: pointer; }
+
+.card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--hairline); border-radius: var(--r-card); background: var(--surface); }
+/* The device you are reading this on: led by the accent, not by a colour someone has to decode. */
+.open { border-color: var(--journal); box-shadow: 0 0 0 1px var(--journal); }
+.cardTitle { font-family: var(--font-display), sans-serif; font-weight: 600; font-size: 20px; line-height: 1.25; margin: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.you { font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--journal); border: 1px solid var(--journal); border-radius: 999px; padding: 3px 8px; }
+.note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.55; color: var(--ink); }
+
+.foot { display: flex; gap: 20px; padding-top: 28px; margin-top: 16px; border-top: 1px solid var(--hairline); font-size: 13px; }
+.foot a { color: var(--muted); min-height: 44px; display: inline-flex; align-items: center; }

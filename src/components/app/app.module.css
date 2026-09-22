@@ -215,3 +215,8 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .releases { display: flex; flex-direction: column; gap: 18px; }
 .release { display: flex; flex-direction: column; gap: 6px; }
 .release ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
+
+/* Admin: one member's recent activity. */
+.userActivity { display: flex; flex-direction: column; gap: 4px; padding: 8px 0 2px; }
+.userDay { display: flex; gap: 10px; align-items: baseline; }
+.userDay > :first-child { width: 42px; flex: none; color: var(--muted); }
