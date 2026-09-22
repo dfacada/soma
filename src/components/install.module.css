@@ -21,3 +21,10 @@
 
 .foot { display: flex; gap: 20px; padding-top: 28px; margin-top: 16px; border-top: 1px solid var(--hairline); font-size: 13px; }
 .foot a { color: var(--muted); min-height: 44px; display: inline-flex; align-items: center; }
+
+/* The drawn phones. Three across on a phone screen, bigger where there is room. */
+.shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 4px 0 0; }
+.shot { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.art { width: 100%; max-width: 120px; height: auto; display: block; }
+.caption { font-size: 11.5px; line-height: 1.35; color: var(--muted); text-align: center; }
+.drawn { grid-column: 1 / -1; font-size: 11.5px; line-height: 1.45; color: var(--muted); padding-top: 2px; }

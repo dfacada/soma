@@ -8,11 +8,27 @@
 // app, and only Safari can add one.
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { AndroidAdd, AndroidMenu, IosAdd, IosShare, OnHomeScreen } from "./InstallArt";
 import s from "./install.module.css";
 
 const URL = "soma-onkasary.onslate.com";
 type Which = "ios" | "android" | "desktop";
+
+/** The pictures beside each platform's steps: drawings of the button to look for, then the result. */
+const ART: Record<Which, { art: ReactNode; caption: string }[]> = {
+  ios: [
+    { art: <IosShare />, caption: "1. Share, in the bottom bar" },
+    { art: <IosAdd />, caption: "2. Add to Home Screen" },
+    { art: <OnHomeScreen />, caption: "3. Soma, on your Home Screen" },
+  ],
+  android: [
+    { art: <AndroidMenu />, caption: "1. The three dots, top right" },
+    { art: <AndroidAdd />, caption: "2. Add to Home screen" },
+    { art: <OnHomeScreen />, caption: "3. Soma, on your Home Screen" },
+  ],
+  desktop: [],
+};
 
 const STEPS: Record<Which, { title: string; note: string; steps: string[] }> = {
   ios: {
@@ -101,6 +117,17 @@ export function Install() {
             </h2>
             <p className={s.note}>{block.note}</p>
             <ol className={s.steps}>{block.steps.map((step) => <li key={step}>{step}</li>)}</ol>
+            {ART[id].length > 0 && (
+              <figure className={s.shots}>
+                {ART[id].map((shot) => (
+                  <span key={shot.caption} className={s.shot}>
+                    {shot.art}
+                    <span className={s.caption}>{shot.caption}</span>
+                  </span>
+                ))}
+                <figcaption className={s.drawn}>Drawings, not photographs: your phone will look a little different, but the buttons are where they are shown.</figcaption>
+              </figure>
+            )}
           </section>
         );
       })}
