@@ -220,3 +220,7 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .userActivity { display: flex; flex-direction: column; gap: 4px; padding: 8px 0 2px; }
 .userDay { display: flex; gap: 10px; align-items: baseline; }
 .userDay > :first-child { width: 42px; flex: none; color: var(--muted); }
+
+/* The weight line: focusable so the arrow keys can walk it, but only the keyboard gets a ring. */
+.trend { border-radius: 10px; outline: none; }
+.trend:focus-visible { outline: 2px solid var(--food); outline-offset: 3px; }

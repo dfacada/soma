@@ -16,6 +16,7 @@ export const CHANGES: Release[] = [
     title: "Weight moved to Insights",
     items: [
       "The weight graph now lives on Insights instead of Food, and follows the window you pick there: 7 days, 30, 60 or a year. Logging your weight for the day is still one tap on Today.",
+      "Touch or hover a point on that graph and it names the day and the weight: \"183 lb · Wed 16 Sep\". Arrow keys walk along it too.",
     ],
   },
   {

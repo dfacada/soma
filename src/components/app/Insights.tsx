@@ -4,11 +4,11 @@
 // one line a day (weight, closed or not and why not, what was done), because that is the part with no room for
 // flattery. Counts only; no claims the data cannot support.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api, type Days } from "@/lib/api";
 import { dayLog, insights, type Factor, type LogRow } from "@/lib/insights";
-import { addDays, dayKey, indexDays, WEEKDAYS, type DayMap } from "@/lib/today";
+import { addDays, dayKey, fromKey, indexDays, WEEKDAYS, type DayMap } from "@/lib/today";
 import { Bar, Button, Card, DayGlyph, Icon, Input, Segmented, Stat } from "@/components/ui";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
@@ -86,7 +86,7 @@ export function InsightsScreen() {
       {yearError && <div className={a.unsaved} role="alert"><span>Couldn&apos;t load the year. Showing the last 60 days.</span><Button size="sm" variant="secondary" onClick={() => setYearError(false)}>Retry</Button></div>}
 
       <WeightCard
-        days={Array.from({ length: n }, (_, d) => data[dayKey(addDays(today, d - (n - 1)))]?.weight)}
+        series={Array.from({ length: n }, (_, d) => { const day = dayKey(addDays(today, d - (n - 1))); return { day, weight: data[day]?.weight }; })}
         label={RANGE_LABEL[range]}
         current={map[todayKey]?.weight}
         onLog={(v) => change("weight", todayKey, (d) => { d.weight.value = v; })}
@@ -234,31 +234,68 @@ function LogLine({ r, today }: { r: LogRow; today: string }) {
 }
 
 /** Weight over the chosen window, and a box to log today's. Moved here from Food (David, 2026-09-23): the trend is
- *  a reading of the record, and Today keeps the tap that closes the day. */
-function WeightCard({ days, label, current, onLog }: { days: (number | undefined)[]; label: string; current: number | undefined; onLog: (v: number) => void }) {
+ *  a reading of the record, and Today keeps the tap that closes the day.
+ *
+ *  Hovering, dragging or arrowing along the line names the day it belongs to (David, 2026-09-23). The pointer only
+ *  has to be nearest, not on the dot: a transparent band over the whole plot finds the closest logged day, which is
+ *  the only thing that works on a phone. Nothing is hidden behind it - every weight is also a line in Day by day. */
+function WeightCard({ series, label, current, onLog }: { series: { day: string; weight?: number }[]; label: string; current: number | undefined; onLog: (v: number) => void }) {
   const [value, setValue] = useState("");
-  const logged = days.filter((v): v is number => v !== undefined);
-  const min = Math.min(...logged), max = Math.max(...logged), span = Math.max(1, max - min);
-  const step = 326 / Math.max(1, days.length - 1);
-  const points = days.map((v, idx) => (v === undefined ? null : `${(idx * step).toFixed(1)},${(48 - ((v - min) / span) * 40).toFixed(1)}`)).filter(Boolean).join(" ");
-  const first = logged[0];
+  const [at, setAt] = useState<number | null>(null);
+  const plot = useRef<SVGSVGElement>(null);
+
+  const marks = series.map((d, idx) => ({ ...d, idx })).filter((d): d is { day: string; weight: number; idx: number } => d.weight !== undefined);
+  const weights = marks.map((m) => m.weight);
+  const min = Math.min(...weights), max = Math.max(...weights), span = Math.max(1, max - min);
+  const step = 326 / Math.max(1, series.length - 1);
+  const x = (idx: number) => idx * step;
+  const y = (w: number) => 48 - ((w - min) / span) * 40;
+  const points = marks.map((m) => `${x(m.idx).toFixed(1)},${y(m.weight).toFixed(1)}`).join(" ");
+  const first = weights[0];
   const parsed = parseFloat(value);
   const valid = Number.isFinite(parsed) && parsed >= 1 && parsed <= 2000;
+  const shown = at !== null ? marks[at] : null;
+
+  /** The logged day nearest the pointer, in the SVG's own coordinates. */
+  const nearest = (clientX: number) => {
+    const box = plot.current?.getBoundingClientRect();
+    if (!box || !marks.length) return null;
+    const px = ((clientX - box.left) / box.width) * 326;
+    let best = 0;
+    for (let i = 1; i < marks.length; i++) if (Math.abs(x(marks[i].idx) - px) < Math.abs(x(marks[best].idx) - px)) best = i;
+    return best;
+  };
+
+  const move = (e: React.PointerEvent) => { if (marks.length) setAt(nearest(e.clientX)); };
+  const keys = (e: React.KeyboardEvent) => {
+    if (!marks.length) return;
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      setAt((cur) => { const next = (cur === null ? marks.length - 1 : cur + (e.key === "ArrowRight" ? 1 : -1)); return Math.min(Math.max(next, 0), marks.length - 1); });
+    } else if (e.key === "Escape") setAt(null);
+  };
 
   return (
     <Card>
       <div className={a.entryHead}>
         <span className="eb" style={{ color: "var(--ink)" }}>Weight · {label}</span>
-        <span className="m" style={{ fontSize: 13 }}>
-          {current !== undefined
-            ? <><span style={{ fontWeight: 500 }}>{current} lb</span>{first !== undefined && logged.length > 1 && <span className="muted"> · {current - first <= 0 ? "↓" : "↑"}{Math.abs(current - first).toFixed(1)}</span>}</>
-            : <span className="muted">not logged today</span>}
+        {/* One readout: the point being pointed at, else today. The value leads, the day follows. */}
+        <span className="m" style={{ fontSize: 13 }} aria-live="polite">
+          {shown
+            ? <><span style={{ fontWeight: 500 }}>{shown.weight} lb</span><span className="muted"> · {dayLabel(shown.day)}</span></>
+            : current !== undefined
+              ? <><span style={{ fontWeight: 500 }}>{current} lb</span>{first !== undefined && marks.length > 1 && <span className="muted"> · {current - first <= 0 ? "↓" : "↑"}{Math.abs(current - first).toFixed(1)}</span>}</>
+              : <span className="muted">not logged today</span>}
         </span>
       </div>
-      {logged.length > 1 ? (
-        <svg viewBox="0 0 326 56" style={{ width: "100%", height: 56 }} role="img" aria-label={`Weight over the last ${label}, from ${first} to ${logged[logged.length - 1]} pounds`}>
+      {marks.length > 1 ? (
+        <svg ref={plot} className={a.trend} viewBox="0 0 326 56" style={{ width: "100%", height: 56, touchAction: "pan-y" }} role="img" tabIndex={0}
+          aria-label={`Weight over the last ${label}, from ${first} to ${weights[weights.length - 1]} pounds. Use the arrow keys to hear each day.`}
+          onPointerMove={move} onPointerDown={move} onPointerLeave={() => setAt(null)} onBlur={() => setAt(null)} onKeyDown={keys}>
           <path d="M0 48 L326 48" stroke="var(--surface-2)" /><path d="M0 8 L326 8" stroke="var(--surface-2)" />
           <polyline fill="none" stroke="var(--food)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" points={points} />
+          {marks.map((m, i) => <circle key={m.day} cx={x(m.idx)} cy={y(m.weight)} r={i === at ? 4 : 2.5} fill="var(--food)" stroke="var(--surface)" strokeWidth={i === at ? 2 : 0} />)}
+          {shown && <line x1={x(shown.idx)} y1="4" x2={x(shown.idx)} y2="52" stroke="var(--food)" strokeWidth="1" strokeDasharray="2 3" opacity="0.7" />}
         </svg>
       ) : <p className="muted" style={{ fontSize: 13 }}>Log a couple of days and the trend shows up here.</p>}
       <form className={a.extraForm} onSubmit={(e) => { e.preventDefault(); if (!valid) return; onLog(Math.round(parsed * 10) / 10); setValue(""); }}>
@@ -268,3 +305,6 @@ function WeightCard({ days, label, current, onLog }: { days: (number | undefined
     </Card>
   );
 }
+
+/** "Fri 18 Sep", in the app's own short names (Intl gives "Sept" for September in en-GB). */
+const dayLabel = (key: string) => { const d = fromKey(key); return `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
