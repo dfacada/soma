@@ -11,6 +11,14 @@ export type Release = { id: string; date: string; title: string; items: string[]
 
 export const CHANGES: Release[] = [
   {
+    id: "2026-09-23",
+    date: "2026-09-23",
+    title: "Weight moved to Insights",
+    items: [
+      "The weight graph now lives on Insights instead of Food, and follows the window you pick there: 7 days, 30, 60 or a year. Logging your weight for the day is still one tap on Today.",
+    ],
+  },
+  {
     id: "2026-09-22",
     date: "2026-09-22",
     title: "Sharing Soma, and who is using it",

@@ -9,7 +9,7 @@ import Link from "next/link";
 import { api, type Days } from "@/lib/api";
 import { dayLog, insights, type Factor, type LogRow } from "@/lib/insights";
 import { addDays, dayKey, indexDays, WEEKDAYS, type DayMap } from "@/lib/today";
-import { Bar, Button, Card, DayGlyph, Icon, Segmented, Stat } from "@/components/ui";
+import { Bar, Button, Card, DayGlyph, Icon, Input, Segmented, Stat } from "@/components/ui";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
 import { useJournal } from "./Journal";
@@ -38,7 +38,7 @@ async function fetchYear(today: Date): Promise<DayMap> {
 
 export function InsightsScreen() {
   const { settings } = useSession();
-  const { map, error, reload, today } = useDays();
+  const { map, error, reload, change, today } = useDays();
   const { target } = useRounds();
   const health = useHealth();
   const { vault, openVault } = useJournal();
@@ -84,6 +84,13 @@ export function InsightsScreen() {
       </div>
 
       {yearError && <div className={a.unsaved} role="alert"><span>Couldn&apos;t load the year. Showing the last 60 days.</span><Button size="sm" variant="secondary" onClick={() => setYearError(false)}>Retry</Button></div>}
+
+      <WeightCard
+        days={Array.from({ length: n }, (_, d) => data[dayKey(addDays(today, d - (n - 1)))]?.weight)}
+        label={RANGE_LABEL[range]}
+        current={map[todayKey]?.weight}
+        onLog={(v) => change("weight", todayKey, (d) => { d.weight.value = v; })}
+      />
 
       <Card>
         <div className={a.entryHead}>
@@ -223,5 +230,41 @@ function LogLine({ r, today }: { r: LogRow; today: string }) {
       </div>
       <DayGlyph done={r.done} total={r.total} />
     </div>
+  );
+}
+
+/** Weight over the chosen window, and a box to log today's. Moved here from Food (David, 2026-09-23): the trend is
+ *  a reading of the record, and Today keeps the tap that closes the day. */
+function WeightCard({ days, label, current, onLog }: { days: (number | undefined)[]; label: string; current: number | undefined; onLog: (v: number) => void }) {
+  const [value, setValue] = useState("");
+  const logged = days.filter((v): v is number => v !== undefined);
+  const min = Math.min(...logged), max = Math.max(...logged), span = Math.max(1, max - min);
+  const step = 326 / Math.max(1, days.length - 1);
+  const points = days.map((v, idx) => (v === undefined ? null : `${(idx * step).toFixed(1)},${(48 - ((v - min) / span) * 40).toFixed(1)}`)).filter(Boolean).join(" ");
+  const first = logged[0];
+  const parsed = parseFloat(value);
+  const valid = Number.isFinite(parsed) && parsed >= 1 && parsed <= 2000;
+
+  return (
+    <Card>
+      <div className={a.entryHead}>
+        <span className="eb" style={{ color: "var(--ink)" }}>Weight · {label}</span>
+        <span className="m" style={{ fontSize: 13 }}>
+          {current !== undefined
+            ? <><span style={{ fontWeight: 500 }}>{current} lb</span>{first !== undefined && logged.length > 1 && <span className="muted"> · {current - first <= 0 ? "↓" : "↑"}{Math.abs(current - first).toFixed(1)}</span>}</>
+            : <span className="muted">not logged today</span>}
+        </span>
+      </div>
+      {logged.length > 1 ? (
+        <svg viewBox="0 0 326 56" style={{ width: "100%", height: 56 }} role="img" aria-label={`Weight over the last ${label}, from ${first} to ${logged[logged.length - 1]} pounds`}>
+          <path d="M0 48 L326 48" stroke="var(--surface-2)" /><path d="M0 8 L326 8" stroke="var(--surface-2)" />
+          <polyline fill="none" stroke="var(--food)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" points={points} />
+        </svg>
+      ) : <p className="muted" style={{ fontSize: 13 }}>Log a couple of days and the trend shows up here.</p>}
+      <form className={a.extraForm} onSubmit={(e) => { e.preventDefault(); if (!valid) return; onLog(Math.round(parsed * 10) / 10); setValue(""); }}>
+        <Input placeholder={current !== undefined ? String(current) : "182.0"} aria-label="Weight in pounds" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, "").slice(0, 6))} />
+        <Button type="submit" disabled={!valid}>Log weight</Button>
+      </form>
+    </Card>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-// Food: today's calories and macros, the four planned meals, anything off-plan, the recipe book, and weight.
+// Food: today's calories and macros, the four planned meals, anything off-plan and the recipe book.
+// Weight lives on Insights, where the trend belongs; logging it stays on Today, where it closes the day.
 // The plans, recipes and quick snacks are David's own, generated from the Macros repo (src/lib/food-data.ts).
 // Follows the prototype's viewFood, with one deliberate difference: carbs and fat are real sums (the prototype
 // faked them from calories). Off-plan items are typed in plain words: Soma answers from what it already knows
@@ -12,7 +13,7 @@ import { knownFoods, matchFood, type Known } from "@/lib/food-match";
 import { report } from "@/lib/log";
 import { BOWL_VARIANTS, MEAL_PLANS, RECIPES, type Recipe } from "@/lib/food-data";
 import { MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
-import { addDays, cap, dayKey, dayStatus } from "@/lib/today";
+import { cap, dayStatus } from "@/lib/today";
 import { Bar, Button, Card, Chip, Input, ProgressRing, Row, Sheet, Toast } from "@/components/ui";
 import { DayBanner } from "./DayBanner";
 import { useDays } from "./Days";
@@ -27,7 +28,7 @@ const digits = (v: string, max = 5) => v.replace(/\D/g, "").slice(0, max);
 export function Food() {
   const { settings, saveSettings } = useSession();
   // Follows the day picked on Today (backfill).
-  const { map, error, reload, unsaved, retry, change, today, viewKey: k, view, isToday, setView } = useDays();
+  const { map, error, reload, unsaved, retry, change, viewKey: k, view, isToday, setView } = useDays();
   const [swap, setSwap] = useState<Meal | null>(null);
   // Which slot the form below will fill: a meal, or null for an off-plan item. A meal card's "Ate something else"
   // sets it and sends you to the form.
@@ -155,9 +156,6 @@ export function Food() {
           </button>
         ))}
       </Card>
-
-      <Weight days={Array.from({ length: 30 }, (_, i) => dayKey(addDays(today, i - 29))).map((d) => map[d]?.weight)} current={map[k]?.weight}
-        onLog={(v) => { change("weight", k, (d) => { d.weight.value = v; }); say("Weight logged"); }} />
 
       <Sheet open={swap !== null} title={swap ? `Swap ${swap}` : ""} onClose={closeSwap}>
         {swap && <RecipePicker current={settings.plan[swap].name} onPick={(r) => void pick(swap, r)} />}
@@ -296,38 +294,6 @@ function ExtraForm({ onAdd, onMeal, eaten, known, estimateOn, slot, onSlot, fiel
   );
 }
 
-function Weight({ days, current, onLog }: { days: (number | undefined)[]; current: number | undefined; onLog: (v: number) => void }) {
-  const [value, setValue] = useState("");
-  const logged = days.filter((v): v is number => v !== undefined);
-  const min = Math.min(...logged), max = Math.max(...logged), span = Math.max(1, max - min);
-  const points = days.map((v, i) => (v === undefined ? null : `${((i / 29) * 326).toFixed(1)},${(48 - ((v - min) / span) * 40).toFixed(1)}`)).filter(Boolean).join(" ");
-  const first = logged[0];
-  const n = parseFloat(value);
-  const valid = Number.isFinite(n) && n >= 1 && n <= 2000;
-
-  return (
-    <Card>
-      <div className={a.entryHead}>
-        <span className="eb" style={{ color: "var(--ink)" }}>Weight · 30 days</span>
-        <span className="m" style={{ fontSize: 13 }}>
-          {current !== undefined
-            ? <><span style={{ fontWeight: 500 }}>{current} lb</span>{first !== undefined && logged.length > 1 && <span className="muted"> · {current - first <= 0 ? "↓" : "↑"}{Math.abs(current - first).toFixed(1)}</span>}</>
-            : <span className="muted">not logged today</span>}
-        </span>
-      </div>
-      {logged.length > 1 ? (
-        <svg viewBox="0 0 326 56" style={{ width: "100%", height: 56 }} role="img" aria-label={`Weight over 30 days, from ${first} to ${logged[logged.length - 1]} pounds`}>
-          <path d="M0 48 L326 48" stroke="var(--surface-2)" /><path d="M0 8 L326 8" stroke="var(--surface-2)" />
-          <polyline fill="none" stroke="var(--food)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" points={points} />
-        </svg>
-      ) : <p className="muted" style={{ fontSize: 13 }}>Log a couple of days and the trend shows up here.</p>}
-      <form className={a.extraForm} onSubmit={(e) => { e.preventDefault(); if (!valid) return; onLog(Math.round(n * 10) / 10); setValue(""); }}>
-        <Input placeholder={current !== undefined ? String(current) : "182.0"} aria-label="Weight in pounds" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, "").slice(0, 6))} />
-        <Button type="submit" disabled={!valid}>Log weight</Button>
-      </form>
-    </Card>
-  );
-}
 
 type Saved = { id: string; recipe: PlannedMeal };
 
