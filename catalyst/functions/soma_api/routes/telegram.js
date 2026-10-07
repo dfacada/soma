@@ -19,7 +19,7 @@
 
 const crypto = require('crypto');
 const express = require('express');
-const { member, wrap, findProfile } = require('../lib/auth');
+const { member, wrap } = require('../lib/auth');
 const { HttpError, select, needId } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 
@@ -73,10 +73,15 @@ async function telegram(method, body, isForm) {
   return json.result;
 }
 
+// The profile with its chat, read here rather than through findProfile: that one selects the columns auth cares
+// about and telegram_chat is not among them, which made every send answer "not connected" while the pairing sat
+// in the row (David, 2026-10-07).
+const mine = async (req) => (await select(req.admin, 'profiles',
+  `SELECT ROWID, telegram_chat FROM profiles WHERE user_id = ${needId(req.user.id)}`))[0] || null;
 const chatOf = (row) => (row && row.telegram_chat ? String(row.telegram_chat) : null);
 
 router.get('/telegram', member, wrap(async (req, res) => {
-  const row = await findProfile(req.admin, req.user.id);
+  const row = await mine(req);
   const chat = chatOf(row);
   res.json({ connected: Boolean(chat), chat: chat ? '…' + chat.slice(-4) : null, configured: Boolean(process.env.TELEGRAM_BOT_TOKEN) });
 }));
@@ -98,7 +103,7 @@ router.post('/telegram/pair', member, wrap(async (req, res) => {
   if (!hit) throw new HttpError(404, 'no message with that code yet. Send the code to the bot, then tap Connect again.');
 
   const chat = String(hit.message.chat.id).slice(0, 32);
-  const row = await findProfile(req.admin, req.user.id);
+  const row = await mine(req);
   if (!row) throw new HttpError(404, 'no profile');
   // One chat, one person: if someone else paired this chat, it moves here rather than serving two accounts.
   const others = await select(req.admin, 'profiles', `SELECT ROWID FROM profiles WHERE telegram_chat = '${chat}' AND user_id != ${needId(req.user.id)}`);
@@ -110,14 +115,14 @@ router.post('/telegram/pair', member, wrap(async (req, res) => {
 }));
 
 router.delete('/telegram', member, wrap(async (req, res) => {
-  const row = await findProfile(req.admin, req.user.id);
+  const row = await mine(req);
   if (row && chatOf(row)) await req.admin.datastore().table('profiles').updateRow({ ROWID: row.ROWID, telegram_chat: null });
   res.json({ connected: false });
 }));
 
 /** The review, as a message and (when asked, and when the voice is available) as audio read aloud. */
 router.post('/telegram/send', member, wrap(async (req, res) => {
-  const row = await findProfile(req.admin, req.user.id);
+  const row = await mine(req);
   const chat = chatOf(row);
   if (!chat) throw new HttpError(409, 'Telegram is not connected');
   const b = req.body || {};
