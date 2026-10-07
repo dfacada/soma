@@ -10,7 +10,8 @@ export class ApiError extends Error {
   constructor(public status: number, message: string, public body?: unknown) { super(message); }
 }
 
-async function identity(): Promise<Record<string, string>> {
+/** The headers that say who is calling. Exported for the one call that does not come back as JSON (review audio). */
+export async function identity(): Promise<Record<string, string>> {
   return isDevIdentity ? { "x-test-key": DEV_TEST_KEY } : { Authorization: await authToken() };
 }
 

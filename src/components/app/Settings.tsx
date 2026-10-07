@@ -13,12 +13,13 @@ import { PALETTES, type ThemeMode } from "@/lib/look";
 import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX } from "@/lib/opening";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
 import { planMeals, type Habit, type Settings } from "@/lib/settings";
-import { Button, Card, Chip, Field, Input, Pill, Segmented, Sheet, Switch, Toast } from "@/components/ui";
+import { Button, Card, Chip, Field, Input, Pill, Segmented, Select, Sheet, Switch, Toast } from "@/components/ui";
 import { Admin } from "./Admin";
 import { useHealth } from "./Health";
 import { NudgeCard } from "./Nudge";
 import { useJournal } from "./Journal";
 import { ReleaseList } from "./WhatsNew";
+import { TelegramCard } from "./Telegram";
 import { CHANGES, releaseDate } from "@/lib/changelog";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -188,6 +189,8 @@ export function SettingsScreen() {
         </Field>
         <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Entries and audio are encrypted on this device with AES-256-GCM before upload; the key comes from your passphrase and never leaves the browser. Food, activity and check-ins are readable by the server so leaderboards and admin fixes work.</p>
       </Card>
+
+      <ReviewCard say={say} />
 
       <ChangesCard />
 
@@ -380,6 +383,47 @@ function ChangesCard() {
       <Sheet open={open} title="Every change" onClose={() => setOpen(false)}>
         <ReleaseList releases={CHANGES} />
       </Sheet>
+    </Card>
+  );
+}
+
+const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/** The week in review: when it arrives, and the consent it needs. Telegram sits inside it, since that is what it is for. */
+function ReviewCard({ say }: { say: (m: string) => void }) {
+  const { settings, saveSettings } = useSession();
+  const r = settings.weeklyReview;
+  const set = (patch: Partial<typeof r>, done?: string) =>
+    saveSettings({ weeklyReview: { ...r, ...patch } }).then(() => { if (done) say(done); }, () => say("Couldn't save that"));
+
+  return (
+    <Card>
+      <span className="eb">Week in review</span>
+      <Field name="Write one each week" help="Once a week Soma reads back what your journal said: a synopsis, the things worth remembering, and what came up more than once.">
+        <Switch checked={r.on} label="Write a weekly review" onChange={(v) => void set({ on: v }, v ? "Weekly review on" : "Weekly review off")} />
+      </Field>
+      {r.on && <>
+        <Field name="When" help="The week runs Monday to Sunday. Picking Sunday evening covers the week ending that evening; Monday covers the one that ended the night before.">
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <Select aria-label="Day" value={String(r.dayOfWeek)} onChange={(e) => void set({ dayOfWeek: Number(e.target.value) }, "Day saved")}>
+              {WEEKDAY_NAMES.map((d, i) => <option key={d} value={i}>{d}</option>)}
+            </Select>
+            <Input type="time" aria-label="Time" value={r.time} style={{ width: 120 }} onChange={(e) => void set({ time: e.target.value }, "Time saved")} />
+          </div>
+        </Field>
+        <Field name="Read my journal to write it" help="Off, nothing happens: this is the one feature where journal text leaves your phone. On, Soma decrypts that week's entries here and sends the text through its own server to Claude, which writes the review. Neither Soma nor Claude keeps it; what comes back is encrypted again before it is stored.">
+          <Switch checked={r.consent} label="Let Claude read that week's entries" onChange={(v) => void set({ consent: v }, v ? "Thank you. Reviews will be written." : "Off. No journal text will be sent.")} />
+        </Field>
+        <Field name="Send it to Telegram" help="The whole review as a message when it is written. Telegram keeps whatever is sent to it, so this is a copy of your journal's summary outside Soma.">
+          <Switch checked={r.telegram} label="Send the review to Telegram" onChange={(v) => void set({ telegram: v }, v ? "It will be sent to Telegram" : "It will stay in the app")} />
+        </Field>
+        {r.telegram && (
+          <Field name="With the audio" help="Also send the spoken version as an audio file.">
+            <Switch checked={r.speak} label="Send the audio too" onChange={(v) => void set({ speak: v })} />
+          </Field>
+        )}
+      </>}
+      <TelegramCard say={say} />
     </Card>
   );
 }

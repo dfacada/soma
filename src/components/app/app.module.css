@@ -224,3 +224,6 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 /* The weight line: focusable so the arrow keys can walk it, but only the keyboard gets a ring. */
 .trend { border-radius: 10px; outline: none; }
 .trend:focus-visible { outline: 2px solid var(--food); outline-offset: 3px; }
+
+/* The week in review: the lists under the synopsis. */
+.reviewList { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 7px; font-size: 14px; line-height: 1.55; }

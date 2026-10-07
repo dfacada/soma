@@ -11,6 +11,17 @@ export type Release = { id: string; date: string; title: string; items: string[]
 
 export const CHANGES: Release[] = [
   {
+    id: "2026-10-07",
+    date: "2026-10-07",
+    title: "Your week, read back to you",
+    items: [
+      "Week in review: once a week Soma reads your journal back to you — what happened, the things worth remembering (a promise made, a date, a decision), what came up more than once, and a few notes where your week and your numbers meet. Open it from Insights.",
+      "It is written on your phone with your vault open, because that is the only place your journal can be read. Switch it on under Week in review in Settings: that switch is the one place journal text leaves your device, and nothing happens until you turn it on.",
+      "Listen to it: a Listen button reads the review aloud, in Soma's voice where that is available and your phone's own voice otherwise.",
+      "Send it to Telegram: connect once in Settings and each week's review arrives as a message, with the audio if you want it.",
+    ],
+  },
+  {
     id: "2026-09-23",
     date: "2026-09-23",
     title: "Weight moved to Insights",

@@ -85,6 +85,14 @@ export function InsightsScreen() {
 
       {yearError && <div className={a.unsaved} role="alert"><span>Couldn&apos;t load the year. Showing the last 60 days.</span><Button size="sm" variant="secondary" onClick={() => setYearError(false)}>Retry</Button></div>}
 
+      <Card>
+        <div className={a.entryHead}>
+          <span className="eb" style={{ color: "var(--ink)" }}>Week in review</span>
+          <Link href="/review/" className={a.lnk}>Open</Link>
+        </div>
+        <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>What your journal said last week, written up and read aloud. Encrypted like the journal itself.</p>
+      </Card>
+
       <WeightCard
         series={Array.from({ length: n }, (_, d) => { const day = dayKey(addDays(today, d - (n - 1))); return { day, weight: data[day]?.weight }; })}
         label={RANGE_LABEL[range]}

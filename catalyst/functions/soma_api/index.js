@@ -46,6 +46,7 @@ app.use(require('./routes/journal'));
 app.use(require('./routes/passkeys'));
 app.use(require('./routes/food'));
 app.use(require('./routes/review'));
+app.use(require('./routes/telegram'));
 app.use(require('./routes/misc'));
 app.use(require('./routes/rounds'));
 app.use(require('./routes/jobs'));

@@ -29,6 +29,8 @@ export type Settings = {
   seenChanges: string;
   /** Whether they have been shown how to put Soma on their Home Screen (or are already running it from there). */
   seenInstall: boolean;
+  /** The week in review: when it is written, whether the journal may be read to write it, and where it is sent. */
+  weeklyReview: { on: boolean; dayOfWeek: number; time: string; consent: boolean; telegram: boolean; speak: boolean };
   /** Off until the user opts in: transcription is the one thing that sends plaintext audio off the device. */
   cloudTranscription: boolean;
   /** Let Claude estimate calories and macros for food typed in plain words. Known food is matched on the device first. */
@@ -72,6 +74,8 @@ export const DEFAULT_SETTINGS: Settings = {
   bestStreak: 0,
   seenChanges: "",
   seenInstall: false,
+  // Off until asked for: this is the one feature where journal text leaves the device.
+  weeklyReview: { on: false, dayOfWeek: 0, time: "19:00", consent: false, telegram: false, speak: true },
   cloudTranscription: false,
   foodEstimate: true,
   requireWeight: true,
@@ -114,6 +118,14 @@ export function mergeSettings(stored: unknown): Settings {
     bestStreak: Math.round(num(s.bestStreak, 0)),
     seenChanges: typeof s.seenChanges === "string" ? s.seenChanges.slice(0, 40) : "",
     seenInstall: s.seenInstall === true,
+    weeklyReview: {
+      on: s.weeklyReview?.on === true,
+      dayOfWeek: [0, 1, 2, 3, 4, 5, 6].includes(Number(s.weeklyReview?.dayOfWeek)) ? Number(s.weeklyReview!.dayOfWeek) : d.weeklyReview.dayOfWeek,
+      time: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.weeklyReview?.time || "") ? s.weeklyReview!.time : d.weeklyReview.time,
+      consent: s.weeklyReview?.consent === true,
+      telegram: s.weeklyReview?.telegram === true,
+      speak: s.weeklyReview?.speak !== false,
+    },
     cloudTranscription: s.cloudTranscription === true,
     foodEstimate: s.foodEstimate !== false,
     requireWeight: s.requireWeight !== false,
