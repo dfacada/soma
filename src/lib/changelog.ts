@@ -19,6 +19,7 @@ export const CHANGES: Release[] = [
       "It is written on your phone with your vault open, because that is the only place your journal can be read. Switch it on under Week in review in Settings: that switch is the one place journal text leaves your device, and nothing happens until you turn it on.",
       "Listen to it: a Listen button reads the review aloud, in Soma's voice where that is available and your phone's own voice otherwise.",
       "Send it to Telegram: connect once in Settings and each week's review arrives as a message, with the audio if you want it.",
+      "The audio sent to Telegram is the synopsis read aloud, made in short pieces and stitched into one file, because the voice only takes a few hundred words at a time.",
     ],
   },
   {

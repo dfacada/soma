@@ -24,7 +24,8 @@ const router = express.Router();
 const MODEL = 'claude-opus-5';
 const MAX_CHARS = 60000;      // a week of talking, with room to spare
 const MAX_ENTRIES = 60;
-const SPEAK_MAX = 1800;       // one request of speech; the browser sends the review a piece at a time
+// 700 characters is read without complaint; 1,000 comes back as "request too large" (measured 2026-10-07).
+const SPEAK_MAX = 700;        // one request of speech; the browser sends the review a piece at a time
 const GROQ_SPEECH = 'https://api.groq.com/openai/v1/audio/speech';
 const TTS_MODEL = 'canopylabs/orpheus-v1-english';
 const TTS_VOICE = 'troy';

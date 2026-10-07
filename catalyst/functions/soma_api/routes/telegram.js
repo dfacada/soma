@@ -22,11 +22,16 @@ const express = require('express');
 const { member, wrap } = require('../lib/auth');
 const { HttpError, select, needId } = require('../lib/db');
 const { writeLog } = require('../lib/log');
+const { join, seconds } = require('../lib/wav');
 
 const router = express.Router();
 const WINDOW_MS = 10 * 60 * 1000;
 const TEXT_MAX = 3900;        // Telegram's own limit is 4096; leave room for the title
-const SPEAK_MAX = 1800;
+// Measured against the voice on 2026-10-07: 400 and 700 characters are read without complaint, 1,000 and more come
+// back as "request too large", and several large pieces in a row trip the per-minute limit for the whole account.
+const SPEAK_MAX = 600;
+// A Catalyst function has 30 seconds to answer. Stop asking for more speech in time to still send what there is.
+const SPEAK_BUDGET_MS = 18000;
 const GROQ_SPEECH = 'https://api.groq.com/openai/v1/audio/speech';
 const TTS_MODEL = 'canopylabs/orpheus-v1-english';
 const TTS_VOICE = 'troy';
@@ -133,31 +138,59 @@ router.post('/telegram/send', member, wrap(async (req, res) => {
   await telegram('sendMessage', { chat_id: chat, text, disable_web_page_preview: true });
 
   // The spoken version is a nicety: a week that cannot be read aloud still arrives as words.
-  let spoke = false;
-  if (b.speak === true && process.env.GROQ_API_KEY) {
+  // The voice takes a few hundred characters at a time and the function has 30 seconds to answer, so the reading
+  // is made in small pieces inside a time budget, joined into one file, and whatever was finished is sent.
+  let spoke = false, said = 0;
+  const speakable = String(b.speak_text || text).trim();
+  if (b.speak === true && process.env.GROQ_API_KEY && speakable) {
+    const until = Date.now() + SPEAK_BUDGET_MS;
+    const pieces = [];
     try {
-      const said = text.slice(0, SPEAK_MAX);
-      const answer = await fetch(GROQ_SPEECH, {
-        method: 'POST',
-        headers: { authorization: 'Bearer ' + process.env.GROQ_API_KEY, 'content-type': 'application/json' },
-        body: JSON.stringify({ model: TTS_MODEL, voice: TTS_VOICE, input: said, response_format: 'wav' }),
-        signal: AbortSignal.timeout(90000)
-      });
-      if (!answer.ok) throw new Error('speech ' + answer.status + ' ' + (await answer.text().catch(() => '')).slice(0, 120));
-      const audio = Buffer.from(await answer.arrayBuffer());
+      for (const piece of split(speakable, SPEAK_MAX)) {
+        if (Date.now() > until) break;
+        const answer = await fetch(GROQ_SPEECH, {
+          method: 'POST',
+          headers: { authorization: 'Bearer ' + process.env.GROQ_API_KEY, 'content-type': 'application/json' },
+          body: JSON.stringify({ model: TTS_MODEL, voice: TTS_VOICE, input: piece, response_format: 'wav' }),
+          signal: AbortSignal.timeout(20000)
+        });
+        if (!answer.ok) throw new Error('speech ' + answer.status + ' ' + (await answer.text().catch(() => '')).slice(0, 120));
+        pieces.push(Buffer.from(await answer.arrayBuffer()));
+        said += piece.length;
+      }
+      const audio = join(pieces);
+      if (!audio) throw new Error('nothing readable came back');
       const form = new FormData();
       form.append('chat_id', chat);
       form.append('title', String(b.title || 'Week in review').slice(0, 60));
       form.append('audio', new Blob([audio], { type: 'audio/wav' }), 'week-in-review.wav');
       await telegram('sendAudio', form, true);
       spoke = true;
+      console.log(JSON.stringify({ action: 'telegram_audio', pieces: pieces.length, said, bytes: audio.length, seconds: Math.round(seconds(audio)) }));
     } catch (e) {
-      await note(req, 'speak_failed', String(e.message || e).slice(0, 200), { chars: text.length }, 'warn');
+      // The words are already there; only the reading is missing, and the log says why.
+      await note(req, 'speak_failed', String(e.message || e).slice(0, 200), { chars: speakable.length, pieces: pieces.length }, 'warn');
     }
   }
   console.log(JSON.stringify({ action: 'telegram_sent', user: req.user.id, chars: text.length, spoke }));
   res.json({ sent: true, spoke });
 }));
 
+/** Break the text for the voice, on sentence ends where they fall near the limit. */
+function split(text, max) {
+  const out = [];
+  let rest = String(text).trim();
+  while (rest.length > max) {
+    const window = rest.slice(0, max);
+    const cut = Math.max(window.lastIndexOf('. '), window.lastIndexOf('\n'), window.lastIndexOf('! '), window.lastIndexOf('? '));
+    const at = cut > max * 0.5 ? cut + 1 : max;
+    out.push(rest.slice(0, at).trim());
+    rest = rest.slice(at).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+
 module.exports = router;
+module.exports.split = split;
 module.exports.codeFor = codeFor;

@@ -103,7 +103,13 @@ export function asText(r: Review): string {
   return parts.join("\n");
 }
 
-/** What is read aloud: the synopsis and what to remember, without the list formatting. */
+/** What Telegram is given to read aloud: the synopsis alone, which is the part worth hearing and short enough
+ *  for the voice to finish inside a function's thirty seconds. The lists read better than they listen. */
+export function asSpokenSynopsis(r: Review): string {
+  return `Your week, ${weekLabel(r.weekStart)}.\n\n${r.synopsis}`;
+}
+
+/** What is read aloud in the app: the synopsis and what to remember, without the list formatting. */
 export function asSpeech(r: Review): string {
   const parts = [`Your week, ${weekLabel(r.weekStart)}.`, r.synopsis];
   if (r.remember.length) parts.push("Worth remembering.", r.remember.join(" "));

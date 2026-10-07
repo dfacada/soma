@@ -13,8 +13,8 @@ export const listReviews = () => api<{ reviews: StoredReview[] }>("GET", "/revie
 export const putReview = (weekStart: string, ciphertext: string, hasAudio = false) =>
   api("PUT", `/reviews/${weekStart}`, { ciphertext, hasAudio });
 
-export const sendToTelegram = (text: string, speak: boolean) =>
-  api<{ sent: boolean; spoke: boolean }>("POST", "/telegram/send", { text, speak, title: "Week in review" });
+export const sendToTelegram = (text: string, speak: boolean, speakText?: string) =>
+  api<{ sent: boolean; spoke: boolean }>("POST", "/telegram/send", { text, speak, speak_text: speakText, title: "Week in review" });
 
 /** The review read aloud, a piece at a time. Audio, not JSON, so this one call is made by hand. */
 export async function speak(text: string): Promise<Blob> {

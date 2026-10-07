@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { report } from "@/lib/log";
 import { listReviews, putReview, sendToTelegram, speak, writeReview } from "@/lib/review-api";
-import { asSpeech, asText, reviewDue, weekDays, weekLabel, weekNumbers, type DaySummary, type Review } from "@/lib/review";
+import { asSpeech, asSpokenSynopsis, asText, reviewDue, weekDays, weekLabel, weekNumbers, type DaySummary, type Review } from "@/lib/review";
 import { dayStatus } from "@/lib/today";
 import { Button, Card, Tag, Toast } from "@/components/ui";
 import { useDays } from "./Days";
@@ -21,8 +21,10 @@ import { useJournal } from "./Journal";
 import { useSession } from "./Session";
 import a from "./app.module.css";
 
-/** One request of speech. The server caps this too; keeping pieces short also means it starts talking sooner. */
-const SAY_MAX = 1500;
+// The voice reads a few hundred characters at a time and refuses more; short pieces also start the talking sooner.
+const SAY_MAX = 600;
+/** A piece the voice was too busy for is worth one more try, after a breath. */
+const RETRY_MS = 3000;
 
 export function ReviewScreen() {
   const { settings } = useSession();
@@ -73,8 +75,8 @@ export function ReviewScreen() {
 
   const send = useCallback(async (review: Review, quiet = false) => {
     try {
-      const { sent, spoke } = await sendToTelegram(asText(review), setting.speak);
-      if (!quiet) say(sent ? (spoke ? "Sent to Telegram, with the audio" : "Sent to Telegram") : "Not sent");
+      const { sent, spoke } = await sendToTelegram(asText(review), setting.speak, asSpokenSynopsis(review));
+      if (!quiet) say(sent ? (spoke ? "Sent to Telegram, with the audio" : "Sent to Telegram · the voice was busy, so words only") : "Not sent");
     } catch (e) {
       report("review", "telegram_failed", e, { week: review.weekStart }, e instanceof ApiError && e.status < 500 ? "warn" : "error");
       say(e instanceof ApiError ? e.message : "Could not send to Telegram");
@@ -180,7 +182,9 @@ function ReviewCard({ review, busy, onSend, say }: { review: Review; busy: boole
     try {
       for (const piece of pieces) {
         if (cancelled) break;
-        const blob = await speak(piece);
+        let blob: Blob;
+        try { blob = await speak(piece); }
+        catch { await sleep(RETRY_MS); if (cancelled) break; blob = await speak(piece); }
         if (cancelled) break;
         await play(blob, (el) => { stop.current = () => { cancelled = true; el.pause(); }; });
       }
@@ -232,6 +236,8 @@ function ReviewCard({ review, busy, onSend, say }: { review: Review; busy: boole
     </Card>
   );
 }
+
+const sleep = (ms: number) => new Promise<void>((done) => window.setTimeout(done, ms));
 
 /** Break the text into pieces for the voice, on sentence ends where possible. */
 function split(text: string, max: number): string[] {
