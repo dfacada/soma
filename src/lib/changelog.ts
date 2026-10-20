@@ -11,6 +11,15 @@ export type Release = { id: string; date: string; title: string; items: string[]
 
 export const CHANGES: Release[] = [
   {
+    id: "2026-10-20",
+    date: "2026-10-20",
+    title: "The journal opens again",
+    items: [
+      "Fixed: past about sixteen entries the Journal stopped loading altogether and sat on \"Decrypting entries\" forever. Storage would only hand out so many download links at once; Soma now asks for them a few at a time, so a journal of any length opens.",
+      "If entries ever do fail to load, the screen now says so and offers Try again instead of waiting silently. Nothing was ever lost: the entries stay encrypted and stored either way.",
+    ],
+  },
+  {
     id: "2026-10-07",
     date: "2026-10-07",
     title: "Your week, read back to you",

@@ -25,6 +25,9 @@ export type Item = { id: string; createdMs: number; entry: JournalEntry | null; 
 type Journal = {
   vault: VaultState;
   items: Item[] | null;
+  /** The entries could not be fetched or decrypted. `reload` tries again. */
+  loadFailed: boolean;
+  reload: () => void;
   recording: boolean;
   seconds: number;
   busy: boolean;
@@ -91,6 +94,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   const [vault, setVault] = useState<VaultState>("checking");
   const [loaded, setLoaded] = useState<LoadedEntry[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [pending, setPending] = useState<PendingRecording[]>([]);
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -129,6 +133,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     const unreadable = fresh ? fresh.filter((l) => !l.entry).length : 0;
     if (unreadable) report("journal", "entries_unreadable", undefined, { count: unreadable, of: fresh!.length }, "warn");
     setPending(left);
+    // A load that failed has to say so: without this the screen sat on "Decrypting entries" for as long as you
+    // cared to wait, while the log held the real answer (David, 2026-10-20).
+    setLoadFailed(!fresh);
     if (fresh) setLoaded(fresh);
     return left.length;
   }, [userId]);
@@ -340,7 +347,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const lock = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY + userId);
     key.current = null;
-    setLoaded(null); setPending([]); setVault("locked");
+    setLoaded(null); setPending([]); setLoadFailed(false); setVault("locked");
   }, [userId]);
 
   // ── Entries ──
@@ -391,14 +398,15 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const countOn = useCallback((day: string) => (items ? items.filter((i) => dayKey(new Date(i.createdMs)) === day).length : null), [items]);
+  const reload = useCallback(() => { setLoadFailed(false); void flushPending(); }, [flushPending]);
   const openVault = useCallback(() => setSheet(true), []);
   const closeSheet = useCallback(() => setSheet(false), []);
 
   const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), here: pkHere }), [pkSupported, pkHere]);
 
   const value = useMemo<Journal>(
-    () => ({ vault, items, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys }),
-    [vault, items, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys],
+    () => ({ vault, items, loadFailed, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys }),
+    [vault, items, loadFailed, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys],
   );
 
   return (

@@ -16,6 +16,10 @@ const ENTRY_KINDS = ['entries', 'audio', 'photos'];
 const NAME = /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,79}$/;
 const LEGACY_BUCKETS = ['soma-entries', 'soma-audio', 'soma-photos', 'soma-drafts']; // spike page only
 const SIGN_EXPIRY_S = 900;
+// Stratus signs only so many URLs at a time: measured 2026-10-20, 16 at once is fine and 17 fails the whole call
+// with "Concurrency limit reached for the feature COMPONENT". A journal of 23 entries therefore stopped loading
+// altogether. Sign in small batches instead, with one retry each, so the limit is never approached.
+const SIGN_AT_ONCE = 8;
 const TRANSCRIPT = ['none', 'pending', 'done', 'failed'];
 const B64 = /^[A-Za-z0-9+/_-]+={0,2}$/;
 
@@ -108,6 +112,16 @@ router.delete('/entries/:id', member, wrap(async (req, res) => {
   res.json({ deleted: true, objects: objects.filter(Boolean) });
 }));
 
+/** One signature, retried once: the limit above is per moment, so a brief wait is usually all it takes. */
+async function signOne(bucket, key, action) {
+  try {
+    return (await bucket.generatePreSignedUrl(key, action, { expiryIn: SIGN_EXPIRY_S })).signature;
+  } catch (_e) {
+    await new Promise((done) => setTimeout(done, 300));
+    return (await bucket.generatePreSignedUrl(key, action, { expiryIn: SIGN_EXPIRY_S })).signature;
+  }
+}
+
 // ── Batch pre-signed URLs so audio and draft chunks never pass through this function ──
 //   { kind: 'audio', names: ['e_123.enc'], method: 'PUT' | 'GET' }  →  <user_id>/audio/e_123.enc
 // The caller never supplies a path, only a kind and flat file names, so it cannot reach outside its own prefix.
@@ -133,10 +147,13 @@ router.post('/sign', member, wrap(async (req, res) => {
     keys = b.keys;
   }
   const bucket = req.admin.stratus().bucket(bucketName);
-  const urls = await Promise.all(keys.map(async (k, i) => {
-    const r = await bucket.generatePreSignedUrl(k, action, { expiryIn: SIGN_EXPIRY_S });
-    return { name: b.names ? b.names[i] : undefined, key: k, url: r.signature };
-  }));
+  const urls = [];
+  for (let from = 0; from < keys.length; from += SIGN_AT_ONCE) {
+    const batch = keys.slice(from, from + SIGN_AT_ONCE);
+    urls.push(...await Promise.all(batch.map(async (k, j) => ({
+      name: b.names ? b.names[from + j] : undefined, key: k, url: await signOne(bucket, k, action)
+    }))));
+  }
   res.json({ method: action, expiresIn: SIGN_EXPIRY_S, urls });
 }));
 

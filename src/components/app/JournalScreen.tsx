@@ -42,7 +42,17 @@ export function JournalScreen() {
         </Card>
       )}
 
-      {j.vault === "open" && j.items === null && <span className="eb">Decrypting entries</span>}
+      {j.vault === "open" && j.items === null && !j.loadFailed && <span className="eb">Decrypting entries</span>}
+      {j.vault === "open" && j.loadFailed && (
+        <Card>
+          <span className="d" style={{ fontSize: 22 }}>Your entries didn&apos;t load</span>
+          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
+            Nothing is lost: they are still encrypted and stored. The app could not fetch them just now. Try again, and if
+            it keeps happening the reason is in Settings → Admin → Log.
+          </p>
+          <div><Button variant="journal" onClick={j.reload}>Try again</Button></div>
+        </Card>
+      )}
       {j.vault === "open" && j.items?.length === 0 && !j.recording && (
         <Card><p className="muted">Nothing here yet. Tap the microphone and talk for two minutes; that is plenty.</p></Card>
       )}
