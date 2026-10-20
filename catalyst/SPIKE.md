@@ -36,6 +36,8 @@ Pass: a 25 MB file uploads from the browser straight to a Stratus bucket via a U
 - API route `/sign` that returns N pre-signed PUT and GET URLs; note the maximum expiry allowed.
 - Fallback if pre-signing is unavailable: upload through the API in ≤ 4 MB parts and assemble server-side.
 
+**Verified limit (2026-10-20): `generatePreSignedUrl` tolerates 16 calls in flight at once, and no more.** Measured against the deployed function, one name at a time: 1–16 names in a single `/sign` all answer 200; 17 and up fail every time, and the failure is the whole call, not one URL — Stratus throws "Concurrency limit reached for the feature COMPONENT" and the route 500s. It is a concurrency ceiling, not a rate limit: back-to-back calls of 16 are fine. This silently broke the Journal for anyone past 16 entries (`loadEntries` signs every entry at once), so `/sign` now signs in batches of 8 with one retry each — 100 names come back in ~660 ms.
+
 ## 4. Background job budget
 
 Pass: a job submitted from `soma_api` sleeps 60 s, then writes a row to a `jobs` table with status `done`.
