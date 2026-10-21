@@ -23,10 +23,26 @@ async function putObject(url: string, bytes: Uint8Array) {
   if (!res.ok) throw new Error(`upload failed (${res.status})`);
 }
 
-async function getObject(url: string) {
+/** `onBytes` hears every chunk as it lands; `total` is null when the response carries no Content-Length. */
+async function getObject(url: string, onBytes?: (done: number, total: number | null) => void) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`download failed (${res.status})`);
-  return res.arrayBuffer();
+  if (!onBytes || !res.body) return res.arrayBuffer();
+  const total = Number(res.headers.get("content-length")) || null;
+  const reader = res.body.getReader();
+  const parts: Uint8Array[] = [];
+  let done = 0;
+  for (;;) {
+    const { done: end, value } = await reader.read();
+    if (end) break;
+    parts.push(value);
+    done += value.length;
+    onBytes(done, total);
+  }
+  const out = new Uint8Array(done);
+  let at = 0;
+  for (const p of parts) { out.set(p, at); at += p.length; }
+  return out.buffer;
 }
 
 const fileOf = (id: string) => `${id}.enc`;
@@ -58,9 +74,15 @@ export async function loadEntries(key: CryptoKey): Promise<LoadedEntry[]> {
   }));
 }
 
-export async function loadAudio(key: CryptoKey, id: string, mime: string): Promise<Blob> {
+/** Where loadAudio has got to. The step names are the ones the player logs (JournalScreen.tsx). */
+export type AudioProgress = { step: "download"; done: number; total: number | null } | { step: "decrypt" };
+
+export async function loadAudio(key: CryptoKey, id: string, mime: string, onProgress?: (p: AudioProgress) => void): Promise<Blob> {
+  onProgress?.({ step: "download", done: 0, total: null });
   const url = (await signed("audio", "GET", [fileOf(id)])).get(fileOf(id))!;
-  return new Blob([await decryptBytes(key, await getObject(url))], { type: mime || "audio/webm" });
+  const packed = await getObject(url, onProgress && ((done, total) => onProgress({ step: "download", done, total })));
+  onProgress?.({ step: "decrypt" });
+  return new Blob([await decryptBytes(key, packed)], { type: mime || "audio/webm" });
 }
 
 export const deleteEntry = (id: string) => api("DELETE", `/entries/${id}`);

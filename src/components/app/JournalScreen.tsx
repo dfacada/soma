@@ -3,7 +3,7 @@
 // The Journal screen: entries newest first, playback, a written note per entry, and the floating mic.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card, Icon, MicButton, Tag } from "@/components/ui";
+import { Button, Card, Icon, MicButton, StageBar, Tag, type StepProgress } from "@/components/ui";
 import { report } from "@/lib/log";
 import { clock } from "@/lib/journal";
 import { toWav, within } from "@/lib/playable";
@@ -116,7 +116,7 @@ function EntryCard({ item }: { item: Item }) {
         </span>
       </div>
 
-      {e.hasAudio && <Player id={item.id} />}
+      {e.hasAudio && <Player id={item.id} mime={e.audioMime} local={item.pending} />}
 
       {editing ? (
         <>
@@ -156,12 +156,28 @@ function EntryCard({ item }: { item: Item }) {
 // this, which "blesses" the element, and the same element is then given the real recording.
 const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 
-/** Downloads and decrypts the audio on first play, then keeps the object URL for the life of the card. */
-function Player({ id }: { id: string }) {
+type Step = "download" | "decrypt" | "convert" | "play";
+const STEP_LABEL: Record<Step, string> = { download: "Downloading…", decrypt: "Decrypting…", convert: "Converting…", play: "Starting playback…" };
+// How far into the conversion each step of toWav (playable.ts) is. Decoding says nothing until it ends, so these
+// mark steps reached, not a measure of work done.
+const CONVERT_AT: Record<string, [number, string]> = { read: [0.05, "reading"], decode_offline: [0.15, "decoding"], decode_live: [0.5, "decoding, second try"], encode: [0.85, "writing"] };
+// Safari (every browser on iOS) records WebM it cannot play back, so there the conversion is planned from the start
+// instead of waiting for play() to refuse, or stall.
+const needsConvert = (mime: string) => mime.includes("webm") && /apple/i.test(navigator.vendor);
+const mb = (n: number) => (n / 1048576).toFixed(1);
+// The log's stage names (stage below) folded into the steps the bar shows.
+const stepOf = (stage: string): Step => stage === "download" || stage === "decrypt" ? stage : stage.startsWith("convert") ? "convert" : "play";
+
+type Shown = { steps: Step[]; at: Step; progress: StepProgress; detail?: string; failed?: string; note?: string };
+
+/** Downloads and decrypts the audio on first play, then keeps the object URL for the life of the card. While it
+ *  opens, a bar under the button shows each step that will run; a failure names the stage the admin log names. */
+function Player({ id, mime: entryMime, local }: { id: string; mime: string; local: boolean }) {
   const j = useJournal();
   const audio = useRef<HTMLAudioElement | null>(null);
   const url = useRef<string | null>(null);
-  const [state, setState] = useState<"idle" | "loading" | "ready" | "playing" | "paused">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "ready" | "playing" | "paused" | "failed">("idle");
+  const [shown, setShown] = useState<Shown | null>(null);
   const [pos, setPos] = useState(0);
 
   useEffect(() => () => { audio.current?.pause(); if (url.current) URL.revokeObjectURL(url.current); }, []);
@@ -171,15 +187,28 @@ function Player({ id }: { id: string }) {
     if (state === "playing") { el?.pause(); return setState("paused"); }
     // Loaded already: this play() runs inside the tap, which every browser allows.
     if (el && url.current) {
-      try { await el.play(); setState("playing"); }
-      catch (e) { report("journal", "playback_failed", e, { stage: "replay", mime: el.dataset.mime || "" }); j.say("Couldn't play this recording"); }
+      try { await el.play(); setShown(null); setState("playing"); }
+      catch (e) {
+        report("journal", "playback_failed", e, { stage: "replay", mime: el.dataset.mime || "" });
+        setShown({ steps: ["play"], at: "play", progress: 1, failed: "Failed: replay" });
+        j.say("Couldn't play this recording");
+      }
       return;
     }
     setState("loading");
     // Every await below is bounded (within): a promise that never settles used to leave the button disabled on
     // "Decrypting…" with nothing in the log. Now it fails, and the log names the step and how long it had run.
     const began = Date.now();
-    let stage = "unlock", mime = "", bytes = 0;
+    let stage = "unlock", mime = "", bytes = 0, live = true;
+    const plan: Step[] = [...(local ? [] : ["download", "decrypt"] as Step[]), ...(needsConvert(entryMime) ? ["convert"] as Step[] : [])];
+    // A step that was not planned (a conversion nobody expected) joins the bar when it starts. A step that timed
+    // out may still be running underneath; once the outcome is shown, nothing it reports may overwrite it.
+    const show = (at: Step, progress: StepProgress, detail?: string) => {
+      if (!live) return;
+      if (!plan.includes(at)) plan.push(at);
+      setShown({ steps: [...plan], at, progress, detail });
+    };
+    setShown(null);
     try {
       const fresh = audio.current = new Audio();
       fresh.preload = "auto";
@@ -190,54 +219,78 @@ function Player({ id }: { id: string }) {
       const blessed = within(fresh.play(), 5000, "unlock").then(() => true, () => false);
 
       stage = "download";
-      const blob = await within(j.audioFor(id), 120000, "download");
+      const blob = await within(j.audioFor(id, (p) => {
+        stage = p.step;
+        if (p.step === "decrypt") return show("decrypt", "atomic");
+        show("download", p.total ? p.done / p.total : "unknown", p.total ? `${mb(p.done)} / ${mb(p.total)} MB` : p.done ? `${mb(p.done)} MB` : undefined);
+      }), 120000, "download");
       mime = blob.type; bytes = blob.size;
       fresh.dataset.mime = mime;
       url.current = URL.createObjectURL(blob);
       await blessed;
       fresh.pause();
       fresh.src = url.current;
-      stage = "play";
+
+      // iOS will not play the WebM it recorded itself, though it decodes it: replay it as WAV.
+      const convert = async (refused?: unknown) => {
+        stage = "convert";
+        show("convert", 0);
+        const { wav, via } = await toWav(blob, (step) => { stage = "convert:" + step; show("convert", CONVERT_AT[step][0], CONVERT_AT[step][1]); });
+        show("convert", 1);
+        report("journal", "playback_converted", refused, { from: mime, bytes, wavBytes: wav.size, via, planned: !refused, ms: Date.now() - began }, "warn");
+        URL.revokeObjectURL(url.current!);
+        url.current = URL.createObjectURL(wav);
+        mime = fresh.dataset.mime = wav.type;
+        fresh.src = url.current;
+        stage = "play_wav";
+        await within(fresh.play(), 15000, "play_wav");
+      };
       try {
-        try { await within(fresh.play(), 15000, "play"); }
-        catch (e) {
-          // iOS will not play the WebM it recorded itself, though it decodes it: replay it as WAV.
-          // A play() that stalls instead of refusing gets the same treatment.
-          if (!["NotSupportedError", "TimeoutError"].includes((e as { name?: string })?.name || "") || mime.includes("wav")) throw e;
-          stage = "convert";
-          const { wav, via } = await toWav(blob, (step) => { stage = "convert:" + step; });
-          report("journal", "playback_converted", e, { from: mime, bytes, wavBytes: wav.size, via, ms: Date.now() - began }, "warn");
-          URL.revokeObjectURL(url.current);
-          url.current = URL.createObjectURL(wav);
-          mime = fresh.dataset.mime = wav.type;
-          fresh.src = url.current;
-          stage = "play_wav";
-          await within(fresh.play(), 15000, "play_wav");
+        if (plan.includes("convert")) await convert();
+        else {
+          stage = "play";
+          try { await within(fresh.play(), 15000, "play"); }
+          catch (e) {
+            // A play() that stalls instead of refusing gets the same treatment.
+            if (!["NotSupportedError", "TimeoutError"].includes((e as { name?: string })?.name || "") || mime.includes("wav")) throw e;
+            await convert(e);
+          }
         }
+        live = false;
+        setShown(null);
         setState("playing");
       }
       catch (e) {
         // The tap ran out while decrypting. The recording is loaded now, so one more tap plays it at once.
         if ((e as { name?: string })?.name !== "NotAllowedError") throw e;
+        live = false;
         report("journal", "playback_needs_second_tap", e, { mime, bytes }, "warn");
+        setShown(plan.length ? { steps: [...plan], at: plan[plan.length - 1], progress: 1, note: "Ready. Tap play." } : null);
         setState("ready");
         j.say("Ready. Tap play.");
       }
     } catch (e) {
+      live = false;
       report("journal", "playback_failed", e, { stage, mime, bytes, ms: Date.now() - began, canPlay: mime ? new Audio().canPlayType(mime.split(";")[0]) || "no" : "" });
       if (url.current) { URL.revokeObjectURL(url.current); url.current = null; }
       audio.current = null;
-      setState("idle");
+      const at = stepOf(stage);
+      if (!plan.includes(at)) plan.push(at);
+      setShown({ steps: [...plan], at, progress: 1, failed: "Failed: " + stage });
+      setState("failed");
       j.say(stage === "download" ? "Couldn't load this recording" : "Couldn't play this recording");
     }
-  }, [state, id, j]);
+  }, [state, id, entryMime, local, j]);
 
   return (
-    <div className={a.player}>
-      <button type="button" className={a.play} onClick={() => void toggle()} aria-label={state === "playing" ? "Pause" : "Play"} disabled={state === "loading"}>
-        <Icon name={state === "playing" ? "pause" : "play"} size={16} />
-      </button>
-      <span className="m muted" style={{ fontSize: 12 }}>{state === "loading" ? "Decrypting…" : state === "idle" ? "Play recording" : state === "ready" ? "Tap to play" : clock(pos)}</span>
+    <div className={a.playerBox}>
+      <div className={a.player}>
+        <button type="button" className={a.play} onClick={() => void toggle()} aria-label={state === "playing" ? "Pause" : state === "failed" ? "Try again" : "Play"} disabled={state === "loading"}>
+          <Icon name={state === "playing" ? "pause" : "play"} size={16} />
+        </button>
+        <span className="m muted" style={{ fontSize: 12 }}>{state === "loading" ? "Opening recording" : state === "idle" ? "Play recording" : state === "failed" ? "Try again" : state === "ready" ? "Tap to play" : clock(pos)}</span>
+      </div>
+      {shown && <StageBar domain="journal" steps={shown.steps.map((st) => STEP_LABEL[st])} at={shown.steps.indexOf(shown.at)} progress={shown.progress} detail={shown.detail} failed={shown.failed} note={shown.note} />}
     </div>
   );
 }

@@ -6,7 +6,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
-import { deleteEntry, loadAudio, loadEntries, newEntry, onDay, saveEntry, textEntry, type LoadedEntry } from "@/lib/journal";
+import { deleteEntry, loadAudio, loadEntries, newEntry, onDay, saveEntry, textEntry, type AudioProgress, type LoadedEntry } from "@/lib/journal";
 import { Recorder, toneStream } from "@/lib/recorder";
 import { clearDraft, deletePending, listOrphanDrafts, listPending, putPending, type JournalEntry, type PendingRecording } from "@/lib/recovery";
 import { report } from "@/lib/log";
@@ -41,7 +41,8 @@ type Journal = {
   lock: () => void;
   saveText: (id: string, text: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
-  audioFor: (id: string) => Promise<Blob>;
+  /** A recording on this device comes back at once; an uploaded one reports its download and decrypt. */
+  audioFor: (id: string, onProgress?: (p: AudioProgress) => void) => Promise<Blob>;
   /** Entry ids with a transcription in flight. */
   transcribing: string[];
   cloudOn: boolean;
@@ -366,12 +367,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     if (loaded?.some((l) => l.meta.id === id)) { await deleteEntry(id); setLoaded((cur) => cur && cur.filter((l) => l.meta.id !== id)); }
   }, [pending, loaded]);
 
-  const audioFor = useCallback(async (id: string) => {
+  const audioFor = useCallback(async (id: string, onProgress?: (p: AudioProgress) => void) => {
     const local = pending.find((p) => p.entry.id === id);
     if (local) return local.audio;
     const found = loaded?.find((l) => l.meta.id === id);
     if (!key.current || !found) throw new Error("vault is closed");
-    return loadAudio(key.current, id, found.entry?.audioMime || "audio/webm");
+    return loadAudio(key.current, id, found.entry?.audioMime || "audio/webm", onProgress);
   }, [pending, loaded]);
 
   const transcribeEntry = useCallback((id: string) => {

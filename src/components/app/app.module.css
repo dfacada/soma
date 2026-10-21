@@ -79,6 +79,7 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .entryActions { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; flex-wrap: wrap; }
 .transcript { font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .note { width: 100%; border-radius: var(--r-ctl); border: 1px solid var(--hairline); background: var(--field); padding: 12px 14px; font: inherit; font-size: 16px; line-height: 1.5; color: var(--ink); resize: vertical; }
+.playerBox { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .player { display: flex; align-items: center; gap: 10px; }
 .play { width: 44px; height: 44px; border-radius: var(--r-pill); border: 1px solid var(--hairline); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ink); background: var(--surface); }
 .play:disabled { opacity: 0.5; }

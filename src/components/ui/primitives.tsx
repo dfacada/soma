@@ -145,6 +145,39 @@ export function Bar({ label, value, max, unit = "g", domain, color, text }: { la
   );
 }
 
+/** How far the current step is: a fraction 0–1; "unknown" when its size is not known (a moving stripe); "atomic"
+ *  for one call that reports nothing until it ends (fills toward 90% while it runs, full once the next step starts). */
+export type StepProgress = number | "unknown" | "atomic";
+
+/** A slim bar for a job of named steps, one segment per step that will run, with the current step's name under it.
+ *  `failed` replaces that name with the failure, in the critical colour. `note` replaces it without failing. */
+export function StageBar({ steps, at, progress, detail, failed, note, domain }: { steps: string[]; at: number; progress: StepProgress; detail?: string; failed?: string; note?: string; domain?: Domain }) {
+  const frac = typeof progress === "number" ? Math.max(0, Math.min(1, progress)) : 0;
+  const pct = Math.round(((at + frac) / steps.length) * 100);
+  const label = failed ?? note ?? steps[at];
+  return (
+    <div className={cx(s.stages, domain && s[domain], failed && s.stagesFailed)} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}
+      aria-valuetext={failed ?? `${label}${steps.length > 1 ? `, step ${at + 1} of ${steps.length}` : ""}${detail ? `, ${detail}` : ""}`}>
+      <div className={s.stageTrack}>
+        {steps.map((name, i) => (
+          <span key={name} className={s.stageSeg}>
+            {i < at ? <span className={s.stageFill} style={{ width: "100%" }} />
+              : i > at ? null
+              : failed ? <span className={cx(s.stageFill, s.stageFailFill)} style={{ width: "100%" }} />
+              : progress === "unknown" ? <span className={cx(s.stageFill, s.stageUnknown)} />
+              : progress === "atomic" ? <span className={cx(s.stageFill, s.stageAtomic)} />
+              : <span className={s.stageFill} style={{ width: frac * 100 + "%" }} />}
+          </span>
+        ))}
+      </div>
+      <div className={s.stageHead} aria-hidden>
+        <span>{label}</span>
+        {!failed && detail && <span>{detail}</span>}
+      </div>
+    </div>
+  );
+}
+
 export function Row({ name, sub, value, trail }: { name: string; sub?: string; value?: ReactNode; trail?: ReactNode }) {
   return (
     <div className={s.row}>

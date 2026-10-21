@@ -5,7 +5,7 @@
 import { useCallback, useState } from "react";
 import {
   Bar, Button, Card, Chip, DayGlyph, DayRing, Field, Icon, ICON_NAMES, Input, Medallion, MicButton, Mini, Pill,
-  ProgressRing, Row, RowHead, Segmented, Select, Sheet, Sidebar, SideNote, Stat, Switch, TabBar, Tag, Tile, Tiles, Toast,
+  ProgressRing, Row, RowHead, Segmented, Select, Sheet, Sidebar, SideNote, Stat, StageBar, Switch, TabBar, Tag, Tile, Tiles, Toast,
   type MedallionState, type Section,
 } from "@/components/ui";
 import k from "./kit.module.css";
@@ -177,6 +177,11 @@ export default function Kit() {
             </div>
             <Bar label="Protein" value={112} max={200} domain="food" />
             <Bar label="Carbs" value={96} max={150} color="var(--food-bar)" />
+            <span className="eb">Stage bar · opening a recording</span>
+            <StageBar domain="journal" steps={["Downloading…", "Decrypting…", "Converting…"]} at={0} progress={0.42} detail="1.8 / 4.4 MB" />
+            <StageBar domain="journal" steps={["Downloading…", "Decrypting…"]} at={0} progress="unknown" detail="0.6 MB" />
+            <StageBar domain="journal" steps={["Downloading…", "Decrypting…", "Converting…"]} at={1} progress="atomic" />
+            <StageBar domain="journal" steps={["Downloading…", "Decrypting…", "Converting…"]} at={2} progress={0.15} failed="Failed: convert:decode_offline" />
             <Card>
               <Row name="Eggs & toast" sub="22 g protein" value="470" />
               <Row name="Chicken bowl" sub="48 g protein" value="640" />
