@@ -17,6 +17,7 @@ export const CHANGES: Release[] = [
     items: [
       "Fixed: past about sixteen entries the Journal stopped loading altogether and sat on \"Decrypting entries\" forever. Storage would only hand out so many download links at once; Soma now asks for them a few at a time, so a journal of any length opens.",
       "If entries ever do fail to load, the screen now says so and offers Try again instead of waiting silently. Nothing was ever lost: the entries stay encrypted and stored either way.",
+      "Fixed: on iPhone, playing a recording showed \"Decrypting…\" and then \"Couldn't play this recording\". The iPhone had started saving recordings in a format it can't play back itself. Those recordings now play (Soma converts them as it opens them), and new recordings are saved in a format every phone and browser plays.",
     ],
   },
   {

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Icon, MicButton, Tag } from "@/components/ui";
 import { report } from "@/lib/log";
 import { clock } from "@/lib/journal";
+import { toWav } from "@/lib/playable";
 import { dayKey } from "@/lib/today";
 import { useJournal, type Item } from "./Journal";
 import a from "./app.module.css";
@@ -194,7 +195,23 @@ function Player({ id }: { id: string }) {
       fresh.pause();
       fresh.src = url.current;
       stage = "play";
-      try { await fresh.play(); setState("playing"); }
+      try {
+        try { await fresh.play(); }
+        catch (e) {
+          // iOS will not play the WebM it recorded itself, though it decodes it: replay it as WAV.
+          if ((e as { name?: string })?.name !== "NotSupportedError") throw e;
+          stage = "convert";
+          const wav = await toWav(blob);
+          report("journal", "playback_converted", e, { from: mime, bytes, wavBytes: wav.size }, "warn");
+          URL.revokeObjectURL(url.current);
+          url.current = URL.createObjectURL(wav);
+          mime = fresh.dataset.mime = wav.type;
+          fresh.src = url.current;
+          stage = "play";
+          await fresh.play();
+        }
+        setState("playing");
+      }
       catch (e) {
         // The tap ran out while decrypting. The recording is loaded now, so one more tap plays it at once.
         if ((e as { name?: string })?.name !== "NotAllowedError") throw e;

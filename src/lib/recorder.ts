@@ -3,8 +3,9 @@
 
 import { openDb, writeChunk } from "./recovery";
 
-// iOS Safari records AAC in MP4; everything else records Opus in WebM. Ask for what the browser can do.
-const MIMES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4;codecs=mp4a.40.2", "audio/mp4"];
+// AAC in MP4 first: every browser plays it. Since iOS 18.4 Safari also offers WebM/Opus, but it cannot play
+// that back (playable.ts), so WebM is only for browsers that cannot record AAC (Firefox).
+const MIMES = ["audio/mp4;codecs=mp4a.40.2", "audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
 const SLICE_MS = 1000;
 
 export function pickMime(): string | undefined {
