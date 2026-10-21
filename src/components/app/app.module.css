@@ -122,8 +122,24 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .recipe { display: flex; flex-direction: column; gap: 10px; }
 .recipe ul, .recipe ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
 .logFilters { display: flex; flex-wrap: wrap; gap: 8px; }
-.logItem { border-top: 1px solid var(--surface-2); }
-.logItemHead { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; padding: 10px 0; min-height: 44px; color: var(--ink); text-align: left; }
+/* Admin log: one card per row. Every text run may wrap anywhere, so nothing scrolls sideways at phone width. */
+.logCards { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.logCard { min-width: 0; border: 1px solid var(--hairline); border-left-width: 3px; border-radius: var(--r-sm); background: var(--surface); overflow: hidden; }
+.logCardError { border-left-color: var(--critical); }
+.logCardWarn { border-left-color: var(--warning); }
+.logCardHead { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; min-width: 0; padding: 10px 12px; min-height: 44px; color: var(--ink); text-align: left; }
+.logCardTop { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.logCardEvent { font-size: 12px; overflow-wrap: anywhere; }
+.logCardMsg, .logCardMsgOpen { font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.logCardMsg { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.logCardFoot { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }
+.logCardFoot > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.logCardMore { color: var(--journal); flex-shrink: 0; }
+.logCardBody { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px; min-width: 0; }
+.logPairs { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: 12px; }
+.logPairs > div { display: grid; grid-template-columns: minmax(0, 88px) minmax(0, 1fr); gap: 8px; }
+.logPairs dt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; overflow-wrap: anywhere; }
+.logPairs dd { margin: 0; font-family: var(--font-mono); font-size: 11.5px; overflow-wrap: anywhere; }
 .logDetail { margin: 0 0 10px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-2); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
 .logRow { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
 .logRow + .logRow { border-top: 1px solid var(--surface-2); }

@@ -16,12 +16,59 @@ type Source = "all" | "client" | "api" | "job";
 const SOURCE_NAME = { client: "app", api: "api", job: "job" } as const;
 const stamp = (ms: number) => new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit" });
 
-/** Detail is JSON when the app wrote it, free text otherwise. Shown as lines either way. */
-function lines(detail: string): string {
+/** Detail is JSON when the app wrote it, free text otherwise. The stack comes out on its own, to show as a block. */
+function parts(detail: string | null): { pairs: [string, string][]; stack: string | null; text: string | null } {
+  if (!detail) return { pairs: [], stack: null, text: null };
   try {
     const d = JSON.parse(detail) as Record<string, unknown>;
-    return Object.entries(d).filter(([, v]) => v !== undefined && v !== null && v !== "").map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`).join("\n");
-  } catch { return detail; }
+    const pairs = Object.entries(d).filter(([k, v]) => k !== "stack" && v !== undefined && v !== null && v !== "")
+      .map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)] as [string, string]);
+    return { pairs, stack: typeof d.stack === "string" && d.stack ? d.stack : null, text: null };
+  } catch { return { pairs: [], stack: null, text: detail }; }
+}
+
+/** The whole row as plain text, for pasting into a conversation about it. */
+function asText(r: Item): string {
+  const p = parts(r.detail);
+  return [`${r.level} · ${r.area} · ${r.event}${r.status ? ` · ${r.status}` : ""} · ${stamp(r.at)} · ${SOURCE_NAME[r.source]}${r.user ? ` · ${r.user}` : ""}`,
+    r.message || "No message", ...p.pairs.map(([k, v]) => `${k}: ${v}`), p.text || "", p.stack ? `stack:\n${p.stack}` : ""].filter(Boolean).join("\n");
+}
+
+/** One row as a card: the gist when closed, everything (message, detail, stack) when open. Nothing scrolls sideways. */
+function LogCard({ r, open, onToggle }: { r: Item; open: boolean; onToggle: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const p = open ? parts(r.detail) : null;
+  const copy = () => void navigator.clipboard?.writeText(asText(r)).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1500); }, () => undefined);
+  const bodyId = `log-${r.id}`;
+  return (
+    <div className={`${a.logCard} ${r.level === "error" ? a.logCardError : r.level === "warn" ? a.logCardWarn : ""}`}>
+      <button type="button" className={a.logCardHead} aria-expanded={open} aria-controls={bodyId} onClick={onToggle}>
+        <span className={a.logCardTop}>
+          <Tag tone={r.level === "error" ? "critical" : r.level === "warn" ? "warning" : undefined}>{r.level}</Tag>
+          <span className="m muted" style={{ fontSize: 11 }}>{stamp(r.at)}</span>
+        </span>
+        <span className={`m ${a.logCardEvent}`}>{r.area} · {r.event}{r.status ? ` · ${r.status}` : ""}</span>
+        <span className={open ? a.logCardMsgOpen : a.logCardMsg}>{r.message || "No message"}</span>
+        <span className={a.logCardFoot}>
+          <span className="muted">{SOURCE_NAME[r.source]}{r.user ? ` · ${r.user}` : ""}{r.test ? " · test" : ""}</span>
+          <span className={a.logCardMore}>{open ? "Hide" : "Details"}</span>
+        </span>
+      </button>
+      {open && p && (
+        <div id={bodyId} className={a.logCardBody}>
+          {p.pairs.length > 0 && (
+            <dl className={a.logPairs}>
+              {p.pairs.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+            </dl>
+          )}
+          {p.text && <pre className={a.logDetail}>{p.text}</pre>}
+          {p.stack && <><span className="eb">Stack</span><pre className={a.logDetail}>{p.stack}</pre></>}
+          {!p.pairs.length && !p.text && !p.stack && <p className="muted" style={{ fontSize: 12 }}>No detail was recorded.</p>}
+          <div><Button size="sm" variant="secondary" onClick={copy}>{copied ? "Copied" : "Copy row"}</Button></div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 const query = (level: Level, source: Source, tests: boolean, before?: number) =>
@@ -82,19 +129,11 @@ export function LogView() {
       {failed && <p className="muted" style={{ fontSize: 13 }}>Couldn&apos;t load the log.</p>}
       {!failed && !items && <p className="muted" style={{ fontSize: 13 }}>Loading…</p>}
       {items && items.length === 0 && <p className="muted" style={{ fontSize: 13 }}>Nothing logged. That is the good outcome.</p>}
-      {items?.map((r) => (
-        <div key={r.id} className={a.logItem}>
-          <button type="button" className={a.logItemHead} aria-expanded={open === r.id} onClick={() => setOpen(open === r.id ? null : r.id)}>
-            <span className={a.entryTags}>
-              <Tag tone={r.level === "error" ? "critical" : r.level === "warn" ? "warning" : undefined}>{r.level}</Tag>
-              <span className="m" style={{ fontSize: 12 }}>{r.area} · {r.event}{r.status ? ` · ${r.status}` : ""}</span>
-            </span>
-            <span style={{ fontSize: 13, lineHeight: 1.4, overflowWrap: "anywhere", textAlign: "left" }}>{r.message || "No message"}</span>
-            <span className="muted" style={{ fontSize: 11 }}>{stamp(r.at)} · {SOURCE_NAME[r.source]}{r.user ? ` · ${r.user}` : ""}{r.test ? " · test" : ""}</span>
-          </button>
-          {open === r.id && <pre className={a.logDetail}>{r.detail ? lines(r.detail) : "No detail was recorded."}</pre>}
+      {items && items.length > 0 && (
+        <div className={a.logCards}>
+          {items.map((r) => <LogCard key={r.id} r={r} open={open === r.id} onToggle={() => setOpen(open === r.id ? null : r.id)} />)}
         </div>
-      ))}
+      )}
       {more && <div><Button size="sm" variant="secondary" disabled={busy} onClick={() => void older()}>{busy ? "Loading…" : "Older"}</Button></div>}
 
       <div className={a.entryHead} style={{ paddingTop: 6 }}>
