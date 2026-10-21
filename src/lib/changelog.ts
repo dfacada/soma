@@ -22,6 +22,7 @@ export const CHANGES: Release[] = [
       "When Google ends your Fitbit connection, Today now says so at the top with a Reconnect button, instead of steps quietly stopping. Dismiss it and it stays away for a day. Settings shows the state too.",
       "Week in review: on your review day and time, your phone now gets a notification that your week is ready. Open it and the review writes itself (and goes to Telegram if that is on). The numbers under each review now include food: days with all meals logged, and days you hit your protein goal, with your longest run.",
       "Insights has a new Patterns section: your weight with a seven-day average that smooths out the daily swings (with the days you were active marked underneath), and your weight by day of the week, so you can see which day usually reads heavy. It follows the 7-day to 1-year picker, and says plainly when there are too few weigh-ins to read much into it.",
+      "Opening Soma now shows what it is doing instead of a plain Loading: starting, checking your account, loading your days, opening your vault and, when it opens by itself, decrypting your entries one by one. Then it fades into Today.",
     ],
   },
   {

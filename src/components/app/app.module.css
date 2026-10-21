@@ -263,3 +263,9 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .patternAxisInk { fill: var(--ink); font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; }
 .patternLegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
 .patternLegend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+/* Opening splash (Splash.tsx): the wordmark and a StageBar naming the real step. As an overlay it covers the app
+   until Today is ready, then fades. Under the opening words (80), over the tab bar and sheets. */
+.splashBar { width: min(280px, 100%); }
+.splashOverlay { position: fixed; inset: 0; z-index: 70; background: var(--bone); padding-top: calc(24px + var(--inset-top)); padding-bottom: calc(24px + var(--inset-bottom)); transition: opacity 0.32s ease; }
+.splashLeaving { opacity: 0; pointer-events: none; }

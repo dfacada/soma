@@ -40,6 +40,8 @@ type Journal = {
   items: Item[] | null;
   /** The entries could not be fetched or decrypted. `reload` tries again. */
   loadFailed: boolean;
+  /** How far the latest load of the entries has got (downloaded and decrypted, of all). Null before any. */
+  entriesProgress: { done: number; total: number } | null;
   reload: () => void;
   recording: boolean;
   seconds: number;
@@ -111,6 +113,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   const [vault, setVault] = useState<VaultState>("checking");
   const [loaded, setLoaded] = useState<LoadedEntry[] | null>(null);
+  const [entriesProgress, setEntriesProgress] = useState<{ done: number; total: number } | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [pending, setPending] = useState<PendingRecording[]>([]);
   const [recording, setRecording] = useState(false);
@@ -178,7 +181,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         document.removeEventListener("visibilitychange", onHide);
       }
     }
-    const [left, latest] = await Promise.all([listPending(userId).catch(() => []), loadEntries(k).catch((e) => { report("journal", "entries_load_failed", e); return null; })]);
+    const [left, latest] = await Promise.all([listPending(userId).catch(() => []), loadEntries(k, (done, total) => setEntriesProgress({ done, total })).catch((e) => { report("journal", "entries_load_failed", e); return null; })]);
     const unreadable = latest ? latest.filter((l) => !l.entry).length : 0;
     if (unreadable) report("journal", "entries_unreadable", undefined, { count: unreadable, of: latest!.length }, "warn");
     setPending(left);
@@ -589,8 +592,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), here: pkHere }), [pkSupported, pkHere]);
 
   const value = useMemo<Journal>(
-    () => ({ vault, items, loadFailed, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys }),
-    [vault, items, loadFailed, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys],
+    () => ({ vault, items, loadFailed, entriesProgress, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys }),
+    [vault, items, loadFailed, entriesProgress, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys],
   );
 
   return (

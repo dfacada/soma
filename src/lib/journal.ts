@@ -71,14 +71,18 @@ export async function saveEntry(key: CryptoKey, entry: JournalEntry, audio?: Blo
 
 export type LoadedEntry = { meta: EntryMeta; entry: JournalEntry | null };
 
-/** Newest first. An entry that fails to decrypt is kept as metadata only, never dropped. */
-export async function loadEntries(key: CryptoKey): Promise<LoadedEntry[]> {
+/** Newest first. An entry that fails to decrypt is kept as metadata only, never dropped. `onProgress` hears the
+ *  count once the list is known and after each entry is downloaded and decrypted (the opening splash shows it). */
+export async function loadEntries(key: CryptoKey, onProgress?: (done: number, total: number) => void): Promise<LoadedEntry[]> {
   const { entries } = await api<{ entries: EntryMeta[] }>("GET", "/entries");
+  onProgress?.(0, entries.length);
   if (!entries.length) return [];
   const urls = await signed("entries", "GET", entries.map((e) => fileOf(e.id)));
+  let done = 0;
   return Promise.all(entries.map(async (meta) => {
     try { return { meta, entry: await decryptJson<JournalEntry>(key, await getObject(urls.get(fileOf(meta.id))!)) }; }
     catch { return { meta, entry: null }; }
+    finally { onProgress?.(++done, entries.length); }
   }));
 }
 

@@ -3,6 +3,7 @@ import { HealthProvider } from "@/components/app/Health";
 import { JournalProvider } from "@/components/app/Journal";
 import { LogKeeper, NudgeKeeper } from "@/components/app/Nudge";
 import { Opening } from "@/components/app/Opening";
+import { OpenProgress } from "@/components/app/OpenProgress";
 import { RoundsProvider } from "@/components/app/Rounds";
 import { SessionGate } from "@/components/app/Session";
 import { Shell } from "@/components/app/Shell";
@@ -25,6 +26,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <JournalProvider>
             <HealthProvider>
               <Shell>{children}</Shell>
+              <OpenProgress />
             </HealthProvider>
           </JournalProvider>
         </RoundsProvider>

@@ -9,7 +9,8 @@ import { api, ApiError, type Me } from "@/lib/api";
 import { catalystAuth, currentUser, isDevIdentity } from "@/lib/catalyst";
 import { applyLook } from "@/lib/look";
 import { mergeSettings, type Settings } from "@/lib/settings";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, type StepProgress } from "@/components/ui";
+import { Splash, type OpenStep } from "./Splash";
 import a from "./app.module.css";
 
 type Session = {
@@ -43,12 +44,16 @@ type State =
 type Resolved = Exclude<State, { kind: "loading" | "ready" }> | { kind: "ready"; me: Me; displayName: string; stored: Record<string, unknown> };
 
 /** Catalyst session → profile (approval) → settings. Plain async: no React state in here. */
-async function resolveSession(): Promise<Resolved> {
+/** `step` hears each step of opening as it starts (the splash shows it): the sign-in SDK, then the account. */
+async function resolveSession(step: (at: OpenStep, progress: StepProgress) => void = () => undefined): Promise<Resolved> {
   try {
     if (!isDevIdentity && !(await currentUser())) return { kind: "signedOut" };
+    step("Checking your account", 0);
     const me = await api<Me>("GET", "/me");
     if (me.profile.status !== "active") return { kind: "blocked", me };
+    step("Checking your account", 0.5);
     const s = await api<{ displayName: string; settings: Record<string, unknown> }>("GET", "/settings");
+    step("Loading your days", "unknown");
     return { kind: "ready", me, displayName: s.displayName || me.name || "", stored: s.settings || {} };
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) return { kind: "signedOut" };
@@ -58,6 +63,7 @@ async function resolveSession(): Promise<Resolved> {
 
 export function SessionGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ kind: "loading" });
+  const [opening, setOpening] = useState<{ at: OpenStep; progress: StepProgress }>({ at: "Starting", progress: "unknown" });
   const [settings, setSettings] = useState<Settings | null>(null);
   const [displayName, setDisplayName] = useState("");
 
@@ -72,7 +78,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let alive = true;
-    void resolveSession().then((r) => { if (alive) apply(r); });
+    void resolveSession((at, progress) => { if (alive) setOpening({ at, progress }); }).then((r) => { if (alive) apply(r); });
     return () => { alive = false; };
   }, [apply]);
 
@@ -88,7 +94,11 @@ export function SessionGate({ children }: { children: ReactNode }) {
     return () => media.removeEventListener("change", follow);
   }, [theme, palette]);
 
-  const load = useCallback(() => { setState({ kind: "loading" }); void resolveSession().then(apply); }, [apply]);
+  const load = useCallback(() => {
+    setState({ kind: "loading" });
+    setOpening({ at: "Starting", progress: "unknown" });
+    void resolveSession((at, progress) => setOpening({ at, progress })).then(apply);
+  }, [apply]);
 
   const signOut = useCallback(() => {
     if (isDevIdentity) return;
@@ -131,7 +141,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
       </Centered>
     );
   }
-  return <Centered><span className={`d ${a.wordmark}`}>Soma</span><span className="eb">Loading</span></Centered>;
+  return <Splash at={opening.at} progress={opening.progress} />;
 }
 
 function Centered({ children }: { children: ReactNode }) {
