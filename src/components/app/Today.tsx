@@ -14,6 +14,7 @@ import { MEALS } from "@/lib/settings";
 import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS } from "@/lib/today";
 import { report } from "@/lib/log";
 import { DayBanner, longDay } from "./DayBanner";
+import { FitbitBanner } from "./FitbitBanner";
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
 import { PushSheet } from "./PushSheet";
@@ -150,6 +151,7 @@ export function Today() {
 
   return (
     <div className={a.page}>
+      <FitbitBanner />
       <section className={`${a.hero} ${st.closed ? a.heroClosed : ""}`} aria-label="Today's progress">
         <div className={a.heroTop}>
           <span className="d" style={{ fontSize: 17, letterSpacing: "0.02em" }}>Soma</span>

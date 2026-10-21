@@ -19,6 +19,7 @@ export const CHANGES: Release[] = [
       "Admin: the Log reads properly on a phone. Each entry is a card; tap it for the full message, every detail and the stack, and Copy row to paste it anywhere.",
       "Search your journal: a search box at the top of the Journal finds entries by what you said or wrote, with the words highlighted. It searches on your phone, after your vault is open; nothing you type is sent anywhere.",
       "Recordings are now backed up to the cloud while you talk, a few seconds at a time and encrypted like everything else. If your phone dies, the app is closed mid-recording, or the upload never gets through, the recording is rebuilt the next time you unlock, on any device.",
+      "When Google ends your Fitbit connection, Today now says so at the top with a Reconnect button, instead of steps quietly stopping. Dismiss it and it stays away for a day. Settings shows the state too.",
     ],
   },
   {

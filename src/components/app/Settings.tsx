@@ -13,7 +13,7 @@ import { PALETTES, type ThemeMode } from "@/lib/look";
 import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX } from "@/lib/opening";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
 import { planMeals, type Habit, type Settings } from "@/lib/settings";
-import { Button, Card, Chip, Field, Input, Pill, Segmented, Select, Sheet, Switch, Toast } from "@/components/ui";
+import { Button, Card, Chip, Field, Input, Pill, Segmented, Select, Sheet, Switch, Tag, Toast } from "@/components/ui";
 import { Admin } from "./Admin";
 import { useHealth } from "./Health";
 import { NudgeCard } from "./Nudge";
@@ -221,7 +221,10 @@ function HealthCard({ steps, onSteps }: { steps: number; onSteps: (n: number) =>
   const when = health.lastSyncMs ? new Date(health.lastSyncMs).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
   return (
     <Card>
-      <span className="eb">Fitbit · Google Health</span>
+      <div className={a.entryHead}>
+        <span className="eb">Fitbit · Google Health</span>
+        {s === "reconnect" ? <Tag tone="activity">needs reconnecting</Tag> : s === "connected" ? <Tag>connected</Tag> : null}
+      </div>
       <Field name="Steps and sleep from your tracker" help={HEALTH_LINE[s] + (s === "connected" && when ? ` Last synced ${when}.` : "")}>
         {s === "off" || s === "reconnect"
           ? <Button size="sm" variant="activity" onClick={health.connect}>{s === "off" ? "Connect" : "Reconnect"}</Button>
