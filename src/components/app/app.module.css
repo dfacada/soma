@@ -269,3 +269,4 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .splashBar { width: min(280px, 100%); }
 .splashOverlay { position: fixed; inset: 0; z-index: 70; background: var(--bone); padding-top: calc(24px + var(--inset-top)); padding-bottom: calc(24px + var(--inset-bottom)); transition: opacity 0.32s ease; }
 .splashLeaving { opacity: 0; pointer-events: none; }
+.patternOnHue { fill: var(--surface); font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }

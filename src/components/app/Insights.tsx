@@ -192,7 +192,7 @@ export function InsightsScreen() {
         </>
       )}
 
-      <Patterns map={data} days={Array.from({ length: n }, (_, d) => dayKey(addDays(today, d - (n - 1))))} />
+      <Patterns map={data} days={Array.from({ length: n }, (_, d) => dayKey(addDays(today, d - (n - 1))))} settings={settings} nights={health.nights} />
 
       <div className={a.statGrid}>
         <Stat label="Avg kcal" value={<span className="m">{i.food.loggedDays ? i.food.avgKcal.toLocaleString("en-US") : "—"}</span>} note={i.food.loggedDays ? `${i.food.loggedDays} days logged · ${i.food.onTarget} within 10% of target` : "no food logged"} />
