@@ -66,11 +66,11 @@ export function ReviewScreen() {
     const summaries: DaySummary[] = days.map((day) => {
       const st = dayStatus(map?.[day], settings);
       return {
-        day, closed: st.closed, weight: st.weight ?? undefined, kcal: st.kcal, protein: st.protein,
+        day, closed: st.closed, weight: st.weight ?? undefined, kcal: st.kcal, protein: st.protein, meals: st.meals,
         pushups: st.pushups, activity: st.acts > 0, entries: entries.filter((e) => e.day === day).length,
       };
     });
-    return { entries, numbers: weekNumbers(summaries) };
+    return { entries, numbers: weekNumbers(summaries, settings.goals.protein) };
   }, [journal.items, map, settings]);
 
   const send = useCallback(async (review: Review, quiet = false) => {
@@ -227,6 +227,8 @@ function ReviewCard({ review, busy, onSend, say }: { review: Review; busy: boole
         {n.weightChange != null && ` · weight ${n.weightChange > 0 ? "+" : ""}${n.weightChange} lb`}
         {n.avgKcal != null && ` · ${n.avgKcal.toLocaleString("en-US")} kcal a day`}
         {n.pushups ? ` · ${n.pushups.toLocaleString("en-US")} push-ups` : ""}
+        {n.mealsDays != null && ` · all meals logged ${n.mealsDays} of ${n.of} days`}
+        {n.proteinDays != null && ` · ${n.proteinGoal} g protein ${n.proteinDays} of ${n.of} days${(n.proteinStreak || 0) > 1 ? `, ${n.proteinStreak} in a row` : ""}`}
       </p>
 
       <div className={a.rowButtons}>

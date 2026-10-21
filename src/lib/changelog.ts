@@ -20,6 +20,7 @@ export const CHANGES: Release[] = [
       "Search your journal: a search box at the top of the Journal finds entries by what you said or wrote, with the words highlighted. It searches on your phone, after your vault is open; nothing you type is sent anywhere.",
       "Recordings are now backed up to the cloud while you talk, a few seconds at a time and encrypted like everything else. If your phone dies, the app is closed mid-recording, or the upload never gets through, the recording is rebuilt the next time you unlock, on any device.",
       "When Google ends your Fitbit connection, Today now says so at the top with a Reconnect button, instead of steps quietly stopping. Dismiss it and it stays away for a day. Settings shows the state too.",
+      "Week in review: on your review day and time, your phone now gets a notification that your week is ready. Open it and the review writes itself (and goes to Telegram if that is on). The numbers under each review now include food: days with all meals logged, and days you hit your protein goal, with your longest run.",
     ],
   },
   {

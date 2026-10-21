@@ -51,6 +51,40 @@ function leftToday({ weight, mood, entries, meals, pushups, types }, requireWeig
   return left;
 }
 
+// ── The week-in-review reminder. The review can only be written on a device with the vault open (src/lib/review.ts),
+// so at the person's review day and time this tells them it is ready to write. Opening it writes it, and sends it to
+// Telegram when that is on. Only with the review switched on and consented to, only while that week is unwritten,
+// and once per device per week (push_subs.review_week).
+
+/** settings_json → the review reminder's settings: on only with both the switch and the consent. */
+function reviewSettings(settings) {
+  const w = settings && typeof settings === 'object' && settings.weeklyReview && typeof settings.weeklyReview === 'object' ? settings.weeklyReview : {};
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(w.time || '');
+  const day = Number(w.dayOfWeek);
+  return { on: w.on === true && w.consent === true, dayOfWeek: [0, 1, 2, 3, 4, 5, 6].includes(day) ? day : 0, minutes: m ? Number(m[1]) * 60 + Number(m[2]) : 19 * 60 };
+}
+
+/** 0 = Sunday … 6 = Saturday, for a 'YYYY-MM-DD' day. */
+const weekdayOf = (day) => new Date(day + 'T12:00:00Z').getUTCDay();
+
+/** The week a review written on `day` covers: the Monday of the week the day before falls in, as reviewDue does. */
+function reviewWeek(day) {
+  const d = new Date(day + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+/** Is it this device's moment to hear its week is ready? Returns the week, or null. */
+function reviewDueNow(local, rs, sentWeek) {
+  if (!local || !rs.on || weekdayOf(local.day) !== rs.dayOfWeek) return null;
+  if (local.minutes < rs.minutes || local.minutes >= rs.minutes + WINDOW_MIN) return null;
+  const week = reviewWeek(local.day);
+  return sentWeek === week ? null : week;
+}
+
+const REVIEW_MESSAGE = { title: 'Your week is ready', body: 'Open Soma to write your week in review.', url: '/review/' };
+
 function message(left) {
   const n = ['One', 'Two', 'Three', 'Four', 'Five'][left.length - 1] || String(left.length);
   return { title: left.length === 1 ? 'One to go' : `${n} to go`, body: left.join(' · ') + (left.length === 1 ? ' closes the day.' : ''), url: '/' };
@@ -79,7 +113,7 @@ async function run(app, params) {
   const test = params.test === '1' && /^\d{1,19}$/.test(String(params.user_id));
   const subs = [];
   for (let offset = 0; offset < 3000; offset += 300) {
-    const page = await select(app, 'push_subs', `SELECT ROWID, user_id, endpoint, p256dh, auth_secret, tz, last_day, fails FROM push_subs ${test ? `WHERE user_id = ${params.user_id}` : ''} ORDER BY ROWID ASC LIMIT ${offset}, 300`);
+    const page = await select(app, 'push_subs', `SELECT ROWID, user_id, endpoint, p256dh, auth_secret, tz, last_day, review_week, fails FROM push_subs ${test ? `WHERE user_id = ${params.user_id}` : ''} ORDER BY ROWID ASC LIMIT ${offset}, 300`);
     subs.push(...page);
     if (page.length < 300) break;
   }
@@ -90,41 +124,54 @@ async function run(app, params) {
   const users = new Map(); // user_id → { settings, facts by local day }
   const tally = { devices: subs.length, sent: 0, closed: 0, notDue: 0, gone: 0, failed: 0 };
 
+  /** One push to one device. True when it went; a dropped subscription is deleted, a failure counted and logged. */
+  async function send(sub, uid, payload) {
+    try {
+      await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_secret } }, JSON.stringify(payload), { TTL: 3 * 3600, urgency: 'normal' });
+      tally.sent++;
+      return true;
+    } catch (e) {
+      // 404 and 410 mean the browser has dropped this subscription for good.
+      if (e.statusCode === 404 || e.statusCode === 410) { tally.gone++; sub.gone = true; await table.deleteRow(sub.ROWID).catch(() => undefined); return false; }
+      tally.failed++;
+      const fails = (Number(sub.fails) || 0) + 1;
+      sub.fails = fails;
+      console.error(JSON.stringify({ action: 'nudge_send', status: e.statusCode || null, error: String(e.body || e.message).slice(0, 200) }));
+      await writeLog(app, { source: 'job', area: 'push', event: 'send_failed', message: String(e.body || e.message).slice(0, 200), status: e.statusCode || undefined, detail: { fails, host: (() => { try { return new URL(sub.endpoint).hostname; } catch (_e) { return null; } })() }, userId: uid, test: uid === '999000000000000001' });
+      if (fails >= 8) { sub.gone = true; await table.deleteRow(sub.ROWID).catch(() => undefined); } else await table.updateRow({ ROWID: sub.ROWID, fails }).catch(() => undefined);
+      return false;
+    }
+  }
+
   for (const sub of subs) {
     const uid = String(sub.user_id);
     if (!users.has(uid)) {
       const profile = (await select(app, 'profiles', `SELECT status, settings_json FROM profiles WHERE user_id = ${uid}`))[0];
-      users.set(uid, { active: Boolean(profile) && profile.status === 'active', settings: nudgeSettings(parse(profile && profile.settings_json, {})), facts: new Map() });
+      const settings = parse(profile && profile.settings_json, {});
+      users.set(uid, { active: Boolean(profile) && profile.status === 'active', settings: nudgeSettings(settings), review: reviewSettings(settings), facts: new Map(), written: new Map() });
     }
     const user = users.get(uid);
     const local = localNow(now, sub.tz || 'UTC') || localNow(now, 'UTC');
-    let payload;
-    if (test) payload = { title: 'Soma', body: 'Notifications work on this device.', url: '/settings/' };
-    else {
-      if (!user.active || !user.settings.on || !due(local, user.settings.minutes, sub.last_day)) { tally.notDue++; continue; }
-      if (!user.facts.has(local.day)) user.facts.set(local.day, await dayFacts(app, uid, local, now));
-      const left = leftToday(user.facts.get(local.day), user.settings.requireWeight);
-      // Either way this device is settled for today: a closed day stays quiet, an open one is nudged exactly once.
-      if (!left.length) { tally.closed++; await table.updateRow({ ROWID: sub.ROWID, last_day: local.day }); continue; }
-      payload = message(left);
+    if (test) { await send(sub, uid, { title: 'Soma', body: 'Notifications work on this device.', url: '/settings/' }); continue; }
+
+    // The week in review first: its own day and time, its own once-a-week mark.
+    const week = user.active ? reviewDueNow(local, user.review, sub.review_week) : null;
+    if (week) {
+      if (!user.written.has(week)) user.written.set(week, (await select(app, 'reviews', `SELECT ROWID FROM reviews WHERE ukey = '${uid}:${week}'`)).length > 0);
+      // Already written (on another device, or opened early): nothing to say, but the week is settled here too.
+      const went = user.written.get(week) || await send(sub, uid, REVIEW_MESSAGE);
+      if (went) await table.updateRow({ ROWID: sub.ROWID, review_week: week }).catch(() => undefined);
+      if (sub.gone) continue;
     }
-    try {
-      await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_secret } }, JSON.stringify(payload), { TTL: 3 * 3600, urgency: 'normal' });
-      tally.sent++;
-      if (!test) await table.updateRow({ ROWID: sub.ROWID, last_day: local.day, fails: 0 });
-    } catch (e) {
-      // 404 and 410 mean the browser has dropped this subscription for good.
-      if (e.statusCode === 404 || e.statusCode === 410) { tally.gone++; await table.deleteRow(sub.ROWID).catch(() => undefined); }
-      else {
-        tally.failed++;
-        const fails = (Number(sub.fails) || 0) + 1;
-        console.error(JSON.stringify({ action: 'nudge_send', status: e.statusCode || null, error: String(e.body || e.message).slice(0, 200) }));
-        await writeLog(app, { source: 'job', area: 'push', event: 'send_failed', message: String(e.body || e.message).slice(0, 200), status: e.statusCode || undefined, detail: { fails, host: (() => { try { return new URL(sub.endpoint).hostname; } catch (_e) { return null; } })() }, userId: uid, test: uid === '999000000000000001' });
-        if (fails >= 8) await table.deleteRow(sub.ROWID).catch(() => undefined); else await table.updateRow({ ROWID: sub.ROWID, fails }).catch(() => undefined);
-      }
-    }
+
+    if (!user.active || !user.settings.on || !due(local, user.settings.minutes, sub.last_day)) { tally.notDue++; continue; }
+    if (!user.facts.has(local.day)) user.facts.set(local.day, await dayFacts(app, uid, local, now));
+    const left = leftToday(user.facts.get(local.day), user.settings.requireWeight);
+    // Either way this device is settled for today: a closed day stays quiet, an open one is nudged exactly once.
+    if (!left.length) { tally.closed++; await table.updateRow({ ROWID: sub.ROWID, last_day: local.day }); continue; }
+    if (await send(sub, uid, message(left))) await table.updateRow({ ROWID: sub.ROWID, last_day: local.day, fails: 0 });
   }
   if (test || tally.sent || tally.gone || tally.failed) console.log(JSON.stringify(Object.assign({ action: test ? 'nudge_test' : 'nudge' }, tally)));
 }
 
-module.exports = { run, localNow, nudgeSettings, due, leftToday, message };
+module.exports = { run, localNow, nudgeSettings, due, leftToday, message, reviewSettings, reviewWeek, reviewDueNow };

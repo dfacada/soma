@@ -45,6 +45,16 @@ check("push-ups and active days add up", n.pushups === 200 && n.activeDays === 2
 check("entries add up", n.entries === 3, n.entries);
 check("a week with nothing logged does not divide by zero", weekNumbers([]).avgKcal === null && weekNumbers([]).daysClosed === 0);
 
+console.log("food streaks");
+const fd = (protein, meals) => ({ day: "x", closed: false, protein, meals, kcal: protein ? 1500 : 0, entries: 0 });
+const week = [fd(210, 4), fd(205, 4), fd(120, 2), fd(200, 4), fd(220, 4), fd(230, 3), fd(0, 0)];
+const f = weekNumbers(week, 200);
+check("days with all four meals", f.mealsDays === 4, f.mealsDays);
+check("days at or over the protein goal", f.proteinDays === 5, f.proteinDays);
+check("the longest run in a row", f.proteinStreak === 3, f.proteinStreak);
+check("the goal is kept with the numbers", f.proteinGoal === 200);
+check("no goal, no protein streak", weekNumbers(week).proteinDays === undefined && weekNumbers(week).mealsDays === 4);
+
 console.log("how it reads");
 const review = { weekStart: "2026-09-28", synopsis: "A steady week.", remember: ["Call the dentist"], threads: ["Walking helped"], noticed: ["4 of 7 closed"], numbers: n, writtenMs: 0, entries: 3 };
 const text = asText(review);

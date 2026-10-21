@@ -33,5 +33,20 @@ check("push-ups alone are activity", n.leftToday({ ...full, types: {}, pushups: 
 check("one thing left reads as a sentence", n.message(["Journal"]), { title: "One to go", body: "Journal closes the day.", url: "/" });
 check("several are listed", n.message(["Weight", "Journal", "2 meals"]), { title: "Three to go", body: "Weight · Journal · 2 meals", url: "/" });
 
+console.log("week in review reminder");
+const rs = n.reviewSettings({ weeklyReview: { on: true, consent: true, dayOfWeek: 0, time: "19:00" } });
+check("on needs both the switch and the consent", [rs.on, n.reviewSettings({ weeklyReview: { on: true, consent: false } }).on, n.reviewSettings({}).on], [true, false, false]);
+check("Sunday 19:00 by default, like the app", { day: n.reviewSettings({ weeklyReview: { on: true, consent: true } }).dayOfWeek, minutes: n.reviewSettings({ weeklyReview: { on: true, consent: true } }).minutes }, { day: 0, minutes: 1140 });
+// The same weeks review.ts reviewDue offers: Sunday evening covers the week ending that day, Monday morning the one before.
+check("Sunday 25 Oct covers the week from Monday the 19th", n.reviewWeek("2026-10-25"), "2026-10-19");
+check("Monday 26 Oct covers the same week", n.reviewWeek("2026-10-26"), "2026-10-19");
+check("due on the day, once the time has come", n.reviewDueNow({ day: "2026-10-25", minutes: 19 * 60 + 5 }, rs, null), "2026-10-19");
+check("not before the time", n.reviewDueNow({ day: "2026-10-25", minutes: 18 * 60 + 59 }, rs, null), null);
+check("not on another day", n.reviewDueNow({ day: "2026-10-24", minutes: 19 * 60 + 5 }, rs, null), null);
+check("not long after (the same window as the nudge)", n.reviewDueNow({ day: "2026-10-25", minutes: 21 * 60 + 1 }, rs, null), null);
+check("once a week per device", n.reviewDueNow({ day: "2026-10-25", minutes: 19 * 60 + 20 }, rs, "2026-10-19"), null);
+const mon = n.reviewSettings({ weeklyReview: { on: true, consent: true, dayOfWeek: 1, time: "08:00" } });
+check("a Monday-morning choice is due on Monday", n.reviewDueNow({ day: "2026-10-26", minutes: 8 * 60 + 10 }, mon, "2026-10-12"), "2026-10-19");
+
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

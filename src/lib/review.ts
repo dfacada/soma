@@ -22,6 +22,9 @@ export type WeekNumbers = {
   daysClosed: number; of: number; streak?: number;
   weightChange?: number | null; avgKcal?: number | null; avgProtein?: number | null;
   pushups?: number; activeDays?: number; steps?: number | null; entries: number;
+  /** Food streaks (added 2026-10-21; absent on older reviews): days with all four meals logged, days at or over the
+   *  protein goal, and the longest run of those in a row inside the week. */
+  mealsDays?: number; proteinDays?: number; proteinStreak?: number; proteinGoal?: number;
 };
 export type StoredReview = { weekStart: string; ciphertext: string; hasAudio: boolean; createdMs: number | null };
 
@@ -76,9 +79,10 @@ export function reviewDue(now: Date, have: string[], setting: { on: boolean; day
 }
 
 /** What the writing is given alongside the entries, so it can hold the week next to the numbers. */
-export type DaySummary = { day: string; closed: boolean; weight?: number; kcal?: number; protein?: number; pushups?: number; activity?: boolean; entries: number };
+export type DaySummary = { day: string; closed: boolean; weight?: number; kcal?: number; protein?: number; meals?: number; pushups?: number; activity?: boolean; entries: number };
 
-export function weekNumbers(days: DaySummary[]): WeekNumbers {
+/** `days` in order, Monday first. `proteinGoal` (grams) turns on the protein days and streak. */
+export function weekNumbers(days: DaySummary[], proteinGoal?: number): WeekNumbers {
   const logged = days.filter((d) => d.kcal !== undefined && d.kcal > 0);
   const weights = days.filter((d) => d.weight !== undefined).map((d) => d.weight as number);
   const avg = (list: number[]) => (list.length ? Math.round(list.reduce((a, b) => a + b, 0) / list.length) : null);
@@ -91,7 +95,17 @@ export function weekNumbers(days: DaySummary[]): WeekNumbers {
     pushups: days.reduce((n, d) => n + (d.pushups || 0), 0),
     activeDays: days.filter((d) => d.activity).length,
     entries: days.reduce((n, d) => n + d.entries, 0),
+    mealsDays: days.filter((d) => (d.meals || 0) >= 4).length,
+    ...(proteinGoal && proteinGoal > 0 ? proteinRun(days, proteinGoal) : {}),
   };
+}
+
+function proteinRun(days: DaySummary[], goal: number) {
+  let proteinDays = 0, run = 0, proteinStreak = 0;
+  for (const d of days) {
+    if ((d.protein || 0) >= goal) { proteinDays++; run++; proteinStreak = Math.max(proteinStreak, run); } else run = 0;
+  }
+  return { proteinDays, proteinStreak, proteinGoal: goal };
 }
 
 /** The review as one block of text: what is read aloud, and what Telegram is sent. */
