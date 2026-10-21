@@ -17,6 +17,7 @@ export const CHANGES: Release[] = [
     items: [
       "Fixed: a recording that couldn't upload straight away (usually because the phone was locked or you switched apps while it was sending) waited until you next unlocked the vault. Now it tries again as soon as you're back in Soma, and every few minutes while it waits. It was always safe on your phone in the meantime.",
       "Admin: the Log reads properly on a phone. Each entry is a card; tap it for the full message, every detail and the stack, and Copy row to paste it anywhere.",
+      "Search your journal: a search box at the top of the Journal finds entries by what you said or wrote, with the words highlighted. It searches on your phone, after your vault is open; nothing you type is sent anywhere.",
     ],
   },
   {

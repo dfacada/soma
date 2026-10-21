@@ -244,3 +244,7 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 
 /* The week in review: the lists under the synopsis. */
 .reviewList { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 7px; font-size: 14px; line-height: 1.55; }
+
+/* Journal search: the field and its count; matches are marked in the journal tint. */
+.searchRow { display: flex; flex-direction: column; gap: 6px; }
+.hit { background: var(--journal-tint); color: var(--journal-ink); border-radius: 3px; padding: 0 1px; }

@@ -2,8 +2,8 @@
 
 // The Journal screen: entries newest first, playback, a written note per entry, and the floating mic.
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card, Icon, MicButton, StageBar, Tag, type StepProgress } from "@/components/ui";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Card, Icon, Input, MicButton, StageBar, Tag, type StepProgress } from "@/components/ui";
 import { report } from "@/lib/log";
 import { clock } from "@/lib/journal";
 import { toWav, within } from "@/lib/playable";
@@ -19,8 +19,29 @@ const dayLabel = (ms: number) => {
 };
 const timeLabel = (ms: number) => new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
 
+/** The words of a search, each escaped for a RegExp. Empty when there is nothing to look for. */
+const termsOf = (q: string) => q.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+
+/** `text` with every term marked. Case-insensitive; the original casing is kept. */
+function Marked({ text, terms }: { text: string; terms: string[] }) {
+  if (!terms.length) return <>{text}</>;
+  const re = new RegExp(`(${terms.join("|")})`, "giu");
+  return <>{text.split(re).map((part, i) => (i % 2 ? <mark key={i} className={a.hit}>{part}</mark> : part))}</>;
+}
+
 export function JournalScreen() {
   const j = useJournal();
+  const [query, setQuery] = useState("");
+  const deferred = useDeferredValue(query);
+  const terms = useMemo(() => termsOf(deferred), [deferred]);
+  // Transcripts are decrypted when the vault opens; this keeps a lower-cased copy of each to match against, rebuilt
+  // only when the entries change. Nothing here leaves the device.
+  const index = useMemo(() => new Map((j.items || []).map((i) => [i.id, (i.entry?.transcript || "").toLocaleLowerCase()])), [j.items]);
+  const shown = useMemo(() => {
+    if (!j.items || !terms.length) return j.items;
+    const res = terms.map((t) => new RegExp(t, "u"));
+    return j.items.filter((i) => { const text = index.get(i.id) || ""; return res.every((re) => re.test(text)); });
+  }, [j.items, terms, index]);
 
   return (
     <div className={`${a.page} ${a.journalPage}`}>
@@ -58,10 +79,22 @@ export function JournalScreen() {
         <Card><p className="muted">Nothing here yet. Tap the microphone and talk for two minutes; that is plenty.</p></Card>
       )}
 
-      {j.items && groupByDay(j.items).map(([label, list]) => (
+      {j.vault === "open" && !!j.items?.length && (
+        <div className={a.searchRow}>
+          <Input type="search" placeholder="Search your transcripts" aria-label="Search transcripts" value={query} enterKeyHint="search"
+            onChange={(ev) => setQuery(ev.target.value)} />
+          {terms.length > 0 && shown && (
+            <span className="m muted" style={{ fontSize: 12 }} role="status">
+              {shown.length === 0 ? "No transcript mentions that" : `${shown.length} of ${j.items.length} ${j.items.length === 1 ? "entry" : "entries"}`}
+            </span>
+          )}
+        </div>
+      )}
+
+      {shown && groupByDay(shown).map(([label, list]) => (
         <section key={label} className={a.dayGroup}>
           <span className="eb">{label}</span>
-          {list.map((item) => <EntryCard key={item.id} item={item} />)}
+          {list.map((item) => <EntryCard key={item.id} item={item} terms={terms} />)}
         </section>
       ))}
 
@@ -79,7 +112,7 @@ function groupByDay(items: Item[]): [string, Item[]][] {
   return [...groups.entries()];
 }
 
-function EntryCard({ item }: { item: Item }) {
+function EntryCard({ item, terms }: { item: Item; terms: string[] }) {
   const j = useJournal();
   const e = item.entry;
   const [editing, setEditing] = useState(false);
@@ -129,7 +162,7 @@ function EntryCard({ item }: { item: Item }) {
       ) : (
         <>
           {e.transcript
-            ? <p className={a.transcript}>{e.transcript}</p>
+            ? <p className={a.transcript}><Marked text={e.transcript} terms={terms} /></p>
             : working
               ? <p className="muted" style={{ fontSize: 13 }}>Transcribing… this usually takes a few seconds.</p>
               : <p className="muted" style={{ fontSize: 13 }}>{j.cloudOn ? "No transcript yet." : "No transcript. Cloud transcription is off; turn it on in Settings, or write a note."}</p>}
