@@ -47,13 +47,20 @@ async function getObject(url: string, onBytes?: (done: number, total: number | n
 
 const fileOf = (id: string) => `${id}.enc`;
 
-/** Encrypt and upload an entry, and its audio when given. Safe to call again: every step overwrites. */
-export async function saveEntry(key: CryptoKey, entry: JournalEntry, audio?: Blob) {
+/** Encrypt and upload an entry, and its audio when given. Safe to call again: every step overwrites.
+ *  `onStep` hears each step as it starts (read, encrypt, put_audio, put_entry, index), so a failure can name one. */
+export async function saveEntry(key: CryptoKey, entry: JournalEntry, audio?: Blob, onStep: (step: string) => void = () => undefined) {
   if (audio) {
-    const bytes = await encryptBytes(key, await audio.arrayBuffer());
+    onStep("read");
+    const plain = await audio.arrayBuffer();
+    onStep("encrypt");
+    const bytes = await encryptBytes(key, plain);
+    onStep("put_audio");
     await putObject((await signed("audio", "PUT", [fileOf(entry.id)])).get(fileOf(entry.id))!, bytes);
   }
+  onStep("put_entry");
   await putObject((await signed("entries", "PUT", [fileOf(entry.id)])).get(fileOf(entry.id))!, await encryptJson(key, entry));
+  onStep("index");
   await api("PUT", `/entries/${entry.id}`, {
     createdMs: new Date(entry.createdAt).getTime(),
     hasAudio: entry.hasAudio, audioSize: entry.audioSize, audioMime: entry.audioMime.slice(0, 60),

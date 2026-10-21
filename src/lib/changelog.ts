@@ -11,6 +11,14 @@ export type Release = { id: string; date: string; title: string; items: string[]
 
 export const CHANGES: Release[] = [
   {
+    id: "2026-10-21",
+    date: "2026-10-21",
+    title: "Recordings reach the cloud",
+    items: [
+      "Fixed: a recording that couldn't upload straight away (usually because the phone was locked or you switched apps while it was sending) waited until you next unlocked the vault. Now it tries again as soon as you're back in Soma, and every few minutes while it waits. It was always safe on your phone in the meantime.",
+    ],
+  },
+  {
     id: "2026-10-20",
     date: "2026-10-20",
     title: "The journal opens again",

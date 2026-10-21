@@ -131,30 +131,60 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   const say = useCallback((m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(null), 2400); }, []);
 
-  // ── Upload whatever is waiting in IndexedDB. Runs on unlock, when the network returns, and after each recording. ──
-  const flushPending = useCallback(async () => {
+  // A recording just made, by pending id, kept in memory until it uploads. Safari can fail to read back a Blob it
+  // has only just stored in IndexedDB ("NotFoundError: The object can not be found here", seen 0.6 s after a stop),
+  // so the first attempts use this copy; after a reload only the IndexedDB one exists.
+  const fresh = useRef(new Map<string, Blob>());
+
+  // ── Upload whatever is waiting in IndexedDB. Runs on unlock, when the network returns, after each recording, when
+  // the app comes back to the front, and on a timer while anything waits. iOS freezes a Home Screen app moments
+  // after it leaves the screen, and an upload in flight dies with "Load failed"; this is what retries it. ──
+  const flushOnce = useCallback(async () => {
     const k = key.current;
-    if (!k) return;
+    if (!k) return 0;
     const waiting = await listPending(userId).catch(() => []);
     for (const rec of waiting) {
+      const kept = fresh.current.get(rec.id);
+      const began = Date.now();
+      let step = "start", wentHidden = document.hidden;
+      const onHide = () => { if (document.hidden) wentHidden = true; };
+      document.addEventListener("visibilitychange", onHide);
       try {
-        await saveEntry(k, rec.entry, rec.audio);
+        await saveEntry(k, rec.entry, kept ?? rec.audio, (s) => { step = s; });
         await deletePending(rec.id);
+        fresh.current.delete(rec.id);
       } catch (e) {
-        report("journal", "upload_failed", e, { attempts: rec.attempts + 1, audioBytes: rec.audio?.size ?? 0, mime: rec.entry.audioMime });
+        report("journal", "upload_failed", e, { attempts: rec.attempts + 1, audioBytes: rec.audio?.size ?? 0, mime: rec.entry.audioMime, step, ms: Date.now() - began, wentHidden, fromMemory: !!kept });
         await putPending({ ...rec, attempts: rec.attempts + 1, lastAttemptAt: Date.now() }).catch(() => undefined);
+      } finally {
+        document.removeEventListener("visibilitychange", onHide);
       }
     }
-    const [left, fresh] = await Promise.all([listPending(userId).catch(() => []), loadEntries(k).catch((e) => { report("journal", "entries_load_failed", e); return null; })]);
-    const unreadable = fresh ? fresh.filter((l) => !l.entry).length : 0;
-    if (unreadable) report("journal", "entries_unreadable", undefined, { count: unreadable, of: fresh!.length }, "warn");
+    const [left, latest] = await Promise.all([listPending(userId).catch(() => []), loadEntries(k).catch((e) => { report("journal", "entries_load_failed", e); return null; })]);
+    const unreadable = latest ? latest.filter((l) => !l.entry).length : 0;
+    if (unreadable) report("journal", "entries_unreadable", undefined, { count: unreadable, of: latest!.length }, "warn");
     setPending(left);
     // A load that failed has to say so: without this the screen sat on "Decrypting entries" for as long as you
     // cared to wait, while the log held the real answer (David, 2026-10-20).
-    setLoadFailed(!fresh);
-    if (fresh) setLoaded(fresh);
+    setLoadFailed(!latest);
+    if (latest) setLoaded(latest);
     return left.length;
   }, [userId]);
+
+  // One pass at a time: two at once uploaded the same recording twice, and the loser could re-save a pending record
+  // the winner had just deleted. A call during a pass gets one more pass after it, so nothing added meanwhile waits.
+  const running = useRef<Promise<number> | null>(null);
+  const queued = useRef<Promise<number> | null>(null);
+  const flushPending = useCallback((): Promise<number> => {
+    const start = () => {
+      const run: Promise<number> = flushOnce().finally(() => { if (running.current === run) running.current = null; });
+      running.current = run;
+      return run;
+    };
+    if (!running.current) return start();
+    if (!queued.current) queued.current = running.current.catch(() => 0).then(() => { queued.current = null; return start(); });
+    return queued.current;
+  }, [flushOnce]);
 
   // A recording that never reached stop() (crash, killed tab) is rebuilt from its chunks and saved like any other.
   const adoptOrphans = useCallback(async () => {
@@ -202,6 +232,18 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     window.addEventListener("online", online);
     return () => window.removeEventListener("online", online);
   }, [flushPending]);
+
+  // While a recording waits to upload: try again whenever the app is back on screen, and on a backoff timer
+  // (30 s, 1, 2, 4, then every 5 minutes) while it stays there.
+  useEffect(() => {
+    if (!pending.length || vault !== "open") return;
+    const tries = Math.min(...pending.map((p) => p.attempts));
+    const wait = Math.min(300000, 30000 * 2 ** Math.max(0, tries - 1));
+    const retry = () => { if (!document.hidden) void flushPending(); };
+    const timer = window.setTimeout(retry, wait);
+    document.addEventListener("visibilitychange", retry);
+    return () => { window.clearTimeout(timer); document.removeEventListener("visibilitychange", retry); };
+  }, [pending, vault, flushPending]);
 
   // ── Transcription (opt-in). Takes the entry and its audio directly so it can run straight after an upload,
   // before React state has caught up. The transcript is encrypted into the entry like any other edit. ──
@@ -259,6 +301,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       report("journal", "device_save_failed", e, { audioBytes: rec.audio.size, mime: rec.audio.type, seconds: rec.seconds });
       return;
     }
+    fresh.current.set("pending_" + entry.id, rec.audio);
     setPending((p) => [...p, { id: "pending_" + entry.id, userId, entry, audio: rec.audio, attempts: 0, lastAttemptAt: null }]);
     if (rec.interrupted) report("journal", "recording_interrupted", undefined, { seconds: rec.seconds, audioBytes: rec.audio.size }, "warn");
     say(rec.interrupted ? "The microphone was interrupted · saved what was recorded" : "Entry saved · uploading…");
