@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Icon, MicButton, Tag } from "@/components/ui";
 import { report } from "@/lib/log";
 import { clock } from "@/lib/journal";
-import { toWav } from "@/lib/playable";
+import { toWav, within } from "@/lib/playable";
 import { dayKey } from "@/lib/today";
 import { useJournal, type Item } from "./Journal";
 import a from "./app.module.css";
@@ -176,6 +176,9 @@ function Player({ id }: { id: string }) {
       return;
     }
     setState("loading");
+    // Every await below is bounded (within): a promise that never settles used to leave the button disabled on
+    // "Decrypting…" with nothing in the log. Now it fails, and the log names the step and how long it had run.
+    const began = Date.now();
     let stage = "unlock", mime = "", bytes = 0;
     try {
       const fresh = audio.current = new Audio();
@@ -184,10 +187,10 @@ function Player({ id }: { id: string }) {
       fresh.onended = () => { setState("paused"); setPos(0); };
       // Still inside the tap. A refusal here is not fatal: the second tap, once loaded, always works.
       fresh.src = SILENCE;
-      const blessed = fresh.play().then(() => true, () => false);
+      const blessed = within(fresh.play(), 5000, "unlock").then(() => true, () => false);
 
       stage = "download";
-      const blob = await j.audioFor(id);
+      const blob = await within(j.audioFor(id), 120000, "download");
       mime = blob.type; bytes = blob.size;
       fresh.dataset.mime = mime;
       url.current = URL.createObjectURL(blob);
@@ -196,19 +199,20 @@ function Player({ id }: { id: string }) {
       fresh.src = url.current;
       stage = "play";
       try {
-        try { await fresh.play(); }
+        try { await within(fresh.play(), 15000, "play"); }
         catch (e) {
           // iOS will not play the WebM it recorded itself, though it decodes it: replay it as WAV.
-          if ((e as { name?: string })?.name !== "NotSupportedError") throw e;
+          // A play() that stalls instead of refusing gets the same treatment.
+          if (!["NotSupportedError", "TimeoutError"].includes((e as { name?: string })?.name || "") || mime.includes("wav")) throw e;
           stage = "convert";
-          const wav = await toWav(blob);
-          report("journal", "playback_converted", e, { from: mime, bytes, wavBytes: wav.size }, "warn");
+          const { wav, via } = await toWav(blob, (step) => { stage = "convert:" + step; });
+          report("journal", "playback_converted", e, { from: mime, bytes, wavBytes: wav.size, via, ms: Date.now() - began }, "warn");
           URL.revokeObjectURL(url.current);
           url.current = URL.createObjectURL(wav);
           mime = fresh.dataset.mime = wav.type;
           fresh.src = url.current;
-          stage = "play";
-          await fresh.play();
+          stage = "play_wav";
+          await within(fresh.play(), 15000, "play_wav");
         }
         setState("playing");
       }
@@ -220,7 +224,7 @@ function Player({ id }: { id: string }) {
         j.say("Ready. Tap play.");
       }
     } catch (e) {
-      report("journal", "playback_failed", e, { stage, mime, bytes, canPlay: mime ? new Audio().canPlayType(mime.split(";")[0]) || "no" : "" });
+      report("journal", "playback_failed", e, { stage, mime, bytes, ms: Date.now() - began, canPlay: mime ? new Audio().canPlayType(mime.split(";")[0]) || "no" : "" });
       if (url.current) { URL.revokeObjectURL(url.current); url.current = null; }
       audio.current = null;
       setState("idle");
