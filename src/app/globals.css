@@ -184,6 +184,14 @@ button {
 .eb { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .muted { color: var(--muted); }
 
+/* Tab switch (Shell): the content cross-fades, short and quiet; the navigation changes at once. Here, not in a CSS
+   module, because a module would hash the transition name. The tab bar and the sidebar are both this nav; only
+   one is ever displayed, so the name is never taken twice. */
+nav[aria-label="Sections"] { view-transition-name: soma-nav; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 150ms; animation-timing-function: ease-out; }
+::view-transition-group(soma-nav), ::view-transition-new(soma-nav) { animation: none; }
+::view-transition-old(soma-nav) { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

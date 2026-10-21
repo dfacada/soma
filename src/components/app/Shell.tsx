@@ -37,9 +37,19 @@ export function Shell({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState<Section[]>(() => (tab ? [tab] : []));
   if (tab && !mounted.includes(tab)) setMounted([...mounted, tab]);
 
+  // A tap cross-fades the switch where the browser can (Safari 18+, Chromium) and motion is welcome. The new view
+  // is captured once React has shown the tab: the layout effect below resolves `landed`, or the guard does.
+  const landed = useRef<(() => void) | null>(null);
   const go = useCallback((s: Section) => {
     navigator.vibrate?.(10); // Android; iOS Safari has no vibration API
-    if (window.location.pathname !== PATHS[s]) window.history.pushState(null, "", PATHS[s]);
+    if (window.location.pathname === PATHS[s]) return;
+    const push = () => window.history.pushState(null, "", PATHS[s]);
+    if (!document.startViewTransition || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return push();
+    document.startViewTransition(() => new Promise<void>((done) => {
+      landed.current = done;
+      window.setTimeout(done, 300);
+      push();
+    }));
   }, []);
 
   // One window scroll, many screens: remember each tab's position and put it back when the tab shows again.
@@ -54,6 +64,8 @@ export function Shell({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     showing.current = tab;
     window.scrollTo(0, (tab && scrolls.current[tab]) || 0);
+    landed.current?.();
+    landed.current = null;
   }, [tab]);
 
   // iOS Safari only applies :active to a touch when some touchstart listener exists; without it no press shows.
