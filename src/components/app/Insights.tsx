@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api, type Days } from "@/lib/api";
 import { dayLog, insights, type Factor, type LogRow } from "@/lib/insights";
+import { Patterns } from "./Patterns";
 import { addDays, dayKey, fromKey, indexDays, WEEKDAYS, type DayMap } from "@/lib/today";
 import { Bar, Button, Card, DayGlyph, Icon, Input, Segmented, Stat } from "@/components/ui";
 import { useDays } from "./Days";
@@ -190,6 +191,8 @@ export function InsightsScreen() {
           </Card>
         </>
       )}
+
+      <Patterns map={data} days={Array.from({ length: n }, (_, d) => dayKey(addDays(today, d - (n - 1))))} />
 
       <div className={a.statGrid}>
         <Stat label="Avg kcal" value={<span className="m">{i.food.loggedDays ? i.food.avgKcal.toLocaleString("en-US") : "—"}</span>} note={i.food.loggedDays ? `${i.food.loggedDays} days logged · ${i.food.onTarget} within 10% of target` : "no food logged"} />
