@@ -8,7 +8,7 @@
 // (/review/) still arrive as `children`. A screen can tell it is hidden with useTabVisible().
 
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { Button, Icon, Sidebar, SideNote, TabBar, TabVisible, type Section } from "@/components/ui";
 import { clock } from "@/lib/journal";
 import { isDevIdentity } from "@/lib/catalyst";
@@ -23,7 +23,9 @@ import { PATHS, tabOf, TabsGo } from "./tabs";
 import { Today } from "./Today";
 import a from "./app.module.css";
 
-const SCREENS: Record<Section, ComponentType> = { today: Today, journal: JournalScreen, food: Food, activity: Activity, insights: InsightsScreen, settings: SettingsScreen };
+// memo: the screens take no props, so a tab switch (which re-renders Shell) re-renders only the two screens whose
+// TabVisible changed, and whatever reads it, instead of every mounted screen.
+const SCREENS: Record<Section, ComponentType> = { today: memo(Today), journal: memo(JournalScreen), food: memo(Food), activity: memo(Activity), insights: memo(InsightsScreen), settings: memo(SettingsScreen) };
 const ORDER = Object.keys(SCREENS) as Section[];
 
 const noop = () => undefined;
