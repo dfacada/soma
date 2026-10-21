@@ -12,7 +12,8 @@ import { clearDraft, deletePending, listOrphanDrafts, listPending, putPending, t
 import { report } from "@/lib/log";
 import { newsDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
-import { transcribe, TranscribeError } from "@/lib/transcribe";
+import { within } from "@/lib/playable";
+import { transcribeAudio, TranscribeError } from "@/lib/transcribe";
 import { createVault, decryptJson, encryptJson, exportKey, fromB64, importKey, toB64, unlockVault, type VaultMeta } from "@/lib/vault-crypto";
 import { enrolledHere, enrolPasskey, forgetThisDevice, passkeyName, passkeySupported, PasskeyError, prepareChallenge, unlockWithPasskey } from "@/lib/vault-passkey";
 import { Button, Input, Sheet, Toast } from "@/components/ui";
@@ -21,6 +22,17 @@ import a from "./app.module.css";
 
 type VaultState = "checking" | "none" | "locked" | "open";
 export type Item = { id: string; createdMs: number; entry: JournalEntry | null; pending: boolean };
+
+/** A recording that has never been transcribed. A transcript or a typed note, whatever its status, is never redone. */
+export const needsTranscript = (e: JournalEntry | null): e is JournalEntry => !!e && e.hasAudio && e.transcriptStatus !== "done" && !e.transcript.trim();
+
+/** One entry of a transcribeMissing run. `stage` and `code` are the ones the admin log gets. */
+export type BatchResult = { id: string; title: string; outcome: "done" | "empty" | "failed"; stage?: string; code?: string; message?: string };
+// Between entries, and the waits after "too busy" (ours or Groq's) before trying the same entry again.
+const BATCH_GAP_MS = 2000;
+const BUSY_WAITS_MS = [15000, 30000, 60000, 120000];
+// One broken file must not hold up the rest: download, up to two transcription jobs (original, then WAV) and the save.
+const ENTRY_MS = 10 * 60 * 1000;
 
 type Journal = {
   vault: VaultState;
@@ -47,6 +59,9 @@ type Journal = {
   transcribing: string[];
   cloudOn: boolean;
   transcribeEntry: (id: string) => void;
+  /** Transcribe, one at a time, every uploaded recording of this account with no transcript yet (needsTranscript).
+   *  `onUpdate` hears the results so far and what is running. Set `stop.now` to finish after the current one. */
+  transcribeMissing: (onUpdate: (results: BatchResult[], current: string | null) => void, stop: { now: boolean }) => Promise<BatchResult[]>;
   say: (message: string) => void;
   /** Small secrets kept outside the journal (the Google Health token): vault-encrypt to base64 and back.
    *  Both reject while the vault is closed. The key itself never leaves this provider. */
@@ -190,25 +205,37 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   // ── Transcription (opt-in). Takes the entry and its audio directly so it can run straight after an upload,
   // before React state has caught up. The transcript is encrypted into the entry like any other edit. ──
-  const runTranscription = useCallback(async (entry: JournalEntry, audio: Blob) => {
+  // One entry, start to finish: transcribe (with the WAV retry), encrypt the transcript into the entry, save it.
+  // Throws a TranscribeError; a failed save is code save_failed with the real error as `cause`.
+  const transcribeAndSave = useCallback(async (entry: JournalEntry, audio: Blob, onStep?: (step: string) => void) => {
     const k = key.current;
-    if (!k) return;
+    if (!k) throw new TranscribeError("vault_closed", "The vault is locked.");
+    const text = await transcribeAudio(entry.id, audio, onStep);
+    const next: JournalEntry = { ...entry, transcript: text, transcriptStatus: text ? "done" : "none", updatedAt: new Date().toISOString() };
+    onStep?.("save");
+    // Two different failures, two different messages: the transcript exists at this point, it just is not stored yet.
+    try { await saveEntry(k, next); }
+    catch (e) { throw Object.assign(new TranscribeError("save_failed", "Transcribed, but the transcript couldn't be saved. Try again."), { cause: e }); }
+    setLoaded((cur) => cur && cur.map((l) => (l.meta.id === entry.id ? { ...l, entry: next } : l)));
+    return text;
+  }, []);
+
+  const runTranscription = useCallback(async (entry: JournalEntry, audio: Blob) => {
+    if (!key.current) return;
     setTranscribing((t) => [...t, entry.id]);
+    let stage = "transcribe";
     try {
-      const text = await transcribe(entry.id, audio);
-      const next: JournalEntry = { ...entry, transcript: text, transcriptStatus: text ? "done" : "none", updatedAt: new Date().toISOString() };
-      // Two different failures, two different messages: the transcript exists at this point, it just is not stored yet.
-      try { await saveEntry(k, next); }
-      catch (e) { report("journal", "transcript_save_failed", e); return say("Transcribed, but the transcript couldn't be saved. Try again."); }
-      setLoaded((cur) => cur && cur.map((l) => (l.meta.id === entry.id ? { ...l, entry: next } : l)));
+      const text = await transcribeAndSave(entry, audio, (step) => { stage = step; });
       say(text ? "Transcript ready" : "Nothing could be made out in that recording");
     } catch (e) {
-      report("journal", "transcription_failed", e, { code: e instanceof TranscribeError ? e.code : "unknown", audioBytes: audio.size, mime: audio.type });
+      const code = e instanceof TranscribeError ? e.code : "unknown";
+      if (code === "save_failed") report("journal", "transcript_save_failed", (e as { cause?: unknown }).cause ?? e);
+      else report("journal", "transcription_failed", e, { code, stage, audioBytes: audio.size, mime: audio.type });
       say(e instanceof TranscribeError ? e.message : "Transcription failed. Try again.");
     } finally {
       setTranscribing((t) => t.filter((x) => x !== entry.id));
     }
-  }, [say]);
+  }, [say, transcribeAndSave]);
 
   // ── Recording ──
   useEffect(() => {
@@ -381,6 +408,51 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     void audioFor(id).then((audio) => runTranscription(found, audio), () => say("Couldn't load that recording"));
   }, [loaded, transcribing, audioFor, runTranscription, say]);
 
+  // Strictly one at a time: the jobs queue answers 429 when several run at once, and Groq has its own limits.
+  // Every failure is logged with its stage; report() folds repeats within 15 s, so one summary row at the end
+  // carries every entry's outcome as well.
+  const transcribeMissing = useCallback(async (onUpdate: (results: BatchResult[], current: string | null) => void, stop: { now: boolean }) => {
+    const todo = (loaded || []).map((l) => l.entry).filter(needsTranscript);
+    const results: BatchResult[] = [];
+    for (const entry of todo) {
+      if (stop.now) break;
+      let stage = "download";
+      onUpdate([...results], `${entry.title} · downloading`);
+      setTranscribing((t) => [...t, entry.id]);
+      try {
+        const audio = await within(audioFor(entry.id), 120000, "download");
+        let text = "";
+        for (let attempt = 0; ; attempt++) {
+          try {
+            text = await within(transcribeAndSave(entry, audio, (step) => { stage = step; onUpdate([...results], `${entry.title} · ${step}`); }), ENTRY_MS, "transcribe");
+            break;
+          } catch (e) {
+            const code = e instanceof TranscribeError ? e.code : "";
+            if ((code !== "queue_busy" && code !== "rate_limited") || attempt >= BUSY_WAITS_MS.length) throw e;
+            onUpdate([...results], `${entry.title} · busy, waiting ${BUSY_WAITS_MS[attempt] / 1000}s`);
+            await new Promise((r) => setTimeout(r, BUSY_WAITS_MS[attempt]));
+          }
+        }
+        results.push({ id: entry.id, title: entry.title, outcome: text ? "done" : "empty" });
+      } catch (e) {
+        const code = e instanceof TranscribeError ? e.code : (e as { name?: string })?.name || "unknown";
+        const message = e instanceof Error ? e.message : String(e);
+        report("journal", "transcription_failed", (e as { cause?: unknown }).cause ?? e, { code, stage, batch: true, entry: entry.id, audioBytes: entry.audioSize, mime: entry.audioMime });
+        results.push({ id: entry.id, title: entry.title, outcome: "failed", stage, code, message });
+      } finally {
+        setTranscribing((t) => t.filter((x) => x !== entry.id));
+      }
+      onUpdate([...results], null);
+      await new Promise((r) => setTimeout(r, BATCH_GAP_MS));
+    }
+    const failed = results.filter((r) => r.outcome === "failed");
+    report("journal", "transcribe_batch", undefined, {
+      found: todo.length, done: results.filter((r) => r.outcome === "done").length, empty: results.filter((r) => r.outcome === "empty").length,
+      failed: failed.length, stopped: stop.now, failures: failed.map((r) => `${r.id}:${r.stage}:${r.code}`).join("; ").slice(0, 2000),
+    }, failed.length ? "warn" : "info");
+    return results;
+  }, [loaded, audioFor, transcribeAndSave]);
+
   const items = useMemo<Item[] | null>(() => {
     if (vault !== "open" || !loaded) return null;
     const uploaded = new Set(loaded.map((l) => l.meta.id));
@@ -406,8 +478,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), here: pkHere }), [pkSupported, pkHere]);
 
   const value = useMemo<Journal>(
-    () => ({ vault, items, loadFailed, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys }),
-    [vault, items, loadFailed, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, say, seal, unseal, passkey, addPasskey, removePasskeys],
+    () => ({ vault, items, loadFailed, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys }),
+    [vault, items, loadFailed, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys],
   );
 
   return (

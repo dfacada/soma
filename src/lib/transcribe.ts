@@ -4,6 +4,7 @@
 
 import { api, ApiError } from "./api";
 import { PUT_HEADERS } from "./journal";
+import { toWav } from "./playable";
 
 type Job = { id: string; status: "queued" | "running" | "done" | "failed"; error: string | null; result: string | null };
 type Signed = { urls: { name: string; url: string }[] };
@@ -46,7 +47,7 @@ export async function transcribe(entryId: string, audio: Blob): Promise<string> 
 
   let job: Job;
   try { job = await api<Job>("POST", "/jobs", { type: "transcribe", entryId, source }); }
-  catch (e) { throw new TranscribeError("queue_failed", e instanceof ApiError && e.status === 429 ? "Several transcriptions are already running. Try again shortly." : "The transcription could not be started."); }
+  catch (e) { throw e instanceof ApiError && e.status === 429 ? new TranscribeError("queue_busy", "Several transcriptions are already running. Try again shortly.") : new TranscribeError("queue_failed", "The transcription could not be started."); }
 
   try {
     const started = Date.now();
@@ -65,4 +66,21 @@ export async function transcribe(entryId: string, audio: Blob): Promise<string> 
     // Removes the row and blanks whatever the job left behind, whether this succeeded or not.
     void api("DELETE", `/jobs/${job.id}`).catch(() => undefined);
   }
+}
+
+const MAX_BYTES = 25 * 1024 * 1024;
+
+/** transcribe(), and when Groq refuses the file itself (it calls some iOS WebM recordings "invalid media"), once
+ *  more as 16 kHz WAV: Whisper's own rate, so nothing is lost, and the WAV that fits the most minutes under 25 MB.
+ *  `onStep` hears transcribe, convert:<step> and transcribe_wav as each starts, so a failure names its stage. */
+export async function transcribeAudio(entryId: string, audio: Blob, onStep: (step: string) => void = () => undefined): Promise<string> {
+  onStep("transcribe");
+  try { return await transcribe(entryId, audio); }
+  catch (e) { if (!(e instanceof TranscribeError) || e.code !== "provider_error" || audio.type.includes("wav")) throw e; }
+  let wav: Blob;
+  try { wav = (await toWav(audio, (step) => onStep("convert:" + step), 16000)).wav; }
+  catch (e) { throw new TranscribeError("convert_failed", `This recording couldn't be converted for transcription (${(e as Error)?.message || e}).`); }
+  if (wav.size > MAX_BYTES) throw new TranscribeError("too_large", explain("too_large"));
+  onStep("transcribe_wav");
+  return transcribe(entryId, wav);
 }

@@ -21,10 +21,10 @@ type Ctx = typeof AudioContext;
 
 /** Decode with an offline context first (no audio session, resamples to RATE); if Safari stalls or refuses it,
  *  a live context. Each attempt gets its own copy of the bytes: decodeAudioData detaches what it is given. */
-async function decode(bytes: ArrayBuffer, note: (step: string) => void): Promise<{ buf: AudioBuffer; via: string }> {
+async function decode(bytes: ArrayBuffer, note: (step: string) => void, rate: number): Promise<{ buf: AudioBuffer; via: string }> {
   note("decode_offline");
   // Held in a variable on purpose: a context nothing refers to can be collected mid-decode, and its promise with it.
-  const offline = new OfflineAudioContext(1, 1, RATE);
+  const offline = new OfflineAudioContext(1, 1, rate);
   let first: unknown;
   try { return { buf: await within(offline.decodeAudioData(bytes.slice(0)), DECODE_MS, "decode_offline"), via: "offline" }; }
   catch (e) { first = e; }
@@ -39,10 +39,11 @@ async function decode(bytes: ArrayBuffer, note: (step: string) => void): Promise
 }
 
 /** Decode a recording and re-encode it as 16-bit mono WAV. Throws if this browser cannot decode it either.
- *  `note` hears each step as it starts, so a failure can be pinned to one. */
-export async function toWav(audio: Blob, note: (step: string) => void = () => undefined): Promise<{ wav: Blob; via: string }> {
+ *  `note` hears each step as it starts, so a failure can be pinned to one. `rate` is the offline decode's rate;
+ *  a live decode (the fallback) keeps the device's own. */
+export async function toWav(audio: Blob, note: (step: string) => void = () => undefined, rate = RATE): Promise<{ wav: Blob; via: string }> {
   note("read");
-  const { buf, via } = await decode(await audio.arrayBuffer(), note);
+  const { buf, via } = await decode(await audio.arrayBuffer(), note, rate);
   note("encode");
   const n = buf.length, channels = buf.numberOfChannels;
   const out = new DataView(new ArrayBuffer(44 + n * 2));
