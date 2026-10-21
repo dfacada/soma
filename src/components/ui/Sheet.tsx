@@ -1,15 +1,23 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useRef, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import s from "./ui.module.css";
 
 type Props = { open: boolean; title: string; onClose: () => void; children: ReactNode };
 
+/** False inside a tab screen that is mounted but not showing (Shell keeps every visited tab mounted). */
+export const TabVisible = createContext(true);
+export const useTabVisible = () => useContext(TabVisible);
+
 /** Bottom sheet on phones, centred dialog from 900px. Closes on Escape and backdrop tap; returns focus to the opener. */
-export function Sheet({ open, title, onClose, children }: Props) {
+export function Sheet({ open: wanted, title, onClose, children }: Props) {
   const titleId = useId();
   const panel = useRef<HTMLDivElement>(null);
+  // A sheet left open in a tab that is now hidden (Back was pressed) must not keep the page locked or answer
+  // Escape; it comes back when its tab does.
+  const visible = useTabVisible();
+  const open = wanted && visible;
 
   useEffect(() => {
     if (!open) return;

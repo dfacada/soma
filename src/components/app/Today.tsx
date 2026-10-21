@@ -7,7 +7,7 @@
 // that says so. The streak and the round stay on today. On a past day the journal can also be written, not only
 // recorded, and the entry is filed under that day marked "added later".
 
-import { useRouter } from "next/navigation";
+import { useGoTab } from "./tabs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Chip, DayGlyph, DayRing, Medallion, Mini, RowHead, Sheet, Toast, type IconName, type MedallionState } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
@@ -27,7 +27,7 @@ const fmt = (n: number) => n.toLocaleString("en-US");
 const ACT_ICONS: Record<string, IconName> = { walk: "walk", gym: "barbell", run: "run" };
 
 export function Today() {
-  const router = useRouter();
+  const goTab = useGoTab();
   const { settings, displayName, me, saveSettings } = useSession();
   const journal = useJournal();
   const rounds = useRounds();
@@ -153,7 +153,7 @@ export function Today() {
       <section className={`${a.hero} ${st.closed ? a.heroClosed : ""}`} aria-label="Today's progress">
         <div className={a.heroTop}>
           <span className="d" style={{ fontSize: 17, letterSpacing: "0.02em" }}>Soma</span>
-          <button type="button" className={a.avatar} aria-label="Settings" onClick={() => router.push("/settings/")}>{initials}</button>
+          <button type="button" className={a.avatar} aria-label="Settings" onClick={() => goTab("settings")}>{initials}</button>
         </div>
         <div className={a.heroMain}>
           <div className={a.ringWrap}>
@@ -251,7 +251,7 @@ export function Today() {
             : !isToday && journal.vault === "open"
               ? <button type="button" className={a.lnk} style={{ color: "var(--journal)" }} onClick={(e) => { e.stopPropagation(); setWriting(true); }}>Write</button>
               : st.journalDone
-                ? <button type="button" className={a.lnk} onClick={(e) => { e.stopPropagation(); router.push("/journal/"); }}>Open</button>
+                ? <button type="button" className={a.lnk} onClick={(e) => { e.stopPropagation(); goTab("journal"); }}>Open</button>
                 : <span className={a.lnk} style={{ color: "var(--journal)" }}>{journal.vault === "open" ? "Record" : journal.vault === "none" ? "Set up" : "Unlock"}</span>}
         />
       </Card>

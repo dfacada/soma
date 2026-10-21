@@ -1,41 +1,60 @@
 "use client";
 
 // Phone: content + tab bar. Desktop (≥ 900px): sidebar + centred column. Same routes either way.
+//
+// The tab screens live here, not in their pages (which render nothing). A tab is mounted the first time it is
+// visited and then kept, hidden, while another shows: switching is a pushState, with no route payload to fetch
+// from Slate, and each tab keeps its scroll position and whatever it was in the middle of. Pages outside the tabs
+// (/review/) still arrive as `children`. A screen can tell it is hidden with useTabVisible().
 
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
-import { Button, Icon, Sidebar, SideNote, TabBar, type Section } from "@/components/ui";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { Button, Icon, Sidebar, SideNote, TabBar, TabVisible, type Section } from "@/components/ui";
 import { clock } from "@/lib/journal";
 import { isDevIdentity } from "@/lib/catalyst";
+import { Activity } from "./Activity";
+import { Food } from "./Food";
+import { InsightsScreen } from "./Insights";
 import { useJournal } from "./Journal";
+import { JournalScreen } from "./JournalScreen";
 import { useSession } from "./Session";
+import { SettingsScreen } from "./Settings";
+import { PATHS, tabOf, TabsGo } from "./tabs";
+import { Today } from "./Today";
 import a from "./app.module.css";
 
-const PATHS: Record<Section, string> = { today: "/", journal: "/journal/", food: "/food/", activity: "/activity/", insights: "/insights/", settings: "/settings/" };
-
-function sectionOf(pathname: string): Section {
-  const first = pathname.split("/").filter(Boolean)[0] as Section | undefined;
-  return first && first in PATHS ? first : "today";
-}
+const SCREENS: Record<Section, ComponentType> = { today: Today, journal: JournalScreen, food: Food, activity: Activity, insights: InsightsScreen, settings: SettingsScreen };
+const ORDER = Object.keys(SCREENS) as Section[];
 
 const noop = () => undefined;
 
 export function Shell({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const routed = sectionOf(usePathname());
+  const tab = tabOf(usePathname());
   const { me } = useSession();
   const journal = useJournal();
-  // The tapped section lights up at once; the route follows when its payload arrives. Any route change (the tap
-  // landing, Back, a link elsewhere) drops it, so the routed section takes over again.
-  const [pending, setPending] = useState<{ to: Section; from: Section } | null>(null);
-  const [seen, setSeen] = useState(routed);
-  if (seen !== routed) { setSeen(routed); setPending(null); }
-  const current = pending && pending.from === routed ? pending.to : routed;
-  const go = (s: Section) => {
+
+  // Mounted on first visit, kept after (adjusting state during render, so the new tab mounts in the same pass).
+  const [mounted, setMounted] = useState<Section[]>(() => (tab ? [tab] : []));
+  if (tab && !mounted.includes(tab)) setMounted([...mounted, tab]);
+
+  const go = useCallback((s: Section) => {
     navigator.vibrate?.(10); // Android; iOS Safari has no vibration API
-    setPending({ to: s, from: routed });
-    router.push(PATHS[s]);
-  };
+    if (window.location.pathname !== PATHS[s]) window.history.pushState(null, "", PATHS[s]);
+  }, []);
+
+  // One window scroll, many screens: remember each tab's position and put it back when the tab shows again.
+  // The ref names the showing tab before scrollTo, so the scroll event that follows is filed under the right one.
+  const scrolls = useRef<Partial<Record<Section, number>>>({});
+  const showing = useRef(tab);
+  useEffect(() => {
+    const save = () => { const t = showing.current; if (t) scrolls.current[t] = window.scrollY; };
+    window.addEventListener("scroll", save, { passive: true });
+    return () => window.removeEventListener("scroll", save);
+  }, []);
+  useLayoutEffect(() => {
+    showing.current = tab;
+    window.scrollTo(0, (tab && scrolls.current[tab]) || 0);
+  }, [tab]);
 
   // iOS Safari only applies :active to a touch when some touchstart listener exists; without it no press shows.
   useEffect(() => {
@@ -43,22 +62,36 @@ export function Shell({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("touchstart", noop);
   }, []);
 
+  // Outside the tabs (/review/), the sidebar and tab bar mark Today, as they always have.
+  const current = tab ?? "today";
   return (
-    <div className={a.shell}>
-      <Sidebar
-        className={a.sidebar}
-        current={current}
-        onSelect={go}
-        footer={<>
-          <Button variant={journal.recording ? "danger" : "journal"} block onClick={() => journal.toggleRecording(null)}>
-            <Icon name="mic" />{journal.recording ? `Stop · ${clock(journal.seconds)}` : "Record an entry"}
-          </Button>
-          <SideNote>{me.email}<br />{me.profile.role === "admin" ? "Admin" : "Member"}{isDevIdentity ? " · dev identity" : ""}</SideNote>
-        </>}
-      />
-      <div className={a.content}>{children}</div>
-      <TabBar className={a.tabbar} current={current} onSelect={go} />
-    </div>
+    <TabsGo.Provider value={go}>
+      <div className={a.shell}>
+        <Sidebar
+          className={a.sidebar}
+          current={current}
+          onSelect={go}
+          footer={<>
+            <Button variant={journal.recording ? "danger" : "journal"} block onClick={() => journal.toggleRecording(null)}>
+              <Icon name="mic" />{journal.recording ? `Stop · ${clock(journal.seconds)}` : "Record an entry"}
+            </Button>
+            <SideNote>{me.email}<br />{me.profile.role === "admin" ? "Admin" : "Member"}{isDevIdentity ? " · dev identity" : ""}</SideNote>
+          </>}
+        />
+        <div className={a.content}>
+          {ORDER.filter((s) => mounted.includes(s)).map((s) => {
+            const Screen = SCREENS[s];
+            return (
+              <div key={s} hidden={s !== tab}>
+                <TabVisible.Provider value={s === tab}><Screen /></TabVisible.Provider>
+              </div>
+            );
+          })}
+          {!tab && children}
+        </div>
+        <TabBar className={a.tabbar} current={current} onSelect={go} />
+      </div>
+    </TabsGo.Provider>
   );
 }
 

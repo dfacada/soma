@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { report } from "@/lib/log";
 import { since } from "@/lib/today";
-import { Bar, Button, Card, Row, Tag } from "@/components/ui";
+import { Bar, Button, Card, Row, Tag, useTabVisible } from "@/components/ui";
 import { needsTranscript, useJournal, type BatchResult } from "./Journal";
 import { LogView } from "./LogView";
 import { useSession } from "./Session";
@@ -41,11 +41,15 @@ export function Admin({ say }: { say: (m: string) => void }) {
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
+  // Settings stays mounted between visits (Shell), so the lists are fetched again each time it shows, as they were
+  // when every visit mounted it afresh.
+  const visible = useTabVisible();
   useEffect(() => {
+    if (!visible) return;
     let alive = true;
     void fetchAll().then((d) => { if (alive) setData(d); }, () => { if (alive) setFailed(true); });
     return () => { alive = false; };
-  }, []);
+  }, [visible]);
 
   const act = useCallback(async (key: string, work: () => Promise<unknown>, done: string) => {
     setBusy(key);

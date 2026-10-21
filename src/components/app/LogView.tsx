@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Button, Card, Segmented, Switch, Tag } from "@/components/ui";
+import { Button, Card, Segmented, Switch, Tag, useTabVisible } from "@/components/ui";
 import a from "./app.module.css";
 
 type Item = { id: string; at: number; level: "error" | "warn" | "info"; source: "client" | "api" | "job"; area: string; event: string; message: string | null; detail: string | null; status: number | null; user: string | null; test: boolean };
@@ -39,14 +39,17 @@ export function LogView() {
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
 
+  // Fetched again each time Settings shows (it stays mounted between visits), so the log is never a stale page.
+  const visible = useTabVisible();
   useEffect(() => {
+    if (!visible) return;
     let alive = true;
     Promise.all([api<{ items: Item[]; more: boolean }>("GET", query(level, source, tests)), api<Summary>("GET", "/admin/logs/summary")]).then(
       ([l, s]) => { if (alive) { setItems(l.items); setMore(l.more); setSummary(s); setFailed(false); } },
       () => { if (alive) setFailed(true); },
     );
     return () => { alive = false; };
-  }, [level, source, tests, tick]);
+  }, [level, source, tests, tick, visible]);
 
   const older = useCallback(async () => {
     if (!items?.length) return;
