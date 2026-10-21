@@ -21,6 +21,7 @@ export const CHANGES: Release[] = [
       "Playing a recording can no longer sit on \"Decrypting…\" forever: if a step stalls, Soma stops, says it couldn't play, and you can tap again.",
       "Opening a recording now shows its progress under the play button: downloading (with how much has arrived), decrypting, and converting when your phone needs it. If a step fails, the bar turns red and says which one.",
       "Fixed: some iPhone recordings came back from transcription with \"Transcription failed\" because the service wouldn't accept the file. Soma now converts those and tries once more, so Transcribe works on them.",
+      "The tabs at the bottom answer the moment you touch them: the one you tapped lights up straight away, and buttons visibly press on iPhone.",
     ],
   },
   {

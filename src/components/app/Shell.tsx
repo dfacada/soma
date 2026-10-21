@@ -3,7 +3,7 @@
 // Phone: content + tab bar. Desktop (≥ 900px): sidebar + centred column. Same routes either way.
 
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button, Icon, Sidebar, SideNote, TabBar, type Section } from "@/components/ui";
 import { clock } from "@/lib/journal";
 import { isDevIdentity } from "@/lib/catalyst";
@@ -18,12 +18,30 @@ function sectionOf(pathname: string): Section {
   return first && first in PATHS ? first : "today";
 }
 
+const noop = () => undefined;
+
 export function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const current = sectionOf(usePathname());
+  const routed = sectionOf(usePathname());
   const { me } = useSession();
   const journal = useJournal();
-  const go = (s: Section) => router.push(PATHS[s]);
+  // The tapped section lights up at once; the route follows when its payload arrives. Any route change (the tap
+  // landing, Back, a link elsewhere) drops it, so the routed section takes over again.
+  const [pending, setPending] = useState<{ to: Section; from: Section } | null>(null);
+  const [seen, setSeen] = useState(routed);
+  if (seen !== routed) { setSeen(routed); setPending(null); }
+  const current = pending && pending.from === routed ? pending.to : routed;
+  const go = (s: Section) => {
+    navigator.vibrate?.(10); // Android; iOS Safari has no vibration API
+    setPending({ to: s, from: routed });
+    router.push(PATHS[s]);
+  };
+
+  // iOS Safari only applies :active to a touch when some touchstart listener exists; without it no press shows.
+  useEffect(() => {
+    document.addEventListener("touchstart", noop, { passive: true });
+    return () => document.removeEventListener("touchstart", noop);
+  }, []);
 
   return (
     <div className={a.shell}>
