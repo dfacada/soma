@@ -5,9 +5,10 @@
 import { api, type EntryMeta } from "./api";
 import { decryptBytes, decryptJson, encryptBytes, encryptJson } from "./vault-crypto";
 import type { JournalEntry } from "./recovery";
+import type { Transport } from "./draft-stream";
 
 type Signed = { urls: { name: string; url: string }[] };
-type Kind = "entries" | "audio";
+type Kind = "entries" | "audio" | "drafts";
 
 async function signed(kind: Kind, method: "PUT" | "GET", names: string[]) {
   const res = await api<Signed>("POST", "/sign", { kind, method, names });
@@ -94,10 +95,16 @@ export async function loadAudio(key: CryptoKey, id: string, mime: string, onProg
 
 export const deleteEntry = (id: string) => api("DELETE", `/entries/${id}`);
 
+// ── Recordings streamed while they are made (draft-stream.ts) ──
+export const draftTransport: Transport = { sign: (method, names) => signed("drafts", method, names), put: putObject, get: getObject };
+export type CloudDraft = { draftId: string; segments: string[]; bytes: number };
+export const listDrafts = () => api<{ drafts: CloudDraft[] }>("GET", "/drafts").then((r) => r.drafts);
+export const deleteDraft = (draftId: string) => api("DELETE", `/drafts/${draftId}`);
+
 const pad = (n: number) => (n < 10 ? "0" : "") + n;
 export const clock = (sec: number) => `${Math.floor(sec / 60)}:${pad(Math.floor(sec % 60))}`;
 
-export function newEntry(audio: Blob, seconds: number, mood: string | null, opts: { createdAt?: Date; recovered?: boolean; addedLater?: boolean } = {}): JournalEntry {
+export function newEntry(audio: Blob, seconds: number, mood: string | null, opts: { createdAt?: Date; recovered?: boolean; addedLater?: boolean; draftId?: string } = {}): JournalEntry {
   const at = opts.createdAt || new Date();
   return {
     id: "e_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
@@ -105,7 +112,7 @@ export function newEntry(audio: Blob, seconds: number, mood: string | null, opts
     title: at.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " · " + at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase(),
     transcript: "", transcriptStatus: "none", mood,
     hasAudio: true, audioSize: audio.size, audioMime: audio.type || "audio/webm", audioDuration: seconds,
-    recovered: opts.recovered || undefined, addedLater: opts.addedLater || undefined, updatedAt: null,
+    recovered: opts.recovered || undefined, addedLater: opts.addedLater || undefined, draftId: opts.draftId, updatedAt: null,
   };
 }
 

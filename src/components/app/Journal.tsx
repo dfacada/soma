@@ -6,7 +6,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
-import { deleteEntry, loadAudio, loadEntries, newEntry, onDay, saveEntry, textEntry, type AudioProgress, type LoadedEntry } from "@/lib/journal";
+import { deleteDraft, deleteEntry, draftTransport, listDrafts, loadAudio, loadEntries, newEntry, onDay, saveEntry, textEntry, type AudioProgress, type LoadedEntry } from "@/lib/journal";
+import { DraftStream, rebuildDraft } from "@/lib/draft-stream";
 import { Recorder, toneStream } from "@/lib/recorder";
 import { clearDraft, deletePending, listOrphanDrafts, listPending, putPending, type JournalEntry, type PendingRecording } from "@/lib/recovery";
 import { report } from "@/lib/log";
@@ -135,6 +136,19 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   // has only just stored in IndexedDB ("NotFoundError: The object can not be found here", seen 0.6 s after a stop),
   // so the first attempts use this copy; after a reload only the IndexedDB one exists.
   const fresh = useRef(new Map<string, Blob>());
+  // The cloud copy of the recording in progress, then of each stopped one until it uploads (draft-stream.ts).
+  const streaming = useRef<DraftStream | null>(null);
+  const streams = useRef(new Map<string, DraftStream>());
+  // The entries as last loaded, for the draft checks below, which run between renders.
+  const latestLoaded = useRef<LoadedEntry[] | null>(null);
+
+  /** The recording is saved: drop its cloud copy. A failure only leaves a draft for the next sweep to delete. */
+  const dropDraft = useCallback((draftId: string | undefined) => {
+    if (!draftId) return;
+    streams.current.get(draftId)?.abort();
+    streams.current.delete(draftId);
+    void deleteDraft(draftId).catch((e) => report("journal", "draft_delete_failed", e, { draftId }, "warn"));
+  }, []);
 
   // ── Upload whatever is waiting in IndexedDB. Runs on unlock, when the network returns, after each recording, when
   // the app comes back to the front, and on a timer while anything waits. iOS freezes a Home Screen app moments
@@ -150,9 +164,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       const onHide = () => { if (document.hidden) wentHidden = true; };
       document.addEventListener("visibilitychange", onHide);
       try {
-        await saveEntry(k, rec.entry, kept ?? rec.audio, (s) => { step = s; });
+        // Already saved from its cloud copy on another device (rebuilt while this one could not upload): keep one.
+        const twin = rec.entry.draftId && latestLoaded.current?.some((l) => l.entry?.draftId === rec.entry.draftId && l.meta.id !== rec.entry.id);
+        if (twin) report("journal", "pending_duplicate_skipped", undefined, { draftId: rec.entry.draftId }, "warn");
+        else await saveEntry(k, rec.entry, kept ?? rec.audio, (s) => { step = s; });
         await deletePending(rec.id);
         fresh.current.delete(rec.id);
+        dropDraft(rec.entry.draftId);
       } catch (e) {
         report("journal", "upload_failed", e, { attempts: rec.attempts + 1, audioBytes: rec.audio?.size ?? 0, mime: rec.entry.audioMime, step, ms: Date.now() - began, wentHidden, fromMemory: !!kept });
         await putPending({ ...rec, attempts: rec.attempts + 1, lastAttemptAt: Date.now() }).catch(() => undefined);
@@ -167,9 +185,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     // A load that failed has to say so: without this the screen sat on "Decrypting entries" for as long as you
     // cared to wait, while the log held the real answer (David, 2026-10-20).
     setLoadFailed(!latest);
-    if (latest) setLoaded(latest);
+    if (latest) { setLoaded(latest); latestLoaded.current = latest; }
     return left.length;
-  }, [userId]);
+  }, [userId, dropDraft]);
 
   // One pass at a time: two at once uploaded the same recording twice, and the loser could re-save a pending record
   // the winner had just deleted. A call during a pass gets one more pass after it, so nothing added meanwhile waits.
@@ -190,12 +208,46 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const adoptOrphans = useCallback(async () => {
     const orphans = await listOrphanDrafts(userId, recorder.current?.draftId || null).catch(() => []);
     for (const o of orphans) {
-      const entry = newEntry(o.audio, 0, null, { createdAt: new Date(o.startedAt), recovered: true });
+      const entry = newEntry(o.audio, 0, null, { createdAt: new Date(o.startedAt), recovered: true, draftId: o.draftId });
       await putPending({ id: "pending_" + entry.id, userId, entry, audio: o.audio, attempts: 0, lastAttemptAt: null });
       await clearDraft(o.draftId);
     }
     return orphans.length;
   }, [userId]);
+
+  // Cloud drafts, after the device's own orphans are adopted and uploads flushed. Each draft is one of:
+  // - the recording in progress here: left alone;
+  // - already an entry, or waiting to upload as one (matched by draft id; a deleted draft can stay listed ~25 s): deleted;
+  // - over a day old: deleted (any recording it held has had a day to upload from its device);
+  // - possibly still being recorded on another device (it would end under 15 minutes ago): left for next time;
+  // - otherwise a recording that never got saved: rebuilt from its segments and saved as a recovered entry.
+  const sweepDrafts = useCallback(async (k: CryptoKey) => {
+    const drafts = await listDrafts().catch((e) => { report("journal", "draft_list_failed", e, undefined, "warn"); return []; });
+    if (!drafts.length) return 0;
+    const waiting = await listPending(userId).catch(() => []);
+    const known = new Set([...(latestLoaded.current || []).map((l) => l.entry?.draftId), ...waiting.map((p) => p.entry.draftId)].filter(Boolean));
+    let recovered = 0;
+    for (const d of drafts) {
+      if (d.draftId === recorder.current?.draftId) continue;
+      const startedMs = Number(d.draftId.slice("draft_".length));
+      const endedMs = startedMs + d.segments.length * 5000;
+      if (known.has(d.draftId) || Date.now() - startedMs > 86400000) { dropDraft(d.draftId); continue; }
+      if (Date.now() - endedMs < 15 * 60000) continue;
+      try {
+        const got = await rebuildDraft(k, d.draftId, d.segments, draftTransport);
+        if (!got) { dropDraft(d.draftId); continue; }
+        const audio = new Blob(got.parts, { type: got.mime });
+        const entry = newEntry(audio, got.seconds, null, { createdAt: new Date(startedMs), recovered: true, draftId: d.draftId });
+        await putPending({ id: "pending_" + entry.id, userId, entry, audio, attempts: 0, lastAttemptAt: null });
+        report("journal", "draft_recovered", undefined, { draftId: d.draftId, segments: got.segments, of: d.segments.length, complete: got.complete, audioBytes: audio.size }, "warn");
+        recovered++;
+      } catch (e) {
+        report("journal", "draft_recover_failed", e, { draftId: d.draftId, segments: d.segments.length });
+      }
+    }
+    if (recovered) await flushPending();
+    return recovered;
+  }, [userId, dropDraft, flushPending]);
 
   const opened = useCallback(async (k: CryptoKey) => {
     key.current = k;
@@ -203,7 +255,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     const recovered = await adoptOrphans();
     await flushPending();
     if (recovered) say(recovered === 1 ? "Recovered an interrupted recording" : `Recovered ${recovered} interrupted recordings`);
-  }, [adoptOrphans, flushPending, say]);
+    const fromCloud = await sweepDrafts(k);
+    if (fromCloud) say(fromCloud === 1 ? "Recovered a recording from the cloud" : `Recovered ${fromCloud} recordings from the cloud`);
+  }, [adoptOrphans, flushPending, sweepDrafts, say]);
 
   // First load: is there a vault, and is its key still cached for this tab?
   useEffect(() => {
@@ -289,9 +343,17 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const stop = useCallback(async () => {
     const rec = await recorder.current?.stop();
     setRecording(false); setSeconds(0);
+    // The cloud copy sends its last few seconds while the whole recording uploads. If the upload lands first, the
+    // copy is dropped (flushOnce); if it never lands, the copy is complete and the next unlock rebuilds it.
+    const stream = streaming.current;
+    streaming.current = null;
+    if (stream) {
+      streams.current.set(stream.draftId, stream);
+      void stream.finish();
+    }
     if (!rec) return;
     const day = dayAtStart.current;
-    const entry = newEntry(rec.audio, rec.seconds, moodAtStart.current, day ? { createdAt: onDay(day), addedLater: true } : {});
+    const entry = newEntry(rec.audio, rec.seconds, moodAtStart.current, day ? { createdAt: onDay(day), addedLater: true, draftId: rec.draftId } : { draftId: rec.draftId });
     // Buffer first: if this fails the recording is not safe and we must not say it is.
     try {
       await putPending({ id: "pending_" + entry.id, userId, entry, audio: rec.audio, attempts: 0, lastAttemptAt: null });
@@ -314,7 +376,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const start = useCallback(async (mood: string | null, day?: string) => {
     moodAtStart.current = mood;
     dayAtStart.current = day;
-    const r = recorder.current = new Recorder(userId, () => stopRef.current());
+    // Each slice also goes to the cloud copy, which starts with the first slice (the draft id exists by then).
+    const r = recorder.current = new Recorder(userId, () => stopRef.current(), (slice) => {
+      if (!streaming.current && key.current && r.draftId) {
+        streaming.current = new DraftStream(key.current, r.draftId, draftTransport, (e, seq) => report("journal", "draft_stream_failed", e, { seq }, "warn"));
+      }
+      streaming.current?.push(slice);
+    });
     try {
       // No microphone in a dev sandbox: ?tone records a test tone instead. Never available to real users.
       const fake = isDevIdentity && new URLSearchParams(window.location.search).has("tone");

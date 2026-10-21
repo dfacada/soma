@@ -26,7 +26,8 @@ export class Recorder {
   draftId: string | null = null;
 
   /** `onInterrupted` fires when the OS takes the microphone away (a phone call, iOS backgrounding the tab). */
-  constructor(private userId: string, private onInterrupted: () => void) {}
+  /** `onSlice` hears every slice as it arrives, for the cloud copy (draft-stream.ts). */
+  constructor(private userId: string, private onInterrupted: () => void, private onSlice: (slice: Blob) => void = () => undefined) {}
 
   get active() { return this.mr !== null; }
   get seconds() { return this.active ? Math.floor((Date.now() - this.startedAt) / 1000) : 0; }
@@ -45,6 +46,7 @@ export class Recorder {
       if (!e.data.size) return;
       const index = this.chunks.length;
       this.chunks.push(e.data);
+      try { this.onSlice(e.data); } catch { /* the cloud copy is extra; recording must not stop for it */ }
       if (this.db) this.writes.push(writeChunk(this.db, this.userId, draftId, index, e.data).catch(() => undefined));
     };
     this.stream.getAudioTracks().forEach((t) => t.addEventListener("ended", () => {

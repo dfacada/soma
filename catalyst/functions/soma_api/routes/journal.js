@@ -112,6 +112,58 @@ router.delete('/entries/:id', member, wrap(async (req, res) => {
   res.json({ deleted: true, objects: objects.filter(Boolean) });
 }));
 
+// ── Recordings streamed while they are made (src/lib/draft-stream.ts) ──
+// Segments live at <user_id>/drafts/cs-<draft id>-<seq>.enc: vault ciphertext, unreadable here. The browser deletes
+// a draft once its recording is saved, and rebuilds one that never was (a killed tab, a lost phone) on the next
+// unlock, on any device. The cs- prefix keeps them apart from transcription's tx- objects in the same folder.
+// Stratus matches a listing prefix only at a folder boundary (drafts/ works, drafts/cs- finds nothing), so the
+// folder is listed and the names are filtered here. Listing returns StratusObject instances: details in keyDetails.
+const DRAFT_ID = /^draft_\d{10,16}$/;
+const SEGMENT = /^cs-(draft_\d{10,16})-(\d{5})\.enc$/;
+const MAX_DRAFT_OBJECTS = 5000;
+
+async function listDraftObjects(bucket, prefix) {
+  const out = [];
+  let token;
+  do {
+    const page = await bucket.listPagedObjects({ prefix, maxKeys: 1000, continuationToken: token });
+    out.push(...(page.contents || []).map((o) => o.keyDetails || o));
+    token = String(page.truncated) === 'true' ? page.next_continuation_token : undefined;
+  } while (token && out.length < MAX_DRAFT_OBJECTS);
+  return out;
+}
+
+// { drafts: [{ draftId, segments: ['cs-…-00000.enc', …] (by sequence), bytes }] }. No modified time: Stratus gives it
+// as local text without a zone, so the browser reckons a draft's age from its id and its segment count.
+router.get('/drafts', member, wrap(async (req, res) => {
+  const bucket = req.admin.stratus().bucket(BUCKET);
+  const base = `${req.user.id}/drafts/`;
+  const byDraft = new Map();
+  for (const o of await listDraftObjects(bucket, base)) {
+    const name = String(o.key || '').slice(base.length);
+    const m = SEGMENT.exec(name);
+    if (!m) continue;
+    const d = byDraft.get(m[1]) || { draftId: m[1], segments: [], bytes: 0 };
+    d.segments.push(name);
+    d.bytes += Number(o.size) || 0;
+    byDraft.set(m[1], d);
+  }
+  const drafts = [...byDraft.values()].map((d) => ({ ...d, segments: d.segments.sort() }));
+  res.json({ drafts });
+}));
+
+router.delete('/drafts/:draftId', member, wrap(async (req, res) => {
+  const draftId = String(req.params.draftId);
+  if (!DRAFT_ID.test(draftId)) throw new HttpError(400, 'bad draft id');
+  const bucket = req.admin.stratus().bucket(BUCKET);
+  const mine = `${req.user.id}/drafts/cs-${draftId}-`;
+  const keys = (await listDraftObjects(bucket, `${req.user.id}/drafts/`)).filter((o) => String(o.key).startsWith(mine)).map((o) => ({ key: o.key }));
+  // Stratus drops deleted objects from listings after a while (about 25 s, measured 2026-10-21), so a draft deleted
+  // just now can still be listed; the browser matches drafts to saved entries by draft id, never by absence.
+  for (let from = 0; from < keys.length; from += 100) await bucket.deleteObjects(keys.slice(from, from + 100));
+  res.json({ deleted: keys.length });
+}));
+
 /** One signature, retried once: the limit above is per moment, so a brief wait is usually all it takes. */
 async function signOne(bucket, key, action) {
   try {

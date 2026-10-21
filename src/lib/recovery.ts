@@ -22,6 +22,9 @@ export type JournalEntry = {
   audioMime: string;
   audioDuration: number; // seconds
   recovered?: boolean;
+  /** The recording's draft (recorder.ts): ties the entry to its streamed cloud copy, so that copy is deleted once
+   *  the entry is saved and never rebuilt into a second entry. Absent on entries made before streaming. */
+  draftId?: string;
   /** Filed under an earlier day from Today's backfill: createdAt is that day, the entry was made later. */
   addedLater?: boolean;
   updatedAt?: string | null;
