@@ -151,7 +151,8 @@ export type StepProgress = number | "unknown" | "atomic";
 
 /** A slim bar for a job of named steps, one segment per step that will run, with the current step's name under it.
  *  `failed` replaces that name with the failure, in the critical colour. `note` replaces it without failing. */
-export function StageBar({ steps, at, progress, detail, failed, note, domain }: { steps: string[]; at: number; progress: StepProgress; detail?: string; failed?: string; note?: string; domain?: Domain }) {
+/** `labelMotion` slides each new step name up into place (the opening splash); off, names simply change. */
+export function StageBar({ steps, at, progress, detail, failed, note, domain, labelMotion = false }: { steps: string[]; at: number; progress: StepProgress; detail?: string; failed?: string; note?: string; domain?: Domain; labelMotion?: boolean }) {
   const frac = typeof progress === "number" ? Math.max(0, Math.min(1, progress)) : 0;
   const pct = Math.round(((at + frac) / steps.length) * 100);
   const label = failed ?? note ?? steps[at];
@@ -171,7 +172,7 @@ export function StageBar({ steps, at, progress, detail, failed, note, domain }: 
         ))}
       </div>
       <div className={s.stageHead} aria-hidden>
-        <span>{label}</span>
+        <span key={labelMotion ? label : undefined} className={labelMotion ? s.stageLabelIn : undefined}>{label}</span>
         {!failed && detail && <span>{detail}</span>}
       </div>
     </div>

@@ -267,6 +267,27 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 /* Opening splash (Splash.tsx): the wordmark and a StageBar naming the real step. As an overlay it covers the app
    until Today is ready, then fades. Under the opening words (80), over the tab bar and sheets. */
 .splashBar { width: min(280px, 100%); }
-.splashOverlay { position: fixed; inset: 0; z-index: 70; background: var(--bone); padding-top: calc(24px + var(--inset-top)); padding-bottom: calc(24px + var(--inset-bottom)); transition: opacity 0.32s ease; }
-.splashLeaving { opacity: 0; pointer-events: none; }
+.splashOverlay { position: fixed; inset: 0; z-index: 70; background: var(--bone); padding-top: calc(24px + var(--inset-top)); padding-bottom: calc(24px + var(--inset-bottom)); transition: opacity 0.36s ease, transform 0.36s ease; overflow: hidden; }
+.splashPage { position: relative; overflow: hidden; }
+/* Ready: lift 8 px and fade, inside the 0.36 s before the overlay unmounts (OpenProgress FADE_MS). */
+.splashLeaving { opacity: 0; transform: translateY(-8px); pointer-events: none; }
+.splashOverlay > :not(.aurora), .splashPage > :not(.aurora) { position: relative; }
+
+/* Soft aurora (chosen 2026-10-21): three soft washes of the journal, food and activity colours drifting behind a still
+   wordmark. Each wash is an outer span sliding along x and an inner span sliding along y, each easing back and forth:
+   together a slow loop, the same path as the preview. Transforms only, no blur filter, so it composites cheaply.
+   --aurora-t (Splash.tsx) sets every animation back to the page's own clock. */
+.aurora { position: absolute; inset: 0; pointer-events: none; }
+.auroraX { position: absolute; left: 50%; top: 50%; width: var(--r); height: var(--r); margin: calc(var(--r) / -2) 0 0 calc(var(--r) / -2);
+  transform: translate(calc(var(--x) - var(--dx)), var(--y)); animation: auroraX var(--px) cubic-bezier(0.37, 0, 0.63, 1) calc(var(--aurora-t, 0ms) - var(--px) / 2) infinite alternate; will-change: transform; }
+.auroraY { position: absolute; inset: 0; border-radius: 50%; opacity: var(--o); background: radial-gradient(circle, var(--c) 0%, transparent 68%);
+  animation: auroraY var(--py) cubic-bezier(0.37, 0, 0.63, 1) var(--aurora-t, 0ms) infinite alternate; will-change: transform; }
+@keyframes auroraX { from { transform: translate(calc(var(--x) - var(--dx)), var(--y)); } to { transform: translate(calc(var(--x) + var(--dx)), var(--y)); } }
+@keyframes auroraY { from { transform: translateY(var(--dy)); } to { transform: translateY(calc(var(--dy) * -1)); } }
+@media (prefers-reduced-motion: reduce) {
+  .aurora { display: none; }
+  /* The still splash, and a plain fade out instead of the lift (globals.css stops every other transition). */
+  .splashOverlay { transition: opacity 0.2s ease !important; }
+  .splashLeaving { transform: none; }
+}
 .patternOnHue { fill: var(--surface); font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }

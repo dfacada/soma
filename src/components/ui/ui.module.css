@@ -86,6 +86,8 @@
 .stageFailFill { background: var(--critical); }
 .stageHead { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
 .stageHead span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.stageLabelIn { animation: stageLabelIn 0.26s ease-out; }
+@keyframes stageLabelIn { from { opacity: 0; transform: translateY(6px); } }
 .stageHead span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .stagesFailed .stageHead span:first-child { color: var(--critical); font-family: var(--font-mono); }
 @keyframes stageSlide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
