@@ -16,28 +16,17 @@ function block(message) {
   process.exit(2);
 }
 
-// Each segment of a compound command on its own, so `cd catalyst && catalyst deploy` is caught.
-const segments = command.split(/&&|\|\||;|\|/).map((s) => s.trim());
-
-for (const seg of segments) {
-  if (/^(npx\s+)?catalyst(\.cmd)?\s+deploy\b/.test(seg) && !/\bdeploy\s+slate\b/.test(seg)) {
-    block(
-      'Blocked: a bare `catalyst deploy` replaces the function env and wipes the secrets from the live function.\n' +
-        'Deploy functions with `node catalyst/deploy.js [soma_api|soma_jobs]`. The frontend is `catalyst deploy slate soma -ni` from catalyst/.',
-    );
-  }
+// Matched anywhere in the command, not per segment: a false positive costs a retry,
+// a miss costs the live secrets.
+if (/\bcatalyst(\.cmd)?\s+deploy\b(?!\s+slate\b)/.test(command)) {
+  block(
+    'Blocked: a bare `catalyst deploy` replaces the function env and wipes the secrets from the live function.\n' +
+      'Deploy functions with `node catalyst/deploy.js [soma_api|soma_jobs]`. The frontend is `catalyst deploy slate soma -ni` from catalyst/.',
+  );
 }
 
-// settings.json auto-allows `node scripts/test-*`, `node docs/checks/*` and read-only git by
-// prefix. Keep those prefixes from reaching outside the folder or writing files.
-for (const seg of segments) {
-  if (/^node\b.*\b(scripts\/test-|docs\/checks\/)/.test(seg) && seg.includes('..')) {
-    block('Blocked: `..` in an auto-allowed node script path. Name the script inside scripts/ or docs/checks/ directly.');
-  }
-  if (/^git\s+(diff|log|show)\b/.test(seg) && /\s--(output|ext-diff)\b/.test(seg)) {
-    block('Blocked: `--output` / `--ext-diff` turn an auto-allowed read-only git command into a write or an external program.');
-  }
-}
+// Permission rules in settings.json are exact commands, so this hook is a safety net, not the boundary.
+const segments = command.split(/\r?\n|&&|\|\||[;&|`]|\$\(|\(/).map((s) => s.trim());
 
 const isCommit =segments.some((seg) => /^git(\s+-C\s+\S+)?\s+commit\b/.test(seg));
 if (!isCommit) process.exit(0);

@@ -5,18 +5,16 @@
       "Bash(npm test)",
       "Bash(npm run build)",
       "Bash(npm run lint)",
-      "Bash(node scripts/test-*)",
-      "Bash(node --import ./scripts/ts-resolve.mjs scripts/test-*)",
-      "Bash(node docs/checks/*)",
-      "Bash(git status*)",
-      "Bash(git diff*)",
-      "Bash(git log*)",
-      "Bash(git show*)",
+      "Bash(node docs/checks/prototype-smoke-mobile.js docs/prototype/soma-prototype.html)",
+      "Bash(node docs/checks/prototype-smoke-desktop.js docs/prototype/soma-prototype.html)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git diff --stat)",
+      "Bash(git log --oneline)",
       "PowerShell(npm run check)",
       "PowerShell(npm test)",
-      "PowerShell(git status*)",
-      "PowerShell(git diff*)",
-      "PowerShell(git log*)"
+      "PowerShell(git status)",
+      "PowerShell(git diff)"
     ]
   },
   "hooks": {
