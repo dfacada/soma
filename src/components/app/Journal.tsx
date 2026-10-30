@@ -610,12 +610,14 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
 function VaultForm({ creating, busy, onSubmit, onSkip, passkeyName, onPasskey }: {
   creating: boolean; busy: boolean; onSubmit: (pass: string) => Promise<string | null>; onSkip: () => void;
-  /** Set when a passkey can open this vault here: its button leads and the passphrase is the fallback. */
+  /** Set when a passkey can open this vault here: its button is all the sheet shows, the passphrase one tap away. */
   passkeyName: string | null; onPasskey: () => Promise<string | null>;
 }) {
   const [pass, setPass] = useState("");
   const [again, setAgain] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [typing, setTyping] = useState(false);
+  const withPass = creating || !passkeyName || typing;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -625,23 +627,38 @@ function VaultForm({ creating, busy, onSubmit, onSkip, passkeyName, onPasskey }:
     setError(await onSubmit(pass));
   }
 
+  const field = (
+    // No autofocus while the passkey button is showing: on a phone the keyboard would cover it.
+    <Input type="password" autoComplete={creating ? "new-password" : "current-password"} placeholder="Vault passphrase" aria-label="Vault passphrase" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus={!passkeyName || typing} />
+  );
+
   return (
     <form className={a.vaultForm} onSubmit={submit}>
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
         {creating
           ? "Your journal is encrypted on this device before it is uploaded. The passphrase never leaves it, so nobody can read your entries, David included. It also cannot be reset: if you forget it, the entries are gone."
-          : "Your journal, your sleep and your Fitbit connection are encrypted with a passphrase only you know. Enter it to record, read entries and sync on this device. Food, weight, check-in and activity work without it."}
+          : "Your journal, sleep and Fitbit are encrypted. Food, weight, check-in and activity work without unlocking."}
       </p>
-      {passkeyName && <>
+      {passkeyName && !typing && <>
         <Button type="button" variant="journal" block disabled={busy} onClick={async () => setError(await onPasskey())}>{busy ? "Unlocking…" : `Unlock with ${passkeyName}`}</Button>
-        <p className="eb" style={{ textAlign: "center" }}>or your passphrase</p>
+        <div className={a.vaultLinks}>
+          <button type="button" className={a.lnk} onClick={() => { setTyping(true); setError(null); }}>Use your passphrase</button>
+          <button type="button" className={a.lnk} onClick={onSkip}>Not now</button>
+        </div>
       </>}
-      {/* No autofocus next to the passkey button: on a phone the keyboard would cover it. */}
-      <Input type="password" autoComplete={creating ? "new-password" : "current-password"} placeholder="Vault passphrase" aria-label="Vault passphrase" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus={!passkeyName} />
-      {creating && <Input type="password" autoComplete="new-password" placeholder="Repeat the passphrase" aria-label="Repeat the passphrase" value={again} onChange={(e) => setAgain(e.target.value)} />}
+      {withPass && creating && <>
+        {field}
+        <Input type="password" autoComplete="new-password" placeholder="Repeat the passphrase" aria-label="Repeat the passphrase" value={again} onChange={(e) => setAgain(e.target.value)} />
+      </>}
+      {withPass && !creating && (
+        <div className={a.vaultRow}>
+          {field}
+          <Button type="submit" variant="journal" disabled={busy}>{busy ? "Unlocking…" : "Unlock"}</Button>
+        </div>
+      )}
       {error && <p role="alert" className={a.noteBad}>{error}</p>}
-      <Button type="submit" variant={passkeyName ? "secondary" : "journal"} block disabled={busy}>{busy ? (creating ? "Creating…" : "Unlocking…") : creating ? "Create vault" : "Unlock"}</Button>
-      {!creating && <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={onSkip}>Not now</button>}
+      {creating && <Button type="submit" variant="journal" block disabled={busy}>{busy ? "Creating…" : "Create vault"}</Button>}
+      {!creating && (!passkeyName || typing) && <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={onSkip}>Not now</button>}
     </form>
   );
 }

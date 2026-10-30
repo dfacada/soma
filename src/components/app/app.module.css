@@ -72,6 +72,10 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 
 /* ── Journal ── */
 .vaultForm { display: flex; flex-direction: column; gap: 10px; }
+.vaultRow { display: flex; gap: 8px; }
+.vaultRow > input { flex: 1; min-width: 0; }
+.vaultLinks { display: flex; justify-content: center; gap: 24px; }
+.vaultLinks > button { min-height: 44px; }
 .dayGroup { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; }
 .dayGroup > :first-child { padding: 0 4px; }
 .entryHead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

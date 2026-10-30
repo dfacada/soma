@@ -11,6 +11,14 @@ export type Release = { id: string; date: string; title: string; items: string[]
 
 export const CHANGES: Release[] = [
   {
+    id: "2026-10-30",
+    date: "2026-10-30",
+    title: "A lighter unlock",
+    items: [
+      "The Unlock your vault sheet is smaller. With Face ID set up, it shows just the Face ID button, with Use your passphrase and Not now underneath; tap Use your passphrase for the box. Without Face ID, the passphrase box and Unlock sit on one line.",
+    ],
+  },
+  {
     id: "2026-10-21",
     date: "2026-10-21",
     title: "Recordings reach the cloud",
