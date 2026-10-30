@@ -28,7 +28,18 @@ for (const seg of segments) {
   }
 }
 
-const isCommit = segments.some((seg) => /^git(\s+-C\s+\S+)?\s+commit\b/.test(seg));
+// settings.json auto-allows `node scripts/test-*`, `node docs/checks/*` and read-only git by
+// prefix. Keep those prefixes from reaching outside the folder or writing files.
+for (const seg of segments) {
+  if (/^node\b.*\b(scripts\/test-|docs\/checks\/)/.test(seg) && seg.includes('..')) {
+    block('Blocked: `..` in an auto-allowed node script path. Name the script inside scripts/ or docs/checks/ directly.');
+  }
+  if (/^git\s+(diff|log|show)\b/.test(seg) && /\s--(output|ext-diff)\b/.test(seg)) {
+    block('Blocked: `--output` / `--ext-diff` turn an auto-allowed read-only git command into a write or an external program.');
+  }
+}
+
+const isCommit =segments.some((seg) => /^git(\s+-C\s+\S+)?\s+commit\b/.test(seg));
 if (!isCommit) process.exit(0);
 
 try {
