@@ -1,0 +1,46 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run check)",
+      "Bash(npm test)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(node scripts/test-*)",
+      "Bash(node --import ./scripts/ts-resolve.mjs scripts/test-*)",
+      "Bash(node docs/checks/*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "PowerShell(npm run check)",
+      "PowerShell(npm test)",
+      "PowerShell(git status*)",
+      "PowerShell(git diff*)",
+      "PowerShell(git log*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.mjs\"",
+            "timeout": 300,
+            "statusMessage": "Checking command"
+          }
+        ]
+      }
+    ]
+  },
+  "skillOverrides": {
+    "catalyst-appsail": "off",
+    "catalyst-zia": "off",
+    "catalyst-smartbrowz": "off",
+    "catalyst-nosql": "off",
+    "catalyst-signals": "off",
+    "catalyst-pricing": "off",
+    "catalyst-cache": "off"
+  }
+}
