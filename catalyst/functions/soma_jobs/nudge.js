@@ -143,14 +143,23 @@ async function run(app, params) {
     }
   }
 
+  // Every owner's profile in one query: this runs 96 times a day, and each query counts against the free tier.
+  const ids = [...new Set(subs.map((s) => String(s.user_id)))].filter((id) => /^\d{1,19}$/.test(id));
+  const profiles = new Map();
+  for (let i = 0; i < ids.length; i += 300) {
+    const page = await select(app, 'profiles', `SELECT user_id, status, settings_json FROM profiles WHERE user_id IN (${ids.slice(i, i + 300).join(', ')}) LIMIT 300`);
+    for (const p of page) profiles.set(String(p.user_id), p);
+  }
+  for (const uid of ids) {
+    const profile = profiles.get(uid);
+    const settings = parse(profile && profile.settings_json, {});
+    users.set(uid, { active: Boolean(profile) && profile.status === 'active', settings: nudgeSettings(settings), review: reviewSettings(settings), facts: new Map(), written: new Map() });
+  }
+
   for (const sub of subs) {
     const uid = String(sub.user_id);
-    if (!users.has(uid)) {
-      const profile = (await select(app, 'profiles', `SELECT status, settings_json FROM profiles WHERE user_id = ${uid}`))[0];
-      const settings = parse(profile && profile.settings_json, {});
-      users.set(uid, { active: Boolean(profile) && profile.status === 'active', settings: nudgeSettings(settings), review: reviewSettings(settings), facts: new Map(), written: new Map() });
-    }
     const user = users.get(uid);
+    if (!user) continue;
     const local = localNow(now, sub.tz || 'UTC') || localNow(now, 'UTC');
     if (test) { await send(sub, uid, { title: 'Soma', body: 'Notifications work on this device.', url: '/settings/' }); continue; }
 

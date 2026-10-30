@@ -17,10 +17,16 @@ const nudge = require('./nudge');
 const { writeLog } = require('./log');
 
 const RETAIN_DAYS = 30;
-// Rides on the 15-minute nudge cron: a small bite each run keeps the log at a month without a job of its own.
+// Rides on the 15-minute nudge cron, but only on the first run after 03:00 UTC: once a day keeps the log at a month
+// without a job of its own, and without spending a query of the monthly free tier on every run.
 async function pruneLogs(app) {
-  const old = (await app.zcql().executeZCQLQuery(`SELECT ROWID FROM logs WHERE created_ms < ${Date.now() - RETAIN_DAYS * 86400000} LIMIT 100`)).map((r) => r.logs.ROWID);
-  if (old.length) await app.datastore().table('logs').deleteRows(old);
+  const now = new Date();
+  if (now.getUTCHours() !== 3 || now.getUTCMinutes() >= 15) return;
+  for (let i = 0; i < 5; i++) {
+    const old = (await app.zcql().executeZCQLQuery(`SELECT ROWID FROM logs WHERE created_ms < ${now.getTime() - RETAIN_DAYS * 86400000} LIMIT 100`)).map((r) => r.logs.ROWID);
+    if (old.length) await app.datastore().table('logs').deleteRows(old);
+    if (old.length < 100) break;
+  }
 }
 
 const BUCKET = 'soma-drafts';
