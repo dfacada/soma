@@ -36,8 +36,9 @@ export function Food() {
   const field = useRef<HTMLInputElement>(null);
   const ateSomethingElse = useCallback((m: Meal) => {
     setSlot(m);
-    field.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    field.current?.focus({ preventScroll: true });
+    // A plain focus: the browser brings the field into view itself, above the keyboard on a phone. Scrolling it to
+    // the centre first put it under the keyboard on iOS.
+    field.current?.focus();
   }, []);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const closeRecipe = useCallback(() => setRecipe(null), []);

@@ -16,6 +16,7 @@ export const CHANGES: Release[] = [
     title: "A lighter unlock",
     items: [
       "The Unlock your vault sheet is smaller. With Face ID set up, it shows just the Face ID button, with Use your passphrase and Not now underneath; tap Use your passphrase for the box. Without Face ID, the passphrase box and Unlock sit on one line.",
+      "Fixed: on iPhone, the tab bar rode up on top of the keyboard and covered what you were typing into (Ate something else on Food was the worst of it). The tab bar now steps aside while you type, and Ate something else brings its box into view above the keyboard.",
     ],
   },
   {

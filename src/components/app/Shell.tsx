@@ -30,10 +30,26 @@ const ORDER = Object.keys(SCREENS) as Section[];
 
 const noop = () => undefined;
 
+/** Is the keyboard up for this element? Text fields only: a checkbox or a button takes focus without one. */
+const typesText = (el: Element | null) =>
+  el instanceof HTMLTextAreaElement || (el instanceof HTMLElement && el.isContentEditable) ||
+  (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"].includes(el.type));
+
 export function Shell({ children }: { children: ReactNode }) {
   const tab = tabOf(usePathname());
   const { me } = useSession();
   const journal = useJournal();
+
+  // iOS keeps the fixed tab bar on the keyboard, where it covers the very field being typed in. It steps aside while
+  // a text field has focus. focusout is read a tick late, so moving between fields does not flicker the bar.
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const on = (e: FocusEvent) => { if (typesText(e.target as Element)) setTyping(true); };
+    const off = () => setTimeout(() => setTyping(typesText(document.activeElement)));
+    document.addEventListener("focusin", on);
+    document.addEventListener("focusout", off);
+    return () => { document.removeEventListener("focusin", on); document.removeEventListener("focusout", off); };
+  }, []);
 
   // Mounted on first visit, kept after (adjusting state during render, so the new tab mounts in the same pass).
   const [mounted, setMounted] = useState<Section[]>(() => (tab ? [tab] : []));
@@ -103,7 +119,7 @@ export function Shell({ children }: { children: ReactNode }) {
           })}
           {!tab && children}
         </div>
-        <TabBar className={a.tabbar} current={current} onSelect={go} />
+        <TabBar className={`${a.tabbar} ${typing ? a.tabbarAway : ""}`} current={current} onSelect={go} />
       </div>
     </TabsGo.Provider>
   );

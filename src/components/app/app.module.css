@@ -4,6 +4,7 @@
 .shell { display: flex; min-height: 100dvh; }
 .sidebar { display: none; }
 .content { flex: 1; min-width: 0; }
+.tabbar.tabbarAway { display: none; }
 @media (min-width: 900px) {
   .sidebar { display: flex; }
   .tabbar { display: none; }
