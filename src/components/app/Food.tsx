@@ -9,14 +9,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, type Extra } from "@/lib/api";
-import { knownFoods, matchFood, type Known } from "@/lib/food-match";
+import { matchFood, type Known } from "@/lib/food-match";
+import { applySaid, knownFromDays, saidLine, type Said } from "@/lib/food-say";
 import { report } from "@/lib/log";
 import { BOWL_VARIANTS, MEAL_PLANS, RECIPES, type Recipe } from "@/lib/food-data";
 import { MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
 import { cap, dayStatus } from "@/lib/today";
 import { Bar, Button, Card, Chip, Input, ProgressRing, Row, Sheet, Toast } from "@/components/ui";
 import { DayBanner } from "./DayBanner";
-import { FoodSay, type Said } from "./FoodSay";
+import { FoodSay } from "./FoodSay";
 import { useDays } from "./Days";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -47,13 +48,7 @@ export function Food() {
   const say = useCallback((m: string) => { setToast(m); window.setTimeout(() => setToast(null), 1800); }, []);
   const closeSwap = useCallback(() => setSwap(null), []);
 
-  // What Soma can answer without asking: the book, the plan, your snacks, and every off-plan item in the 60 days
-  // already loaded. Same name twice keeps the newest, so a correction you made yesterday is what comes back today.
-  const known = useMemo(() => {
-    const seen = new Map<string, Extra>();
-    for (const day of Object.keys(map || {}).sort()) for (const x of map![day]?.log?.extras || []) seen.set(x.name.toLowerCase(), x);
-    return knownFoods({ logged: [...seen.values()], snacks: settings.snacks, plan: Object.values(settings.plan) });
-  }, [map, settings.snacks, settings.plan]);
+  const known = useMemo(() => knownFromDays(map, settings), [map, settings]);
 
   if (error) return <div className={a.page}><span className="d" style={{ fontSize: 28 }}>Couldn&apos;t load food</span><p className="muted">{error}</p><div><Button onClick={reload}>Try again</Button></div></div>;
   if (!map) return <div className={a.page}><span className="eb">Loading</span></div>;
@@ -71,24 +66,8 @@ export function Food() {
     say(had ? `${cap(m)} replaced · ${x.kcal} kcal` : `${cap(m)} · ${x.kcal} kcal`);
   };
 
-  // A day said in one go, in one save: items for the same meal become one snapshot (names joined, numbers summed),
-  // which replaces whatever that meal held; the rest are off-plan items.
-  const logSaid = (items: Said[]) => {
-    const meals = new Map<Meal, PlannedMeal>();
-    for (const x of items) {
-      if (x.meal === "extra") continue;
-      const had = meals.get(x.meal);
-      meals.set(x.meal, had
-        ? { name: `${had.name} + ${x.name}`.slice(0, 80), kcal: had.kcal + x.kcal, protein: had.protein + x.protein, carbs: (had.carbs ?? 0) + x.carbs, fat: (had.fat ?? 0) + x.fat }
-        : { name: x.name, kcal: x.kcal, protein: x.protein, carbs: x.carbs, fat: x.fat });
-    }
-    const extra = items.filter((x) => x.meal === "extra").map(({ name, kcal, protein, carbs, fat }): Extra => ({ name, kcal, protein, carbs, fat }));
-    change("day-logs", k, (d) => {
-      for (const [m, x] of meals) d.log.meals[m] = x;
-      d.log.extras = [...d.log.extras, ...extra];
-    });
-    say(`Logged ${items.length} item${items.length === 1 ? "" : "s"} · ${items.reduce((n, x) => n + x.kcal, 0)} kcal`);
-  };
+  // A day said in one go, in one save.
+  const logSaid = (items: Said[]) => { change("day-logs", k, (d) => applySaid(d.log, items)); say(saidLine(items)); };
 
   async function pick(meal: Meal, recipe: PlannedMeal) {
     setSwap(null);

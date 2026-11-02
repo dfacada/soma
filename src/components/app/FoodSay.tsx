@@ -5,45 +5,44 @@
 // go to POST /food/describe, which splits them into items with the meal each was for; the person checks the list,
 // moves or drops anything, and Log all writes it in one save. Nothing is logged before that tap.
 
-import { useEffect, useRef, useState } from "react";
-import { api, ApiError } from "@/lib/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiError } from "@/lib/api";
+import { describeFood, type Said } from "@/lib/food-say";
 import type { Known } from "@/lib/food-match";
 import { report } from "@/lib/log";
 import { pickMime } from "@/lib/recorder";
-import { MEALS, type Meal } from "@/lib/settings";
+import { MEALS } from "@/lib/settings";
 import { cap } from "@/lib/today";
 import { transcribeAudio } from "@/lib/transcribe";
 import { Button, Card, Icon, Select } from "@/components/ui";
 import a from "./app.module.css";
 
-export type Said = { meal: Meal | "extra"; name: string; kcal: number; protein: number; carbs: number; fat: number; note: string };
+export type { Said };
 
 const TEXT_MAX = 1500;
-const KNOWN_MAX = 60;
 const PLACEHOLDER = "Bacon, egg and cheese on an everything bagel and a small fries for breakfast. A burger with a salad for lunch.";
 
-export function FoodSay({ known, eaten, onLog }: {
-  known: Known[];
-  /** Which meals already hold something today, so the list can say what Log all will replace. */
-  eaten: Record<string, unknown>;
-  onLog: (items: Said[]) => void;
-}) {
-  const [text, setText] = useState("");
-  const [items, setItems] = useState<Said[] | null>(null);
-  const [busy, setBusy] = useState<"listening" | "transcribing" | "reading" | null>(null);
-  const [error, setError] = useState<string | null>(null);
+/** Records what you say and hands back the words: start, then stop resolves to the transcript ("" when nothing was
+ *  heard). Errors are reported here and come back as a sentence: to `onError` when given (Today's toast), otherwise in
+ *  `error`. Used by the box below and Today's card. */
+export function useSayRecorder(onError?: (message: string) => void) {
+  const [state, setState] = useState<"idle" | "listening" | "transcribing">("idle");
   const [seconds, setSeconds] = useState(0);
+  const [shown, setError] = useState<string | null>(null);
+  const tell = useRef(onError);
+  useEffect(() => { tell.current = onError; }, [onError]);
+  const fail = useCallback((m: string) => { if (tell.current) tell.current(m); else setError(m); }, []);
   const rec = useRef<{ mr: MediaRecorder; stream: MediaStream; chunks: Blob[]; timer: number } | null>(null);
 
   // A recording left running when the screen goes away still has the microphone; let it go.
   useEffect(() => () => { const r = rec.current; if (r) { window.clearInterval(r.timer); r.stream.getTracks().forEach((t) => t.stop()); } }, []);
 
-  async function listen() {
+  const start = useCallback(async () => {
     setError(null);
-    if (typeof MediaRecorder === "undefined") return setError("This browser can't record. Use the keyboard's mic instead.");
+    if (typeof MediaRecorder === "undefined") { fail("This browser can't record. Type it on Food instead."); return false; }
     let stream: MediaStream;
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); }
-    catch (e) { report("food", "mic_denied", e, undefined, "warn"); return setError("Soma can't use the microphone. Allow it in Settings, or use the keyboard's mic."); }
+    catch (e) { report("food", "mic_denied", e, undefined, "warn"); fail("Soma can't use the microphone. Allow it in Settings, or type it on Food."); return false; }
     const mime = pickMime();
     const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
     const chunks: Blob[] = [];
@@ -53,45 +52,72 @@ export function FoodSay({ known, eaten, onLog }: {
     rec.current = { mr, stream, chunks, timer };
     setSeconds(0);
     mr.start(1000);
-    setBusy("listening");
-  }
+    setState("listening");
+    return true;
+  }, [fail]);
 
-  async function stopListening() {
+  const stop = useCallback(async (): Promise<string> => {
     const r = rec.current;
-    if (!r) return;
+    if (!r) return "";
     rec.current = null;
     window.clearInterval(r.timer);
     await new Promise<void>((resolve) => { r.mr.addEventListener("stop", () => resolve(), { once: true }); try { r.mr.stop(); } catch { resolve(); } });
     r.stream.getTracks().forEach((t) => t.stop());
-    if (!r.chunks.length) { setBusy(null); return; }
-    setBusy("transcribing");
+    if (!r.chunks.length) { setState("idle"); return ""; }
+    setState("transcribing");
     try {
       const heard = await transcribeAudio("food_" + Date.now(), new Blob(r.chunks, { type: r.chunks[0].type || r.mr.mimeType }));
-      if (!heard) setError("Didn't catch any words. Try again, or type it.");
-      else setText((t) => (t.trim() ? t.trim() + " " : "") + heard);
-      setItems(null);
+      if (!heard) fail("Didn't catch any words. Try again.");
+      return heard || "";
     } catch (e) {
       report("food", "say_transcribe_failed", e);
-      setError((e as Error)?.message || "Couldn't turn that into words. Type it instead.");
-    } finally { setBusy(null); }
+      fail((e as Error)?.message || "Couldn't turn that into words. Try again.");
+      return "";
+    } finally { setState("idle"); }
+  }, [fail]);
+
+  return { state, seconds, error: shown, setError, fail, start, stop };
+}
+
+/** "1:05". */
+export const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+/** The describe call's failure as a sentence, reported once. */
+export function describeError(e: unknown) {
+  report("food", "describe_failed", e, undefined, e instanceof ApiError && e.status < 500 ? "warn" : "error");
+  return e instanceof ApiError ? cap(e.message) + "." : "Couldn't read that. Try again in a moment.";
+}
+
+export function FoodSay({ known, eaten, onLog }: {
+  known: Known[];
+  /** Which meals already hold something today, so the list can say what Log all will replace. */
+  eaten: Record<string, unknown>;
+  onLog: (items: Said[]) => void;
+}) {
+  const [text, setText] = useState("");
+  const [items, setItems] = useState<Said[] | null>(null);
+  const [reading, setReading] = useState(false);
+  const voice = useSayRecorder();
+  const error = voice.error, setError = voice.setError;
+  const busy = voice.state !== "idle" ? voice.state : reading ? "reading" : null;
+
+  async function stopListening() {
+    const heard = await voice.stop();
+    if (heard) { setText((t) => (t.trim() ? t.trim() + " " : "") + heard); setItems(null); }
   }
 
   async function read() {
     const said = text.trim();
     if (!said || busy) return;
     setError(null);
-    setBusy("reading");
+    setReading(true);
     try {
-      // Your own foods, newest logged first, so "my shake" comes back with your numbers. The recipe book stays home.
-      const mine = known.filter((k) => k.source !== "recipe").reverse().slice(0, KNOWN_MAX)
-        .map(({ name, kcal, protein, carbs, fat }) => ({ name, kcal, protein, carbs, fat }));
-      const got = await api<{ items: Said[] }>("POST", "/food/describe", { text: said, known: mine });
-      if (!got.items.length) setError("Didn't find any food in that. Say what you ate and which meal it was.");
-      setItems(got.items.length ? got.items : null);
+      const got = await describeFood(said, known);
+      if (!got.length) setError("Didn't find any food in that. Say what you ate and which meal it was.");
+      setItems(got.length ? got : null);
     } catch (e) {
-      report("food", "describe_failed", e, undefined, e instanceof ApiError && e.status < 500 ? "warn" : "error");
-      setError(e instanceof ApiError ? cap(e.message) + "." : "Couldn't read that. Try again in a moment.");
-    } finally { setBusy(null); }
+      setError(describeError(e));
+    } finally { setReading(false); }
   }
 
   function logAll() {
@@ -113,8 +139,8 @@ export function FoodSay({ known, eaten, onLog }: {
         value={text} onChange={(e) => { setText(e.target.value); if (items) setItems(null); }} disabled={busy === "listening" || busy === "transcribing"} />
       <div className={a.rowButtons}>
         {busy === "listening"
-          ? <Button variant="danger" onClick={() => void stopListening()}><Icon name="mic" />Stop · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</Button>
-          : <Button variant="secondary" disabled={busy !== null} onClick={() => void listen()}><Icon name="mic" />{busy === "transcribing" ? "Writing it down…" : "Speak"}</Button>}
+          ? <Button variant="danger" onClick={() => void stopListening()}><Icon name="mic" />Stop · {mmss(voice.seconds)}</Button>
+          : <Button variant="secondary" disabled={busy !== null} onClick={() => void voice.start()}><Icon name="mic" />{busy === "transcribing" ? "Writing it down…" : "Speak"}</Button>}
         <Button variant="food" disabled={!text.trim() || busy !== null} onClick={() => void read()}>{busy === "reading" ? "Reading…" : items ? "Read it again" : "Fill it in"}</Button>
       </div>
       {error && <p role="alert" className={a.noteBad}>{error}</p>}

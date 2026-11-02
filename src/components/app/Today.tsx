@@ -17,6 +17,8 @@ import { DayBanner, longDay } from "./DayBanner";
 import { FitbitBanner } from "./FitbitBanner";
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
+import { describeError, mmss, useSayRecorder } from "./FoodSay";
+import { applySaid, describeFood, knownFromDays, saidLine } from "@/lib/food-say";
 import { PushSheet } from "./PushSheet";
 import { WeightSheet } from "./WeightSheet";
 import { useRounds } from "./Rounds";
@@ -40,7 +42,12 @@ export function Today() {
   const [weightSheet, setWeightSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
-  const say = useCallback((m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(null), 1800); }, []);
+  const say = useCallback((m: string, ms = 1800) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(null), ms); }, []);
+  // The Food card records like the Journal card: tap, say the day's food, tap again, and it is logged.
+  // What went wrong shows as a toast for a few seconds; the card stays on the day's meals.
+  const foodFailed = useCallback((m: string) => say(m, 4500), [say]);
+  const voice = useSayRecorder(foodFailed);
+  const [reading, setReading] = useState(false);
 
   const closePush = useCallback(() => setPushSheet(false), []);
   const closeWeight = useCallback(() => setWeightSheet(false), []);
@@ -122,7 +129,30 @@ export function Today() {
     : st.leftMeals.length === 1
       ? `${cap(st.leftMeals[0])} left: ${settings.plan[st.leftMeals[0]].name} · ${fmt(st.kcal)} kcal so far`
       : `${st.leftMeals.length} meals left · ${fmt(st.kcal)} kcal so far`;
-  const foodState: MedallionState = st.foodDone ? "done" : st.meals ? "part" : "idle";
+  const foodState: MedallionState = voice.state === "listening" ? "rec" : st.foodDone ? "done" : st.meals ? "part" : "idle";
+  const sayFood = settings.foodEstimate;
+  const foodBusy = voice.state === "transcribing" || reading;
+  const foodLine = voice.state === "listening" ? "Listening. Say what you ate, then tap again."
+    : voice.state === "transcribing" ? "Writing it down…"
+    : reading ? "Working out what you ate…"
+    : foodSub;
+  // Nothing to check before it lands: meals you name replace what they held, the rest go under Something else, and
+  // Food shows it all to change. The day is the one picked when the recording stopped.
+  const tapFood = async () => {
+    if (foodBusy) return;
+    if (voice.state !== "listening") { await voice.start(); return; }
+    const day = k;
+    const heard = await voice.stop();
+    if (!heard) return;
+    setReading(true);
+    try {
+      const items = await describeFood(heard, knownFromDays(map, settings));
+      if (!items.length) voice.fail("Didn't hear any food in that. Tap and say what you ate.");
+      else { change("day-logs", day, (d) => applySaid(d.log, items)); say(saidLine(items), 3500); }
+    } catch (e) {
+      voice.fail(describeError(e));
+    } finally { setReading(false); }
+  };
 
   // ── Weight ──
   // The most recent weight before today, for the one-tap "same as last" and the change since.
@@ -258,15 +288,20 @@ export function Today() {
         />
       </Card>
 
-      <Card>
+      <Card recording={voice.state === "listening"} onClick={sayFood ? () => void tapFood() : undefined}
+        aria-label={sayFood ? (voice.state === "listening" ? "Stop and log what you ate" : isToday ? "Say what you ate today" : `Say what you ate on ${longDay(view)}`) : undefined}>
         {/* Wraps: minis sit beside the title when there is room (desktop) and drop below it on a phone. */}
         <div className={a.task}>
         <RowHead
-          lead={<Medallion domain="food" icon="leaf" state={foodState} />}
+          lead={<Medallion domain="food" icon={voice.state === "listening" ? "mic" : "leaf"} state={foodState} />}
           title="Food"
-          sub={foodSub}
+          sub={sayFood ? foodLine : foodSub}
+          trail={!sayFood ? undefined : voice.state === "listening"
+            ? <span className={`m ${a.recTime}`}>{mmss(voice.seconds)}</span>
+            : <span className={a.lnk} style={{ color: "var(--food)" }}>{foodBusy ? "…" : "Speak"}</span>}
         />
-            <div className={a.minis}>
+            {/* The meal taps are their own: they never start a recording. */}
+            <div className={a.minis} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
               {MEALS.map((m) => (
                 <Mini key={m} domain="food" icon={m} label={`${cap(m)}: ${settings.plan[m].name}`} state={eaten[m] ? "on" : "empty"}
                   onClick={() => change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; })} />
