@@ -16,6 +16,7 @@ import { MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
 import { cap, dayStatus } from "@/lib/today";
 import { Bar, Button, Card, Chip, Input, ProgressRing, Row, Sheet, Toast } from "@/components/ui";
 import { DayBanner } from "./DayBanner";
+import { FoodSay, type Said } from "./FoodSay";
 import { useDays } from "./Days";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -70,6 +71,25 @@ export function Food() {
     say(had ? `${cap(m)} replaced · ${x.kcal} kcal` : `${cap(m)} · ${x.kcal} kcal`);
   };
 
+  // A day said in one go, in one save: items for the same meal become one snapshot (names joined, numbers summed),
+  // which replaces whatever that meal held; the rest are off-plan items.
+  const logSaid = (items: Said[]) => {
+    const meals = new Map<Meal, PlannedMeal>();
+    for (const x of items) {
+      if (x.meal === "extra") continue;
+      const had = meals.get(x.meal);
+      meals.set(x.meal, had
+        ? { name: `${had.name} + ${x.name}`.slice(0, 80), kcal: had.kcal + x.kcal, protein: had.protein + x.protein, carbs: (had.carbs ?? 0) + x.carbs, fat: (had.fat ?? 0) + x.fat }
+        : { name: x.name, kcal: x.kcal, protein: x.protein, carbs: x.carbs, fat: x.fat });
+    }
+    const extra = items.filter((x) => x.meal === "extra").map(({ name, kcal, protein, carbs, fat }): Extra => ({ name, kcal, protein, carbs, fat }));
+    change("day-logs", k, (d) => {
+      for (const [m, x] of meals) d.log.meals[m] = x;
+      d.log.extras = [...d.log.extras, ...extra];
+    });
+    say(`Logged ${items.length} item${items.length === 1 ? "" : "s"} · ${items.reduce((n, x) => n + x.kcal, 0)} kcal`);
+  };
+
   async function pick(meal: Meal, recipe: PlannedMeal) {
     setSwap(null);
     try {
@@ -105,6 +125,8 @@ export function Food() {
           <Bar label="Fat" value={st.fat} max={g.fat} color="var(--food-bar)" />
         </div>
       </Card>
+
+      {settings.foodEstimate && <FoodSay known={known} eaten={eaten} onLog={logSaid} />}
 
       {MEALS.map((m) => {
         const slot = eaten[m];

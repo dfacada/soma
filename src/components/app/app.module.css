@@ -225,6 +225,9 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 /* Food: the estimate waiting to be checked before it is logged. */
 .draft { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--hairline); border-radius: var(--r-card); background: var(--surface-2); }
 .draftHead { display: flex; flex-direction: column; gap: 4px; }
+.saidRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--hairline); }
+.saidActions { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+@media (max-width: 420px) { .saidRow { flex-direction: column; align-items: stretch; } .saidActions { justify-content: space-between; } }
 .macroFields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .macroField { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .macroField input { text-align: center; padding-left: 6px; padding-right: 6px; }
