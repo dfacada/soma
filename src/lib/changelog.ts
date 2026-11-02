@@ -17,6 +17,7 @@ export const CHANGES: Release[] = [
     items: [
       "Food has a new box at the top: tell it your whole day at once, like \"a bacon, egg and cheese on an everything bagel and a small fries for breakfast, a burger with a salad for lunch\". Tap Speak to say it out loud, or type it, then Fill it in. Soma splits it into items with the calories, protein, carbs and fat, and puts each one under the meal you said. Move anything to another meal or remove it, then Log all. Foods you've logged before come back with your own numbers. Meals you said replace what was logged for them; anything without a meal goes under Something else. The meal buttons and Ate something else work as before.",
       "Or skip Food altogether: tap the Food card on Today, say what you ate and which meal it was, and tap it again. It's logged straight away, with no list to check, the same way the Journal card records. The meal buttons on the card still just tick off your planned meals, and anything that came out wrong can be changed on Food.",
+      "The Run button on the Activity card now shows someone running, instead of a stopwatch.",
     ],
   },
   {

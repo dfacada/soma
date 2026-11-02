@@ -66,10 +66,13 @@ const PATHS = {
       <path d="M16 11c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5z" />
     </>
   ),
+  // A figure mid-stride (the prototype's was a stopwatch, which nobody read as running).
   run: (
     <>
-      <circle cx="12" cy="13" r="7" />
-      <path d="M12 13V9M10 3h4" />
+      <circle cx="15.5" cy="4.5" r="2" />
+      <path d="M14 8l-3 5.5" />
+      <path d="M13.5 9l3 2 2.5-1.5M13.5 9H10l-2 2.5" />
+      <path d="M11 13.5l3.5 2.5-1 4.5M11 13.5l-2 3.5H5" />
     </>
   ),
   gear: (
