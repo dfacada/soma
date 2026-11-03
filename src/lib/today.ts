@@ -103,10 +103,11 @@ export type Todo = { label: string; color: string };
 
 /** Hero headline, sub-line and the chips for what is left. */
 export function headline(st: DayStatus, streakNow: number, hour: number): { big: string; sub: string; todos: Todo[] } {
+  // Each dot is its task's domain colour, the same as its bead on the orb.
   const todos: Todo[] = [];
-  if (st.weightRequired && !st.weightDone) todos.push({ label: "Weight", color: "var(--food-bar)" });
+  if (st.weightRequired && !st.weightDone) todos.push({ label: "Weight", color: "var(--food)" });
   if (!st.checkinDone) todos.push({ label: "Check in", color: "var(--journal)" });
-  if (!st.journalDone) todos.push({ label: "Journal", color: "var(--journal-soft)" });
+  if (!st.journalDone) todos.push({ label: "Journal", color: "var(--journal)" });
   if (!st.foodDone) todos.push({ label: st.leftMeals.length === 1 ? cap(st.leftMeals[0]) : `${st.leftMeals.length} meals`, color: "var(--food)" });
   if (!st.activityDone) todos.push({ label: "Any activity", color: "var(--activity)" });
 

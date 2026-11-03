@@ -59,7 +59,7 @@ export function Activity() {
     <div className={a.page}>
       <div className={a.pageHead}>
         <div>
-          <div className="eb">{st.acts} of {st.actTotal} logged {isToday ? "today" : "that day"} · {run ? `${run} full day${run === 1 ? "" : "s"} in a row` : "a full day starts the run"}</div>
+          <div className="eb">{st.acts} of {st.actTotal} logged {isToday ? "today" : "that day"}{run ? ` · ${run} day${run === 1 ? "" : "s"} in a row` : ""}</div>
           <div className={`d ${a.pageTitle}`}>Activity</div>
         </div>
       </div>
@@ -152,7 +152,7 @@ function RoundCards({ round, myLog, say, onManage }: { round: RoundRow; myLog: L
 
   const head = (
     <div className={a.entryHead}>
-      <span className="eb" style={{ color: "var(--ink)" }}>{joined ? `${round.me!.dailyTarget} push-ups · ` : ""}{round.name}</span>
+      <span className="eb">{joined ? `${round.me!.dailyTarget} push-ups · ` : ""}{round.name}</span>
       <span className="m muted" style={{ fontSize: 12 }}>{phase === "upcoming" ? `starts ${round.startDate}` : phase === "finished" ? "finished" : `Day ${day} of ${round.lengthDays}`}</span>
     </div>
   );
@@ -217,7 +217,7 @@ function RoundCards({ round, myLog, say, onManage }: { round: RoundRow; myLog: L
 
       <Card className={a.board}>
         <div className={a.entryHead} style={{ paddingBottom: 6 }}>
-          <span className="eb" style={{ color: "var(--ink)" }}>Leaderboard · {rows.length} member{rows.length === 1 ? "" : "s"}</span>
+          <span className="eb">Leaderboard · {rows.length} member{rows.length === 1 ? "" : "s"}</span>
           <span className="muted" style={{ fontSize: 12 }}>Against your own target</span>
         </div>
         {!board && <p className="muted" style={{ fontSize: 13 }}>Loading the board…</p>}

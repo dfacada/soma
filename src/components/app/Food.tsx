@@ -123,10 +123,10 @@ export function Food() {
             <div className={sc.mealHead}>
               <span className={sc.mealIcon}><Icon name={done ? "check" : m} size={18} strokeWidth={done ? 2.4 : 1.75} /></span>
               <span className="eb">{cap(m)}</span>
-              <span className="m" style={{ fontSize: 12, color: done ? "var(--food)" : "var(--muted)" }}>{shown.kcal} kcal · {done ? "eaten" : "planned"}</span>
+              <span className={`${sc.mealState} ${done ? sc.mealStateOn : ""}`}>{done ? "Eaten" : "Planned"}</span>
             </div>
-            <Row name={shown.name} sub={`${shown.protein} g protein${shown.carbs !== undefined ? ` · ${shown.carbs} g carbs · ${shown.fat ?? 0} g fat` : ""}`} value={<span style={{ color: done ? "var(--ink)" : "var(--muted)" }}>{shown.kcal}</span>} />
-            <div className={a.rowButtons}>
+            <Row name={shown.name} sub={`${shown.protein} g protein${shown.carbs !== undefined ? ` · ${shown.carbs} g carbs · ${shown.fat ?? 0} g fat` : ""}`} value={<span style={{ color: done ? "var(--ink)" : "var(--muted)" }}>{shown.kcal} kcal</span>} />
+            <div className={sc.mealButtons}>
               <Button size="sm" variant={done ? "secondary" : "food"} onClick={() => change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; })}>{done ? "Undo" : "Mark eaten"}</Button>
               {!done && <Button size="sm" variant="secondary" onClick={() => setSwap(m)}>Swap meal</Button>}
               <Button size="sm" variant="secondary" onClick={() => ateSomethingElse(m)}>Ate something else</Button>
@@ -138,7 +138,7 @@ export function Food() {
 
       <Card>
         <div className={a.entryHead}>
-          <span className="eb" style={{ color: "var(--ink)" }}>Something else</span>
+          <span className="eb">Something else</span>
           <span className="m muted" style={{ fontSize: 12 }}>{extras.length ? `${extras.reduce((n, x) => n + x.kcal, 0)} kcal` : "off-plan items"}</span>
         </div>
         {extras.map((x, i) => (
@@ -155,7 +155,7 @@ export function Food() {
 
       <Card>
         <div className={a.entryHead}>
-          <span className="eb" style={{ color: "var(--ink)" }}>Recipes</span>
+          <span className="eb">Recipes</span>
           <span className="muted" style={{ fontSize: 12 }}>{MEAL_PLANS[settings.mealPlan].name} plan and any-plan dishes</span>
         </div>
         {RECIPES.filter((r) => r.group === settings.mealPlan || r.group === "general").map((r) => (

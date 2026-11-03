@@ -64,11 +64,14 @@ export function Shell({ children }: { children: ReactNode }) {
     if (window.location.pathname === PATHS[s]) return;
     const push = () => window.history.pushState(null, "", PATHS[s]);
     if (!document.startViewTransition || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return push();
-    document.startViewTransition(() => new Promise<void>((done) => {
+    const transition = document.startViewTransition(() => new Promise<void>((done) => {
       landed.current = done;
       window.setTimeout(done, 300);
       push();
     }));
+    // A second tap before the first fade has started skips that fade. The tab still switches; only the animation
+    // is dropped, so the rejection it reports is nothing to act on.
+    transition.ready.catch(() => undefined);
   }, []);
 
   // One window scroll, many screens: remember each tab's position and put it back when the tab shows again.

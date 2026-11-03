@@ -14,7 +14,9 @@
 .pageHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 4px 4px 0; }
 .pageTitle { font-size: 44px; line-height: 0.95; margin-top: 6px; letter-spacing: -0.025em; }
 /* Soma Night: the blocks of a tab rise in one after another each time it shows (Shell sets screenIn on the showing tab). */
-.screenIn > * > * { animation: screenRise 0.65s var(--ease-out) both; }
+/* backwards, not both: once a block has risen in, its animation lets go, so it never becomes the frame a sheet or
+   anything else fixed is positioned in. */
+.screenIn > * > * { animation: screenRise 0.65s var(--ease-out) backwards; }
 .screenIn > * > :nth-child(2) { animation-delay: 0.05s; } .screenIn > * > :nth-child(3) { animation-delay: 0.1s; } .screenIn > * > :nth-child(4) { animation-delay: 0.15s; }
 .screenIn > * > :nth-child(5) { animation-delay: 0.2s; } .screenIn > * > :nth-child(6) { animation-delay: 0.25s; } .screenIn > * > :nth-child(n+7) { animation-delay: 0.3s; }
 @keyframes screenRise { from { opacity: 0; transform: translateY(20px) scale(0.985); } }
@@ -61,7 +63,10 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .entryTags { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 .entryActions { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; flex-wrap: wrap; }
 .transcript { font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
-.note { width: 100%; border-radius: var(--r-ctl); border: 1px solid var(--hairline); background: var(--field); padding: 12px 14px; font: inherit; font-size: 16px; line-height: 1.5; color: var(--ink); resize: vertical; }
+/* Text boxes: the field look of an Input, a quiet scrollbar, and the same soft ring on focus. */
+.note, .writeBox { width: 100%; border-radius: 18px; border: 1px solid var(--hairline); background: var(--field); padding: 14px 16px; font: inherit; font-size: 16px; line-height: 1.5; color: var(--ink); resize: none; scrollbar-width: thin; scrollbar-color: var(--hairline-strong) transparent; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.note::placeholder, .writeBox::placeholder { color: var(--faint); }
+.note:focus, .writeBox:focus { outline: none; border-color: var(--hairline-strong); box-shadow: 0 0 0 4px var(--well); }
 .playerBox { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .player { display: flex; align-items: center; gap: 10px; }
 .play { width: 44px; height: 44px; border-radius: var(--r-pill); border: 1px solid var(--hairline); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ink); background: var(--surface); }
@@ -194,7 +199,6 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 
 /* Backfill: the bar that says which earlier day every card is editing. */
 .dayBanner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: var(--r-card); background: var(--journal-tint, var(--surface-2)); border: 1px solid var(--journal); }
-.writeBox { width: 100%; font: inherit; font-size: 16px; line-height: 1.5; padding: 12px; border: 1px solid var(--hairline); border-radius: var(--r-ctl); background: var(--surface); color: var(--ink); resize: vertical; }
 
 /* What's new, and the full list in Settings. */
 .releases { display: flex; flex-direction: column; gap: 18px; }

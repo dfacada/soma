@@ -42,5 +42,3 @@
 .quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .q { height: 52px; border-radius: var(--r-pill); background: var(--well); font-weight: 600; font-size: 16px; text-align: center; color: var(--ink); transition: transform 0.3s var(--spring); }
 .q:active { transform: scale(0.92); transition-duration: 0.06s; }
-.roll { display: inline-block; animation: roll 0.45s var(--spring) both; }
-@keyframes roll { from { opacity: 0.2; transform: translateY(30%) scale(0.9); } }

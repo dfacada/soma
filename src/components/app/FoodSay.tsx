@@ -132,7 +132,7 @@ export function FoodSay({ known, eaten, onLog }: {
   return (
     <Card>
       <div className={a.entryHead}>
-        <span className="eb" style={{ color: "var(--ink)" }}>Tell me what you ate</span>
+        <span className="eb">Tell me what you ate</span>
         <span className="muted" style={{ fontSize: 12 }}>the whole day at once</span>
       </div>
       <textarea className={a.note} rows={3} maxLength={TEXT_MAX} placeholder={PLACEHOLDER} aria-label="What you ate today"

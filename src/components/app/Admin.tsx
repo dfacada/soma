@@ -71,7 +71,7 @@ export function Admin({ say }: { say: (m: string) => void }) {
   return (
     <>
       <Card>
-        <div className={a.entryHead}><span className="eb" style={{ color: "var(--ink)" }}>Approvals</span>{pending.length > 0 && <Tag tone="warning">{pending.length} waiting</Tag>}</div>
+        <div className={a.entryHead}><span className="eb">Approvals</span>{pending.length > 0 && <Tag tone="warning">{pending.length} waiting</Tag>}</div>
         {pending.length === 0 && <p className="muted" style={{ fontSize: 13 }}>Nobody is waiting. New sign-ups show up here after their first sign-in.</p>}
         {pending.map((p) => (
           <Row key={p.userId} name={p.displayName || p.email} sub={`${p.email} · since ${when(p.createdAt)}`}
@@ -81,7 +81,7 @@ export function Admin({ say }: { say: (m: string) => void }) {
 
       <Card>
         <div className={a.entryHead}>
-          <span className="eb" style={{ color: "var(--ink)" }}>Users</span>
+          <span className="eb">Users</span>
           <span className="m muted" style={{ fontSize: 12 }}>{activeWeek} of {users.length} seen this week</span>
         </div>
         {users.map((p) => {
@@ -108,7 +108,7 @@ export function Admin({ say }: { say: (m: string) => void }) {
       <LogView />
 
       <Card>
-        <span className="eb" style={{ color: "var(--ink)" }}>Feedback</span>
+        <span className="eb">Feedback</span>
         {data.feedback.length === 0 && <p className="muted" style={{ fontSize: 13 }}>Nothing new.</p>}
         {data.feedback.map((f) => (
           <div key={f.id} className={a.adminUser}>
@@ -152,7 +152,7 @@ function TranscribeMissing({ say }: { say: (m: string) => void }) {
   return (
     <Card>
       <div className={a.entryHead}>
-        <span className="eb" style={{ color: "var(--ink)" }}>Transcribe missing</span>
+        <span className="eb">Transcribe missing</span>
         {ready && !running && <span className="m muted" style={{ fontSize: 12 }}>{missing} without a transcript</span>}
       </div>
       {!ready ? <p className="muted" style={{ fontSize: 13 }}>Open your vault to see which of your recordings have no transcript.</p>

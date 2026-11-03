@@ -3,7 +3,7 @@
 // The Journal screen: entries newest first, playback, a written note per entry, and the floating mic.
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, Icon, Input, StageBar, Tag, type StepProgress } from "@/components/ui";
+import { Button, Card, Icon, Input, Medallion, StageBar, Tag, type StepProgress } from "@/components/ui";
 import { report } from "@/lib/log";
 import { clock } from "@/lib/journal";
 import { toWav, within } from "@/lib/playable";
@@ -71,7 +71,8 @@ export function JournalScreen() {
 
       {(j.vault === "none" || j.vault === "locked") && (
         <Card>
-          <span className="d" style={{ fontSize: 22 }}>{j.vault === "none" ? "Make your vault first" : "Your vault is locked"}</span>
+          <Medallion domain="journal" icon="lock" />
+          <span className="d" style={{ fontSize: 24 }}>{j.vault === "none" ? "Make your vault first" : "Your vault is locked"}</span>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
             {j.vault === "none"
               ? "Entries are encrypted on your device with a passphrase only you know, then uploaded. Choose that passphrase once and you can start recording."

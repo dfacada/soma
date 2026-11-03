@@ -111,7 +111,7 @@ export function LogView() {
   return (
     <Card>
       <div className={a.entryHead}>
-        <span className="eb" style={{ color: "var(--ink)" }}>Log</span>
+        <span className="eb">Log</span>
         <button type="button" className={a.lnk} onClick={() => setTick((t) => t + 1)}>Refresh</button>
       </div>
       {summary && (

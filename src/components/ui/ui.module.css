@@ -17,7 +17,9 @@
 .btnSecondary { background: var(--well); color: var(--ink); border-color: var(--hairline); }
 .btnHue { background: var(--hue); color: var(--on-hue); box-shadow: 0 10px 26px -10px color-mix(in srgb, var(--hue) var(--glow-pct), transparent); }
 .btnDanger { background: var(--rec); color: var(--on-hue); }
-.btnSm { height: 38px; padding: 0 16px; font-size: 13px; }
+.btnSm { position: relative; height: 40px; padding: 0 16px; font-size: 13px; }
+/* 40 to look at, 44 to hit. */
+.btnSm::before { content: ""; position: absolute; inset: -2px 0; }
 .btnBlock { display: flex; width: 100%; }
 
 /* ── Chip: 42 mood (44 hit area via ::before), 34 habit ── */
@@ -80,6 +82,7 @@
 
 .stat { background: var(--surface); border: 1px solid var(--hairline-soft); border-radius: 18px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .statValue { font-family: var(--font-display); font-weight: 700; font-variation-settings: "wdth" 76; font-size: 32px; letter-spacing: -0.025em; line-height: 1; font-variant-numeric: tabular-nums; }
+.statEmpty { color: var(--faint); font-weight: 400; }
 .statNote { font-size: 12px; color: var(--muted); }
 
 .bar { display: flex; flex-direction: column; gap: 5px; }
@@ -113,14 +116,18 @@
 
 /* ── Segmented control: the picked one lifts out of the well ── */
 .segmented { display: inline-flex; width: fit-content; max-width: 100%; padding: 4px; border-radius: var(--r-pill); background: var(--well); gap: 2px; }
-.seg { position: relative; display: flex; align-items: center; justify-content: center; height: 36px; padding: 0 14px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--muted); transition: background 0.3s var(--spring), color 0.25s ease, box-shadow 0.3s ease; }
+.segmentedBlock { display: flex; width: 100%; }
+.segmentedBlock .seg { flex: 1 1 0; min-width: 0; padding: 0 6px; }
+.seg { position: relative; display: flex; align-items: center; justify-content: center; height: 36px; padding: 0 14px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; transition: background 0.3s var(--spring), color 0.25s ease, box-shadow 0.3s ease; }
 .seg::before { content: ""; position: absolute; inset: -4px 0; }
 .segOn { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 16px -8px rgba(0, 0, 0, 0.35), inset 0 0 0 1px var(--hairline); }
 
 /* ── Settings field kit ── */
-.field { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; padding: 8px 0; }
+/* A label beside its control; a wide control (a three-way switch, a long field) wraps under the label instead of
+   squeezing the help text into a narrow column. */
+.field { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; min-height: 52px; padding: 10px 0; }
 .field + .field { border-top: 1px solid var(--hairline-soft); }
-.fieldLabel { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fieldLabel { flex: 1 1 150px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .fieldName { font-weight: 500; font-size: 14.5px; }
 .fieldHelp { font-size: 12px; color: var(--muted); line-height: 1.4; }
 

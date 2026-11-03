@@ -120,10 +120,12 @@ export function Tag({ children, tone }: { children: ReactNode; tone?: Domain | "
 }
 
 export function Stat({ label, value, note }: { label: string; value: ReactNode; note?: string }) {
+  // Nothing to show yet ("—"): a quiet dash, not a heavy bar in the condensed face.
+  const empty = value === "—";
   return (
     <div className={s.stat}>
       <span className="eb">{label}</span>
-      <span className={s.statValue}>{value}</span>
+      <span className={cx(s.statValue, empty && s.statEmpty)}>{value}</span>
       {note && <span className={s.statNote}>{note}</span>}
     </div>
   );
@@ -193,10 +195,11 @@ export function Row({ name, sub, value, trail }: { name: string; sub?: string; v
 }
 
 // ── Segmented control ──
-type SegmentedProps<T extends string> = { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string };
-export function Segmented<T extends string>({ options, value, onChange, label }: SegmentedProps<T>) {
+/** `block` spans the full width, every option the same size. */
+type SegmentedProps<T extends string> = { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string; block?: boolean };
+export function Segmented<T extends string>({ options, value, onChange, label, block = false }: SegmentedProps<T>) {
   return (
-    <div className={s.segmented} role="radiogroup" aria-label={label}>
+    <div className={cx(s.segmented, block && s.segmentedBlock)} role="radiogroup" aria-label={label}>
       {options.map((o) => (
         <button key={o.value} type="button" role="radio" aria-checked={o.value === value} className={cx(s.seg, o.value === value && s.segOn)} onClick={() => onChange(o.value)}>
           {o.label}

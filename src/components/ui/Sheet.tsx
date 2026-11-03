@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useId, useRef, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import s from "./ui.module.css";
 
@@ -9,6 +10,17 @@ type Props = { open: boolean; title: string; onClose: () => void; children: Reac
 /** False inside a tab screen that is mounted but not showing (Shell keeps every visited tab mounted). */
 export const TabVisible = createContext(true);
 export const useTabVisible = () => useContext(TabVisible);
+
+const subscribeNothing = () => () => undefined;
+/** True once running in the browser (false while the static HTML is built and while it hydrates). */
+export const useInBrowser = () => useSyncExternalStore(subscribeNothing, () => true, () => false);
+
+/** Overlays (sheets, toasts, the full-screen moments) render at the end of <body>, not where they are used. Inside
+ *  a card that is animating in, `position: fixed` would be fixed to the card and its z-index trapped under the tab
+ *  bar; up here nothing on the page can do that to them. */
+export function Overlay({ children }: { children: ReactNode }) {
+  return useInBrowser() ? createPortal(children, document.body) : null;
+}
 
 /** Bottom sheet on phones, centred dialog from 900px. Closes on Escape and backdrop tap; returns focus to the opener. */
 export function Sheet({ open: wanted, title, onClose, children }: Props) {
@@ -22,7 +34,7 @@ export function Sheet({ open: wanted, title, onClose, children }: Props) {
   useEffect(() => {
     if (!open) return;
     const opener = document.activeElement as HTMLElement | null;
-    panel.current?.focus();
+    panel.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     const overflow = document.body.style.overflow;
@@ -30,31 +42,38 @@ export function Sheet({ open: wanted, title, onClose, children }: Props) {
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = overflow;
-      opener?.focus();
+      opener?.focus({ preventScroll: true });
     };
   }, [open, onClose]);
 
   if (!open) return null;
   return (
-    <div className={s.sheetBg} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={panel} className={s.sheet} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
-        <div className={s.sheetHead}>
-          <span id={titleId} className={s.sheetTitle}>{title}</span>
-          <button type="button" className={s.sheetClose} aria-label="Close" onClick={onClose}>
-            <Icon name="close" size={18} strokeWidth={2} />
-          </button>
+    <Overlay>
+      <div className={s.sheetBg} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div ref={panel} className={s.sheet} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
+          <div className={s.sheetHead}>
+            <span id={titleId} className={s.sheetTitle}>{title}</span>
+            <button type="button" className={s.sheetClose} aria-label="Close" onClick={onClose}>
+              <Icon name="close" size={18} strokeWidth={2} />
+            </button>
+          </div>
+          {children}
         </div>
-        {children}
       </div>
-    </div>
+    </Overlay>
   );
 }
 
-/** Transient confirmation. The parent owns the message; pass null to hide. */
+/** Transient confirmation. The parent owns the message; pass null to hide. A hidden tab's toast stays hidden, as it
+ *  did when it lived inside the tab. */
 export function Toast({ message }: { message: string | null }) {
+  const visible = useTabVisible();
+  if (!visible) return null;
   return (
-    <div className={`${s.toast} ${message ? s.toastShow : ""}`} role="status" aria-live="polite">
-      {message}
-    </div>
+    <Overlay>
+      <div className={`${s.toast} ${message ? s.toastShow : ""}`} role="status" aria-live="polite">
+        {message}
+      </div>
+    </Overlay>
   );
 }

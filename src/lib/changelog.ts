@@ -13,7 +13,7 @@ export const CHANGES: Release[] = [
   {
     id: "2026-11-02",
     date: "2026-11-02",
-    title: "Tell me what you ate",
+    title: "Soma Night",
     items: [
       "Food has a new box at the top: tell it your whole day at once, like \"a bacon, egg and cheese on an everything bagel and a small fries for breakfast, a burger with a salad for lunch\". Tap Speak to say it out loud, or type it, then Fill it in. Soma splits it into items with the calories, protein, carbs and fat, and puts each one under the meal you said. Move anything to another meal or remove it, then Log all. Foods you've logged before come back with your own numbers. Meals you said replace what was logged for them; anything without a meal goes under Something else. The meal buttons and Ate something else work as before.",
       "Or skip Food altogether: tap the Food card on Today, say what you ate and which meal it was, and tap it again. It's logged straight away, with no list to check, the same way the Journal card records. The meal buttons on the card still just tick off your planned meals, and anything that came out wrong can be changed on Food.",
@@ -36,6 +36,8 @@ export const CHANGES: Release[] = [
       "Food: today's calories in big numbers, a bar split by each meal you've eaten, and protein, carbs and fat side by side. Each meal card has its icon, which turns into a green check once it's eaten.",
       "Activity: push-ups in a big ring that fills toward your target. Tap the middle to count, or add −10, +10 or +25 straight away. Walk, Gym and Run are big buttons underneath; any one closes the day.",
       "Insights: the weight line draws itself in.",
+      "A polish pass over every screen. Today: the date, your streak and Settings sit along the top and the greeting gets the full width; your streak and best now sit inside the week card; an empty weight card says Weigh in; and on an earlier day the streak gives way to a Back to today button. Food: each meal shows its calories once, with a Planned or Eaten tag, and its buttons line up two by two. Insights: the 7 days, 30 days, 60 days and 1 year switch runs across the full width under the title instead of off the edge of the screen. Settings: a wide switch drops under its label instead of squeezing the explanation into a narrow column. Card labels are the same quiet style everywhere.",
+      "Fixed: a sheet opened from far down a page (What's new in Settings, for one) scrolled the page and sat behind the tab bar. Sheets, confirmations and the full-screen moments now always open over everything, where you are.",
     ],
   },
   {

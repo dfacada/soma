@@ -4,17 +4,17 @@
 // Soma Night (2026-11-02): a greeting, the orb (one bead per task, the sphere lit by what is done), the week strip,
 // and a bento of task cards in card order: weight, check-in, journal, food, activity.
 //
-// Backfill: tap one of the six earlier days in the week strip and every card edits that day instead, under a bar
+// Backfill: tap one of the six earlier days in the week strip and every card edits that day instead, under a header
 // that says so. The streak and the round stay on today. On a past day the journal can also be written, not only
 // recorded, and the entry is filed under that day marked "added later".
 
 import { useGoTab } from "./tabs";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Sheet, Toast, type IconName, type MedallionState, type OrbBead } from "@/components/ui";
+import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Overlay, Sheet, Toast, type IconName, type MedallionState, type OrbBead } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
 import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS, type TaskKey } from "@/lib/today";
 import { report } from "@/lib/log";
-import { DayBanner, longDay } from "./DayBanner";
+import { longDay } from "./DayBanner";
 import { FitbitBanner } from "./FitbitBanner";
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
@@ -222,17 +222,21 @@ export function Today() {
   return (
     <div className={a.page}>
       <FitbitBanner />
+      {/* The date, the streak and Settings along the top; the greeting gets the full width under them. On an earlier
+          day the streak gives way to the way back. */}
       <header className={t.top}>
-        <div>
-          <div className="eb">{eyebrow}</div>
-          <h1 className={`d ${t.hello}`}>{hello}</h1>
+        <div className={t.topRow}>
+          <span className="eb">{eyebrow}</span>
+          <div className={t.topRight}>
+            {isToday
+              ? <span className={t.streak} aria-label={`${run.now} full day${run.now === 1 ? "" : "s"} in a row`}>
+                <Icon name="flame" size={17} /><span key={run.now} className={`m ${t.roll}`}>{run.now}</span>
+              </span>
+              : <button type="button" className={t.back} onClick={() => setView(null)}><Icon name="today" size={15} />Back to today</button>}
+            <button type="button" className={t.avatar} aria-label="Settings" onClick={() => goTab("settings")}>{initials}</button>
+          </div>
         </div>
-        <div className={t.topRight}>
-          <span className={t.streak} aria-label={`${run.now} full day${run.now === 1 ? "" : "s"} in a row`}>
-            <Icon name="flame" size={17} /><span key={run.now} className={`m ${t.roll}`}>{run.now}</span>
-          </span>
-          <button type="button" className={t.avatar} aria-label="Settings" onClick={() => goTab("settings")}>{initials}</button>
-        </div>
+        <h1 className={`d ${t.hello}`}>{hello}</h1>
       </header>
 
       <section className={t.hero} aria-label={isToday ? "Today's progress" : `Progress on ${longDay(view)}`}>
@@ -252,8 +256,8 @@ export function Today() {
         )}
       </section>
 
-      <div>
-        <div className={t.week} role="group" aria-label="Pick a day to fill in">
+      <div className={t.week}>
+        <div className={t.weekDays} role="group" aria-label="Pick a day to fill in">
           {[6, 5, 4, 3, 2, 1, 0].map((i) => {
             const d = addDays(today, -i);
             const dk = dayKey(d);
@@ -267,13 +271,11 @@ export function Today() {
             );
           })}
         </div>
-        <div className={t.weekLine} style={{ paddingTop: 8 }}>
+        <div className={t.weekLine}>
           <span><span className="m">{run.now}</span> full day{run.now === 1 ? "" : "s"} in a row</span>
           <span>Best <span className="m">{run.best}</span></span>
         </div>
       </div>
-
-      {!isToday && <DayBanner view={view} onBack={() => setView(null)} />}
 
       {unsaved && (
         <div className={a.unsaved} role="alert">
@@ -288,7 +290,9 @@ export function Today() {
           aria-label={isToday ? "Log today’s weight" : `Log weight for ${longDay(view)}`}>
           <span className={t.tint} /><span className={t.sweep} />
           <span className={t.th}><Medallion domain="food" icon="scale" state={st.weight !== null ? "done" : "idle"} /><span className="eb">Weight</span></span>
-          <span className={`${t.big} ${st.weight === null ? t.ghost : ""}`}><span className="dc">{weightShown ?? "—"}</span>{weightShown !== null && <span className={t.unit}>lb</span>}</span>
+          {weightShown !== null
+            ? <span className={`${t.big} ${st.weight === null ? t.ghost : ""}`}><span className="dc">{weightShown}</span><span className={t.unit}>lb</span></span>
+            : <span className={`d ${t.title}`}>Weigh in</span>}
           <span className={t.sub}>{weightSub}</span>
         </button>
 
@@ -404,13 +408,17 @@ export function Today() {
           catch (e) { report("journal", "backfill_write_failed", e); return "Couldn’t save that entry. Try again."; }
         }} />
       {(listening || voice.state === "transcribing" || reading || (said && said.items.length > 0)) && (
-        <FoodMoment phase={listening ? "listening" : voice.state === "transcribing" ? "transcribing" : reading ? "reading" : "done"}
-          seconds={voice.seconds} heard={said?.heard ?? null} items={said?.items ?? []} onStop={() => void tapFood()} onClose={() => setSaid(null)} />
+        <Overlay>
+          <FoodMoment phase={listening ? "listening" : voice.state === "transcribing" ? "transcribing" : reading ? "reading" : "done"}
+            seconds={voice.seconds} heard={said?.heard ?? null} items={said?.items ?? []} onStop={() => void tapFood()} onClose={() => setSaid(null)} />
+        </Overlay>
       )}
       {celebrate && (
-        <DayClosed streak={run.now} beads={st.ring.map((r) => ({ key: r.key, value: 1, ...BEADS[r.key] }))}
-          week={[6, 5, 4, 3, 2, 1, 0].map((i) => { const d = addDays(today, -i); return { label: WEEKDAYS[d.getDay()].charAt(0), full: dayStatus(days[dayKey(d)], settings).closed }; })}
-          onClose={() => { setCelebrate(false); say(`${run.now} full day${run.now === 1 ? "" : "s"} in a row`); }} />
+        <Overlay>
+          <DayClosed streak={run.now} beads={st.ring.map((r) => ({ key: r.key, value: 1, ...BEADS[r.key] }))}
+            week={[6, 5, 4, 3, 2, 1, 0].map((i) => { const d = addDays(today, -i); return { label: WEEKDAYS[d.getDay()].charAt(0), full: dayStatus(days[dayKey(d)], settings).closed }; })}
+            onClose={() => { setCelebrate(false); say(`${run.now} full day${run.now === 1 ? "" : "s"} in a row`); }} />
+        </Overlay>
       )}
       <Toast message={toast} />
     </div>

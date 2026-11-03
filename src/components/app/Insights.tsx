@@ -81,14 +81,15 @@ export function InsightsScreen() {
           <div className="eb">{waiting ? "Loading a year…" : `Last ${RANGE_LABEL[range]} · ${i.closed} closed`}</div>
           <div className={`d ${a.pageTitle}`}>Insights</div>
         </div>
-        <Segmented label="Window" value={range} onChange={(v) => { setRange(v as Range); setAllDays(false); }} options={[{ value: "7", label: "7d" }, { value: "30", label: "30d" }, { value: "60", label: "60d" }, { value: "365", label: "1y" }]} />
       </div>
+      {/* The window across the full width under the title: beside it, it ran off a phone's edge. */}
+      <Segmented block label="Window" value={range} onChange={(v) => { setRange(v as Range); setAllDays(false); }} options={[{ value: "7", label: "7 days" }, { value: "30", label: "30 days" }, { value: "60", label: "60 days" }, { value: "365", label: "1 year" }]} />
 
       {yearError && <div className={a.unsaved} role="alert"><span>Couldn&apos;t load the year. Showing the last 60 days.</span><Button size="sm" variant="secondary" onClick={() => setYearError(false)}>Retry</Button></div>}
 
       <Card>
         <div className={a.entryHead}>
-          <span className="eb" style={{ color: "var(--ink)" }}>Week in review</span>
+          <span className="eb">Week in review</span>
           <Link href="/review/" className={a.lnk}>Open</Link>
         </div>
         <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>What your journal said last week, written up and read aloud. Encrypted like the journal itself.</p>
@@ -103,7 +104,7 @@ export function InsightsScreen() {
 
       <Card>
         <div className={a.entryHead}>
-          <span className="eb" style={{ color: "var(--ink)" }}>Day by day</span>
+          <span className="eb">Day by day</span>
           <span className="muted" style={{ fontSize: 11 }}>{log.length ? `${closedDays} of ${log.length} closed` : ""}</span>
         </div>
         {log.length === 0 && <p className={a.signal}>Nothing logged in this window yet.</p>}
@@ -112,7 +113,7 @@ export function InsightsScreen() {
       </Card>
 
       <Card>
-        <span className="eb" style={{ color: "var(--ink)" }}>How often each thing got done</span>
+        <span className="eb">How often each thing got done</span>
         <Bar label="Check-in" value={pct(i.rates.checkin)} max={100} text={`${pct(i.rates.checkin)}%`} domain="journal" />
         <Bar label="Journal" value={pct(i.rates.journal)} max={100} text={`${pct(i.rates.journal)}%`} color="var(--journal-soft)" />
         <Bar label="All four meals" value={pct(i.rates.food)} max={100} text={`${pct(i.rates.food)}%`} domain="food" />
@@ -128,7 +129,7 @@ export function InsightsScreen() {
       ) : (
         <>
           <Card>
-            <div className={a.signalHead}><i style={{ background: "var(--journal)" }} /><span className="eb" style={{ color: "var(--ink)" }}>Your best-day signal</span></div>
+            <div className={a.signalHead}><i style={{ background: "var(--journal)" }} /><span className="eb">Your best-day signal</span></div>
             {i.good.days ? (
               <p className={a.signal}>
                 You rated <strong>{i.good.days}</strong> day{i.good.days === 1 ? "" : "s"} as a good one. On <strong>{of(i.good.withActivity, i.good.days)}</strong> you had logged some activity, against {pct(i.baselineActivity)}% of all the days you checked in. You ate all four meals on {of(i.good.withAllMeals, i.good.days)}.
@@ -137,7 +138,7 @@ export function InsightsScreen() {
           </Card>
 
           <Card>
-            <span className="eb" style={{ color: "var(--ink)" }}>What your best days have in common</span>
+            <span className="eb">What your best days have in common</span>
             {more.length || less.length ? (
               <>
                 {more.map((f) => <FactorRow key={f.label} f={f} />)}
@@ -149,7 +150,7 @@ export function InsightsScreen() {
           </Card>
 
           <Card>
-            <div className={a.entryHead}><span className="eb" style={{ color: "var(--ink)" }}>Mood by sleep</span>{i.sleep && <span className="muted" style={{ fontSize: 11 }}>{i.sleep.nights} nights · avg {hm(i.sleep.avg)}</span>}</div>
+            <div className={a.entryHead}><span className="eb">Mood by sleep</span>{i.sleep && <span className="muted" style={{ fontSize: 11 }}>{i.sleep.nights} nights · avg {hm(i.sleep.avg)}</span>}</div>
             {i.sleep ? (
               <>
                 {i.sleep.buckets.map((b, x) => <Bar key={b.label} label={`${b.label} · ${b.nights} night${b.nights === 1 ? "" : "s"}`} value={b.nights ? pct(b.good / b.nights) : 0} max={100} text={b.nights ? `${pct(b.good / b.nights)}% good days` : "no nights"} color={["var(--journal-pale)", "var(--journal-soft)", "var(--journal)"][x]} />)}
@@ -170,7 +171,7 @@ export function InsightsScreen() {
           </Card>
 
           <Card>
-            <div className={a.signalHead}><i style={{ background: "var(--activity)" }} /><span className="eb" style={{ color: "var(--ink)" }}>Your hardest-day signal</span></div>
+            <div className={a.signalHead}><i style={{ background: "var(--activity)" }} /><span className="eb">Your hardest-day signal</span></div>
             {i.hard.days ? (
               <p className={a.signal}>
                 <strong>{i.hard.days}</strong> day{i.hard.days === 1 ? " was" : "s were"} rated Down, Anxious or Overwhelmed. Activity was logged on {of(i.hard.withActivity, i.hard.days)} and all four meals on {of(i.hard.withAllMeals, i.hard.days)}.
@@ -180,7 +181,7 @@ export function InsightsScreen() {
           </Card>
 
           <Card>
-            <span className="eb" style={{ color: "var(--ink)" }}>Mood mix · {i.checkedIn} check-ins</span>
+            <span className="eb">Mood mix · {i.checkedIn} check-ins</span>
             {i.moods.map((m) => (
               <div key={m.label} className={a.moodRow}>
                 <span className={a.moodLabel}>{m.label}</span>
@@ -297,7 +298,7 @@ function WeightCard({ series, label, current, onLog }: { series: { day: string; 
   return (
     <Card>
       <div className={a.entryHead}>
-        <span className="eb" style={{ color: "var(--ink)" }}>Weight · {label}</span>
+        <span className="eb">Weight · {label}</span>
         {/* One readout: the point being pointed at, else today. The value leads, the day follows. */}
         <span className="m" style={{ fontSize: 13 }} aria-live="polite">
           {shown

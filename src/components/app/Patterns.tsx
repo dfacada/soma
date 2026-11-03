@@ -35,7 +35,7 @@ export function Patterns({ map, days, settings, nights }: { map: DayMap; days: s
   return (
     <Card>
       <div className={a.entryHead}>
-        <span className="eb" style={{ color: "var(--ink)" }}>Patterns</span>
+        <span className="eb">Patterns</span>
         <span className="muted" style={{ fontSize: 11 }}>{plural(split.checkedIn, "check-in")} · {plural(points.length, "weigh-in")}</span>
       </div>
       {split.checkedIn >= MIN_SIDE * 2

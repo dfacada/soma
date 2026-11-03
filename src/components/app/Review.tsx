@@ -137,7 +137,7 @@ export function ReviewScreen() {
 
       {!setting.consent && (
         <Card>
-          <span className="eb" style={{ color: "var(--ink)" }}>Not switched on</span>
+          <span className="eb">Not switched on</span>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>
             To write this, Soma decrypts that week&apos;s journal entries on this device and sends the text to Claude
             through its own server, which keeps none of it. That is the one time your journal leaves your phone.
@@ -151,7 +151,7 @@ export function ReviewScreen() {
 
       {reviews && due && setting.consent && (
         <Card>
-          <span className="eb" style={{ color: "var(--ink)" }}>Ready to write</span>
+          <span className="eb">Ready to write</span>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>{weekLabel(due)} is finished. Writing it up takes about half a minute.</p>
           <Button variant="journal" disabled={busy !== null} onClick={() => void write(due)}>{busy === due ? "Writing…" : "Write that week"}</Button>
         </Card>
@@ -204,21 +204,21 @@ function ReviewCard({ review, busy, onSend, say }: { review: Review; busy: boole
   return (
     <Card>
       <div className={a.entryHead}>
-        <span className="eb" style={{ color: "var(--ink)" }}>{weekLabel(review.weekStart)}</span>
+        <span className="eb">{weekLabel(review.weekStart)}</span>
         <span className={a.entryTags}><Tag>{review.entries} entr{review.entries === 1 ? "y" : "ies"}</Tag></span>
       </div>
       {review.synopsis.split("\n").filter(Boolean).map((p) => <p key={p.slice(0, 40)} style={{ fontSize: 15, lineHeight: 1.6, margin: 0 }}>{p}</p>)}
 
       {review.remember.length > 0 && <>
-        <span className="eb" style={{ color: "var(--ink)", paddingTop: 6 }}>Worth remembering</span>
+        <span className="eb" style={{ paddingTop: 6 }}>Worth remembering</span>
         <ul className={a.reviewList}>{review.remember.map((x) => <li key={x}>{x}</li>)}</ul>
       </>}
       {review.threads.length > 0 && <>
-        <span className="eb" style={{ color: "var(--ink)", paddingTop: 6 }}>Through the week</span>
+        <span className="eb" style={{ paddingTop: 6 }}>Through the week</span>
         <ul className={a.reviewList}>{review.threads.map((x) => <li key={x}>{x}</li>)}</ul>
       </>}
       {review.noticed.length > 0 && <>
-        <span className="eb" style={{ color: "var(--ink)", paddingTop: 6 }}>Noticed</span>
+        <span className="eb" style={{ paddingTop: 6 }}>Noticed</span>
         <ul className={a.reviewList}>{review.noticed.map((x) => <li key={x}>{x}</li>)}</ul>
       </>}
 
