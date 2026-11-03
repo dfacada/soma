@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 import { chain, dayIndexOf, defaultRestDays, isRestDay, leaderboard, phaseOf, setBreakdown, type Log, type Member } from "@/lib/round";
 import { addDays, dayKey, dayStatus, streak } from "@/lib/today";
 import Link from "next/link";
-import { Bar, Button, Card, Field, Input, Sheet, Switch, Tag, Toast } from "@/components/ui";
+import { Bar, Button, Card, Field, Icon, Input, Sheet, Switch, Tag, Toast, type IconName } from "@/components/ui";
 import { DayBanner, longDay } from "./DayBanner";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
@@ -15,6 +15,9 @@ import { PushSheet } from "./PushSheet";
 import { useRounds, type RoundRow } from "./Rounds";
 import { useSession } from "./Session";
 import a from "./app.module.css";
+import sc from "./screens.module.css";
+
+const ACT_ICONS: Record<string, IconName> = { walk: "walk", gym: "barbell", run: "run" };
 
 const digits = (v: string, max = 5) => v.replace(/\D/g, "").slice(0, max);
 const BADGE: Record<string, string> = { crown: "leading", streak: "streak", hits: "hits" };
@@ -50,6 +53,7 @@ export function Activity() {
     say(lateForRound && n ? `${n} push-ups saved to your record · too late to count for the round` : n >= target && !rest ? `Target hit · ${n} push-ups` : n ? `${n} push-ups logged` : "Push-ups cleared");
   };
   const sr = setBreakdown(target);
+  const quick = (by: number) => savePushups(Math.max(0, st.pushups + by));
 
   return (
     <div className={a.page}>
@@ -63,24 +67,47 @@ export function Activity() {
       {!isToday && <DayBanner view={view} onBack={() => setView(null)} />}
       {unsaved && <div className={a.unsaved} role="alert"><span>Some changes are not saved yet.</span><Button size="sm" variant="secondary" onClick={retry}>Retry</Button></div>}
 
-      <Card className={a.actList}>
-        <ActRow name="Push-ups" done={st.pushups > 0}
-          sub={`${st.pushups > 0 ? `${st.pushups} logged · ` : ""}${rest ? "rest day, no target" : `target ${target} a day · try ${sr.sets} × ${sr.reps}`}`}
-          action={<Button size="sm" variant={st.pushups > 0 || rest ? "secondary" : "activity"} onClick={() => setPushSheet(true)}>{st.pushups > 0 ? "Change" : "Log count"}</Button>} />
+      {/* Push-ups: the ring fills toward the target. Tap the middle to count, or add from the quick buttons. */}
+      <Card>
+        <span className="eb" style={{ textAlign: "center" }}>{rest ? "Rest day for push-ups" : `Push-ups · target ${target} · try ${sr.sets} × ${sr.reps}`}</span>
+        <div className={sc.ring}>
+          <svg viewBox="0 0 224 224" aria-hidden>
+            <circle className={sc.ringTrack} cx="112" cy="112" r="96" />
+            {!rest && st.pushups > 0 && <circle className={sc.ringFill} cx="112" cy="112" r="96" strokeDasharray={`${(Math.min(1, st.pushups / Math.max(1, target)) * 603.2).toFixed(1)} 603.2`} />}
+          </svg>
+          <button type="button" className={sc.ringCenter} onClick={() => setPushSheet(true)} aria-label={`Push-ups: ${st.pushups}${rest ? "" : ` of ${target}`}. Count them`}>
+            <span key={st.pushups} className={`dc ${sc.roll}`}>{st.pushups}</span>
+            <span className="eb">{rest ? "logged" : `of ${target}`}</span>
+          </button>
+        </div>
+        <div className={sc.quick}>
+          <button type="button" className={sc.q} onClick={() => quick(-10)} disabled={st.pushups === 0} aria-label="Ten fewer push-ups">−10</button>
+          <button type="button" className={sc.q} onClick={() => quick(10)} aria-label="Ten more push-ups">+10</button>
+          <button type="button" className={`${sc.q} ${sc.qHi}`} onClick={() => quick(25)} aria-label="Twenty-five more push-ups">+25</button>
+        </div>
+      </Card>
+
+      <div className={sc.sec}><span className="eb">{isToday ? "Today's moves" : "Moves that day"}</span><span className="eb">Any one closes it</span></div>
+      <div className={sc.moves}>
         {settings.activityTypes.map((t) => {
           const done = Boolean(types[t.key]);
-          const toggle = () => change("activity", k, (d) => { d.activity.types[t.key] = !d.activity.types[t.key]; });
-          return <ActRow key={t.key} name={t.name} done={done} sub={done ? "Logged" : "Any amount counts"}
-            action={done ? <button type="button" className={a.lnk} onClick={toggle}>Undo</button> : <Button size="sm" variant="secondary" onClick={toggle}>Log</Button>} />;
+          return (
+            <button key={t.key} type="button" aria-pressed={done} className={`${sc.move} ${done ? sc.moveOn : ""}`}
+              onClick={() => change("activity", k, (d) => { d.activity.types[t.key] = !d.activity.types[t.key]; })}>
+              <span className={sc.moveIcon}><Icon name={ACT_ICONS[t.key] || "pulse"} size={18} /></span>
+              <span className={sc.moveText}><span style={{ fontWeight: 600 }}>{t.name}</span><span className="muted" style={{ fontSize: 12 }}>{done ? "Logged" : "Tap to log"}</span></span>
+            </button>
+          );
         })}
-        {steps !== null || health.status === "connected" ? (
-          <div className={a.stepsRow}>
-            <Bar label="Steps" value={steps ?? 0} max={settings.goals.steps} color="var(--activity)" text={`${(steps ?? 0).toLocaleString("en-US")} / ${settings.goals.steps.toLocaleString("en-US")}`} />
-          </div>
-        ) : health.status === "off" || health.status === "reconnect" ? (
-          <div className={a.stepsRow}><Link href="/settings/" className={a.lnk}>{health.status === "off" ? "Connect Fitbit in Settings to see steps" : "Reconnect Fitbit in Settings to keep steps coming"}</Link></div>
-        ) : null}
-      </Card>
+      </div>
+
+      {steps !== null || health.status === "connected" ? (
+        <Card>
+          <Bar label="Steps" value={steps ?? 0} max={settings.goals.steps} color="var(--activity)" text={`${(steps ?? 0).toLocaleString("en-US")} / ${settings.goals.steps.toLocaleString("en-US")}`} />
+        </Card>
+      ) : health.status === "off" || health.status === "reconnect" ? (
+        <Link href="/settings/" className={a.lnk} style={{ alignSelf: "center", minHeight: 44, display: "inline-flex", alignItems: "center" }}>{health.status === "off" ? "Connect Fitbit in Settings to see steps" : "Reconnect Fitbit in Settings to keep steps coming"}</Link>
+      ) : null}
 
       {rounds.loading ? <span className="eb">Loading the round</span> : current ? (
         <RoundCards round={current} myLog={myLogFrom(map, current)} say={say} onManage={isAdmin ? () => setManage(true) : undefined} />
@@ -111,16 +138,6 @@ function myLogFrom(map: Record<string, { activity?: { pushups: number | null } }
     if (reps !== null && reps !== undefined && d >= 1 && d <= round.lengthDays) log[d] = reps;
   }
   return log;
-}
-
-function ActRow({ name, sub, done, action }: { name: string; sub: string; done: boolean; action: React.ReactNode }) {
-  return (
-    <div className={a.actRow}>
-      <i className={a.actDot} style={{ background: done ? "var(--activity)" : "var(--hairline)" }} />
-      <div className={a.pickName}><span style={{ fontWeight: 500, fontSize: 15 }}>{name}</span><span className="muted" style={{ fontSize: 12 }}>{sub}</span></div>
-      {action}
-    </div>
-  );
 }
 
 function RoundCards({ round, myLog, say, onManage }: { round: RoundRow; myLog: Log; say: (m: string) => void; onManage?: () => void }) {

@@ -15,12 +15,13 @@ import { report } from "@/lib/log";
 import { BOWL_VARIANTS, MEAL_PLANS, RECIPES, type Recipe } from "@/lib/food-data";
 import { MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
 import { cap, dayStatus } from "@/lib/today";
-import { Bar, Button, Card, Chip, Input, ProgressRing, Row, Sheet, Toast } from "@/components/ui";
+import { Button, Card, Chip, Icon, Input, Row, Sheet, Toast } from "@/components/ui";
 import { DayBanner } from "./DayBanner";
 import { FoodSay } from "./FoodSay";
 import { useDays } from "./Days";
 import { useSession } from "./Session";
 import a from "./app.module.css";
+import sc from "./screens.module.css";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -90,18 +91,23 @@ export function Food() {
       {!isToday && <DayBanner view={view} onBack={() => setView(null)} />}
       {unsaved && <div className={a.unsaved} role="alert"><span>Some changes are not saved yet.</span><Button size="sm" variant="secondary" onClick={retry}>Retry</Button></div>}
 
-      <Card className={a.summary}>
-        <div className={a.summaryRing}>
-          <div className={a.ringWrap96}>
-            <ProgressRing label="Calories" value={st.kcal} max={g.kcal} color="var(--food)" />
-            <div className={a.ringLabel}><span className="d" style={{ fontSize: st.kcal >= 1000 ? 20 : 24 }}>{fmt(st.kcal)}</span></div>
-          </div>
-          <span className="m muted" style={{ fontSize: 10.5 }}>of {fmt(g.kcal)} kcal</span>
+      {/* The day's calories, the bar split by what was eaten (each meal, then anything else), and the macros. */}
+      <Card>
+        <span className="eb">{isToday ? "Eaten today" : "Eaten that day"}</span>
+        <div className={sc.kcal}><span key={st.kcal} className={`dc ${sc.roll}`}>{fmt(st.kcal)}</span><span className="muted">/ {fmt(g.kcal)} kcal</span></div>
+        <div className={sc.split} role="img" aria-label={`${fmt(st.kcal)} of ${fmt(g.kcal)} kcal`}>
+          {[...MEALS.filter((m) => eaten[m]).map((m) => (typeof eaten[m] === "object" ? (eaten[m] as PlannedMeal).kcal : settings.plan[m].kcal)), ...extras.map((x) => x.kcal)].map((kc, i) => (
+            <i key={i} style={{ width: `${Math.min(100, (kc / Math.max(1, g.kcal)) * 100).toFixed(1)}%`, opacity: Math.max(0.3, 1 - i * 0.17) }} />
+          ))}
         </div>
-        <div className={a.summaryBars}>
-          <Bar label="Protein" value={st.protein} max={g.protein} domain="food" />
-          <Bar label="Carbs" value={st.carbs} max={g.carbs} color="var(--food-bar)" />
-          <Bar label="Fat" value={st.fat} max={g.fat} color="var(--food-bar)" />
+        <div className={sc.macros}>
+          {([["Protein", st.protein, g.protein], ["Carbs", st.carbs, g.carbs], ["Fat", st.fat, g.fat]] as const).map(([label, v, max]) => (
+            <div key={label} role="progressbar" aria-label={label} aria-valuenow={v} aria-valuemin={0} aria-valuemax={max}>
+              <div className="eb">{label}</div>
+              <div className={`m ${sc.macroValue}`}>{v}<span className="muted" style={{ fontSize: 12 }}> / {max} g</span></div>
+              <div className={sc.macroTrack}><i style={{ width: `${Math.min(100, (v / Math.max(1, max)) * 100).toFixed(1)}%` }} /></div>
+            </div>
+          ))}
         </div>
       </Card>
 
@@ -113,9 +119,10 @@ export function Food() {
         // Show what was actually eaten if it differs from today's plan.
         const shown: PlannedMeal = typeof slot === "object" ? slot : settings.plan[m];
         return (
-          <Card key={m}>
-            <div className={a.entryHead}>
-              <span className="eb" style={{ color: "var(--ink)" }}>{cap(m)}</span>
+          <Card key={m} className={done ? sc.mealDone : undefined}>
+            <div className={sc.mealHead}>
+              <span className={sc.mealIcon}><Icon name={done ? "check" : m} size={18} strokeWidth={done ? 2.4 : 1.75} /></span>
+              <span className="eb">{cap(m)}</span>
               <span className="m" style={{ fontSize: 12, color: done ? "var(--food)" : "var(--muted)" }}>{shown.kcal} kcal · {done ? "eaten" : "planned"}</span>
             </div>
             <Row name={shown.name} sub={`${shown.protein} g protein${shown.carbs !== undefined ? ` · ${shown.carbs} g carbs · ${shown.fat ?? 0} g fat` : ""}`} value={<span style={{ color: done ? "var(--ink)" : "var(--muted)" }}>{shown.kcal}</span>} />

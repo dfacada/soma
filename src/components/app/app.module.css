@@ -12,7 +12,13 @@
 
 .page { display: flex; flex-direction: column; gap: 12px; padding: calc(18px + var(--inset-top)) 16px calc(104px + var(--inset-bottom)); max-width: 560px; margin: 0 auto; }
 .pageHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 4px 4px 0; }
-.pageTitle { font-size: 32px; }
+.pageTitle { font-size: 44px; line-height: 0.95; margin-top: 6px; letter-spacing: -0.025em; }
+/* Soma Night: the blocks of a tab rise in one after another each time it shows (Shell sets screenIn on the showing tab). */
+.screenIn > * > * { animation: screenRise 0.65s var(--ease-out) both; }
+.screenIn > * > :nth-child(2) { animation-delay: 0.05s; } .screenIn > * > :nth-child(3) { animation-delay: 0.1s; } .screenIn > * > :nth-child(4) { animation-delay: 0.15s; }
+.screenIn > * > :nth-child(5) { animation-delay: 0.2s; } .screenIn > * > :nth-child(6) { animation-delay: 0.25s; } .screenIn > * > :nth-child(n+7) { animation-delay: 0.3s; }
+@keyframes screenRise { from { opacity: 0; transform: translateY(20px) scale(0.985); } }
+:global(:root[data-motion="calm"]) .screenIn > * > * { animation-duration: 0.25s; animation-delay: 0s; }
 @media (min-width: 900px) {
   .page { max-width: 760px; padding: 36px 40px 64px; }
 }
@@ -34,41 +40,13 @@
 .noteOk { background: var(--food-tint); color: var(--food-ink); }
 .noteBad { background: var(--critical-bg); color: var(--critical); }
 
-/* ── Today hero: full-bleed on phones, a rounded card on desktop ── */
-.hero { margin: calc(-18px - var(--inset-top)) -16px 0; padding: calc(18px + var(--inset-top)) 16px 18px; border-radius: 0 0 30px 30px; display: flex; flex-direction: column; gap: 14px; background: linear-gradient(180deg, var(--surface) 0%, var(--hero-foot) 100%); color: var(--ink); box-shadow: var(--hero-shadow); transition: background 0.6s ease, color 0.6s ease; --hero-muted: var(--muted); --hero-line: var(--surface-2); --hero-chip: var(--bone); }
-.heroClosed { background: linear-gradient(180deg, var(--closed-top) 0%, var(--closed-bottom) 100%); color: var(--closed-text); --hero-muted: var(--closed-muted); --hero-line: var(--closed-line); --hero-chip: var(--closed-chip); }
-@media (min-width: 900px) { .hero { margin: 0; border-radius: 22px; padding: 24px 28px; } }
-.heroMuted { color: var(--hero-muted); }
-.heroTop { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
-.avatar { position: relative; width: 32px; height: 32px; border-radius: var(--r-pill); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; background: var(--ink); color: var(--bone); }
-.avatar::before { content: ""; position: absolute; inset: -6px; }
-.heroClosed .avatar { background: var(--bone); color: var(--ink); }
-.heroMain { display: flex; align-items: center; gap: 16px; }
-.ringWrap { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+/* ── A label in the middle of a ring (the round ring on Activity) ── */
 .ringLabel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
-.heroText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.todos { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 2px; }
-.todo { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 8px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 500; background: var(--hero-chip); }
-.todo i { width: 8px; height: 8px; border-radius: var(--r-pill); }
-.heroFoot { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; border-top: 1px solid var(--hero-line); }
-.streakRow { display: flex; justify-content: space-between; align-items: baseline; padding-top: 8px; }
-.week { display: flex; justify-content: space-between; align-items: flex-end; gap: 4px; }
-.weekDay { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 40px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
-.weekDay svg { opacity: 1; }
-.weekToday { opacity: 1; font-weight: 600; }
-/* The week strip picks the day to fill in: every day is a button, the one being shown is ringed. */
-button.weekDay { background: none; border: 0; color: inherit; font: inherit; width: auto; min-width: 40px; padding: 6px 5px; min-height: 44px; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-/* A soft pill, sized to its label ("TODAY" is wider than the glyph), in whatever colour the hero text is. */
-.weekPicked { opacity: 1; font-weight: 600; background: color-mix(in oklab, currentColor 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, currentColor 18%, transparent); }
 
-/* ── Today cards ── */
+/* ── Shared small pieces ── */
 .lnk { position: relative; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
 button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
-.checkin { display: flex; flex-direction: column; gap: 8px; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.task { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
-.task > :first-child { flex: 1 1 200px; min-width: 0; }
-.minis { display: flex; gap: 6px; margin-left: auto; }
 .unsaved { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; border-radius: var(--r-ctl); background: var(--surface-2); color: var(--ink); font-size: 13px; }
 
 /* ── Journal ── */
@@ -89,19 +67,8 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .play { width: 44px; height: 44px; border-radius: var(--r-pill); border: 1px solid var(--hairline); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ink); background: var(--surface); }
 .play:disabled { opacity: 0.5; }
 .pageHead .lnk { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
-/* Room for the floating mic so the last entry is never hidden behind it. */
-.journalPage { padding-bottom: calc(190px + var(--inset-bottom)); }
-.fab { position: fixed; left: 0; right: 0; bottom: calc(92px + var(--inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 30; }
-.fab > * { pointer-events: auto; }
-.recBadge { font-size: 12px; background: var(--ink); color: var(--bone); padding: 4px 10px; border-radius: var(--r-pill); }
-.recTime { font-size: 13px; color: var(--rec); font-weight: 500; }
-@media (min-width: 900px) { .fab { left: 232px; bottom: 32px; } .journalPage { padding-bottom: 140px; } }
 
 /* ── Food ── */
-.summary { flex-direction: row !important; align-items: center; gap: 16px !important; }
-.summaryRing { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
-.ringWrap96 { position: relative; width: 96px; height: 96px; }
-.summaryBars { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
 .extraForm { display: flex; gap: 8px; }
 .extraForm > :first-child { flex: 1; min-width: 0; }
 .kcalInput { width: 84px !important; flex: none; text-align: right; }
@@ -113,9 +80,6 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .macroRow input { padding: 0 8px; text-align: center; }
 
 /* ── Activity ── */
-.actList { gap: 0 !important; }
-.actRow { display: flex; align-items: center; gap: 12px; min-height: 56px; }
-.actRow + .actRow { border-top: 1px solid var(--surface-2); }
 .opening { position: fixed; inset: 0; z-index: 80; background: var(--bone); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; padding: calc(32px + var(--inset-top)) 28px calc(40px + var(--inset-bottom)); cursor: pointer; animation: openingIn 0.5s ease both; }
 .openingBody { display: flex; flex-direction: column; gap: 18px; max-width: 560px; width: 100%; }
 .openingText { font-size: clamp(34px, 9vw, 56px); line-height: 1.06; letter-spacing: -0.02em; margin: 0; text-wrap: balance; animation: openingRise 0.7s 0.1s ease both; }
@@ -168,8 +132,6 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .factorHead :global(.m) { font-size: 12px; font-weight: 400; white-space: nowrap; }
 .factorTrack { display: flex; flex-direction: column; gap: 2px; }
 .factorTrack i { display: block; height: 5px; min-width: 2px; border-radius: 999px; }
-.stepsRow { padding-top: 12px; border-top: 1px solid var(--surface-2); min-height: 44px; display: flex; flex-direction: column; justify-content: center; }
-.actDot { width: 8px; height: 8px; border-radius: var(--r-pill); flex-shrink: 0; }
 .roundIntro { display: flex; align-items: center; gap: 14px; }
 .roundRing { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
 .grid { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 4px; }
@@ -219,8 +181,6 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .adminUser { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
 .adminUser + .adminUser { border-top: 1px solid var(--surface-2); }
 
-.pushRow { display: flex; gap: 8px; align-items: center; }
-.pushInput { text-align: center; font-size: 24px !important; height: 56px !important; font-family: var(--font-display) !important; font-weight: 600; }
 
 /* Food: the estimate waiting to be checked before it is logged. */
 .draft { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--hairline); border-radius: var(--r-card); background: var(--surface-2); }
@@ -249,6 +209,9 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 /* The weight line: focusable so the arrow keys can walk it, but only the keyboard gets a ring. */
 .trend { border-radius: 10px; outline: none; }
 .trend:focus-visible { outline: 2px solid var(--food); outline-offset: 3px; }
+/* Soma Night: the weight line draws itself in when Insights shows (pathLength 1 makes the dash the whole line). */
+.trend polyline { stroke-dasharray: 1; stroke-dashoffset: 1; animation: trendDraw 1.6s 0.2s cubic-bezier(0.5, 0, 0.2, 1) forwards; }
+@keyframes trendDraw { to { stroke-dashoffset: 0; } }
 
 /* The week in review: the lists under the synopsis. */
 .reviewList { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 7px; font-size: 14px; line-height: 1.55; }
@@ -266,7 +229,8 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .pattern { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .pattern + .pattern { padding-top: 10px; border-top: 1px solid var(--surface-2); }
 .patternTitle { font-size: 14px; font-weight: 600; }
-.patternSvg { width: 100%; height: auto; display: block; overflow: visible; }
+.patternSvg { width: 100%; height: auto; display: block; overflow: visible; animation: patternIn 0.8s var(--ease-out) both; }
+@keyframes patternIn { from { opacity: 0; transform: translateY(8px); } }
 .patternAxis { fill: var(--muted); font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }
 .patternAxisInk { fill: var(--ink); font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; }
 .patternLegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }

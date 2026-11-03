@@ -113,7 +113,8 @@ export function Shell({ children }: { children: ReactNode }) {
           {ORDER.filter((s) => mounted.includes(s)).map((s) => {
             const Screen = SCREENS[s];
             return (
-              <div key={s} hidden={s !== tab}>
+              // The showing tab gets screenIn: its blocks rise in, each time it comes back into view.
+              <div key={s} hidden={s !== tab} className={s === tab ? a.screenIn : undefined}>
                 <TabVisible.Provider value={s === tab}><Screen /></TabVisible.Provider>
               </div>
             );

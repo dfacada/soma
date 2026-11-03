@@ -314,7 +314,7 @@ function WeightCard({ series, label, current, onLog }: { series: { day: string; 
           aria-label={`Weight over the last ${label}, from ${first} to ${weights[weights.length - 1]} pounds. Use the arrow keys to hear each day.`}
           onPointerMove={move} onPointerDown={move} onPointerLeave={() => setAt(null)} onBlur={() => setAt(null)} onKeyDown={keys}>
           <path d="M0 48 L326 48" stroke="var(--surface-2)" /><path d="M0 8 L326 8" stroke="var(--surface-2)" />
-          <polyline fill="none" stroke="var(--food)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" points={points} />
+          <polyline key={label} pathLength={1} fill="none" stroke="var(--food)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" points={points} />
           {marks.map((m, i) => <circle key={m.day} cx={x(m.idx)} cy={y(m.weight)} r={i === at ? 4 : 2.5} fill="var(--food)" stroke="var(--surface)" strokeWidth={i === at ? 2 : 0} />)}
           {shown && <line x1={x(shown.idx)} y1="4" x2={x(shown.idx)} y2="52" stroke="var(--food)" strokeWidth="1" strokeDasharray="2 3" opacity="0.7" />}
         </svg>

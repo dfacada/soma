@@ -1,0 +1,57 @@
+/* Soma Night (2026-11-02) pieces for the Journal, Food and Activity tabs. */
+
+.headPill { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--hue) 16%, transparent); color: var(--hue); font-size: 13px; font-weight: 600; flex-shrink: 0; }
+
+/* Journal: the record card. The lit corner is the record button's own glow. */
+.record { position: relative; overflow: hidden; display: flex; align-items: flex-end; gap: 14px; width: 100%; min-height: 190px; padding: 22px 20px; border-radius: 30px; text-align: left;
+  background: radial-gradient(110% 110% at 100% 100%, color-mix(in srgb, var(--journal) 30%, var(--surface)), var(--surface) 62%); border: 1px solid color-mix(in srgb, var(--journal) 32%, var(--hairline-soft)); box-shadow: var(--shadow-card); transition: transform 0.3s var(--spring); }
+.record:active { transform: scale(0.975); transition-duration: 0.08s; }
+.recordText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.recordTitle { font-size: 32px; line-height: 1.02; }
+.recordSub { font-size: 13px; color: var(--muted); line-height: 1.4; }
+.recordButton { position: relative; width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; color: var(--on-hue);
+  background: radial-gradient(circle at 38% 28%, color-mix(in oklab, var(--journal) 60%, white), var(--journal) 55%, color-mix(in oklab, var(--journal) 70%, black)); box-shadow: 0 14px 34px -8px color-mix(in srgb, var(--journal) var(--glow-pct), transparent); }
+.recordButton::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--journal); opacity: 0; animation: ping 2.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
+@keyframes ping { from { transform: scale(1); opacity: 0.6; } to { transform: scale(1.6); opacity: 0; } }
+
+/* Food: the day's calories, split by meal, with the macros under it. */
+.kcal { display: flex; align-items: baseline; gap: 8px; }
+.kcal :global(.dc) { font-size: 72px; }
+.roll { display: inline-block; animation: roll 0.6s var(--spring) both; }
+@keyframes roll { from { opacity: 0; transform: translateY(50%) scale(0.9); } }
+.split { display: flex; gap: 3px; height: 12px; border-radius: var(--r-pill); overflow: hidden; background: var(--well); }
+.split i { height: 100%; border-radius: 3px; background: var(--food); transition: width 1.1s var(--spring); animation: grow 0.9s var(--spring) both; transform-origin: left; }
+@keyframes grow { from { transform: scaleX(0); } }
+.macros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.macroValue { font-size: 18px; margin-top: 5px; }
+.macroTrack { height: 5px; border-radius: var(--r-pill); background: var(--well); margin-top: 9px; overflow: hidden; }
+.macroTrack i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--food); transition: width 1.1s var(--spring); }
+.mealHead { display: flex; align-items: center; gap: 10px; }
+.mealHead :global(.eb) { flex: 1; color: var(--ink); }
+.mealIcon { width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--food) 15%, transparent); color: var(--food); flex-shrink: 0; transition: background 0.4s ease, color 0.4s ease; }
+.mealDone { border-color: color-mix(in srgb, var(--food) 42%, var(--hairline-soft)); }
+.mealDone .mealIcon { background: var(--food); color: var(--on-hue); }
+
+/* Activity: the push-up ring, and the day's moves as big toggles. */
+.ring { position: relative; width: 224px; height: 224px; margin: 4px auto 0; display: grid; place-items: center; border-radius: 50%; }
+.ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.ringTrack { fill: none; stroke: var(--well); stroke-width: 14; }
+.ringFill { fill: none; stroke: var(--activity); stroke-width: 14; stroke-linecap: round; transition: stroke-dasharray 0.9s var(--spring); filter: drop-shadow(0 0 10px color-mix(in srgb, var(--activity) var(--glow-pct), transparent)); }
+.ringCenter { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px; border-radius: 50%; transition: transform 0.3s var(--spring); }
+.ringCenter:active { transform: scale(0.94); }
+.ringCenter :global(.dc) { font-size: 76px; }
+.quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.q { height: 52px; border-radius: var(--r-pill); background: var(--well); font-weight: 600; font-size: 16px; text-align: center; transition: transform 0.3s var(--spring); }
+.q:active { transform: scale(0.92); transition-duration: 0.06s; }
+.qHi { background: var(--activity); color: var(--on-hue); }
+.moves { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.move { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 14px; border-radius: 22px; background: var(--surface); border: 1px solid var(--hairline-soft); min-height: 112px; text-align: left; transition: background 0.4s ease, border-color 0.4s ease, transform 0.3s var(--spring); }
+.move:active { transform: scale(0.95); transition-duration: 0.08s; }
+.moveIcon { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--activity) 15%, transparent); color: var(--activity); transition: background 0.4s ease, color 0.4s ease; }
+.moveOn { background: color-mix(in srgb, var(--activity) 15%, var(--surface)); border-color: color-mix(in srgb, var(--activity) 55%, transparent); }
+.moveOn .moveIcon { background: var(--activity); color: var(--on-hue); animation: pop 0.5s var(--spring); }
+@keyframes pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.moveText { display: flex; flex-direction: column; gap: 2px; }
+.sec { display: flex; align-items: center; justify-content: space-between; padding: 6px 4px 0; }
+
+:global(:root[data-motion="calm"]) .recordButton::after { animation: none; }

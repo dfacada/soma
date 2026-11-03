@@ -10,7 +10,7 @@
 
 import { useGoTab } from "./tabs";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Sheet, Toast, useTabVisible, type IconName, type MedallionState, type OrbBead } from "@/components/ui";
+import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Sheet, Toast, type IconName, type MedallionState, type OrbBead } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
 import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS, type TaskKey } from "@/lib/today";
 import { report } from "@/lib/log";
@@ -63,12 +63,6 @@ export function Today() {
   const closePush = useCallback(() => setPushSheet(false), []);
   const closeWeight = useCallback(() => setWeightSheet(false), []);
   const closeCheckin = useCallback(() => setCheckinSheet(false), []);
-
-  // Each time Today comes back into view its blocks rise in again: the class flips between two copies of the same
-  // animation, which restarts it. Adjusted during render, so no effect sets state.
-  const visible = useTabVisible();
-  const [shown, setShown] = useState({ visible, n: 0 });
-  if (shown.visible !== visible) setShown({ visible, n: visible ? shown.n + 1 : shown.n });
 
   // The server's count is from page load; the journal provider knows about entries recorded since, including
   // ones still waiting to upload. Whichever is higher is the truth for today.
@@ -226,7 +220,7 @@ export function Today() {
     `${t.tile} ${wide ? t.wide : ""} ${done ? t.tileDone : ""} ${rec ? t.tileRec : ""}`;
 
   return (
-    <div className={`${a.page} ${t.enter} ${shown.n % 2 ? "" : t.enterB}`}>
+    <div className={a.page}>
       <FitbitBanner />
       <header className={t.top}>
         <div>

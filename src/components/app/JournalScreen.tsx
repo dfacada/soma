@@ -3,13 +3,15 @@
 // The Journal screen: entries newest first, playback, a written note per entry, and the floating mic.
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, Icon, Input, MicButton, StageBar, Tag, type StepProgress } from "@/components/ui";
+import { Button, Card, Icon, Input, StageBar, Tag, type StepProgress } from "@/components/ui";
 import { report } from "@/lib/log";
 import { clock } from "@/lib/journal";
 import { toWav, within } from "@/lib/playable";
 import { dayKey } from "@/lib/today";
 import { useJournal, type Item } from "./Journal";
 import a from "./app.module.css";
+import sc from "./screens.module.css";
+import ui from "@/components/ui/ui.module.css";
 
 const dayLabel = (ms: number) => {
   const d = new Date(ms), today = new Date(), y = new Date(); y.setDate(y.getDate() - 1);
@@ -44,11 +46,26 @@ export function JournalScreen() {
   }, [j.items, terms, index]);
 
   return (
-    <div className={`${a.page} ${a.journalPage}`}>
+    <div className={a.page}>
       <div className={a.pageHead}>
-        <span className={`d ${a.pageTitle}`}>Journal</span>
-        {j.vault === "open" && <button type="button" className={a.lnk} onClick={j.lock}><Icon name="lock" size={14} /> Lock</button>}
+        <div>
+          <div className="eb">Sealed on this phone</div>
+          <div className={`d ${a.pageTitle}`}>Journal</div>
+        </div>
+        {j.vault === "open" && <button type="button" className={`${sc.headPill} ${ui.journal}`} onClick={j.lock} aria-label="Vault open. Lock it"><Icon name="lock" size={14} />Vault open · Lock</button>}
       </div>
+
+      {/* The record card: recording fills the screen once it starts (RecordMoment). */}
+      {j.vault === "open" && (
+        <button type="button" className={sc.record} onClick={() => j.toggleRecording(null)}>
+          <span className={sc.recordText}>
+            <span className="eb">New entry</span>
+            <span className={`d ${sc.recordTitle}`}>Say how today went.</span>
+            <span className={sc.recordSub}>Two minutes is plenty. It is encrypted with your vault key before it uploads.</span>
+          </span>
+          <span className={sc.recordButton}><Icon name="mic" size={32} strokeWidth={2} /></span>
+        </button>
+      )}
 
       {j.vault === "checking" && <span className="eb">Checking your vault</span>}
 
@@ -76,7 +93,7 @@ export function JournalScreen() {
         </Card>
       )}
       {j.vault === "open" && j.items?.length === 0 && !j.recording && (
-        <Card><p className="muted">Nothing here yet. Tap the microphone and talk for two minutes; that is plenty.</p></Card>
+        <Card><p className="muted">Nothing here yet. Your entries land here, sealed, and open only with your vault.</p></Card>
       )}
 
       {j.vault === "open" && !!j.items?.length && (
@@ -98,10 +115,6 @@ export function JournalScreen() {
         </section>
       ))}
 
-      <div className={a.fab}>
-        {j.recording && <span className={`m ${a.recBadge}`}>Recording · {clock(j.seconds)} · tap to stop</span>}
-        <MicButton recording={j.recording} onClick={() => j.toggleRecording(null)} />
-      </div>
     </div>
   );
 }

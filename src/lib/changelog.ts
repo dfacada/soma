@@ -31,6 +31,11 @@ export const CHANGES: Release[] = [
       "Saying what you ate also fills the screen: listen, then your words appear as they are written down, a shimmer while Soma works out the food, and then each item slides in with the total. It's already logged; tap Done.",
       "Close the day while Soma is open and it celebrates: the orb blooms, light bursts out of it, your streak rolls over to the new number and the week's dots fill in. Once a day, and never for a past day you're filling in.",
       "The opening screen has a small orb with the three colours drifting inside it, and the Soma letters rise in.",
+      "Every tab rises in, block by block, each time you open it, under a bigger title.",
+      "Journal: a big Say how today went card at the top starts a recording (it replaces the floating microphone), and the lock is a pill that says Vault open.",
+      "Food: today's calories in big numbers, a bar split by each meal you've eaten, and protein, carbs and fat side by side. Each meal card has its icon, which turns into a green check once it's eaten.",
+      "Activity: push-ups in a big ring that fills toward your target. Tap the middle to count, or add −10, +10 or +25 straight away. Walk, Gym and Run are big buttons underneath; any one closes the day.",
+      "Insights: the weight line draws itself in.",
     ],
   },
   {
