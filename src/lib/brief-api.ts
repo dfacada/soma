@@ -25,9 +25,10 @@ export const morgenEvents = (key: string, from: number, to: number, skip: string
     key, skip, from: new Date(from).toISOString().replace(/\.\d{3}Z$/, "Z"), to: new Date(to).toISOString().replace(/\.\d{3}Z$/, "Z"),
   });
 
-/** The brief as a Telegram message, to the chat paired for the week in review (routes/telegram.js). Words only. */
+/** The brief as a Telegram message, to the chat paired for the week in review (routes/telegram.js). Words only,
+ *  formatted as Telegram HTML (tomorrow.ts briefText escapes everything in it). */
 export const briefToTelegram = (text: string) =>
-  api<{ sent: boolean }>("POST", "/telegram/send", { text, speak: false, title: "Tomorrow's brief" });
+  api<{ sent: boolean }>("POST", "/telegram/send", { text, speak: false, html: true, title: "Tomorrow's brief" });
 
 /** A refusal from Todoist, in words a person can act on. */
 export class TodoistError extends Error {
@@ -35,8 +36,9 @@ export class TodoistError extends Error {
 }
 
 const TODOIST = "https://api.todoist.com/api/v1/tasks/filter";
-/** Still open today counts too: by tomorrow it is overdue, and it is part of the day being planned. */
-export const TODOIST_QUERY = "overdue | today | tomorrow";
+/** Only what is due on the brief's day (David, 2026-11-03: not the earlier ones left undone). "today" is there for
+ *  a brief read after midnight, which is about the day just begun; the day itself is picked out on the phone. */
+export const TODOIST_QUERY = "today | tomorrow";
 
 /** Read-only: one filter query, a page of 200 at a time, five pages at most. */
 export async function todoistTasks(token: string): Promise<TodoistTask[]> {

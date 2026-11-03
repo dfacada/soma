@@ -242,18 +242,14 @@ export function toTasks(raw: TodoistTask[]): BriefTask[] {
   return out;
 }
 
-/** Carried over (due before the day: overdue, or still open today) and due on the day. A task Morgen has already put on
- *  the calendar that day shows there, once, and is left out of the lists. */
-export function taskGroups(tasks: BriefTask[], day: string, events: BriefEvent[] = []): { carried: BriefTask[]; due: BriefTask[] } {
+/** The tasks due on the day, and only those (David, 2026-11-03: not the earlier ones left undone). A task Morgen has
+ *  already put on the calendar that day shows there, once, and is left out of the list. */
+export function dueTasks(tasks: BriefTask[], day: string, events: BriefEvent[] = []): BriefTask[] {
   const onCalendar = new Set(events.filter((e) => e.task).map((e) => norm(e.title)));
-  const keep = tasks.filter((t) => !onCalendar.has(norm(t.text)));
   const byPriority = (a: BriefTask, b: BriefTask) => b.priority - a.priority;
   // Timed tasks first, by the clock; then the rest, most urgent first.
   const byTime = (a: BriefTask, b: BriefTask) => (a.time && b.time && a.time !== b.time ? (a.time < b.time ? -1 : 1) : a.time && !b.time ? -1 : b.time && !a.time ? 1 : byPriority(a, b));
-  return {
-    carried: keep.filter((t) => t.due < day).sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : byPriority(a, b))),
-    due: keep.filter((t) => t.due === day).sort(byTime),
-  };
+  return tasks.filter((t) => t.due === day && !onCalendar.has(norm(t.text))).sort(byTime);
 }
 
 export const todoistUrl = (id: string) => `https://app.todoist.com/app/task/${encodeURIComponent(id)}`;
@@ -366,8 +362,7 @@ export function summaryLine(brief: Brief | null, soma: SomaSide): string {
     parts.push(timed.length ? `${timed.length} event${timed.length === 1 ? "" : "s"}${first ? `, first at ${clockLabel(first.start)}` : ""}` : "Nothing on the calendar");
   }
   if (brief?.tasks) {
-    const g = taskGroups(brief.tasks, brief.day, brief.events || []);
-    const n = g.carried.length + g.due.length;
+    const n = dueTasks(brief.tasks, brief.day, brief.events || []).length;
     if (n) parts.push(`${n} task${n === 1 ? "" : "s"}`);
   }
   parts.push(soma.pushups.rest ? "rest day" : `${soma.pushups.target} push-ups`);
@@ -389,34 +384,47 @@ export function sendDue(brief: Brief | null, setting: { telegram: boolean; time:
 /** "Tuesday 3 November". */
 export const dayTitle = (day: string) => fromKey(day).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 
-/** The brief as plain text, for Telegram: times and titles, the tasks, Soma's side. Never a description, an attendee or
- *  a link, because Telegram keeps whatever it is sent. */
+/** Text for Telegram's HTML mode: only &, < and > need escaping. */
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const PRIORITY_MARK: Record<number, string> = { 4: "🔴 ", 3: "🟠 ", 2: "🔵 " };
+const MEAL_MARK: Record<string, string> = { breakfast: "🍳", lunch: "🥗", snack: "🍎", dinner: "🍽" };
+/** Under Telegram's 4,096 characters, with room to spare for the tags. */
+const TELEGRAM_MAX = 3800;
+
+/** The brief as a Telegram message (HTML mode; David, 2026-11-03: "more visually appealing and easy to read"): a bold
+ *  heading per part, one thing per line, the clock in monospace so the times line up, a coloured dot for Todoist's
+ *  priorities. Times and titles, the free time, the tasks, Soma's side: never a description, an attendee or a link,
+ *  because Telegram keeps whatever it is sent. Every word that came from Morgen, Todoist or the plan is escaped. */
 export function briefText(brief: Brief, soma: SomaSide, free: Block[] | null, insight: Insight | null): string {
-  const lines: string[] = [`Tomorrow · ${dayTitle(brief.day)}`];
+  const lines: string[] = [`🌙 <b>${esc(dayTitle(brief.day))}</b>`];
   if (brief.events) {
-    lines.push("", "Calendar");
-    const allDay = brief.events.filter((e) => e.allDay);
-    if (allDay.length) lines.push("All day: " + allDay.map((e) => e.title).join(", "));
+    lines.push("", "📅 <b>Calendar</b>");
+    for (const e of brief.events.filter((x) => x.allDay)) lines.push(`🗓 ${esc(e.title)} <i>· all day</i>`);
     const timed = brief.events.filter((e) => !e.allDay);
-    if (!timed.length) lines.push("Nothing booked.");
-    for (const e of timed) lines.push(`${eventTime(e, brief.day)}  ${e.title}${e.busy ? "" : " (free)"}`);
-    if (free?.length) lines.push("Free: " + free.map((b) => rangeLabel(b.start, b.end)).join(", "));
+    if (!timed.length) lines.push("<i>Nothing booked</i>");
+    for (const e of timed) lines.push(`<code>${esc(eventTime(e, brief.day))}</code>  ${esc(e.title)}${e.busy ? "" : " <i>(free)</i>"}`);
+    if (free?.length) {
+      lines.push("", "🟢 <b>Free</b>");
+      for (const b of free) lines.push(`<code>${esc(rangeLabel(b.start, b.end))}</code>  <i>${esc(lengthLabel(b.end - b.start))}</i>`);
+    }
   }
   if (brief.tasks) {
-    const g = taskGroups(brief.tasks, brief.day, brief.events || []);
-    const item = (t: BriefTask) => `${t.priority > 1 ? `P${5 - t.priority} ` : ""}${t.text}${t.time ? ` (${taskClock(t)})` : ""}`;
-    lines.push("", "Todoist");
-    if (!g.carried.length && !g.due.length) lines.push("Nothing due.");
-    if (g.carried.length) lines.push("Carried over: " + g.carried.map(item).join("; "));
-    if (g.due.length) lines.push("Due: " + g.due.map(item).join("; "));
+    const due = dueTasks(brief.tasks, brief.day, brief.events || []);
+    lines.push("", `✅ <b>Todoist</b>${due.length ? ` · ${due.length} due` : ""}`);
+    if (!due.length) lines.push("<i>Nothing due</i>");
+    for (const t of due) lines.push(`${PRIORITY_MARK[t.priority] || "▫️ "}${esc(t.text)}${t.time ? `  <code>${esc(taskClock(t) || "")}</code>` : ""}`);
   }
-  lines.push("", "Soma");
-  const day: string[] = [];
-  if (soma.weighIn) day.push("weigh in");
-  day.push(soma.pushups.rest ? "rest day for push-ups" : `${soma.pushups.target} push-ups${soma.pushups.dayNumber ? ` (day ${soma.pushups.dayNumber})` : ""}`);
-  lines.push(day.join(" · ").replace(/^./, (c) => c.toUpperCase()));
-  for (const m of soma.meals) lines.push(`${m.meal}: ${m.name} (${m.kcal.toLocaleString("en-US")} kcal)`);
-  lines.push(`${soma.kcal.toLocaleString("en-US")} kcal · ${soma.protein} g protein planned`);
-  if (insight) lines.push("", insight.text + ".");
-  return lines.join("\n").slice(0, 3800);
+  lines.push("", "💪 <b>Soma</b>");
+  if (soma.weighIn) lines.push("⚖️ Weigh in");
+  lines.push(soma.pushups.rest ? "😌 Rest day for push-ups" : `🏋️ ${soma.pushups.target} push-ups${soma.pushups.dayNumber ? ` <i>· day ${soma.pushups.dayNumber}</i>` : ""}`);
+  for (const m of soma.meals) lines.push(`${MEAL_MARK[m.key] || "🍽"} ${esc(m.name)}  <i>${m.kcal.toLocaleString("en-US")} kcal</i>`);
+  lines.push(`<i>${soma.kcal.toLocaleString("en-US")} kcal · ${soma.protein} g protein planned</i>`);
+  if (insight) lines.push("", `✨ <i>${esc(insight.text)}</i>`);
+  // Too long for one message: stop at a whole line, never inside a tag.
+  let out = "";
+  for (const line of lines) {
+    if (out.length + line.length + 3 > TELEGRAM_MAX) return out + "\n…";
+    out += (out ? "\n" : "") + line;
+  }
+  return out;
 }

@@ -14,7 +14,7 @@
 //   POST   /telegram/code       → { code, bot, expiresMs }
 //   POST   /telegram/pair       { code } → { connected, chat }   (reads getUpdates, finds the chat, says hello)
 //   DELETE /telegram            forget the chat
-//   POST   /telegram/send       { text, title?, speak? } → { sent, spoke }
+//   POST   /telegram/send       { text, title?, speak?, html? } → { sent, spoke }   html: text is Telegram HTML
 
 'use strict';
 
@@ -136,7 +136,9 @@ router.post('/telegram/send', member, wrap(async (req, res) => {
   if (!text) throw new HttpError(400, 'nothing to send');
   if (text.length > TEXT_MAX) throw new HttpError(413, `keep it under ${TEXT_MAX} characters`);
 
-  await telegram('sendMessage', { chat_id: chat, text, disable_web_page_preview: true });
+  // Tomorrow's brief comes formatted (bold headings, monospace times) and asks for HTML; the phone escapes every word
+  // in it. Anything else goes as plain text, as it always has.
+  await telegram('sendMessage', Object.assign({ chat_id: chat, text, disable_web_page_preview: true }, b.html === true ? { parse_mode: 'HTML' } : {}));
 
   // The spoken version is a nicety: a week that cannot be read aloud still arrives as words.
   // The voice takes a few hundred characters at a time and the function has 30 seconds to answer, so the reading

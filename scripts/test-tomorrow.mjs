@@ -4,7 +4,7 @@
 // Runs on New York's clock whatever the machine's, so the clock changes below are real ones.
 process.env.TZ = "America/New_York";
 
-import { briefDay, dayBounds, zonedMs, durationMs, toEvents, dedupe, freeBlocks, wakingDay, timeline, toTasks, taskGroups, plainTask,
+import { briefDay, dayBounds, zonedMs, durationMs, toEvents, dedupe, freeBlocks, wakingDay, timeline, toTasks, dueTasks, plainTask,
   clockLabel, rangeLabel, lengthLabel, insightLine, somaSide, summaryLine, briefText, taskClock, sendDue } from "../src/lib/tomorrow.ts";
 import { DEFAULT_SETTINGS } from "../src/lib/settings.ts";
 
@@ -115,11 +115,11 @@ check("links keep their words and the uncompletable mark goes", tasks.find((t) =
 check("a floating time keeps its clock", tasks.find((t) => t.id === "3").time === "14:30" && tasks.find((t) => t.id === "3").minutes === 30);
 check("a time in UTC is read on this device's clock", tasks.find((t) => t.id === "4").time === "15:30" && tasks.find((t) => t.id === "4").due === D);
 check("priority stays between 1 and 4, recurring is kept, no due date is dropped", tasks.find((t) => t.id === "5").priority === 4 && tasks.find((t) => t.id === "5").recurring && !tasks.some((t) => t.id === "8"));
-const groups = taskGroups(tasks, D, [{ id: "m", title: "gym", start: at(D, "07:00"), end: at(D, "08:00"), busy: true, allDay: false, calendar: "", task: true }]);
-check("carried over: before the day, oldest first", groups.carried.map((t) => t.id).join() === "1,2", groups.carried.map((t) => t.id));
-check("due: timed first by the clock, then the most urgent", groups.due.map((t) => t.id).join() === "3,4,5", groups.due.map((t) => t.id));
-check("a task Morgen put on the calendar shows only there", !groups.due.some((t) => t.id === "7"));
-check("a later task is not in the brief", ![...groups.carried, ...groups.due].some((t) => t.id === "6"));
+const due = dueTasks(tasks, D, [{ id: "m", title: "gym", start: at(D, "07:00"), end: at(D, "08:00"), busy: true, allDay: false, calendar: "", task: true }]);
+check("only tasks due on the day: nothing overdue or left from today", !due.some((t) => ["1", "2"].includes(t.id)), due.map((t) => t.id));
+check("due: timed first by the clock, then the most urgent", due.map((t) => t.id).join() === "3,4,5", due.map((t) => t.id));
+check("a task Morgen put on the calendar shows only there", !due.some((t) => t.id === "7"));
+check("a later task is not in the brief", !due.some((t) => t.id === "6"));
 check("a task's time reads as a clock", taskClock(tasks.find((t) => t.id === "3")) === "2:30 pm" && taskClock(tasks.find((t) => t.id === "5")) === null);
 check("plainTask caps the length", plainTask("x".repeat(300)).length === 200);
 
@@ -148,12 +148,12 @@ check("the four planned meals, in order, with their total", soma.meals.map((m) =
 check("weighing in follows the setting", somaSide({ ...DEFAULT_SETTINGS, requireWeight: false }, { target: 100, rest: false, dayNumber: null }).weighIn === false);
 const brief = { day: D, builtMs: 0, events: ev, tasks };
 const text0 = () => briefText(brief, soma, fb, null);
-check("the Today line counts the day's events and names the first to start on it", summaryLine(brief, soma) === "5 events, first at 9 am · 6 tasks · 100 push-ups", summaryLine(brief, soma));
-check("an event from the night before reads as until", text0().includes("until 1:30 am  Late show"));
+check("the Today line counts the day's events and names the first to start on it", summaryLine(brief, soma) === "5 events, first at 9 am · 4 tasks · 100 push-ups", summaryLine(brief, soma));
+check("an event from the night before reads as until", text0().includes("<code>until 1:30 am</code>  Late show"));
 check("the Today line on a rest day with nothing connected", summaryLine({ day: D, builtMs: 0, events: null, tasks: null }, { ...soma, pushups: { target: 100, rest: true, dayNumber: 7 } }) === "rest day");
 check("an empty calendar says so", summaryLine({ day: D, builtMs: 0, events: [], tasks: [] }, soma) === "Nothing on the calendar · 100 push-ups");
 const text = briefText(brief, soma, fb, moving);
-check("the text has the day, the times and titles, the tasks and Soma's side", text.startsWith("Tomorrow · Tuesday 3 November") && text.includes("9–9:30 am  Standup") && text.includes("Carried over: P1 Pay rent; Read this") && text.includes("Due: P3 Call Sam (2:30 pm)") && text.includes("100 push-ups (day 43)") && text.includes("Great days come with moving"), text);
+check("the text has the day, the times and titles, the tasks and Soma's side", text.startsWith("🌙 <b>Tuesday 3 November</b>") && text.includes("<code>9–9:30 am</code>  Standup") && !text.includes("Pay rent") && text.includes("🔵 Call Sam  <code>2:30 pm</code>") && text.includes("🏋️ 100 push-ups <i>· day 43</i>") && text.includes("✨ <i>Great days come with moving"), text);
 check("the text carries no place, link or description", !text.includes("Room 4") && !text.includes("http") && !text.includes("bank"));
 console.log("sending it to Telegram by itself");
 const on = { telegram: true, time: "21:00", sent: "" };
@@ -165,6 +165,7 @@ check("already sent for that day: never twice", !sendDue(readAt("21:05"), { ...o
 check("switched off: never", !sendDue(readAt("21:05"), { ...on, telegram: false }));
 check("nothing read: nothing to send", !sendDue(null, on));
 
+check("words from outside are escaped for Telegram's HTML", briefText({ day: D, builtMs: 0, events: [{ id: "x", title: "Q&A <prep>", start: at(D, "10:00"), end: at(D, "11:00"), busy: true, allDay: false, calendar: "" }], tasks: null }, soma, null, null).includes("Q&amp;A &lt;prep&gt;"));
 check("the text fits a Telegram message", briefText({ ...brief, tasks: Array.from({ length: 400 }, (_, i) => ({ id: String(i), text: "a long task name ".repeat(5), priority: 1, due: D, time: null, minutes: null, recurring: false })) }, soma, fb, moving).length <= 3800);
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

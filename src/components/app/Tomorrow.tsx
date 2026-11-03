@@ -12,10 +12,10 @@ import { report } from "@/lib/log";
 import { enablePush, pushState, type PushState } from "@/lib/push";
 import { api } from "@/lib/api";
 import {
-  clockLabel, eventTime, lengthLabel, rangeLabel, summaryLine, taskClock, taskGroups, timeline, todoistUrl,
+  clockLabel, dueTasks, eventTime, lengthLabel, rangeLabel, summaryLine, taskClock, timeline, todoistUrl,
   type BriefEvent, type BriefTask, type Insight, type SomaSide,
 } from "@/lib/tomorrow";
-import { dayKey, fromKey } from "@/lib/today";
+import { fromKey } from "@/lib/today";
 import { useTomorrow } from "./Brief";
 import { useJournal } from "./Journal";
 import { LINE } from "./Nudge";
@@ -28,7 +28,6 @@ import t from "./today.module.css";
 const hue = (d: Domain) => ({ "--hue": `var(--${d})` }) as CSSProperties;
 const fmt = (n: number) => n.toLocaleString("en-US");
 const weekdayOf = (day: string) => fromKey(day).toLocaleDateString("en-GB", { weekday: "long" });
-const shortDay = (day: string) => fromKey(day).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 /** A length short enough for a stat: "45m", "2h", "5h10". */
 const compact = (ms: number) => { const min = Math.round(ms / 60000); return min < 60 ? `${min}m` : `${Math.floor(min / 60)}h${min % 60 ? String(min % 60).padStart(2, "0") : ""}`; };
 
@@ -226,18 +225,15 @@ function CalendarCard({ events, error, free, awake, day, onRetry }: {
   );
 }
 
-/** Carried over (overdue, or still open today) and due on the day. Read-only: a tap opens the task in Todoist. */
+/** What is due on the day, and only that. Read-only: a tap opens the task in Todoist. */
 function TasksCard({ tasks, error, events, day, onRetry }: { tasks: BriefTask[] | null; error?: string; events: BriefEvent[] | null; day: string; onRetry: () => void }) {
-  const g = tasks ? taskGroups(tasks, day, events || []) : null;
-  const total = g ? g.carried.length + g.due.length : 0;
-  const todayKey = dayKey(new Date());
+  const due = tasks ? dueTasks(tasks, day, events || []) : null;
   return (
     <section className={s.card} aria-label="Todoist">
-      <div className={s.cardHead}><span className="eb">Todoist</span>{g && <span className={s.source}>{total} task{total === 1 ? "" : "s"}</span>}</div>
+      <div className={s.cardHead}><span className="eb">Todoist</span>{due && <span className={s.source}>{due.length} task{due.length === 1 ? "" : "s"}</span>}</div>
       {error && <Problem text={error} onRetry={onRetry} />}
-      {g && total === 0 && <p className={s.rowSub}>Nothing due, nothing carried over.</p>}
-      {g && g.carried.length > 0 && <TaskList title={`Carried over · ${g.carried.length}`} tasks={g.carried} when={(x) => (x.due === todayKey ? "today" : shortDay(x.due))} />}
-      {g && g.due.length > 0 && <TaskList title={`Due ${weekdayOf(day)} · ${g.due.length}`} tasks={g.due} when={(x) => taskClock(x)} />}
+      {due && due.length === 0 && <p className={s.rowSub}>Nothing due {weekdayOf(day)}.</p>}
+      {due && due.length > 0 && <TaskList title={`Due ${weekdayOf(day)} · ${due.length}`} tasks={due} when={(x) => taskClock(x)} />}
     </section>
   );
 }
@@ -318,7 +314,7 @@ const HELP: Record<Provider, { name: string; off: string; on: string; label: str
   },
   todoist: {
     name: "Todoist",
-    off: "Tasks due tomorrow and anything overdue. In Todoist: Settings → Integrations → Developer → API token. Sealed with your vault key and used only by this phone, straight with Todoist: Soma's server never sees it. Soma only reads.",
+    off: "Tasks due tomorrow, and only those. In Todoist: Settings → Integrations → Developer → API token. Sealed with your vault key and used only by this phone, straight with Todoist: Soma's server never sees it. Soma only reads.",
     on: "Connected. Read straight from Todoist on this phone; Soma only reads, never changes a task.",
     label: "Todoist API token",
   },
