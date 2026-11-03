@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
 import { report } from "@/lib/log";
 import { prepareChallenge } from "@/lib/vault-passkey";
-import { PALETTES, type ThemeMode } from "@/lib/look";
+import { PALETTES, type MotionMode, type ThemeMode } from "@/lib/look";
 import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX } from "@/lib/opening";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
 import { planMeals, type Habit, type Settings } from "@/lib/settings";
@@ -59,9 +59,13 @@ export function SettingsScreen() {
 
       <Card>
         <span className="eb">Appearance</span>
-        <Field name="Theme" help="System follows your phone or computer, so Soma goes dark when it does.">
+        <Field name="Theme" help="System follows your phone: Night when it is dark, Light when it is not.">
           <Segmented label="Theme" value={settings.theme} onChange={(v) => void save({ theme: v as ThemeMode })}
-            options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }, { value: "system", label: "System" }]} />
+            options={[{ value: "dark", label: "Night" }, { value: "light", label: "Light" }, { value: "system", label: "System" }]} />
+        </Field>
+        <Field name="Motion" help="Calm drops the bounce and anything that keeps moving on its own.">
+          <Segmented label="Motion" value={settings.motion} onChange={(v) => void save({ motion: v as MotionMode })}
+            options={[{ value: "lively", label: "Lively" }, { value: "calm", label: "Calm" }]} />
         </Field>
         <span className="eb" style={{ paddingTop: 6 }}>Accent palette</span>
         <div className={a.palettes} role="radiogroup" aria-label="Accent palette">

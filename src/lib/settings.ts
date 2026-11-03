@@ -2,7 +2,7 @@
 // what is stored is only what the user changed, merged over these on load, so new settings need no migration.
 
 import { BOWL_VARIANTS, MEAL_PLANS, SNACK_PRESETS, type BowlId, type MealPlanId } from "./food-data";
-import { isPalette, THEME_MODES, type PaletteId, type ThemeMode } from "./look";
+import { isPalette, MOTION_MODES, THEME_MODES, type MotionMode, type PaletteId, type ThemeMode } from "./look";
 import { DEFAULT_PHRASES, NOTE_MAX, PHRASE_MAX, PHRASES_MAX, type Phrase } from "./opening";
 
 export type Mood = { id: string; label: string; on: boolean };
@@ -42,6 +42,7 @@ export type Settings = {
   /** Appearance. The colours are in globals.css; src/lib/look.ts applies these. */
   theme: ThemeMode;
   palette: PaletteId;
+  motion: MotionMode;
   /** The words shown full screen when the app opens. An empty list is a choice and stays empty. */
   opening: { on: boolean; phrases: Phrase[] };
   /** One notification at `time` (local, HH:MM) when the day is still open. The server reads this: soma_jobs/nudge.js. */
@@ -80,8 +81,11 @@ export const DEFAULT_SETTINGS: Settings = {
   foodEstimate: true,
   requireWeight: true,
   unlockOnOpen: true,
-  theme: "light",
+  // Night ("dark") for everyone who never picked: only what a user changed is stored, so a stored "light" or
+  // "system" was a choice and stays.
+  theme: "dark",
   palette: "soma",
+  motion: "lively",
   opening: { on: true, phrases: DEFAULT_PHRASES },
   nudge: { on: false, time: "20:30" },
 };
@@ -132,6 +136,7 @@ export function mergeSettings(stored: unknown): Settings {
     unlockOnOpen: s.unlockOnOpen !== false,
     theme: THEME_MODES.includes(s.theme as ThemeMode) ? (s.theme as ThemeMode) : d.theme,
     palette: isPalette(s.palette) ? s.palette : d.palette,
+    motion: MOTION_MODES.includes(s.motion as MotionMode) ? (s.motion as MotionMode) : d.motion,
     nudge: { on: s.nudge?.on === true, time: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.nudge?.time || "") ? s.nudge!.time : d.nudge.time },
     opening: {
       on: s.opening?.on !== false,

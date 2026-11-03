@@ -83,16 +83,16 @@ export function SessionGate({ children }: { children: ReactNode }) {
   }, [apply]);
 
   // Appearance follows the account. "system" also follows the OS while the app is open.
-  const theme = settings?.theme, palette = settings?.palette;
+  const theme = settings?.theme, palette = settings?.palette, motion = settings?.motion;
   useEffect(() => {
-    if (!theme || !palette) return;
-    applyLook(theme, palette);
+    if (!theme || !palette || !motion) return;
+    applyLook(theme, palette, motion);
     if (theme !== "system") return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const follow = () => applyLook(theme, palette);
+    const follow = () => applyLook(theme, palette, motion);
     media.addEventListener("change", follow);
     return () => media.removeEventListener("change", follow);
-  }, [theme, palette]);
+  }, [theme, palette, motion]);
 
   const load = useCallback(() => {
     setState({ kind: "loading" });

@@ -42,6 +42,8 @@
 .medDone { background: var(--hue); border-color: var(--hue); color: var(--on-hue); box-shadow: 0 6px 14px var(--hue-glow); }
 .medRec { background: var(--rec); border-color: var(--rec); color: var(--on-hue); box-shadow: 0 6px 14px color-mix(in srgb, var(--rec) 32%, transparent); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+/* Calm motion: recording shows in the colour alone, without the pulse. */
+:global(:root[data-motion="calm"]) .medRec, :global(:root[data-motion="calm"]) .micRec { animation: none; }
 
 /* ── Mini: a 42px tap slot inside a Today card (one meal, one activity) ── */
 .mini { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1.5px dashed var(--hairline-strong); color: var(--faint); background: var(--field); transition: all 0.25s ease; }

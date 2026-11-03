@@ -292,6 +292,8 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
   animation: auroraY var(--py) cubic-bezier(0.37, 0, 0.63, 1) var(--aurora-t, 0ms) infinite alternate; will-change: transform; }
 @keyframes auroraX { from { transform: translate(calc(var(--x) - var(--dx)), var(--y)); } to { transform: translate(calc(var(--x) + var(--dx)), var(--y)); } }
 @keyframes auroraY { from { transform: translateY(var(--dy)); } to { transform: translateY(calc(var(--dy) * -1)); } }
+/* Calm motion: the washes hold still where they are. */
+:global(:root[data-motion="calm"]) .auroraX, :global(:root[data-motion="calm"]) .auroraY { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .aurora { display: none; }
   /* The still splash, and a plain fade out instead of the lift (globals.css stops every other transition). */

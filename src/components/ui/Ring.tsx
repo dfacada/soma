@@ -14,7 +14,7 @@ export function DayRing({ segments, size = 120, closed = false }: { segments: Ri
   const done = segments.filter((s) => s.value >= 1).length;
   return (
     <svg width={size} height={size} viewBox="0 0 120 120" role="img" aria-label={`${done} of ${n} done today`}>
-      <circle cx="60" cy="60" r={R} fill="none" strokeWidth="10" stroke={closed ? "rgba(255,255,255,0.12)" : "var(--surface-2)"} />
+      <circle cx="60" cy="60" r={R} fill="none" strokeWidth="10" stroke={closed ? "var(--closed-line)" : "var(--surface-2)"} />
       {segments.map((seg, i) => clamp(seg.value) > 0 && (
         <circle
           key={i}

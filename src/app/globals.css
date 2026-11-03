@@ -56,6 +56,17 @@
   --closed-line: rgba(255, 255, 255, 0.12);
   --closed-chip: rgba(255, 255, 255, 0.1);
 
+  /* Soma Night pieces (2026-11-02), used by the redesigned components: a recessed well for tracks and toggles,
+     frosted glass for floating bars, and the glow a lit hue casts. */
+  --well: #EFEDE7;
+  --glass: rgba(255, 255, 255, 0.78);
+  --glow: 0.35;
+
+  /* Motion. Springs overshoot a little; Calm (Settings → Appearance) swaps them for plain ease-outs. */
+  --spring: cubic-bezier(0.3, 1.4, 0.5, 1);
+  --spring-soft: cubic-bezier(0.2, 1.2, 0.35, 1);
+  --ease-out: cubic-bezier(0.2, 0.85, 0.25, 1);
+
   --r-card: 16px;
   --r-ctl: 12px;
   --r-sm: 10px;
@@ -96,36 +107,41 @@
   --activity-ink: color-mix(in oklab, var(--h-activity) 72%, var(--ink));
 }
 
-/* ── Dark: the same warm neutrals turned over. Hues are lifted toward white so they hold on dark surfaces, and
-   text on a hue turns dark. Comes after the palette block on purpose: same specificity, later wins. ── */
+/* ── Night (data-theme="dark", the default since 2026-11-02): warm near-black, and the three hues lit so they glow
+   rather than sit. Text on a hue turns dark. Comes after the palette block on purpose: same specificity, later wins.
+   The stored setting is still called "dark" so nobody's choice had to move. ── */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bone: #151412;
-  --surface: #1F1D1A;
-  --surface-2: #2B2824;
-  --side: #1A1816;
-  --field: #252320;
-  --hairline: #39352F;
-  --hairline-soft: #302D28;
-  --hairline-strong: #4A453E;
+  --bone: #0B0A09;
+  --surface: #161513;
+  --surface-2: #211F1B;
+  --side: #100F0E;
+  --field: #1A1917;
+  --hairline: #2A2723;
+  --hairline-soft: #22201C;
+  --hairline-strong: #3A3631;
   --faint: #8A857B;
-  --muted: #A59F95;
-  --ink-2: #CFCAC0;
-  --ink: #F1EEE7;
+  --muted: #A39E94;
+  --ink-2: #D2CDC3;
+  --ink: #F5F2EB;
 
-  --journal: color-mix(in oklab, var(--h-journal) 62%, white);
-  --journal-soft: color-mix(in oklab, var(--h-journal) 80%, white);
+  --journal: color-mix(in oklab, var(--h-journal) 74%, white);
+  --journal-soft: color-mix(in oklab, var(--h-journal) 86%, white);
   --journal-pale: color-mix(in oklab, var(--h-journal) 55%, var(--surface));
-  --journal-tint: color-mix(in oklab, var(--h-journal) 24%, var(--surface));
-  --journal-ink: color-mix(in oklab, var(--h-journal) 38%, white);
-  --food: color-mix(in oklab, var(--h-food) 62%, white);
+  --journal-tint: color-mix(in oklab, var(--h-journal) 20%, var(--surface));
+  --journal-ink: color-mix(in oklab, var(--h-journal) 40%, white);
+  --food: color-mix(in oklab, var(--h-food) 74%, white);
   --food-bar: color-mix(in oklab, var(--h-food) 70%, var(--surface));
-  --food-tint: color-mix(in oklab, var(--h-food) 24%, var(--surface));
-  --food-ink: color-mix(in oklab, var(--h-food) 38%, white);
-  --activity: color-mix(in oklab, var(--h-activity) 66%, white);
-  --activity-tint: color-mix(in oklab, var(--h-activity) 24%, var(--surface));
-  --activity-ink: color-mix(in oklab, var(--h-activity) 40%, white);
-  --rec: #D9574B;
+  --food-tint: color-mix(in oklab, var(--h-food) 20%, var(--surface));
+  --food-ink: color-mix(in oklab, var(--h-food) 40%, white);
+  --activity: color-mix(in oklab, var(--h-activity) 76%, white);
+  --activity-tint: color-mix(in oklab, var(--h-activity) 20%, var(--surface));
+  --activity-ink: color-mix(in oklab, var(--h-activity) 42%, white);
+  --rec: #FF5A4E;
+
+  --well: rgba(255, 255, 255, 0.06);
+  --glass: rgba(22, 21, 19, 0.72);
+  --glow: 0.6;
 
   --critical: #F0A79D;
   --critical-bg: #4A211C;
@@ -140,8 +156,26 @@
   --closed-bottom: #26231F;
   --closed-text: #F1EEE7;
   --closed-muted: #B8B1A4;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 22px rgba(0, 0, 0, 0.25);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 48px -28px rgba(0, 0, 0, 0.9);
   --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Soma's own hues at night are picked by hand, brighter than mixing toward white gets them. */
+:root[data-theme="dark"]:not([data-palette]) {
+  --journal: #8F8AF7;
+  --journal-soft: #B2AEFA;
+  --journal-ink: #C9C6FC;
+  --food: #4BCF93;
+  --food-ink: #9BE5C2;
+  --activity: #F39A57;
+  --activity-ink: #F8C49C;
+}
+
+/* Calm motion: the same moves, without the overshoot. Endless loops (the splash drift, the recording pulse) stop in
+   the components themselves under [data-motion="calm"]. */
+:root[data-motion="calm"] {
+  --spring: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --spring-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 * { box-sizing: border-box; }
@@ -180,6 +214,8 @@ button {
 
 /* Type roles. Display: dates, titles and the one number a screen is about. Mono: labels and every number. */
 .d { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; line-height: 1.05; }
+/* Display condensed: the big hero numbers (the day's count, a weight, a push-up total). Narrow and heavy, tabular. */
+.dc { font-family: var(--font-display); font-weight: 700; font-variation-settings: "wdth" 76; letter-spacing: -0.025em; line-height: 0.9; font-variant-numeric: tabular-nums; }
 .m { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .eb { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .muted { color: var(--muted); }
