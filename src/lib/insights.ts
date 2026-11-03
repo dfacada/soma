@@ -154,6 +154,9 @@ export type LogRow = {
   missed: string[];
   /** "100 push-ups", then each activity type logged, then steps when known. */
   did: string[];
+  /** What was eaten: meals out of four, calories and protein, and whether the day met the calorie and protein goals
+   *  (calories within 5% over the goal counts as met). Null when nothing was eaten. */
+  food: { meals: number; kcal: number; protein: number; proteinHit: boolean; kcalOk: boolean } | null;
   /** Nothing at all was logged that day. */
   empty: boolean;
 };
@@ -177,7 +180,9 @@ export function dayLog(map: DayMap, settings: Settings, today: Date, windowDays:
     const steps = d?.activity?.steps;
     if (steps !== null && steps !== undefined && steps > 0) did.push(`${steps.toLocaleString("en-US")} steps`);
     const empty = st.doneCount === 0 && st.meals === 0 && st.weight === null && did.length === 0;
-    rows.push({ day, weight: st.weight, mood: d?.checkin?.mood ?? null, closed: st.closed, done: st.doneCount, total: st.taskCount, missed, did, empty });
+    const ate = st.meals > 0 || (d?.log?.extras?.length || 0) > 0;
+    const food = ate ? { meals: st.meals, kcal: st.kcal, protein: st.protein, proteinHit: st.protein >= settings.goals.protein, kcalOk: st.kcal <= settings.goals.kcal * 1.05 } : null;
+    rows.push({ day, weight: st.weight, mood: d?.checkin?.mood ?? null, closed: st.closed, done: st.doneCount, total: st.taskCount, missed, did, food, empty });
   }
   while (rows.length && rows[rows.length - 1].empty) rows.pop();
   return rows;

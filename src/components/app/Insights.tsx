@@ -1,17 +1,19 @@
 "use client";
 
 // Insights, rebuilt (David, 2026-11-02: "way too much information … talk about the insights that really matter").
-// Four things, in this order: what makes a great day, what the journal says on the good days, how the window went,
-// and weight. Every finding is worked out on this device (src/lib/great-days.ts) and is a pattern in the person's
+// In this order: what makes a great day; weight, with this week against last (David: "is my weight drastically going
+// up, and what have I been doing that's causing that?"); day by day, everything each day held; what the journal says
+// on the good days; how the window went. Every finding is worked out on this device (src/lib/great-days.ts) and is a pattern in the person's
 // own record, never a claim about cause. The journal is read on the phone, or by Claude with names and details taken
 // out first, as the person chooses in Settings (JournalTone.tsx).
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import Link from "next/link";
 import { api, type Days } from "@/lib/api";
-import { greatDays, journalTone, progress, TASK_LABEL, type Driver, type ToneDriver } from "@/lib/great-days";
+import { greatDays, journalTone, progress, TASK_LABEL, weekCompare, type Driver, type ToneDriver, type WeekCompare } from "@/lib/great-days";
+import { dayLog, type LogRow } from "@/lib/insights";
 import { trailingAverage, weighIns } from "@/lib/patterns";
-import { addDays, dayKey, indexDays, streak, type DayMap } from "@/lib/today";
+import { addDays, dayKey, indexDays, streak, WEEKDAYS, type DayMap } from "@/lib/today";
 import { Button, Card, Icon, Segmented } from "@/components/ui";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
@@ -70,6 +72,8 @@ export function InsightsScreen() {
   const jt = journalTone(data, days, settings, target, health.nights, tone.tones, tone.themes);
   const p = progress(data, days, settings);
   const run = streak(map, settings, today, windowDays);
+  const log = dayLog(data, settings, today, days.length);
+  const week = weekCompare(data, settings, todayKey);
   const waiting = range === "365" && !year && !yearError;
 
   return (
@@ -85,9 +89,10 @@ export function InsightsScreen() {
       {yearError && <div className={a.unsaved} role="alert"><span>Couldn&apos;t load the year. Showing the last 60 days.</span><Button size="sm" variant="secondary" onClick={() => { setYearError(false); setYear(null); }}>Retry</Button></div>}
 
       <GreatDaysCard g={g} />
+      <WeightCard data={data} days={days} label={RANGE_LABEL[range]} week={week} />
+      <DayByDay log={log} todayKey={todayKey} proteinGoal={settings.goals.protein} />
       <JournalCard jt={jt} tone={tone} />
       <ProgressCard p={p} now={run.now} best={run.best} />
-      <WeightCard data={data} days={days} label={RANGE_LABEL[range]} />
 
       <Card>
         <div className={s.head}>
@@ -231,9 +236,14 @@ function ProgressCard({ p, now, best }: { p: ReturnType<typeof progress>; now: n
   );
 }
 
-function WeightCard({ data, days, label }: { data: DayMap; days: string[]; label: string }) {
+const shortDay = (k: string) => { const d = new Date(k + "T12:00:00"); return `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${d.toLocaleDateString("en-GB", { month: "short" })}`; };
+const whole = (v: number) => Math.round(v).toLocaleString("en-US");
+
+function WeightCard({ data, days, label, week }: { data: DayMap; days: string[]; label: string; week: WeekCompare }) {
   const points = weighIns(data, days);
   const avg = trailingAverage(points);
+  const plot = useRef<SVGSVGElement>(null);
+  const [at, setAt] = useState<number | null>(null);
   if (points.length < 2) {
     return (
       <Card>
@@ -248,17 +258,97 @@ function WeightCard({ data, days, label }: { data: DayMap; days: string[]; label
   const x = (day: string) => P + (days.indexOf(day) / Math.max(1, days.length - 1)) * (W - 2 * P);
   const y = (v: number) => P + (1 - (v - lo) / (hi - lo)) * (H - 2 * P);
   const line = avg.map((q, i) => `${i ? "L" : "M"}${x(q.day).toFixed(1)} ${y(q.avg).toFixed(1)}`).join(" ");
+  // The weigh-in nearest the finger or pointer, read through the drawing's own transform so it matches what is seen.
+  const pick = (e: PointerEvent<SVGSVGElement>) => {
+    const m = plot.current?.getScreenCTM();
+    if (!m) return;
+    const ux = (e.clientX - m.e) / m.a;
+    let best = 0;
+    points.forEach((q, i) => { if (Math.abs(x(q.day) - ux) < Math.abs(x(points[best].day) - ux)) best = i; });
+    setAt(best);
+  };
+  const shown = at === null ? null : points[at];
+  const wk = week.weight;
+  const wkChange = wk ? Math.round((wk.now - wk.before) * 10) / 10 : 0;
   return (
     <Card>
-      <div className={s.head}><span className="eb">Weight · seven-day average</span><span className={s.meta}>{points.length} weigh-ins</span></div>
+      <div className={s.head}><span className="eb">Weight · seven-day average</span><span className={s.meta}>{shown ? `${shown.weight} lb · ${shortDay(shown.day)}` : `${points.length} weigh-ins`}</span></div>
       <div className={s.big}>
         <span className="dc">{last.toFixed(1)}</span><span className="muted">lb</span>
         <span className={`${s.delta} ${change < 0 ? s.down : change > 0 ? s.up : ""}`}>{change === 0 ? "level" : `${change < 0 ? "↓" : "↑"} ${Math.abs(change).toFixed(1)} lb`} over {label}</span>
       </div>
-      <svg className={s.chart} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`Seven-day average from ${first.toFixed(1)} to ${last.toFixed(1)} pounds`}>
-        {points.map((q) => <circle key={q.day} cx={x(q.day)} cy={y(q.weight)} r="2.2" className={s.dot} />)}
+      <svg ref={plot} className={s.chart} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`Seven-day average from ${first.toFixed(1)} to ${last.toFixed(1)} pounds. Touch a point for its day.`}
+        onPointerMove={pick} onPointerDown={pick} onPointerLeave={() => setAt(null)} style={{ touchAction: "pan-y" }}>
+        {points.map((q, i) => <circle key={q.day} cx={x(q.day)} cy={y(q.weight)} r={i === at ? 4.5 : 2.2} className={i === at ? s.dotOn : s.dot} />)}
         <path key={label} d={line} pathLength={1} className={s.line} />
       </svg>
+      {/* What changed around the weight: the last seven days next to the seven before. */}
+      {wk && (
+        <div className={s.week}>
+          <div className={s.weekHead}>
+            <span className="eb">This week against last</span>
+            <span className={`${s.delta} ${wkChange < 0 ? s.down : wkChange > 0 ? s.up : ""}`}>{wkChange === 0 ? "level" : `${wkChange < 0 ? "↓" : "↑"} ${Math.abs(wkChange).toFixed(1)} lb`}</span>
+          </div>
+          <div className={`${s.weekRow} ${s.weekCols}`}><span /><span>Last</span><span>This</span></div>
+          {week.rows.map((r) => {
+            const moved = r.now !== null && r.before !== null && Math.round(r.now) !== Math.round(r.before);
+            const good = moved && (r.better === "up" ? r.now! > r.before! : r.now! < r.before!);
+            return (
+              <div key={r.label} className={s.weekRow}>
+                <span>{r.label}</span>
+                <span className={`m ${s.weekBefore}`}>{r.before === null ? "—" : whole(r.before)}</span>
+                <span className={`m ${moved ? (good ? s.weekGood : s.weekBad) : ""}`}>{r.now === null ? "—" : whole(r.now)}</span>
+              </div>
+            );
+          })}
+          <p className={s.note} style={{ fontSize: 12 }}>Green moved the way that usually helps, amber the other way. Side by side, not a cause.</p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+const LOG_PREVIEW = 7;
+
+/** Everything each day held, newest first: closed or not, weight, mood, food against the goals, what was done, and
+ *  what kept it open. A week shows; the rest of the window opens on a tap. */
+function DayByDay({ log, todayKey, proteinGoal }: { log: LogRow[]; todayKey: string; proteinGoal: number }) {
+  const [all, setAll] = useState(false);
+  return (
+    <Card>
+      <div className={s.head}><span className="eb">Day by day</span>{log.length > 0 && <span className={s.meta}>{log.filter((r) => r.closed).length} of {log.length} closed</span>}</div>
+      {log.length === 0 && <p className={s.note}>Nothing logged in this window yet.</p>}
+      <div className={s.days}>
+        {(all ? log : log.slice(0, LOG_PREVIEW)).map((r) => {
+          const d = new Date(r.day + "T12:00:00");
+          const met = !!r.food && r.food.meals === 4 && r.food.proteinHit && r.food.kcalOk;
+          return (
+            <div key={r.day} className={`${s.day} ${r.empty ? s.dayEmpty : ""}`}>
+              <div className={s.dayDate}><span className="eb">{r.day === todayKey ? "Today" : WEEKDAYS[d.getDay()]}</span><span className="dc">{d.getDate()}</span></div>
+              <div className={s.dayBody}>
+                <div className={s.dayTop}>
+                  {r.closed ? <span className={s.closed}><Icon name="check" size={12} strokeWidth={2.6} />Closed</span> : <span className={s.open}>{r.done}/{r.total}</span>}
+                  {r.weight !== null && <span className="m">{r.weight} lb</span>}
+                  {r.mood && <span className={s.mood}>{r.mood}</span>}
+                </div>
+                {(r.food || r.did.length > 0) && (
+                  <div className={s.dayChips}>
+                    {r.food && (
+                      <span className={`${s.food} ${met ? s.foodMet : ""}`} aria-label={`${r.food.meals} of 4 meals, ${r.food.kcal} calories, ${r.food.protein} of ${proteinGoal} grams protein${met ? ", every eating goal met" : ""}`}>
+                        {met && <Icon name="check" size={12} strokeWidth={2.6} />}
+                        {r.food.meals}/4 meals · <span className={r.food.kcalOk ? "" : s.over}>{r.food.kcal.toLocaleString("en-US")} kcal</span> · <span className={r.food.proteinHit ? s.hit : ""}>{r.food.protein}/{proteinGoal} g</span>
+                      </span>
+                    )}
+                    {r.did.map((x) => <span key={x} className={s.did}>{x}</span>)}
+                  </div>
+                )}
+                {r.empty ? <span className={s.missed}>Nothing logged</span> : r.missed.length > 0 && <span className={s.missed}>Open: {r.missed.join(", ")}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {log.length > LOG_PREVIEW && <button type="button" className={s.more} onClick={() => setAll((v) => !v)}>{all ? "Show the last week only" : `Show all ${log.length} days`}</button>}
     </Card>
   );
 }

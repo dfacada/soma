@@ -145,3 +145,31 @@ export function progress(map: DayMap, all: string[], settings: Settings): Progre
   const low = [...rates].sort((a, b) => a.rate - b.rate)[0];
   return { days: days.length, closed, rates, weakest: low && low.rate < 1 ? low.key : null, perDay };
 }
+
+/** One measure for this week and the week before, and which way is the better one. */
+export type WeekRow = { label: string; now: number | null; before: number | null; unit: string; better: "up" | "down" };
+export type WeekCompare = { weight: { now: number; before: number } | null; rows: WeekRow[] };
+
+/** The last seven days against the seven before them: the weight, and what was done around it (David, 2026-11-02:
+ *  "is my weight drastically going up, and what have I been doing that's causing that?"). Side by side, not a cause. */
+export function weekCompare(map: DayMap, settings: Settings, todayKey: string): WeekCompare {
+  const back = (n: number) => { const d = new Date(todayKey + "T12:00:00"); d.setDate(d.getDate() - n); const p = (x: number) => String(x).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+  const now = Array.from({ length: 7 }, (_, i) => back(i)), before = Array.from({ length: 7 }, (_, i) => back(i + 7));
+  const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  const weights = (ks: string[]) => ks.map((k) => map[k]?.weight).filter((w): w is number => typeof w === "number");
+  const wNow = weights(now), wBefore = weights(before);
+  const st = (k: string) => dayStatus(map[k], settings);
+  const ate = (ks: string[]) => ks.filter((k) => st(k).meals > 0 || (map[k]?.log?.extras?.length || 0) > 0);
+  const count = (ks: string[], f: (k: string) => boolean) => ks.filter(f).length;
+  const steps = (ks: string[]) => ks.map((k) => map[k]?.activity?.steps).filter((x): x is number => typeof x === "number" && x > 0);
+  const limit = settings.habits.find((h) => h.type === "counter" && h.dir === "at_most" && h.goal);
+  const rows: WeekRow[] = [
+    { label: "Calories a day", now: mean(ate(now).map((k) => st(k).kcal)), before: mean(ate(before).map((k) => st(k).kcal)), unit: "kcal", better: "down" },
+    { label: "Protein goal hit", now: count(now, (k) => st(k).meals > 0 && st(k).protein >= settings.goals.protein), before: count(before, (k) => st(k).meals > 0 && st(k).protein >= settings.goals.protein), unit: "days", better: "up" },
+    { label: "All four meals logged", now: count(now, (k) => st(k).foodDone), before: count(before, (k) => st(k).foodDone), unit: "days", better: "up" },
+    { label: "Active days", now: count(now, (k) => st(k).activityDone), before: count(before, (k) => st(k).activityDone), unit: "days", better: "up" },
+    ...(steps(now).length || steps(before).length ? [{ label: "Steps a day", now: mean(steps(now)), before: mean(steps(before)), unit: "steps", better: "up" as const }] : []),
+    ...(limit ? [{ label: limit.label, now: now.reduce((n, k) => n + (map[k]?.checkin?.counts[limit.id] || 0), 0), before: before.reduce((n, k) => n + (map[k]?.checkin?.counts[limit.id] || 0), 0), unit: "this week", better: "down" as const }] : []),
+  ];
+  return { weight: wNow.length && wBefore.length ? { now: mean(wNow)!, before: mean(wBefore)! } : null, rows };
+}

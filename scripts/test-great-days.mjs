@@ -1,6 +1,6 @@
 // Insights: what comes with great days, how the window went, the journal's tone, and the privacy of reading it.
 //   node --import ./scripts/ts-resolve.mjs scripts/test-great-days.mjs
-import { greatDays, journalTone, progress } from "../src/lib/great-days.ts";
+import { greatDays, journalTone, progress, weekCompare } from "../src/lib/great-days.ts";
 import { deidentify, phoneTone, shuffleForSending, fingerprint } from "../src/lib/journal-read.ts";
 import { DEFAULT_SETTINGS } from "../src/lib/settings.ts";
 
@@ -46,6 +46,16 @@ check("no day closes without weight", p.closed === 0 && p.weakest === "weight", 
 check("each task's rate", p.rates.find((r) => r.key === "activity").rate === 0.5 && p.rates.find((r) => r.key === "food").rate === 1);
 const early = ["2026-09-28", "2026-09-29", "2026-09-30", ...days];
 check("counted from the first day anything was logged", progress(map, early, DEFAULT_SETTINGS).days === 12);
+
+console.log("this week against last");
+const wk = {};
+for (let i = 0; i < 14; i++) { const d = new Date("2026-10-14T12:00:00"); d.setDate(d.getDate() - i); const k = d.toISOString().slice(0, 10);
+  wk[k] = { weight: i < 7 ? 205 : 203, entries: 0, activity: i >= 7 ? { day: k, pushups: 0, types: { walk: true } } : undefined,
+    log: { day: k, meals: { breakfast: { ...meal, kcal: i < 7 ? 800 : 500 }, lunch: meal, snack: meal, dinner: meal }, extras: [] } }; }
+const wc = weekCompare(wk, DEFAULT_SETTINGS, "2026-10-14");
+check("the weight, this week against last", wc.weight && wc.weight.now === 205 && wc.weight.before === 203, wc.weight);
+check("calories a day, side by side", wc.rows[0].now === 2300 && wc.rows[0].before === 2000, wc.rows[0]);
+check("active days dropped from seven to none", wc.rows.find((r) => r.label === "Active days").now === 0 && wc.rows.find((r) => r.label === "Active days").before === 7);
 
 console.log("reading privately");
 const said = "Had coffee with Sarah Jenkins at Blue Bottle. Sarah said call her on 415 555 0199 or sarah.j@gmail.com. Lives at 22 Pine Street. Mark from Acme visited. Great day on Monday, I felt good.";

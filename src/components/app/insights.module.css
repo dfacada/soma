@@ -58,3 +58,37 @@
 .dot { fill: var(--hairline-strong); }
 .line { fill: none; stroke: var(--journal); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.4s 0.15s cubic-bezier(0.5, 0, 0.2, 1) forwards; filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--journal) 45%, transparent)); }
 @keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* Weight: the point being touched, and this week against last. */
+.dotOn { fill: var(--journal); stroke: var(--surface); stroke-width: 2; }
+.week { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--hairline-soft); }
+.weekHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.weekRow { display: grid; grid-template-columns: 1fr 64px 64px; gap: 10px; align-items: baseline; font-size: 13.5px; }
+.weekRow :global(.m) { text-align: right; font-size: 13px; }
+.weekCols span { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); text-align: right; }
+.weekBefore { color: var(--muted); }
+.weekGood { color: var(--food); font-weight: 600; }
+.weekBad { color: var(--activity); font-weight: 600; }
+
+/* Day by day: the date in a column, then the day's line, its chips, and what kept it open. */
+.days { display: flex; flex-direction: column; }
+.day { display: flex; gap: 14px; padding: 12px 0; }
+.day + .day { border-top: 1px solid var(--hairline-soft); }
+.dayEmpty { opacity: 0.5; }
+.dayDate { width: 40px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.dayDate :global(.dc) { font-size: 28px; }
+.dayBody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.dayTop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; min-height: 22px; }
+.dayTop :global(.m) { font-size: 13.5px; }
+.closed { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 9px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--activity) 18%, transparent); color: var(--activity); font-size: 11.5px; font-weight: 700; }
+.open { font-family: var(--font-mono); font-size: 12px; height: 22px; display: inline-flex; align-items: center; padding: 0 8px; border-radius: var(--r-pill); background: var(--well); color: var(--muted); }
+.mood { color: var(--journal); font-weight: 600; font-size: 13px; }
+.dayChips { display: flex; flex-wrap: wrap; gap: 5px; }
+.food, .did { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 3px 10px; border-radius: 13px; font-size: 12px; background: var(--well); color: var(--ink-2); }
+.food { font-family: var(--font-mono); font-size: 11.5px; }
+.foodMet { background: color-mix(in srgb, var(--food) 16%, transparent); color: var(--ink); }
+.foodMet svg { color: var(--food); }
+.hit { color: var(--food); font-weight: 600; }
+.over { color: var(--activity); font-weight: 600; }
+.missed { font-size: 12px; color: var(--muted); }
+.more { align-self: center; min-height: 44px; padding: 0 18px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--ink); background: var(--well); }
