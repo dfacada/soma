@@ -1,0 +1,46 @@
+/* The weight and push-up sheets (Soma Night, 2026-11-02): one big number you can type into, and a way to change
+   it without the keyboard: a ruler to drag for weight, a pad to tap per rep for push-ups. */
+
+.num { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
+.numInput { border: 0; background: none; padding: 0; text-align: center; color: var(--ink); font-size: 88px; line-height: 0.9; -webkit-appearance: none; appearance: none; border-radius: 12px; }
+.numInput:focus { outline: none; box-shadow: 0 0 0 3px var(--well); }
+.numInput::placeholder { color: var(--faint); }
+.unit { font-size: 18px; color: var(--muted); }
+.delta { align-self: center; display: inline-flex; align-items: center; height: 30px; padding: 0 13px; border-radius: var(--r-pill); background: var(--well); font-size: 12.5px; color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.45; }
+
+/* Drag the ruler sideways; the needle stays in the middle. 40px a pound, a tick every 0.2. */
+.ruler { position: relative; height: 74px; overflow: hidden; touch-action: none; cursor: grab; border-radius: 14px;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent); mask: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent); }
+.ruler:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.strip { position: absolute; left: 50%; top: 6px; width: 802px; height: 62px; transition: transform 0.35s var(--spring); }
+.dragging .strip { transition: none; }
+.minor { position: absolute; inset: 0 0 auto; height: 16px; background: repeating-linear-gradient(90deg, var(--hairline-strong) 0 1px, transparent 1px 8px); }
+.major { position: absolute; inset: 0 0 auto; height: 30px; background: repeating-linear-gradient(90deg, var(--muted) 0 1.5px, transparent 1.5px 40px); }
+.lab { position: absolute; top: 38px; transform: translateX(-50%); font-size: 11px; color: var(--muted); }
+.needle { position: absolute; left: 50%; top: 0; width: 3px; height: 46px; margin-left: -1px; border-radius: 2px; background: var(--food); box-shadow: 0 0 16px var(--food); pointer-events: none; }
+
+.steps { display: flex; gap: 10px; align-items: center; }
+.step { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--well); flex-shrink: 0; color: var(--ink); transition: transform 0.3s var(--spring); }
+.step:active { transform: scale(0.9); transition-duration: 0.06s; }
+.grow { flex: 1; }
+.buttons { display: flex; gap: 8px; }
+.buttons > * { flex: 1; }
+.clear { align-self: center; min-height: 44px; padding: 0 12px; font-size: 13px; color: var(--muted); }
+
+/* Push-ups: a big pad, +1 a tap, ringed by the day's progress. */
+.pad { position: relative; width: 200px; height: 200px; align-self: center; display: grid; place-items: center; }
+.pad svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.padTrack { fill: none; stroke: var(--well); stroke-width: 8; }
+.padRing { fill: none; stroke: var(--activity); stroke-width: 8; stroke-linecap: round; transition: stroke-dasharray 0.6s var(--spring); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--activity) var(--glow-pct), transparent)); }
+.padButton { position: relative; width: 164px; height: 164px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--activity) 34%, var(--surface-2)), var(--surface-2) 75%); border: 1px solid color-mix(in srgb, var(--activity) 40%, transparent); color: var(--ink); transition: transform 0.12s ease; }
+.padButton:active { transform: scale(0.92); }
+.padButton :global(.d) { font-size: 32px; color: var(--activity); }
+.ripple { position: absolute; inset: 18px; border-radius: 50%; border: 2px solid var(--activity); pointer-events: none; animation: ripple 0.7s ease-out forwards; }
+@keyframes ripple { from { opacity: 0.7; transform: scale(0.9); } to { opacity: 0; transform: scale(1.28); } }
+.quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.q { height: 52px; border-radius: var(--r-pill); background: var(--well); font-weight: 600; font-size: 16px; text-align: center; color: var(--ink); transition: transform 0.3s var(--spring); }
+.q:active { transform: scale(0.92); transition-duration: 0.06s; }
+.roll { display: inline-block; animation: roll 0.45s var(--spring) both; }
+@keyframes roll { from { opacity: 0.2; transform: translateY(30%) scale(0.9); } }

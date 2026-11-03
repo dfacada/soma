@@ -192,3 +192,40 @@ select.input { text-align: left; padding-right: 32px; background-image: url("dat
 
 /* ── Rings ── */
 .ringSeg { transition: stroke-dasharray 0.9s var(--spring); }
+
+/* ── Orb: the Today hero (Orb.tsx). A 280 box: halo, dashed track, progress arc, sphere, beads. ── */
+.orb { position: relative; width: 280px; height: 280px; flex-shrink: 0; }
+.orbHalo { position: absolute; inset: -30px; pointer-events: none; }
+.orbHalo i { position: absolute; width: 230px; height: 230px; border-radius: 50%; filter: blur(34px); transition: opacity 1.2s ease; }
+.haloJ { left: -6px; top: 4px; background: var(--journal); opacity: calc(0.06 + var(--pj) * 0.34); }
+.haloF { right: -6px; top: 30px; background: var(--food); opacity: calc(0.06 + var(--pf) * 0.34); }
+.haloA { left: 56px; bottom: -6px; background: var(--activity); opacity: calc(0.06 + var(--pa) * 0.34); }
+:global(:root[data-theme="light"]) .orbHalo { opacity: 0.5; }
+.orbTrack { position: absolute; inset: 22px; border-radius: 50%; border: 1px dashed var(--hairline-strong); transition: opacity 0.8s ease; }
+.orbArc { position: absolute; inset: 0; transform: rotate(-90deg); }
+.orbArc circle { fill: none; stroke-width: 3; stroke-linecap: round; transition: stroke-dasharray 1.2s var(--spring); }
+.orbGlow { position: absolute; inset: 19px; border-radius: 50%; background: conic-gradient(from 0deg, var(--journal), var(--food), var(--activity), var(--journal));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); opacity: 0; transition: opacity 1s ease; }
+.orbClosed .orbGlow { opacity: 1; animation: spin 7s linear infinite; }
+.orbClosed .orbTrack, .orbClosed .orbArc { opacity: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.orbSphere { position: absolute; left: 44px; top: 44px; width: 192px; height: 192px; border-radius: 50%; overflow: hidden; isolation: isolate;
+  background: radial-gradient(circle at 50% 28%, var(--surface-2), var(--bone) 80%); border: 1px solid var(--hairline-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -30px 60px rgba(0, 0, 0, 0.35), 0 34px 60px -30px rgba(0, 0, 0, 0.8); animation: breathe 5s ease-in-out infinite; }
+:global(:root[data-theme="light"]) .orbSphere { background: radial-gradient(circle at 50% 28%, var(--surface), var(--surface-2) 85%); box-shadow: inset 0 1px 0 #FFFFFF, inset 0 -24px 50px rgba(27, 26, 23, 0.06), 0 28px 50px -26px rgba(27, 26, 23, 0.35); }
+@keyframes breathe { 50% { transform: scale(1.03); } }
+.blob { position: absolute; width: 150px; height: 150px; border-radius: 50%; mix-blend-mode: screen; transition: opacity 1.2s ease; }
+:global(:root[data-theme="light"]) .blob { mix-blend-mode: multiply; }
+.blobJ { background: radial-gradient(closest-side, var(--journal), transparent); left: -18px; top: -8px; opacity: calc(0.12 + var(--pj) * 0.88); animation: driftJ 9s ease-in-out infinite; }
+.blobF { background: radial-gradient(closest-side, var(--food), transparent); left: 66px; top: 14px; opacity: calc(0.12 + var(--pf) * 0.88); animation: driftF 11s ease-in-out infinite; }
+.blobA { background: radial-gradient(closest-side, var(--activity), transparent); left: 22px; top: 76px; opacity: calc(0.12 + var(--pa) * 0.88); animation: driftA 10s ease-in-out infinite; }
+.orbClosed .blob { animation-duration: 3.6s; }
+@keyframes driftJ { 50% { transform: translate(36px, 28px) scale(1.18); } }
+@keyframes driftF { 50% { transform: translate(-34px, 30px) scale(0.88); } }
+@keyframes driftA { 50% { transform: translate(24px, -38px) scale(1.14); } }
+.orbGloss { position: absolute; left: 34px; top: 10px; width: 124px; height: 56px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 255, 255, 0.17), transparent); z-index: 2; }
+.orbCore { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; z-index: 3; pointer-events: none; text-align: center; }
+.bead { position: absolute; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--bone); border: 1px solid var(--hairline-strong); color: var(--muted); z-index: 4; transition: background 0.45s ease, color 0.45s ease, border-color 0.45s ease, box-shadow 0.7s ease; }
+.beadPart { border: 1.5px solid var(--hue); color: var(--hue); }
+.beadOn { background: var(--hue); border-color: var(--hue); color: var(--on-hue); box-shadow: 0 0 0 5px color-mix(in srgb, var(--hue) 20%, transparent), 0 0 24px color-mix(in srgb, var(--hue) var(--glow-pct), transparent); animation: pop 0.65s var(--spring); }
+:global(:root[data-motion="calm"]) .orbSphere, :global(:root[data-motion="calm"]) .blob, :global(:root[data-motion="calm"]) .orbGlow { animation: none; }

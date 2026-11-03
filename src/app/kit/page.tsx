@@ -4,7 +4,7 @@
 
 import { useCallback, useState } from "react";
 import {
-  Bar, Button, Card, Chip, DayGlyph, DayRing, Field, Icon, ICON_NAMES, Input, Medallion, MicButton, Mini, Pill,
+  Bar, Button, Card, Chip, DayGlyph, DayRing, Field, Icon, ICON_NAMES, Input, Medallion, MicButton, Mini, Orb, Pill,
   ProgressRing, Row, RowHead, Segmented, Select, Sheet, Sidebar, SideNote, Stat, StageBar, Switch, TabBar, Tag, Tile, Tiles, Toast,
   type MedallionState, type Section,
 } from "@/components/ui";
@@ -134,6 +134,17 @@ export default function Kit() {
         <span className="eb">Today · cards, medallions, tiles, minis</span>
         <div className={k.specimens}>
           <div className={k.phoneCol}>
+            {/* The Soma Night hero (Today since 2026-11-02); the DayRing below is what it replaced. */}
+            <div style={{ display: "flex", justifyContent: "center", padding: "24px 0" }}>
+              <Orb progress={(progress.checkin + progress.journal + progress.food + progress.activity) / 4} closed={closed} label="Orb specimen" beads={[
+                { key: "checkin", domain: "journal", icon: "heart", label: "Check-in", value: progress.checkin },
+                { key: "journal", domain: "journal", icon: "mic", label: "Journal", value: progress.journal },
+                { key: "food", domain: "food", icon: "leaf", label: "Meals", value: progress.food },
+                { key: "activity", domain: "activity", icon: "run", label: "Activity", value: progress.activity },
+              ]}>
+                <span className="dc" style={{ fontSize: 72 }}>{closed ? "✓" : Math.round(((progress.checkin + progress.journal + progress.food + progress.activity) / 4) * 100)}</span>
+              </Orb>
+            </div>
             <div className={`${k.hero} ${closed ? k.heroClosed : ""}`}>
               <DayRing closed={closed} segments={[{ value: progress.checkin, color: "var(--journal)" }, { value: progress.journal, color: "var(--journal-soft)" }, { value: progress.food, color: "var(--food)" }, { value: progress.activity, color: "var(--activity)" }]} />
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

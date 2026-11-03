@@ -23,6 +23,10 @@ export const CHANGES: Release[] = [
       "The tabs at the bottom now float in a frosted bar. The tab you're on grows into a pill in its own colour with its name; the others are just icons.",
       "Sheets (weight, push-ups, unlocking your vault and the rest) float up from the bottom with a soft bounce over a blurred background, and confirmations like \"Checked in\" now drop in at the top of the screen.",
       "Cards, buttons, chips and switches are rounder and press in when you tap them. A task's icon fills with its colour and pops when it's done.",
+      "Today is rebuilt around the orb: a glowing sphere that lights up purple, green and amber as you finish your check-in and journal, your meals and your activity, with a bead for each task around it and the count in the middle. When the day closes, the ring around it turns into a slow spinning glow.",
+      "Today greets you by name with your streak beside it. Under the orb: what's left, then the week (tap a day to fill it in, as before), then a card for each task. Weight and check-in sit side by side; journal, food and activity are wide, with the record and speak buttons on the right and the meals and activities along the bottom.",
+      "Check-in opens a sheet with a face for each mood and your habits underneath.",
+      "Weight: drag the ruler sideways to set it, nudge by 0.2, or tap the big number to type. Push-ups: tap the big pad once per rep, or use −5, +5 and +10, with a ring filling toward your target. Both still have the one-tap Same as last and Hit the target.",
     ],
   },
   {

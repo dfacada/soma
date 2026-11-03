@@ -89,6 +89,10 @@ const PATHS = {
     </>
   ),
   close: <path d="M6 6l12 12M18 6L6 18" />,
+  // The streak.
+  flame: <path d="M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.4 2.3-5.3 3.6-7.6.4 1.8 1.4 2.9 2.6 3.4-.2-3.2 1.2-6 3.8-7.6-.3 3.4 3 5.6 3 10.3 0 4.1-2.8 7.7-6.5 7.7z" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  minus: <path d="M5 12h14" />,
   pulse: <path d="M3 12h4l3-7 4 14 3-7h4" />,
 } satisfies Record<string, ReactNode>;
 
