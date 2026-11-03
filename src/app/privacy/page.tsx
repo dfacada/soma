@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Privacy · Soma", description: "What
 
 export default function Privacy() {
   return (
-    <LegalPage title="Privacy policy" updated="2 November 2026">
+    <LegalPage title="Privacy policy" updated="3 November 2026">
       <p>Soma is a small, invitation-only app for keeping a voice journal and tracking food, weight and activity. It is a personal project run by David, not a company. There are no ads, no analytics trackers, and nothing here is sold or used to build a profile of you for anyone else.</p>
 
       <h2>What Soma stores</h2>
@@ -47,7 +47,16 @@ export default function Privacy() {
       </ul>
 
       <h2>Transcription</h2>
-      <p>Transcription is off unless you switch it on in Settings. While it is on, each new recording is decrypted on your device and sent to Groq, a speech-to-text provider, to be transcribed. The audio is blanked and deleted from Soma&rsquo;s server as soon as Groq has answered, and the transcript is encrypted into your journal on your device. This is the one case in which journal content leaves your device unencrypted, and it only happens with that switch on.</p>
+      <p>Transcription is off unless you switch it on in Settings. While it is on, each new recording is decrypted on your device and sent to Groq, a speech-to-text provider, to be transcribed. The audio is blanked and deleted from Soma&rsquo;s server as soon as Groq has answered, and the transcript is encrypted into your journal on your device. Journal content leaves your device unencrypted only here and in the two Claude features below that read your journal, and each only happens with its own switch on.</p>
+      <p>Groq also turns food you say aloud (on Food, or the Food card on Today) into words, and reads the week in review aloud when you tap Listen or send its audio to Telegram.</p>
+
+      <h2>Claude</h2>
+      <p>Three features send text to Claude, Anthropic&rsquo;s AI model. Soma sends it under its own key, with nothing about your account attached.</p>
+      <ul>
+        <li><strong>Food estimates</strong> (on unless you switch them off in Settings): what you type or say you ate, along with foods you&rsquo;ve logged before so your own numbers come back. Claude returns calories, protein, carbs and fat.</li>
+        <li><strong>Week in review</strong> (off until you switch it on and agree): that week&rsquo;s journal entries, decrypted on your device, with their dates and moods. The review that comes back is encrypted with your vault key before it is stored; Soma&rsquo;s server keeps neither the entries nor the review in the clear.</li>
+        <li><strong>Reading your journal for Insights</strong> (only if you choose With Claude): names, places, emails, phone numbers, addresses and links are taken out on your device first, and the days are sent shuffled with no dates. Only a tone and a few general themes come back.</li>
+      </ul>
 
       <h2>Who else handles your data</h2>
       <ul>
@@ -55,12 +64,13 @@ export default function Privacy() {
         <li><strong>Google</strong>, only if you connect Google Health.</li>
         <li><strong>Morgen</strong> and <strong>Todoist</strong>, only if you connect them for tomorrow&rsquo;s brief.</li>
         <li><strong>Telegram</strong>, only if you connect it: the week in review, and tomorrow&rsquo;s brief when you send it, arrive there as messages.</li>
-        <li><strong>Groq</strong>, only if you switch transcription on.</li>
+        <li><strong>Groq</strong>, for speech: transcription if you switch it on, food you say aloud, and the week in review read aloud when you ask for it.</li>
+        <li><strong>Anthropic</strong> (Claude), for food estimates, the week in review if you switch it on, and reading your journal for Insights if you choose it.</li>
       </ul>
       <p>That is the complete list.</p>
 
       <h2>On your device</h2>
-      <p>Soma keeps a few things in your browser so it works properly: your sign-in session, your vault key for as long as the tab stays open, recordings that have not finished uploading (so a crash or a dead connection does not lose them), and a cache of the app&rsquo;s own files. It sets no advertising or tracking cookies.</p>
+      <p>Soma keeps a few things in your browser so it works properly: your sign-in session, your vault key for as long as the tab stays open, recordings that have not finished uploading (so a crash or a dead connection does not lose them), tomorrow&rsquo;s brief for the evening (encrypted with your vault key), and a cache of the app&rsquo;s own files. It sets no advertising or tracking cookies.</p>
 
       <h2>Keeping and deleting</h2>
       <p>Your data is kept for as long as you have an account. You can delete journal entries and recipes yourself, and clear or change anything you have logged. To have your whole account and everything in it deleted, ask David: <Contact />. It will be done within 30 days. You can ask the same way for a copy of what Soma holds about you. The encrypted parts can only ever be read by you, inside the app, because only you can decrypt them.</p>

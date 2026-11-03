@@ -11,6 +11,14 @@ export type Release = { id: string; date: string; title: string; items: string[]
 
 export const CHANGES: Release[] = [
   {
+    id: "2026-11-03",
+    date: "2026-11-03",
+    title: "Who sees what",
+    items: [
+      "The privacy page now names everyone who handles your data. New on it: Claude, which reads the food you describe to estimate calories, your week's journal for the week in review if you've switched that on, and your journal for Insights if you chose With Claude (with names and details taken out first). Groq turns food you say aloud into words and reads your week in review aloud when you ask, as well as transcribing if you've switched that on. Morgen, Todoist and Telegram are on it too. Settings → Privacy policy, or soma-onkasary.onslate.com/privacy/.",
+    ],
+  },
+  {
     id: "2026-11-02",
     date: "2026-11-02",
     title: "Soma Night",
