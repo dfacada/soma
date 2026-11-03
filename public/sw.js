@@ -33,21 +33,28 @@ self.addEventListener('fetch', (event) => {
   }));
 });
 
-// ── The evening nudge (catalyst/functions/soma_jobs/nudge.js). iOS requires every push to show a notification, so a
-// payload that cannot be read still shows something sensible.
+// ── Notifications (catalyst/functions/soma_jobs/nudge.js): the evening nudge, the week in review, tomorrow's brief.
+// iOS requires every push to show a notification, so a payload that cannot be read still shows something sensible.
+// Each kind has its own tag, so tomorrow's brief never replaces the evening nudge.
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { /* not JSON */ }
+  const tag = typeof data.tag === 'string' && /^soma-[a-z]+$/.test(data.tag) ? data.tag : 'soma-nudge';
   event.waitUntil(self.registration.showNotification(data.title || 'Soma', {
-    body: data.body || 'Your day is still open.', icon: '/icon-192.png', badge: '/icon-192.png', tag: 'soma-nudge', data: { url: data.url || '/' }
+    body: data.body || 'Your day is still open.', icon: '/icon-192.png', badge: '/icon-192.png', tag, data: { url: data.url || '/' }
   }));
 });
 
+// A tap opens the notification's page. When Soma is already open it is brought forward and asked to go there itself
+// (NudgeKeeper listens), so it switches without a reload; before, it was only brought forward, wherever it was.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href;
-  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((tabs) => {
+  const asked = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin);
+  const target = asked.origin === self.location.origin ? asked : new URL('/', self.location.origin);
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (tabs) => {
     const open = tabs.find((t) => new URL(t.url).origin === self.location.origin);
-    return open ? open.focus() : self.clients.openWindow(url);
+    if (!open) return self.clients.openWindow(target.href);
+    const shown = (await open.focus().catch(() => null)) || open;
+    if (new URL(shown.url).pathname !== target.pathname) shown.postMessage({ type: 'soma:open', path: target.pathname });
   }));
 });

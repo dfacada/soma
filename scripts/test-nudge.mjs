@@ -30,8 +30,8 @@ check("everything open, in card order", n.leftToday({}, true), ["Weight", "Check
 check("weight not required is not asked for", n.leftToday({ ...full, weight: false }, false), []);
 check("meals are counted", n.leftToday({ ...full, meals: { breakfast: {}, lunch: {}, dinner: {} } }, true), ["1 meal"]);
 check("push-ups alone are activity", n.leftToday({ ...full, types: {}, pushups: 20 }, true), []);
-check("one thing left reads as a sentence", n.message(["Journal"]), { title: "One to go", body: "Journal closes the day.", url: "/" });
-check("several are listed", n.message(["Weight", "Journal", "2 meals"]), { title: "Three to go", body: "Weight · Journal · 2 meals", url: "/" });
+check("one thing left reads as a sentence", n.message(["Journal"]), { title: "One to go", body: "Journal closes the day.", url: "/", tag: "soma-nudge" });
+check("several are listed", n.message(["Weight", "Journal", "2 meals"]), { title: "Three to go", body: "Weight · Journal · 2 meals", url: "/", tag: "soma-nudge" });
 
 console.log("week in review reminder");
 const rs = n.reviewSettings({ weeklyReview: { on: true, consent: true, dayOfWeek: 0, time: "19:00" } });
@@ -47,6 +47,20 @@ check("not long after (the same window as the nudge)", n.reviewDueNow({ day: "20
 check("once a week per device", n.reviewDueNow({ day: "2026-10-25", minutes: 19 * 60 + 20 }, rs, "2026-10-19"), null);
 const mon = n.reviewSettings({ weeklyReview: { on: true, consent: true, dayOfWeek: 1, time: "08:00" } });
 check("a Monday-morning choice is due on Monday", n.reviewDueNow({ day: "2026-10-26", minutes: 8 * 60 + 10 }, mon, "2026-10-12"), "2026-10-19");
+
+console.log("tomorrow's brief");
+check("off by default, at 21:00 like the app", n.briefSettings({}), { on: false, minutes: 1260 });
+check("the stored time is read, a nonsense one falls back", [n.briefSettings({ brief: { on: true, time: "20:45" } }), n.briefSettings({ brief: { on: true, time: "9pm" } }).minutes], [{ on: true, minutes: 1245 }, 1260]);
+const bs = n.briefSettings({ brief: { on: true, time: "21:00" } });
+check("due once the time has come, on that day", n.briefDueNow({ day: "2026-11-02", minutes: 21 * 60 + 5 }, bs, "2026-11-01"), "2026-11-02");
+check("not before the time", n.briefDueNow({ day: "2026-11-02", minutes: 20 * 60 + 59 }, bs, null), null);
+check("once a day per device", n.briefDueNow({ day: "2026-11-02", minutes: 21 * 60 + 20 }, bs, "2026-11-02"), null);
+check("not hours late", n.briefDueNow({ day: "2026-11-02", minutes: 23 * 60 + 1 }, bs, null), null);
+check("off says nothing", n.briefDueNow({ day: "2026-11-02", minutes: 21 * 60 + 5 }, n.briefSettings({}), null), null);
+check("in the evening the brief is about the next day", n.briefDayOf({ day: "2026-11-02", minutes: 21 * 60 }), "2026-11-03");
+check("after midnight it is about the day just begun", n.briefDayOf({ day: "2026-11-03", minutes: 30 }), "2026-11-03");
+check("the message names the day and opens the brief", n.briefMessage({ day: "2026-11-02", minutes: 21 * 60 }),
+  { title: "Tomorrow's brief", body: "See what Tuesday looks like: your calendar, tasks and Soma's side of the day.", url: "/tomorrow/", tag: "soma-brief" });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

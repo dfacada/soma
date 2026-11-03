@@ -83,11 +83,41 @@ function reviewDueNow(local, rs, sentWeek) {
   return sentWeek === week ? null : week;
 }
 
-const REVIEW_MESSAGE = { title: 'Your week is ready', body: 'Open Soma to write your week in review.', url: '/review/' };
+const REVIEW_MESSAGE = { title: 'Your week is ready', body: 'Open Soma to write your week in review.', url: '/review/', tag: 'soma-review' };
+
+// ── Tomorrow's brief (2026-11-02). The brief is read on the phone with the vault open (the calendar and task keys are
+// sealed with it), so this only says it is ready: at the person's brief time, once per device per day
+// (push_subs.brief_day). Opening the notification reads the brief.
+
+/** settings_json → the brief reminder's settings, with the app's default time (21:00). */
+function briefSettings(settings) {
+  const b = settings && typeof settings === 'object' && settings.brief && typeof settings.brief === 'object' ? settings.brief : {};
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(b.time || '');
+  return { on: b.on === true, minutes: m ? Number(m[1]) * 60 + Number(m[2]) : 21 * 60 };
+}
+
+/** Is it this device's moment to hear tomorrow's brief is ready? Returns the local day it is told on, or null. */
+function briefDueNow(local, bs, sentDay) {
+  if (!local || !bs.on || !due(local, bs.minutes, sentDay)) return null;
+  return local.day;
+}
+
+/** The day the brief is about, as the app reckons it (src/lib/tomorrow.ts briefDay): tomorrow, or before 4 am today. */
+function briefDayOf(local) {
+  const d = new Date(local.day + 'T12:00:00Z');
+  if (local.minutes >= 4 * 60) d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function briefMessage(local) {
+  const name = WEEKDAY_NAMES[weekdayOf(briefDayOf(local))];
+  return { title: "Tomorrow's brief", body: `See what ${name} looks like: your calendar, tasks and Soma's side of the day.`, url: '/tomorrow/', tag: 'soma-brief' };
+}
 
 function message(left) {
   const n = ['One', 'Two', 'Three', 'Four', 'Five'][left.length - 1] || String(left.length);
-  return { title: left.length === 1 ? 'One to go' : `${n} to go`, body: left.join(' · ') + (left.length === 1 ? ' closes the day.' : ''), url: '/' };
+  return { title: left.length === 1 ? 'One to go' : `${n} to go`, body: left.join(' · ') + (left.length === 1 ? ' closes the day.' : ''), url: '/', tag: 'soma-nudge' };
 }
 
 const select = async (app, table, sql) => (await app.zcql().executeZCQLQuery(sql)).map((r) => r[table]).filter(Boolean);
@@ -113,7 +143,7 @@ async function run(app, params) {
   const test = params.test === '1' && /^\d{1,19}$/.test(String(params.user_id));
   const subs = [];
   for (let offset = 0; offset < 3000; offset += 300) {
-    const page = await select(app, 'push_subs', `SELECT ROWID, user_id, endpoint, p256dh, auth_secret, tz, last_day, review_week, fails FROM push_subs ${test ? `WHERE user_id = ${params.user_id}` : ''} ORDER BY ROWID ASC LIMIT ${offset}, 300`);
+    const page = await select(app, 'push_subs', `SELECT ROWID, user_id, endpoint, p256dh, auth_secret, tz, last_day, review_week, brief_day, fails FROM push_subs ${test ? `WHERE user_id = ${params.user_id}` : ''} ORDER BY ROWID ASC LIMIT ${offset}, 300`);
     subs.push(...page);
     if (page.length < 300) break;
   }
@@ -153,7 +183,7 @@ async function run(app, params) {
   for (const uid of ids) {
     const profile = profiles.get(uid);
     const settings = parse(profile && profile.settings_json, {});
-    users.set(uid, { active: Boolean(profile) && profile.status === 'active', settings: nudgeSettings(settings), review: reviewSettings(settings), facts: new Map(), written: new Map() });
+    users.set(uid, { active: Boolean(profile) && profile.status === 'active', settings: nudgeSettings(settings), review: reviewSettings(settings), brief: briefSettings(settings), facts: new Map(), written: new Map() });
   }
 
   for (const sub of subs) {
@@ -173,6 +203,13 @@ async function run(app, params) {
       if (sub.gone) continue;
     }
 
+    // Tomorrow's brief: its own time, its own once-a-day mark.
+    const briefFor = user.active ? briefDueNow(local, user.brief, sub.brief_day) : null;
+    if (briefFor) {
+      if (await send(sub, uid, briefMessage(local))) await table.updateRow({ ROWID: sub.ROWID, brief_day: briefFor }).catch(() => undefined);
+      if (sub.gone) continue;
+    }
+
     if (!user.active || !user.settings.on || !due(local, user.settings.minutes, sub.last_day)) { tally.notDue++; continue; }
     if (!user.facts.has(local.day)) user.facts.set(local.day, await dayFacts(app, uid, local, now));
     const left = leftToday(user.facts.get(local.day), user.settings.requireWeight);
@@ -183,4 +220,4 @@ async function run(app, params) {
   if (test || tally.sent || tally.gone || tally.failed) console.log(JSON.stringify(Object.assign({ action: test ? 'nudge_test' : 'nudge' }, tally)));
 }
 
-module.exports = { run, localNow, nudgeSettings, due, leftToday, message, reviewSettings, reviewWeek, reviewDueNow };
+module.exports = { run, localNow, nudgeSettings, due, leftToday, message, reviewSettings, reviewWeek, reviewDueNow, briefSettings, briefDueNow, briefDayOf, briefMessage };

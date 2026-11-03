@@ -4,6 +4,7 @@
 // Whether there is a nudge, and when, belongs to the account. Whether *this device* receives it is its own switch,
 // because a notification permission is per device and iOS only grants one to the Home Screen app.
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { report, watchUncaught } from "@/lib/log";
@@ -11,7 +12,8 @@ import { disablePush, enablePush, pushState, refreshPush, sendTest, type PushSta
 import { Button, Card, Field, Input, Switch } from "@/components/ui";
 import { useSession } from "./Session";
 
-const LINE: Record<PushState | "checking", string> = {
+/** What this device can do about notifications, in a sentence (also used by tomorrow's brief in Settings). */
+export const LINE: Record<PushState | "checking", string> = {
   checking: "Checking this device…",
   unsupported: "This browser cannot receive notifications.",
   "needs-install": "On iPhone and iPad, notifications only reach the Home Screen app. In your browser tap Share, then Add to Home Screen, open Soma from there and switch this on.",
@@ -28,8 +30,21 @@ export function LogKeeper() {
 
 export function NudgeKeeper() {
   const { settings } = useSession();
-  const on = settings.nudge.on;
+  const router = useRouter();
+  // The nudge and tomorrow's brief both arrive on this device's subscription.
+  const on = settings.nudge.on || settings.brief.on;
   useEffect(() => { if (on) void refreshPush().catch(() => undefined); }, [on]);
+  // A notification tapped while Soma is open: the service worker asks for its page (public/sw.js). Only Soma's own
+  // paths are followed.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const go = (e: MessageEvent) => {
+      const d = e.data as { type?: string; path?: string } | null;
+      if (d?.type === "soma:open" && typeof d.path === "string" && /^\/[a-z/-]*$/.test(d.path)) router.push(d.path);
+    };
+    navigator.serviceWorker.addEventListener("message", go);
+    return () => navigator.serviceWorker.removeEventListener("message", go);
+  }, [router]);
   return null;
 }
 
@@ -60,12 +75,14 @@ export function NudgeCard({ say }: { say: (m: string) => void }) {
     finally { setBusy(false); }
   }, [on, time, saveSettings, say]);
 
+  // Tomorrow's brief arrives on the same subscription: while it is on, this device stays subscribed.
+  const keep = settings.brief.on;
   const turnOff = useCallback(async () => {
     setBusy(true);
-    try { await disablePush(); setDevice(await pushState()); await saveSettings({ nudge: { on: false, time } }); say("Evening nudge off"); }
+    try { if (!keep) { await disablePush(); setDevice(await pushState()); } await saveSettings({ nudge: { on: false, time } }); say("Evening nudge off"); }
     catch { say("Couldn't save that"); }
     finally { setBusy(false); }
-  }, [time, saveSettings, say]);
+  }, [time, keep, saveSettings, say]);
 
   const test = useCallback(() => { void sendTest().then(() => say("Test sent. It should arrive within a minute."), (e) => say(e instanceof ApiError ? e.message : "Couldn't send a test")); }, [say]);
 

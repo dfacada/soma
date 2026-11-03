@@ -51,6 +51,9 @@ export type Settings = {
   opening: { on: boolean; phrases: Phrase[] };
   /** One notification at `time` (local, HH:MM) when the day is still open. The server reads this: soma_jobs/nudge.js. */
   nudge: { on: boolean; time: string };
+  /** Tomorrow's brief: a notification at `time` (local, HH:MM) that it is ready (the server reads on and time:
+   *  soma_jobs/nudge.js), and whether the brief goes to Telegram once it is read on the phone. */
+  brief: { on: boolean; time: string; telegram: boolean };
 };
 
 export const MEALS: Meal[] = ["breakfast", "lunch", "snack", "dinner"];
@@ -93,6 +96,7 @@ export const DEFAULT_SETTINGS: Settings = {
   motion: "lively",
   opening: { on: true, phrases: DEFAULT_PHRASES },
   nudge: { on: false, time: "20:30" },
+  brief: { on: false, time: "21:00", telegram: false },
 };
 
 /** A plan's four meals as the day's plan, with the chosen bowl build in the Standard plan's two bowl slots. */
@@ -144,6 +148,11 @@ export function mergeSettings(stored: unknown): Settings {
     palette: isPalette(s.palette) ? s.palette : d.palette,
     motion: MOTION_MODES.includes(s.motion as MotionMode) ? (s.motion as MotionMode) : d.motion,
     nudge: { on: s.nudge?.on === true, time: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.nudge?.time || "") ? s.nudge!.time : d.nudge.time },
+    brief: {
+      on: s.brief?.on === true,
+      time: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.brief?.time || "") ? s.brief!.time : d.brief.time,
+      telegram: s.brief?.telegram === true,
+    },
     opening: {
       on: s.opening?.on !== false,
       phrases: Array.isArray(s.opening?.phrases)

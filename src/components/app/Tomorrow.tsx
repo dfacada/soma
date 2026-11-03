@@ -8,6 +8,8 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Reac
 import { Button, Card, Field, Icon, Input, Medallion, Switch, Tag, type Domain, type IconName } from "@/components/ui";
 import type { Provider } from "@/lib/brief-api";
 import type { Driver } from "@/lib/great-days";
+import { report } from "@/lib/log";
+import { enablePush, pushState, type PushState } from "@/lib/push";
 import {
   clockLabel, eventTime, freeBlocks, insightLine, lengthLabel, rangeLabel, summaryLine, taskClock, taskGroups, timeline, todoistUrl, wakingDay,
   type BriefEvent, type BriefTask, type Insight, type SomaSide,
@@ -16,6 +18,8 @@ import { dayKey, fromKey } from "@/lib/today";
 import { useTomorrow } from "./Brief";
 import { useHealth } from "./Health";
 import { useJournal } from "./Journal";
+import { LINE } from "./Nudge";
+import { useSession } from "./Session";
 import { useGoTab } from "./tabs";
 import a from "./app.module.css";
 import s from "./tomorrow.module.css";
@@ -316,6 +320,7 @@ export function TomorrowSettings({ say }: { say: (m: string) => void }) {
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.55, margin: 0 }}>
         From 6 pm a card on Today opens the next day: your calendar with the free time between, your tasks, and Soma&apos;s side of it.
       </p>
+      <BriefNotice say={say} />
       {!open && journal.vault !== "checking" && (
         <Field name="Keys" help="Both keys are kept sealed with your vault. Unlock it to connect or change them.">
           <Button size="sm" variant="journal" onClick={journal.openVault}>{journal.vault === "none" ? "Create vault" : "Unlock"}</Button>
@@ -345,6 +350,59 @@ export function TomorrowSettings({ say }: { say: (m: string) => void }) {
         </div>
       )}
     </Card>
+  );
+}
+
+/** The evening notification that the brief is ready. The time belongs to the account (the server sends it); whether
+ *  this device receives it is its own permission, asked for from the tap that switches it on (iOS needs that). */
+function BriefNotice({ say }: { say: (m: string) => void }) {
+  const { settings, saveSettings } = useSession();
+  const b = settings.brief;
+  const [device, setDevice] = useState<PushState | "checking">("checking");
+  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    pushState().then((st) => { if (alive) setDevice(st); }, () => { if (alive) setDevice("unsupported"); });
+    return () => { alive = false; };
+  }, []);
+
+  const turnOn = async () => {
+    setBusy(true);
+    try {
+      const state = await enablePush();
+      setDevice(state);
+      if (state !== "on") {
+        report("push", "not_enabled", undefined, { state, for: "brief" }, "warn");
+        say(state === "blocked" ? "Notifications are blocked on this device" : state === "needs-install" ? "Add Soma to your Home Screen first" : "Notifications were not allowed");
+        return;
+      }
+      await saveSettings({ brief: { ...b, on: true } });
+      say(`You'll hear at ${b.time} when tomorrow's brief is ready`);
+    } catch (e) {
+      report("push", "enable_failed", e, { for: "brief" });
+      say(e instanceof Error ? e.message : "Couldn't turn notifications on");
+    } finally { setBusy(false); }
+  };
+  const turnOff = async () => {
+    setBusy(true);
+    try { await saveSettings({ brief: { ...b, on: false } }); say("No notification for the brief"); }
+    catch { say("Couldn't save that"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <>
+      <Field name="Tell me when it's ready" help={`One notification each evening at the time below; tap it and the brief opens. ${LINE[device]}`}>
+        <Switch checked={b.on && device === "on"} label="Notify me when tomorrow's brief is ready" onChange={(v) => { if (!busy) void (v ? turnOn() : turnOff()); }} />
+      </Field>
+      <Field name="Time" help="Your local time on this device. Checked every 15 minutes.">
+        <Input compact type="time" step={900} aria-label="Brief time" value={draft ?? b.time}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => { if (draft && /^\d{2}:\d{2}$/.test(draft) && draft !== b.time) void saveSettings({ brief: { ...b, time: draft } }).then(() => say(`Brief at ${draft}`), () => say("Couldn't save that")); setDraft(null); }} />
+      </Field>
+      {b.on && device === "off" && <div><Button size="sm" variant="secondary" disabled={busy} onClick={() => void turnOn()}>Turn on for this device</Button></div>}
+    </>
   );
 }
 
