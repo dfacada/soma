@@ -393,6 +393,10 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   check('more than three days is a 400', r.status === 400, r.text);
   r = await call('POST', '/morgen/events', { key: 'not-a-real-morgen-key-0000000000', from: '2026-11-03T05:00:00Z', to: '2026-11-04T05:00:00Z' });
   check('a key Morgen refuses is a 409 with a sentence, and the key is not in it', r.status === 409 && /Morgen did not accept that key/.test(r.json && r.json.error) && !r.text.includes('not-a-real'), r.text);
+  r = await call('GET', '/telegram');
+  check('the test member has no Telegram chat', r.status === 200 && r.json.connected === false, r.json);
+  r = await call('POST', '/telegram/send', { text: 'Tomorrow · Tuesday 3 November\n\nSoma\nWeigh in · 100 push-ups', speak: false, title: "Tomorrow's brief" });
+  check('the brief cannot go to Telegram before a chat is paired (409, which the brief explains)', r.status === 409, r.text);
 
   console.log('cleanup');
   r = await call('DELETE', '/recipes/' + recipeId);

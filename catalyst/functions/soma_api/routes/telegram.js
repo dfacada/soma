@@ -1,5 +1,6 @@
-// Telegram, for the week in review (David, 2026-10-07: "the whole thing, text and audio"). One bot, @Soma_me_bot,
-// and one chat per person.
+// Telegram, for the week in review (David, 2026-10-07: "the whole thing, text and audio") and, since 2026-11-02,
+// tomorrow's brief (words only, sent from the phone once it has read the brief). One bot, @Soma_me_bot, and one chat
+// per person.
 //
 // Pairing without a webhook or any stored state: Settings shows a code, the person sends it to the bot, and this
 // function reads the bot's recent updates to find which chat said it. The code is an HMAC of the user id and a
@@ -114,7 +115,7 @@ router.post('/telegram/pair', member, wrap(async (req, res) => {
   const others = await select(req.admin, 'profiles', `SELECT ROWID FROM profiles WHERE telegram_chat = '${chat}' AND user_id != ${needId(req.user.id)}`);
   for (const o of others) await req.admin.datastore().table('profiles').updateRow({ ROWID: o.ROWID, telegram_chat: null });
   await req.admin.datastore().table('profiles').updateRow({ ROWID: row.ROWID, telegram_chat: chat });
-  await telegram('sendMessage', { chat_id: chat, text: 'Soma is connected. Your week in review will arrive here.' }).catch(() => undefined);
+  await telegram('sendMessage', { chat_id: chat, text: 'Soma is connected. Your week in review, and tomorrow\'s brief when you send it, will arrive here.' }).catch(() => undefined);
   console.log(JSON.stringify({ action: 'telegram_paired', user: req.user.id }));
   res.json({ connected: true, chat: '…' + chat.slice(-4) });
 }));

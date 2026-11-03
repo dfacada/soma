@@ -10,13 +10,13 @@ import type { Provider } from "@/lib/brief-api";
 import type { Driver } from "@/lib/great-days";
 import { report } from "@/lib/log";
 import { enablePush, pushState, type PushState } from "@/lib/push";
+import { api } from "@/lib/api";
 import {
-  clockLabel, eventTime, freeBlocks, insightLine, lengthLabel, rangeLabel, summaryLine, taskClock, taskGroups, timeline, todoistUrl, wakingDay,
+  clockLabel, eventTime, lengthLabel, rangeLabel, summaryLine, taskClock, taskGroups, timeline, todoistUrl,
   type BriefEvent, type BriefTask, type Insight, type SomaSide,
 } from "@/lib/tomorrow";
 import { dayKey, fromKey } from "@/lib/today";
 import { useTomorrow } from "./Brief";
-import { useHealth } from "./Health";
 import { useJournal } from "./Journal";
 import { LINE } from "./Nudge";
 import { useSession } from "./Session";
@@ -55,8 +55,8 @@ export function TomorrowCard() {
 export function TomorrowScreen() {
   const goTab = useGoTab();
   const journal = useJournal();
-  const { nights } = useHealth();
-  const { day, soma, lifts, links, brief, building, build, refreshIfStale } = useTomorrow();
+  const { settings } = useSession();
+  const { day, soma, links, brief, awake, free, insight, building, build, refreshIfStale, send } = useTomorrow();
   const close = useCallback(() => goTab("today"), [goTab]);
   const shut = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -68,15 +68,28 @@ export function TomorrowScreen() {
   // Opening the brief reads the calendar and tasks again when what this device holds is missing or stale.
   useEffect(() => { refreshIfStale(); }, [refreshIfStale]);
 
+  // Send to Telegram shows only when a chat is paired (Settings, under Week in review).
+  const [telegram, setTelegram] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    api<{ connected: boolean }>("GET", "/telegram").then((r) => { if (alive) setTelegram(r.connected); }, () => undefined);
+    return () => { alive = false; };
+  }, []);
+  const [sending, setSending] = useState(false);
+  const [sendNote, setSendNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const sendNow = async () => {
+    setSending(true); setSendNote(null);
+    const why = await send();
+    setSending(false);
+    setSendNote(why ? { ok: false, text: why } : { ok: true, text: `Sent to Telegram at ${clockLabel(Date.now())}` });
+  };
+
   const weekday = weekdayOf(day);
   const date = fromKey(day).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
   const connected = Boolean(links && (links.morgen || links.todoist));
   const locked = journal.vault !== "open";
 
   const events = brief?.events ?? null;
-  const awake = events ? wakingDay(day, nights, events) : null;
-  const free = events && awake ? freeBlocks(events, awake.start, awake.end) : null;
-  const insight = insightLine(lifts, free);
   const timed = events?.filter((e) => !e.allDay) ?? [];
   const first = timed.find((e) => e.start >= fromKey(day).setHours(0, 0, 0, 0));
   const freeMs = free?.reduce((n, b) => n + b.end - b.start, 0) ?? 0;
@@ -135,8 +148,13 @@ export function TomorrowScreen() {
         <SomaCard soma={soma} />
         {insight && <InsightCard insight={insight} />}
 
-        {brief && connected && (
-          <p className={s.built}>Read at {clockLabel(brief.builtMs)}{building ? " · reading again…" : ""}</p>
+        {(telegram || (brief && connected)) && (
+          <div className={s.foot}>
+            {telegram && <Button variant="secondary" disabled={sending} onClick={() => void sendNow()}><Icon name="send" size={16} />{sending ? "Sending…" : "Send to Telegram"}</Button>}
+            {sendNote && <p role={sendNote.ok ? "status" : "alert"} className={sendNote.ok ? s.built : a.noteBad}>{sendNote.text}</p>}
+            {!sendNote && settings.brief.sent === day && <p className={s.built}>Sent to Telegram</p>}
+            {brief && connected && <p className={s.built}>Read at {clockLabel(brief.builtMs)}{building ? " · reading again…" : ""}</p>}
+          </div>
         )}
       </div>
     </main>
@@ -312,8 +330,10 @@ const SOURCES: Record<string, string> = { google: "Google", o365: "Microsoft", i
 /** Settings → Tomorrow's brief: the two keys, and which Morgen calendars count. */
 export function TomorrowSettings({ say }: { say: (m: string) => void }) {
   const journal = useJournal();
+  const { settings, saveSettings } = useSession();
   const { links, calendars, skipped, setSkipped, disconnect } = useTomorrow();
   const open = journal.vault === "open";
+  const b = settings.brief;
   return (
     <Card>
       <span className="eb">Tomorrow&apos;s brief</span>
@@ -321,6 +341,9 @@ export function TomorrowSettings({ say }: { say: (m: string) => void }) {
         From 6 pm a card on Today opens the next day: your calendar with the free time between, your tasks, and Soma&apos;s side of it.
       </p>
       <BriefNotice say={say} />
+      <Field name="Send it to Telegram" help="Once a day, the first time the brief is read after its time, it goes to the Telegram chat connected under Week in review: times and titles, tasks and Soma's side, never a description, an attendee or a link. Telegram keeps what it is sent. The brief also has a Send button.">
+        <Switch checked={b.telegram} label="Send tomorrow's brief to Telegram" onChange={(v) => void saveSettings({ brief: { ...b, telegram: v } }).then(() => say(v ? "The brief will go to Telegram" : "The brief stays in Soma"), () => say("Couldn't save that"))} />
+      </Field>
       {!open && journal.vault !== "checking" && (
         <Field name="Keys" help="Both keys are kept sealed with your vault. Unlock it to connect or change them.">
           <Button size="sm" variant="journal" onClick={journal.openVault}>{journal.vault === "none" ? "Create vault" : "Unlock"}</Button>

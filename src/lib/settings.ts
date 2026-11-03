@@ -52,8 +52,9 @@ export type Settings = {
   /** One notification at `time` (local, HH:MM) when the day is still open. The server reads this: soma_jobs/nudge.js. */
   nudge: { on: boolean; time: string };
   /** Tomorrow's brief: a notification at `time` (local, HH:MM) that it is ready (the server reads on and time:
-   *  soma_jobs/nudge.js), and whether the brief goes to Telegram once it is read on the phone. */
-  brief: { on: boolean; time: string; telegram: boolean };
+   *  soma_jobs/nudge.js), whether the brief goes to Telegram once it is read on the phone after that time, and the
+   *  last day it went (so a second phone does not send it again). */
+  brief: { on: boolean; time: string; telegram: boolean; sent: string };
 };
 
 export const MEALS: Meal[] = ["breakfast", "lunch", "snack", "dinner"];
@@ -96,7 +97,7 @@ export const DEFAULT_SETTINGS: Settings = {
   motion: "lively",
   opening: { on: true, phrases: DEFAULT_PHRASES },
   nudge: { on: false, time: "20:30" },
-  brief: { on: false, time: "21:00", telegram: false },
+  brief: { on: false, time: "21:00", telegram: false, sent: "" },
 };
 
 /** A plan's four meals as the day's plan, with the chosen bowl build in the Standard plan's two bowl slots. */
@@ -152,6 +153,7 @@ export function mergeSettings(stored: unknown): Settings {
       on: s.brief?.on === true,
       time: /^([01]\d|2[0-3]):[0-5]\d$/.test(s.brief?.time || "") ? s.brief!.time : d.brief.time,
       telegram: s.brief?.telegram === true,
+      sent: /^\d{4}-\d{2}-\d{2}$/.test(s.brief?.sent || "") ? s.brief!.sent : "",
     },
     opening: {
       on: s.opening?.on !== false,

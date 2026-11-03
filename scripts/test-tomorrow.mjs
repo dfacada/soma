@@ -5,7 +5,7 @@
 process.env.TZ = "America/New_York";
 
 import { briefDay, dayBounds, zonedMs, durationMs, toEvents, dedupe, freeBlocks, wakingDay, timeline, toTasks, taskGroups, plainTask,
-  clockLabel, rangeLabel, lengthLabel, insightLine, somaSide, summaryLine, briefText, taskClock } from "../src/lib/tomorrow.ts";
+  clockLabel, rangeLabel, lengthLabel, insightLine, somaSide, summaryLine, briefText, taskClock, sendDue } from "../src/lib/tomorrow.ts";
 import { DEFAULT_SETTINGS } from "../src/lib/settings.ts";
 
 let passed = 0; const failures = [];
@@ -155,6 +155,16 @@ check("an empty calendar says so", summaryLine({ day: D, builtMs: 0, events: [],
 const text = briefText(brief, soma, fb, moving);
 check("the text has the day, the times and titles, the tasks and Soma's side", text.startsWith("Tomorrow · Tuesday 3 November") && text.includes("9–9:30 am  Standup") && text.includes("Carried over: P1 Pay rent; Read this") && text.includes("Due: P3 Call Sam (2:30 pm)") && text.includes("100 push-ups (day 43)") && text.includes("Great days come with moving"), text);
 check("the text carries no place, link or description", !text.includes("Room 4") && !text.includes("http") && !text.includes("bank"));
+console.log("sending it to Telegram by itself");
+const on = { telegram: true, time: "21:00", sent: "" };
+const readAt = (hm, day = "2026-11-02") => ({ day: D, builtMs: at(day, hm), events: null, tasks: null });
+check("read after the time on the evening before: send", sendDue(readAt("21:05"), on));
+check("read before the time: wait for a later read", !sendDue(readAt("19:00"), on));
+check("read after midnight for the day just begun: send", sendDue(readAt("00:30", D), on));
+check("already sent for that day: never twice", !sendDue(readAt("21:05"), { ...on, sent: D }));
+check("switched off: never", !sendDue(readAt("21:05"), { ...on, telegram: false }));
+check("nothing read: nothing to send", !sendDue(null, on));
+
 check("the text fits a Telegram message", briefText({ ...brief, tasks: Array.from({ length: 400 }, (_, i) => ({ id: String(i), text: "a long task name ".repeat(5), priority: 1, due: D, time: null, minutes: null, recurring: false })) }, soma, fb, moving).length <= 3800);
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

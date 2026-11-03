@@ -28,8 +28,9 @@ check("sample snacks are replaced", mergeSettings({ snacks: [{ name: "Beef stick
 check("his own snack list is kept, even next to a sample", mergeSettings({ snacks: [{ name: "Beef stick", kcal: 100 }, { name: "Jerky", kcal: 80 }] }).snacks.map((s) => s.name), ["Beef stick", "Jerky"]);
 check("an emptied snack list stays empty", mergeSettings({ snacks: [] }).snacks, []);
 check("an unknown plan or bowl falls back", [mergeSettings({ mealPlan: "carnivore", bowl: "x" }).mealPlan, mergeSettings({ mealPlan: "carnivore", bowl: "x" }).bowl], ["standard", "beef-rice"]);
-check("tomorrow's brief: off, at 21:00, not to Telegram, unless chosen", mergeSettings({}).brief, { on: false, time: "21:00", telegram: false });
-check("tomorrow's brief: choices are kept, a bad time falls back", mergeSettings({ brief: { on: true, time: "9pm", telegram: true } }).brief, { on: true, time: "21:00", telegram: true });
+check("tomorrow's brief: off, at 21:00, not to Telegram, unless chosen", mergeSettings({}).brief, { on: false, time: "21:00", telegram: false, sent: "" });
+check("tomorrow's brief: choices are kept, a bad time or sent day falls back", mergeSettings({ brief: { on: true, time: "9pm", telegram: true, sent: "yesterday" } }).brief, { on: true, time: "21:00", telegram: true, sent: "" });
+check("tomorrow's brief: the day it was last sent is kept", mergeSettings({ brief: { sent: "2026-11-03" } }).brief.sent, "2026-11-03");
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

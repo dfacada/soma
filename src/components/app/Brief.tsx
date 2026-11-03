@@ -10,10 +10,10 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ApiError } from "@/lib/api";
-import { dropLink, fetchLinks, morgenEvents, saveLink, todoistTasks, TodoistError, type Links, type MorgenCalendar, type MorgenSealed, type Provider, type TodoistSealed } from "@/lib/brief-api";
+import { briefToTelegram, dropLink, fetchLinks, morgenEvents, saveLink, todoistTasks, TodoistError, type Links, type MorgenCalendar, type MorgenSealed, type Provider, type TodoistSealed } from "@/lib/brief-api";
 import { greatDays, MIN_CHECKINS, type Driver } from "@/lib/great-days";
 import { report } from "@/lib/log";
-import { briefDay, dayBounds, NEW_DAY_HOUR, somaSide, toEvents, toTasks, type Brief, type SomaSide } from "@/lib/tomorrow";
+import { briefDay, briefText, dayBounds, freeBlocks, insightLine, NEW_DAY_HOUR, sendDue, somaSide, toEvents, toTasks, wakingDay, type Block, type Brief, type Insight, type SomaSide } from "@/lib/tomorrow";
 import { addDays, dayKey } from "@/lib/today";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
@@ -34,7 +34,14 @@ type Tomorrow = {
   /** Every Morgen calendar the last read saw, and the ones left out of the brief. */
   calendars: MorgenCalendar[] | null;
   skipped: string[];
+  /** The waking hours free time is counted in and the free blocks (null without a calendar), and the Insights line,
+   *  tied to a free block when there is a calendar. */
+  awake: (Block & { fromFitbit: boolean }) | null;
+  free: Block[] | null;
+  insight: Insight | null;
   building: boolean;
+  /** Send the brief to the Telegram chat paired in Settings. Null when it went, else what went wrong. */
+  send: () => Promise<string | null>;
   /** Read the calendar and tasks again. Asks for the vault when it is locked. */
   build: () => void;
   /** Read again only when there is nothing for the day yet, or what there is has gone stale. */
@@ -70,7 +77,7 @@ function reason(e: unknown, provider: Provider): string {
 const level = (e: unknown) => ((e instanceof ApiError && e.status < 500) || (e instanceof TodoistError && e.status > 0 && e.status < 500) ? "warn" : "error");
 
 export function TomorrowProvider({ children }: { children: ReactNode }) {
-  const { settings, me } = useSession();
+  const { settings, me, saveSettings } = useSession();
   const { map, today } = useDays();
   const rounds = useRounds();
   const { nights } = useHealth();
@@ -233,11 +240,41 @@ export function TomorrowProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, todayKey, settings, target, nights]);
 
+  const soma = useMemo(() => somaSide(settings, { target: round.target, rest: round.rest, dayNumber: round.dayNumber }), [settings, round.target, round.rest, round.dayNumber]);
+
+  // The day's shape, for the screen and for the words sent to Telegram alike.
+  const shape = useMemo(() => {
+    const events = brief?.events ?? null;
+    const awake = events ? wakingDay(day, nights, events) : null;
+    const free = events && awake ? freeBlocks(events, awake.start, awake.end) : null;
+    return { awake, free, insight: insightLine(lifts, free) };
+  }, [brief, day, nights, lifts]);
+
+  const send = useCallback(async (): Promise<string | null> => {
+    // With nothing connected the brief is still Soma's side of the day, and that can go too.
+    const b = brief ?? { day, builtMs: Date.now(), events: null, tasks: null };
+    try { await briefToTelegram(briefText(b, soma, shape.free, shape.insight)); return null; }
+    catch (e) {
+      report("brief", "telegram_failed", e, undefined, e instanceof ApiError && e.status < 500 ? "warn" : "error");
+      if (e instanceof ApiError && e.status === 409) return "Telegram isn't connected. Connect it in Settings, under Week in review.";
+      return e instanceof ApiError ? e.message : "Couldn't send to Telegram.";
+    }
+  }, [brief, day, soma, shape]);
+
+  // Sent by itself when asked for in Settings: once a day, the first time the brief is read after its time on the
+  // evening before. The day it went is kept in settings, so a second phone does not send it again.
+  const sentFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!brief || !sendDue(brief, settings.brief) || sentFor.current === brief.day) return;
+    sentFor.current = brief.day;
+    const forDay = brief.day;
+    // A failure is logged by send() and not retried by itself; Send on the brief is always there.
+    void send().then((why) => { if (!why) void saveSettings({ brief: { ...settings.brief, sent: forDay } }).catch(() => undefined); });
+  }, [brief, send, saveSettings, settings.brief]);
+
   const value = useMemo<Tomorrow>(() => ({
-    day,
-    soma: somaSide(settings, { target: round.target, rest: round.rest, dayNumber: round.dayNumber }),
-    lifts, links, brief, calendars: stored?.calendars ?? null, skipped, building,
-    build, refreshIfStale, connect, disconnect, setSkipped,
-  }), [day, settings, round.target, round.rest, round.dayNumber, lifts, links, brief, stored, skipped, building, build, refreshIfStale, connect, disconnect, setSkipped]);
+    day, soma, lifts, links, brief, calendars: stored?.calendars ?? null, skipped, ...shape, building,
+    build, refreshIfStale, connect, disconnect, setSkipped, send,
+  }), [day, soma, lifts, links, brief, stored, skipped, shape, building, build, refreshIfStale, connect, disconnect, setSkipped, send]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

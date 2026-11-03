@@ -57,14 +57,14 @@ export function TelegramCard({ say }: { say: (m: string) => void }) {
 
   const test = async () => {
     setBusy(true);
-    try { await api("POST", "/telegram/send", { text: "This is Soma, testing. Your week in review will arrive here.", speak: false }); say("Sent. Check Telegram."); }
+    try { await api("POST", "/telegram/send", { text: "This is Soma, testing. Your week in review and tomorrow's brief will arrive here.", speak: false }); say("Sent. Check Telegram."); }
     catch (e) { report("telegram", "test_failed", e, undefined, "warn"); say(e instanceof ApiError ? e.message : "Couldn't send"); }
     finally { setBusy(false); }
   };
 
   if (!status) {
     return (
-      <Field name="Telegram" help="Where the review is sent, if you want it there.">
+      <Field name="Telegram" help="Where the week in review and tomorrow's brief are sent, if you want them there.">
         <Button size="sm" variant="secondary" disabled={busy} onClick={() => void look()}>{busy ? "…" : "Check"}</Button>
       </Field>
     );

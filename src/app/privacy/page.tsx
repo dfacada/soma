@@ -43,6 +43,7 @@ export default function Privacy() {
         <li><strong>Morgen</strong> (your calendars): Morgen does not accept requests from Soma&rsquo;s web page, so Soma&rsquo;s server makes them. Your device opens the key and sends it with each request; the server uses it to read the day&rsquo;s events from Morgen, passes back only times, titles, calendar names and places, and keeps neither the key nor the events. Nothing about an event is written to a log.</li>
         <li><strong>Todoist</strong> (your tasks): read by your device straight from Todoist. The token and the tasks never pass through Soma&rsquo;s server.</li>
         <li>The brief is kept on your device for the evening, encrypted with your vault key. Nothing from either service is stored on the server.</li>
+        <li>If you send the brief to Telegram (a button, or a switch in Settings), its times, titles, tasks and Soma&rsquo;s side of the day go to your chat with Soma&rsquo;s Telegram bot as a message. Never a description, an attendee or a link. Telegram keeps what it is sent.</li>
       </ul>
 
       <h2>Transcription</h2>
@@ -53,6 +54,7 @@ export default function Privacy() {
         <li><strong>Zoho Catalyst</strong> hosts the app, the database and file storage, in Zoho&rsquo;s United States data centre.</li>
         <li><strong>Google</strong>, only if you connect Google Health.</li>
         <li><strong>Morgen</strong> and <strong>Todoist</strong>, only if you connect them for tomorrow&rsquo;s brief.</li>
+        <li><strong>Telegram</strong>, only if you connect it: the week in review, and tomorrow&rsquo;s brief when you send it, arrive there as messages.</li>
         <li><strong>Groq</strong>, only if you switch transcription on.</li>
       </ul>
       <p>That is the complete list.</p>

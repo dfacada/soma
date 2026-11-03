@@ -374,6 +374,18 @@ export function summaryLine(brief: Brief | null, soma: SomaSide): string {
   return parts.join(" · ");
 }
 
+/** Whether the brief should go to Telegram by itself now: switched on, not already sent for its day, and read after
+ *  the brief time on the evening before that day (a brief read at 7 pm for a 9 pm time waits for the next read). */
+export function sendDue(brief: Brief | null, setting: { telegram: boolean; time: string; sent: string }): boolean {
+  if (!brief || !setting.telegram || setting.sent === brief.day) return false;
+  const m = /^(\d{2}):(\d{2})$/.exec(setting.time);
+  if (!m) return false;
+  const eve = fromKey(brief.day);
+  eve.setDate(eve.getDate() - 1);
+  eve.setHours(Number(m[1]), Number(m[2]), 0, 0);
+  return brief.builtMs >= eve.getTime();
+}
+
 /** "Tuesday 3 November". */
 export const dayTitle = (day: string) => fromKey(day).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 

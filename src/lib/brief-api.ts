@@ -25,6 +25,10 @@ export const morgenEvents = (key: string, from: number, to: number, skip: string
     key, skip, from: new Date(from).toISOString().replace(/\.\d{3}Z$/, "Z"), to: new Date(to).toISOString().replace(/\.\d{3}Z$/, "Z"),
   });
 
+/** The brief as a Telegram message, to the chat paired for the week in review (routes/telegram.js). Words only. */
+export const briefToTelegram = (text: string) =>
+  api<{ sent: boolean }>("POST", "/telegram/send", { text, speak: false, title: "Tomorrow's brief" });
+
 /** A refusal from Todoist, in words a person can act on. */
 export class TodoistError extends Error {
   constructor(message: string, public status: number) { super(message); }
