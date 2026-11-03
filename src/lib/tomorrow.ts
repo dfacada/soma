@@ -95,7 +95,9 @@ export function toEvents(raw: MorgenEvent[], day: string): BriefEvent[] {
   const out: BriefEvent[] = [];
   for (const r of raw) {
     if (!r || r.declined || typeof r.start !== "string") continue;
-    const base = { id: String(r.id), title: (r.title || "").trim() || "Busy", busy: r.busy !== false, calendar: r.calendar || "", color: r.color, location: r.location, video: r.video, uid: r.uid, task: Boolean(r.taskId) };
+    // A calendar's colour is only ever a hex value: it goes into a style attribute.
+    const color = typeof r.color === "string" && /^#[0-9a-fA-F]{3,8}$/.test(r.color) ? r.color : undefined;
+    const base = { id: String(r.id), title: (r.title || "").trim() || "Busy", busy: r.busy !== false, calendar: r.calendar || "", color, location: r.location, video: r.video, uid: r.uid, task: Boolean(r.taskId) };
     if (r.allDay) {
       // An all-day event is a run of calendar dates, the same everywhere: count days on the calendar, not in hours.
       const first = r.start.slice(0, 10);

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Privacy · Soma", description: "What
 
 export default function Privacy() {
   return (
-    <LegalPage title="Privacy policy" updated="17 September 2026">
+    <LegalPage title="Privacy policy" updated="2 November 2026">
       <p>Soma is a small, invitation-only app for keeping a voice journal and tracking food, weight and activity. It is a personal project run by David, not a company. There are no ads, no analytics trackers, and nothing here is sold or used to build a profile of you for anyone else.</p>
 
       <h2>What Soma stores</h2>
@@ -21,7 +21,7 @@ export default function Privacy() {
       </ul>
 
       <h2>What Soma cannot read</h2>
-      <p>Your journal, your sleep data and your Google Health connection are encrypted in your browser with a key made from your vault passphrase, before they are uploaded. The passphrase and the key never leave your device. The server holds only ciphertext, so nobody can read these, David included. The cost of that is real: a forgotten passphrase cannot be reset, and what it protected is gone.</p>
+      <p>Your journal, your sleep data, and your Google Health, Morgen and Todoist connections are encrypted in your browser with a key made from your vault passphrase, before they are uploaded. The passphrase and the key never leave your device. The server holds only ciphertext, so nobody can read these, David included. The cost of that is real: a forgotten passphrase cannot be reset, and what it protected is gone.</p>
       <p>Everything else in the list above (check-ins, food, weight, activity, steps, rounds, settings) is stored readable by the server, so that leaderboards work and David, as the administrator, can fix a broken record. He does not look at it otherwise.</p>
 
       <h2>What other members see</h2>
@@ -37,6 +37,14 @@ export default function Privacy() {
       </ul>
       <p>Soma&rsquo;s use and transfer of information received from Google APIs to any other app will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noreferrer">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
 
+      <h2>Tomorrow&rsquo;s brief: Morgen and Todoist</h2>
+      <p>Both are optional and only ever read. You connect them in Settings with a key you make in your own Morgen or Todoist account, and the key is encrypted with your vault key before it is stored, so the server holds only ciphertext it cannot open.</p>
+      <ul>
+        <li><strong>Morgen</strong> (your calendars): Morgen does not accept requests from Soma&rsquo;s web page, so Soma&rsquo;s server makes them. Your device opens the key and sends it with each request; the server uses it to read the day&rsquo;s events from Morgen, passes back only times, titles, calendar names and places, and keeps neither the key nor the events. Nothing about an event is written to a log.</li>
+        <li><strong>Todoist</strong> (your tasks): read by your device straight from Todoist. The token and the tasks never pass through Soma&rsquo;s server.</li>
+        <li>The brief is kept on your device for the evening, encrypted with your vault key. Nothing from either service is stored on the server.</li>
+      </ul>
+
       <h2>Transcription</h2>
       <p>Transcription is off unless you switch it on in Settings. While it is on, each new recording is decrypted on your device and sent to Groq, a speech-to-text provider, to be transcribed. The audio is blanked and deleted from Soma&rsquo;s server as soon as Groq has answered, and the transcript is encrypted into your journal on your device. This is the one case in which journal content leaves your device unencrypted, and it only happens with that switch on.</p>
 
@@ -44,6 +52,7 @@ export default function Privacy() {
       <ul>
         <li><strong>Zoho Catalyst</strong> hosts the app, the database and file storage, in Zoho&rsquo;s United States data centre.</li>
         <li><strong>Google</strong>, only if you connect Google Health.</li>
+        <li><strong>Morgen</strong> and <strong>Todoist</strong>, only if you connect them for tomorrow&rsquo;s brief.</li>
         <li><strong>Groq</strong>, only if you switch transcription on.</li>
       </ul>
       <p>That is the complete list.</p>

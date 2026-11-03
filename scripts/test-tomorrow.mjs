@@ -59,6 +59,7 @@ check("all-day events on other days, declined events and the next day's are out"
 check("an event ending at midnight is yesterday's", !ids.includes("g"));
 check("one running past midnight into the day is in", ids.includes("h"));
 check("an event with no title says Busy", ev.find((e) => e.id === "i")?.title === "Busy");
+check("a calendar colour is kept only when it is a hex value", toEvents([{ ...raw[0], color: "#9fe1e7" }], D)[0].color === "#9fe1e7" && toEvents([{ ...raw[0], color: "red;background:url(x)" }], D)[0].color === undefined);
 check("the same invite in two calendars shows once, as busy", ev.filter((e) => e.title === "Lunch with Sam").length === 1 && ev.find((e) => e.title === "Lunch with Sam").busy === true);
 check("the same title and time without a uid shows once", ev.filter((e) => e.title.toLowerCase().trim() === "dentist").length === 1);
 check("all-day events first, then by time", ev[0].allDay && ev[1].allDay && ev.slice(2).every((e, i, xs) => !e.allDay && (i === 0 || xs[i - 1].start <= e.start)), ev.map((e) => e.id));

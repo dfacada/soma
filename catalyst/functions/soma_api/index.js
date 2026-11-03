@@ -48,6 +48,8 @@ app.use(require('./routes/food'));
 app.use(require('./routes/review'));
 app.use(require('./routes/insights'));
 app.use(require('./routes/telegram'));
+app.use(require('./routes/links'));
+app.use(require('./routes/morgen'));
 app.use(require('./routes/misc'));
 app.use(require('./routes/rounds'));
 app.use(require('./routes/jobs'));

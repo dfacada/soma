@@ -20,6 +20,7 @@ import { NudgeCard } from "./Nudge";
 import { useJournal } from "./Journal";
 import { ReleaseList } from "./WhatsNew";
 import { TelegramCard } from "./Telegram";
+import { TomorrowSettings } from "./Tomorrow";
 import { CHANGES, releaseDate } from "@/lib/changelog";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -176,6 +177,8 @@ export function SettingsScreen() {
       </Card>
 
       <NudgeCard say={say} />
+
+      <TomorrowSettings say={say} />
 
       <HealthCard steps={g.steps} onSteps={(n) => void save({ goals: { ...g, steps: n } }, `Steps goal set to ${n.toLocaleString("en-US")}`)} />
 

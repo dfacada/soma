@@ -1,26 +1,36 @@
 "use client";
 
-// Tomorrow's brief, full screen (/tomorrow/), and the card on Today that opens it from 6 pm. Soma Night, facts only:
-// what the day holds, never what to do with it.
+// Tomorrow's brief, full screen (/tomorrow/), the card on Today that opens it from 6 pm, and its Settings card.
+// Soma Night, facts only: what the day holds, never what to do with it.
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, type CSSProperties } from "react";
-import { Icon, Medallion, type Domain, type IconName } from "@/components/ui";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Button, Card, Field, Icon, Input, Medallion, Switch, Tag, type Domain, type IconName } from "@/components/ui";
+import type { Provider } from "@/lib/brief-api";
 import type { Driver } from "@/lib/great-days";
-import { insightLine, summaryLine, type Insight, type SomaSide } from "@/lib/tomorrow";
-import { fromKey } from "@/lib/today";
+import {
+  clockLabel, eventTime, freeBlocks, insightLine, lengthLabel, rangeLabel, summaryLine, taskClock, taskGroups, timeline, todoistUrl, wakingDay,
+  type BriefEvent, type BriefTask, type Insight, type SomaSide,
+} from "@/lib/tomorrow";
+import { dayKey, fromKey } from "@/lib/today";
 import { useTomorrow } from "./Brief";
+import { useHealth } from "./Health";
+import { useJournal } from "./Journal";
 import { useGoTab } from "./tabs";
+import a from "./app.module.css";
 import s from "./tomorrow.module.css";
 import t from "./today.module.css";
 
 const hue = (d: Domain) => ({ "--hue": `var(--${d})` }) as CSSProperties;
 const fmt = (n: number) => n.toLocaleString("en-US");
 const weekdayOf = (day: string) => fromKey(day).toLocaleDateString("en-GB", { weekday: "long" });
+const shortDay = (day: string) => fromKey(day).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+/** A length short enough for a stat: "45m", "2h", "5h10". */
+const compact = (ms: number) => { const min = Math.round(ms / 60000); return min < 60 ? `${min}m` : `${Math.floor(min / 60)}h${min % 60 ? String(min % 60).padStart(2, "0") : ""}`; };
 
 /** On Today from 6 pm: the day ahead in one line, and the way into the brief. */
 export function TomorrowCard() {
-  const { day, soma } = useTomorrow();
+  const { day, soma, brief } = useTomorrow();
   const weekday = weekdayOf(day);
   return (
     <Link href="/tomorrow/" className={`${t.tile} ${t.wide} ${s.cardLink}`} style={hue("journal")} aria-label={`Tomorrow's brief: ${weekday}`}>
@@ -29,7 +39,7 @@ export function TomorrowCard() {
           <span className={t.grow}>
             <span className={t.th}><Medallion domain="journal" icon="moon" /><span className="eb">Tomorrow</span></span>
             <span className={`d ${t.title}`}>{weekday}</span>
-            <span className={t.sub}>{summaryLine(null, soma)} · see the day</span>
+            <span className={t.sub}>{summaryLine(brief, soma)}{brief ? "" : " · see the day"}</span>
           </span>
           <span className={s.go}><Icon name="chevron" size={22} strokeWidth={2} /></span>
         </span>
@@ -40,7 +50,9 @@ export function TomorrowCard() {
 
 export function TomorrowScreen() {
   const goTab = useGoTab();
-  const { day, soma, lifts } = useTomorrow();
+  const journal = useJournal();
+  const { nights } = useHealth();
+  const { day, soma, lifts, links, brief, building, build, refreshIfStale } = useTomorrow();
   const close = useCallback(() => goTab("today"), [goTab]);
   const shut = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -49,11 +61,22 @@ export function TomorrowScreen() {
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
   }, [close]);
+  // Opening the brief reads the calendar and tasks again when what this device holds is missing or stale.
+  useEffect(() => { refreshIfStale(); }, [refreshIfStale]);
 
-  const d = fromKey(day);
   const weekday = weekdayOf(day);
-  const date = d.toLocaleDateString("en-GB", { day: "numeric", month: "long" });
-  const insight = insightLine(lifts, null);
+  const date = fromKey(day).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+  const connected = Boolean(links && (links.morgen || links.todoist));
+  const locked = journal.vault !== "open";
+
+  const events = brief?.events ?? null;
+  const awake = events ? wakingDay(day, nights, events) : null;
+  const free = events && awake ? freeBlocks(events, awake.start, awake.end) : null;
+  const insight = insightLine(lifts, free);
+  const timed = events?.filter((e) => !e.allDay) ?? [];
+  const first = timed.find((e) => e.start >= fromKey(day).setHours(0, 0, 0, 0));
+  const freeMs = free?.reduce((n, b) => n + b.end - b.start, 0) ?? 0;
+  const [firstTime, firstHalf] = first ? clockLabel(first.start).split(" ") : ["—", ""];
 
   return (
     <main className={s.screen} aria-label={`Tomorrow's brief, ${weekday} ${date}`}>
@@ -61,21 +84,56 @@ export function TomorrowScreen() {
         <div className={s.bar}>
           <button ref={shut} type="button" className={s.x} onClick={close} aria-label="Close the brief"><Icon name="close" size={18} /></button>
           <span className="eb">Tomorrow&apos;s brief</span>
-          <span className={s.barEnd} />
+          {connected && !locked
+            ? <button type="button" className={`${s.x} ${building ? s.spin : ""}`} onClick={build} disabled={building} aria-label="Read the calendar and tasks again"><Icon name="refresh" size={18} /></button>
+            : <span className={s.barEnd} />}
         </div>
 
         <header className={s.hero}>
           <span className="eb">{date}</span>
           <h1 className={`d ${s.day}`}>{weekday}</h1>
           <div className={s.stats}>
-            <Stat value={soma.pushups.rest ? "Rest" : fmt(soma.pushups.target)} label={soma.pushups.rest ? "no push-ups" : "push-ups"} />
-            <Stat value={fmt(soma.kcal)} label="kcal" />
-            <Stat value={String(soma.weighIn ? 5 : 4)} label="to close" />
+            {events
+              ? <>
+                <Stat value={String(timed.length)} label={timed.length === 1 ? "event" : "events"} />
+                <Stat value={firstTime} label={first ? `first · ${firstHalf}` : "nothing booked"} />
+                <Stat value={free ? compact(freeMs) : "—"} label="free" />
+              </>
+              : <>
+                <Stat value={soma.pushups.rest ? "Rest" : fmt(soma.pushups.target)} label={soma.pushups.rest ? "no push-ups" : "push-ups"} />
+                <Stat value={fmt(soma.kcal)} label="kcal" />
+                <Stat value={String(soma.weighIn ? 5 : 4)} label="to close" />
+              </>}
           </div>
         </header>
 
+        {links && !connected && (
+          <section className={s.card} aria-label="Your calendar and tasks">
+            <span className="eb">Your calendar and tasks</span>
+            <p className={s.rowSub}>Connect Morgen and Todoist in Settings, under Tomorrow&apos;s brief, and the day&apos;s events, free time and tasks show here.</p>
+            <div><Link href="/settings/" className={s.pill}>Open Settings</Link></div>
+          </section>
+        )}
+        {connected && locked && (
+          <section className={s.card} aria-label="Unlock">
+            <span className="eb">Your calendar and tasks</span>
+            <p className={s.rowSub}>Your Morgen and Todoist keys are sealed with your vault. Unlock it to read tomorrow.</p>
+            <div><Button size="sm" variant="journal" onClick={journal.openVault}>Unlock</Button></div>
+          </section>
+        )}
+        {connected && !locked && !brief && (
+          <section className={s.card} aria-label="Reading"><span className="eb">Reading your calendar and tasks…</span><div className={s.skel}><i /><i /><i /></div></section>
+        )}
+
+        {brief && links?.morgen && <CalendarCard events={events} error={brief.eventsError} free={free} awake={awake} day={day} onRetry={build} />}
+        {brief && links?.todoist && <TasksCard tasks={brief.tasks} error={brief.tasksError} events={events} day={day} onRetry={build} />}
+
         <SomaCard soma={soma} />
         {insight && <InsightCard insight={insight} />}
+
+        {brief && connected && (
+          <p className={s.built}>Read at {clockLabel(brief.builtMs)}{building ? " · reading again…" : ""}</p>
+        )}
       </div>
     </main>
   );
@@ -85,7 +143,7 @@ function Stat({ value, label }: { value: string; label: string }) {
   return <div className={s.stat}><span className="dc">{value}</span><span className="eb">{label}</span></div>;
 }
 
-function Row({ domain, icon, title, sub, children }: { domain: Domain; icon: IconName; title: string; sub?: string; children?: React.ReactNode }) {
+function Row({ domain, icon, title, sub, children }: { domain: Domain; icon: IconName; title: string; sub?: string; children?: ReactNode }) {
   return (
     <div className={s.row}>
       <Medallion domain={domain} icon={icon} />
@@ -94,6 +152,92 @@ function Row({ domain, icon, title, sub, children }: { domain: Domain; icon: Ico
         {sub && <span className={s.rowSub}>{sub}</span>}
         {children}
       </div>
+    </div>
+  );
+}
+
+function Problem({ text, onRetry }: { text: string; onRetry: () => void }) {
+  return (
+    <div className={s.problem} role="alert">
+      <span>{text}</span>
+      <Button size="sm" variant="secondary" onClick={onRetry}>Try again</Button>
+    </div>
+  );
+}
+
+/** The day in order, with the free time between: all-day events above, then each event and each free block. */
+function CalendarCard({ events, error, free, awake, day, onRetry }: {
+  events: BriefEvent[] | null; error?: string; free: { start: number; end: number }[] | null; awake: { start: number; end: number; fromFitbit: boolean } | null; day: string; onRetry: () => void;
+}) {
+  const allDay = events?.filter((e) => e.allDay) ?? [];
+  const rows = events && free ? timeline(events, free) : [];
+  return (
+    <section className={s.card} aria-label="Calendar">
+      <div className={s.cardHead}><span className="eb">Calendar</span><span className={s.source}>Morgen</span></div>
+      {error && <Problem text={error} onRetry={onRetry} />}
+      {allDay.length > 0 && (
+        <div className={s.allDay}>
+          {allDay.map((e) => <span key={e.id} className={s.allDayPill} style={{ "--c": e.color || "var(--journal)" } as CSSProperties}><i />{e.title}</span>)}
+        </div>
+      )}
+      {events && rows.length === 0 && <p className={s.rowSub}>Nothing booked.</p>}
+      {rows.length > 0 && (
+        <ol className={s.timeline}>
+          {rows.map((r) => r.kind === "free" ? (
+            <li key={`free-${r.start}`} className={s.freeRow}>
+              <span className={`m ${s.when}`}>{clockLabel(r.start)}</span>
+              <span className={s.freeBox}><b>Free · {lengthLabel(r.end - r.start)}</b><span>{rangeLabel(r.start, r.end)}</span></span>
+            </li>
+          ) : (
+            <li key={r.event.id} className={s.eventRow}>
+              <span className={`m ${s.when}`}>{r.event.start < fromKey(day).setHours(0, 0, 0, 0) ? "…" : clockLabel(r.event.start)}</span>
+              <span className={`${s.eventBox} ${r.event.busy ? "" : s.eventFree}`} style={{ "--c": r.event.color || "var(--journal)" } as CSSProperties}>
+                <b>{r.event.task && <Icon name="task" size={14} />}{r.event.title}</b>
+                <span>{[eventTime(r.event, day), r.event.calendar, r.event.location, r.event.video ? "video call" : "", r.event.busy ? "" : "shown as free"].filter(Boolean).join(" · ")}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {awake && <p className={s.note}>Free time is counted from {clockLabel(awake.start)} to {clockLabel(awake.end)}{awake.fromFitbit ? ", your usual waking hours from Fitbit" : ""}, in blocks of half an hour or more.</p>}
+    </section>
+  );
+}
+
+/** Carried over (overdue, or still open today) and due on the day. Read-only: a tap opens the task in Todoist. */
+function TasksCard({ tasks, error, events, day, onRetry }: { tasks: BriefTask[] | null; error?: string; events: BriefEvent[] | null; day: string; onRetry: () => void }) {
+  const g = tasks ? taskGroups(tasks, day, events || []) : null;
+  const total = g ? g.carried.length + g.due.length : 0;
+  const todayKey = dayKey(new Date());
+  return (
+    <section className={s.card} aria-label="Todoist">
+      <div className={s.cardHead}><span className="eb">Todoist</span>{g && <span className={s.source}>{total} task{total === 1 ? "" : "s"}</span>}</div>
+      {error && <Problem text={error} onRetry={onRetry} />}
+      {g && total === 0 && <p className={s.rowSub}>Nothing due, nothing carried over.</p>}
+      {g && g.carried.length > 0 && <TaskList title={`Carried over · ${g.carried.length}`} tasks={g.carried} when={(x) => (x.due === todayKey ? "today" : shortDay(x.due))} />}
+      {g && g.due.length > 0 && <TaskList title={`Due ${weekdayOf(day)} · ${g.due.length}`} tasks={g.due} when={(x) => taskClock(x)} />}
+    </section>
+  );
+}
+
+function TaskList({ title, tasks, when }: { title: string; tasks: BriefTask[]; when: (task: BriefTask) => string | null }) {
+  return (
+    <div className={s.group}>
+      <span className={s.groupHead}>{title}</span>
+      <ul className={s.tasks}>
+        {tasks.map((x) => (
+          <li key={x.id}>
+            <a className={s.task} href={todoistUrl(x.id)} target="_blank" rel="noreferrer">
+              <span className={s.tick} aria-hidden />
+              <span className={s.taskText}>{x.text}</span>
+              <span className={s.taskMeta}>
+                {x.priority > 1 && <Tag tone={x.priority === 4 ? "activity" : undefined}>P{5 - x.priority}</Tag>}
+                {when(x) && <span className="m">{when(x)}</span>}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -138,5 +282,103 @@ function InsightCard({ insight }: { insight: Insight }) {
         </div>
       </div>
     </section>
+  );
+}
+
+// ── Settings ──
+
+const HELP: Record<Provider, { name: string; off: string; on: string; label: string }> = {
+  morgen: {
+    name: "Morgen",
+    off: "Your calendar, from every account connected to Morgen: Google, and anything you made in Morgen. Get the key at platform.morgen.so, under Developers API. It is sealed with your vault key; for each read Soma's server passes it to Morgen and keeps nothing, because Morgen won't take calls from Soma's page directly.",
+    on: "Connected. Read when the brief opens; Soma's server passes the key to Morgen and keeps neither the key nor your events.",
+    label: "Morgen API key",
+  },
+  todoist: {
+    name: "Todoist",
+    off: "Tasks due tomorrow and anything overdue. In Todoist: Settings → Integrations → Developer → API token. Sealed with your vault key and used only by this phone, straight with Todoist: Soma's server never sees it. Soma only reads.",
+    on: "Connected. Read straight from Todoist on this phone; Soma only reads, never changes a task.",
+    label: "Todoist API token",
+  },
+};
+
+/** Where a Morgen calendar lives, in the provider's own name. */
+const SOURCES: Record<string, string> = { google: "Google", o365: "Microsoft", icloud: "iCloud", fastmail: "Fastmail", caldav: "CalDAV", feed: "Subscribed feed" };
+
+/** Settings → Tomorrow's brief: the two keys, and which Morgen calendars count. */
+export function TomorrowSettings({ say }: { say: (m: string) => void }) {
+  const journal = useJournal();
+  const { links, calendars, skipped, setSkipped, disconnect } = useTomorrow();
+  const open = journal.vault === "open";
+  return (
+    <Card>
+      <span className="eb">Tomorrow&apos;s brief</span>
+      <p className="muted" style={{ fontSize: 13, lineHeight: 1.55, margin: 0 }}>
+        From 6 pm a card on Today opens the next day: your calendar with the free time between, your tasks, and Soma&apos;s side of it.
+      </p>
+      {!open && journal.vault !== "checking" && (
+        <Field name="Keys" help="Both keys are kept sealed with your vault. Unlock it to connect or change them.">
+          <Button size="sm" variant="journal" onClick={journal.openVault}>{journal.vault === "none" ? "Create vault" : "Unlock"}</Button>
+        </Field>
+      )}
+      {(["morgen", "todoist"] as Provider[]).map((p) => (
+        <KeyField key={p} provider={p} linked={Boolean(links?.[p])} open={open} say={say} onDisconnect={async () => {
+          try { await disconnect(p); say(`${HELP[p].name} disconnected`); } catch { say("Couldn't disconnect"); }
+        }} />
+      ))}
+      {open && links?.morgen && calendars && calendars.length > 0 && (
+        <div className={s.calendars}>
+          <span className={s.groupHead}>Calendars in the brief</span>
+          {calendars.map((c) => {
+            const on = !skipped.includes(c.id);
+            return (
+              <div key={c.id} className={s.calendarRow}>
+                <i style={{ "--c": c.color && /^#[0-9a-fA-F]{3,8}$/.test(c.color) ? c.color : "var(--journal)" } as CSSProperties} />
+                <span className={s.calendarName}>{c.name}<small>{SOURCES[c.integration] || c.integration}</small></span>
+                <Switch checked={on} label={`Include ${c.name}`} onChange={(v) => {
+                  const next = v ? skipped.filter((id) => id !== c.id) : [...skipped, c.id];
+                  void setSkipped(next).then(() => say(v ? `${c.name} is in the brief` : `${c.name} is left out`), () => say("Couldn't save that"));
+                }} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function KeyField({ provider, linked, open, say, onDisconnect }: { provider: Provider; linked: boolean; open: boolean; say: (m: string) => void; onDisconnect: () => void }) {
+  const { connect } = useTomorrow();
+  const [adding, setAdding] = useState(false);
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const h = HELP[provider];
+  const submit = async () => {
+    setBusy(true); setError(null);
+    const why = await connect(provider, value);
+    setBusy(false);
+    if (why) { setError(why); return; }
+    setValue(""); setAdding(false); say(`${h.name} connected`);
+  };
+  return (
+    <>
+      <Field name={h.name} help={linked ? h.on : h.off}>
+        {linked
+          ? <Button size="sm" variant="secondary" onClick={onDisconnect}>Disconnect</Button>
+          : open && !adding && <Button size="sm" variant="journal" onClick={() => setAdding(true)}>Connect</Button>}
+      </Field>
+      {adding && !linked && (
+        <form className={a.draft} onSubmit={(e) => { e.preventDefault(); if (value.trim() && !busy) void submit(); }}>
+          <Input type="password" autoComplete="off" spellCheck={false} aria-label={h.label} placeholder={h.label} value={value} onChange={(e) => setValue(e.target.value)} />
+          {error && <p role="alert" className={a.noteBad} style={{ margin: 0 }}>{error}</p>}
+          <div className={a.rowButtons}>
+            <Button type="submit" variant="journal" disabled={!value.trim() || busy}>{busy ? "Checking…" : "Connect"}</Button>
+            <Button variant="secondary" onClick={() => { setAdding(false); setValue(""); setError(null); }}>Cancel</Button>
+          </div>
+        </form>
+      )}
+    </>
   );
 }
