@@ -10,6 +10,8 @@ import { dayStatus, type DayMap } from "./today";
 
 /** Both sides of a comparison need this many days before it is shown at all. */
 export const MIN_SIDE = 3;
+/** Fewer checked-in days than this and nothing is said about great days (Insights, and the line in tomorrow's brief). */
+export const MIN_CHECKINS = 6;
 /** A difference smaller than this (share of great days, or tone on a -1…1 scale) is not worth a line. */
 export const MIN_LIFT = 0.15;
 

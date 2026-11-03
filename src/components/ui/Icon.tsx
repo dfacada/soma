@@ -94,6 +94,17 @@ const PATHS = {
   plus: <path d="M12 5v14M5 12h14" />,
   minus: <path d="M5 12h14" />,
   pulse: <path d="M3 12h4l3-7 4 14 3-7h4" />,
+  // Tomorrow's brief: the evening it is read in, building it again, sending it on, going into it, and a task.
+  moon: <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />,
+  refresh: <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />,
+  send: <path d="M4 12l16-8-6 16-2.5-6.5L4 12zM11.5 13.5L20 4" />,
+  chevron: <path d="M9 5l7 7-7 7" />,
+  task: (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="4" />
+      <path d="M8.5 12l2.5 2.5 4.5-5" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof PATHS;

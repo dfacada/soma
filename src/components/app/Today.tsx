@@ -23,6 +23,7 @@ import { applySaid, describeFood, knownFromDays, saidLine, type Said } from "@/l
 import { DayClosed, FoodMoment } from "./Moments";
 import { MoodFace } from "./MoodFace";
 import { PushSheet } from "./PushSheet";
+import { TomorrowCard } from "./Tomorrow";
 import { WeightSheet } from "./WeightSheet";
 import { useRounds } from "./Rounds";
 import { useSession } from "./Session";
@@ -376,6 +377,9 @@ export function Today() {
             ))}
           </div>
         </div>
+
+        {/* From 6 pm the evening turns to the next day: the brief is one tap away. */}
+        {isToday && hour >= 18 && <TomorrowCard />}
       </div>
 
       <Sheet open={checkinSheet} title={isToday ? "How's today?" : `Check-in · ${longDay(view)}`} onClose={closeCheckin}>

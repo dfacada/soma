@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import Link from "next/link";
 import { api, type Days } from "@/lib/api";
-import { greatDays, journalTone, progress, TASK_LABEL, weekCompare, type Driver, type ToneDriver, type WeekCompare } from "@/lib/great-days";
+import { greatDays, journalTone, MIN_CHECKINS, progress, TASK_LABEL, weekCompare, type Driver, type ToneDriver, type WeekCompare } from "@/lib/great-days";
 import { dayLog, type LogRow } from "@/lib/insights";
 import { trailingAverage, weighIns } from "@/lib/patterns";
 import { addDays, dayKey, indexDays, streak, WEEKDAYS, type DayMap } from "@/lib/today";
@@ -26,7 +26,6 @@ import a from "./app.module.css";
 import s from "./insights.module.css";
 
 /** Fewer check-ins than this and there is nothing honest to say about great days yet. */
-const MIN_CHECKINS = 6;
 const MIN_TONE_DAYS = 6;
 type Range = "30" | "60" | "365";
 const RANGE_LABEL: Record<Range, string> = { "30": "30 days", "60": "60 days", "365": "year" };
