@@ -115,14 +115,6 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .logPairs dt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; overflow-wrap: anywhere; }
 .logPairs dd { margin: 0; font-family: var(--font-mono); font-size: 11.5px; overflow-wrap: anywhere; }
 .logDetail { margin: 0 0 10px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-2); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
-.logRow { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
-.logRow + .logRow { border-top: 1px solid var(--surface-2); }
-.logEmpty { opacity: 0.55; }
-.logDate { width: 46px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1px; }
-.logBody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.logTop { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.logClosed { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--food-ink); background: var(--food-tint); padding: 1px 7px; border-radius: 999px; }
-.logOpen { font-size: 12px; color: var(--activity-ink); }
 .palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .palette { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; border-radius: var(--r-ctl); border: 1px solid var(--hairline); background: var(--surface); color: var(--ink); text-align: left; }
 .paletteOn { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
@@ -131,12 +123,6 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .paletteDots i + i { margin-left: -6px; }
 .legal { display: flex; justify-content: center; gap: 20px; font-size: 12px; }
 .legal a { color: var(--muted); min-height: 44px; display: inline-flex; align-items: center; }
-.factor { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; }
-.factor + .factor { border-top: 1px solid var(--surface-2); }
-.factorHead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; font-weight: 500; }
-.factorHead :global(.m) { font-size: 12px; font-weight: 400; white-space: nowrap; }
-.factorTrack { display: flex; flex-direction: column; gap: 2px; }
-.factorTrack i { display: block; height: 5px; min-width: 2px; border-radius: 999px; }
 .roundIntro { display: flex; align-items: center; gap: 14px; }
 .roundRing { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
 .grid { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 4px; }
@@ -164,18 +150,6 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .restGrid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; max-height: 36dvh; overflow: auto; }
 .restCell { aspect-ratio: 1; min-height: 30px; border-radius: 6px; border: 1px solid var(--hairline); background: var(--surface); font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
 .restOn { background: var(--ink); border-color: var(--ink); color: var(--bone); }
-
-/* ── Insights ── */
-.signalHead { display: flex; align-items: center; gap: 8px; }
-.signalHead i { width: 8px; height: 8px; border-radius: var(--r-pill); }
-.signal { font-size: 14px; line-height: 1.55; }
-.moodRow { display: flex; align-items: center; gap: 10px; min-height: 24px; }
-.moodLabel { width: 92px; font-size: 13px; flex-shrink: 0; }
-.moodTrack { flex: 1; height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
-.moodFill { height: 100%; border-radius: var(--r-pill); background: var(--journal); }
-.statGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.privacy { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--r-card); background: var(--journal-tint); color: var(--journal-ink); font-size: 12px; line-height: 1.45; }
-.privacy svg { margin-top: 1px; }
 
 /* ── Settings and admin ── */
 .habitRow { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
@@ -210,12 +184,6 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .userDay { display: flex; gap: 10px; align-items: baseline; }
 .userDay > :first-child { width: 42px; flex: none; color: var(--muted); }
 
-/* The weight line: focusable so the arrow keys can walk it, but only the keyboard gets a ring. */
-.trend { border-radius: 10px; outline: none; }
-.trend:focus-visible { outline: 2px solid var(--food); outline-offset: 3px; }
-/* Soma Night: the weight line draws itself in when Insights shows (pathLength 1 makes the dash the whole line). */
-.trend polyline { stroke-dasharray: 1; stroke-dashoffset: 1; animation: trendDraw 1.6s 0.2s cubic-bezier(0.5, 0, 0.2, 1) forwards; }
-@keyframes trendDraw { to { stroke-dashoffset: 0; } }
 
 /* The week in review: the lists under the synopsis. */
 .reviewList { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 7px; font-size: 14px; line-height: 1.55; }
@@ -229,16 +197,6 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .fitbitText { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; line-height: 1.35; }
 .fitbitClose { width: 44px; height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-pill); color: var(--activity-ink); }
 
-/* Insights → Patterns: small SVG charts drawn at about phone width, type from the mono role. */
-.pattern { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.pattern + .pattern { padding-top: 10px; border-top: 1px solid var(--surface-2); }
-.patternTitle { font-size: 14px; font-weight: 600; }
-.patternSvg { width: 100%; height: auto; display: block; overflow: visible; animation: patternIn 0.8s var(--ease-out) both; }
-@keyframes patternIn { from { opacity: 0; transform: translateY(8px); } }
-.patternAxis { fill: var(--muted); font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }
-.patternAxisInk { fill: var(--ink); font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; }
-.patternLegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
-.patternLegend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
 
 /* Opening splash (Splash.tsx): the wordmark and a StageBar naming the real step. As an overlay it covers the app
    until Today is ready, then fades. Under the opening words (80), over the tab bar and sheets. */
@@ -282,4 +240,3 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
   .splashOverlay { transition: opacity 0.2s ease !important; }
   .splashLeaving { transform: none; }
 }
-.patternOnHue { fill: var(--surface); font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }

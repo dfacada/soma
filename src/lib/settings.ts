@@ -33,6 +33,10 @@ export type Settings = {
   weeklyReview: { on: boolean; dayOfWeek: number; time: string; consent: boolean; telegram: boolean; speak: boolean };
   /** Off until the user opts in: transcription is the one thing that sends plaintext audio off the device. */
   cloudTranscription: boolean;
+  /** How Insights reads the journal for its tone and themes. "phone": a word list on the device, nothing leaves it
+   *  (the default). "claude": names and details taken out on the device, then read by Claude with nothing about the
+   *  account attached (src/lib/journal-read.ts, catalyst/functions/soma_api/routes/insights.js). */
+  journalInsights: "phone" | "claude";
   /** Let Claude estimate calories and macros for food typed in plain words. Known food is matched on the device first. */
   foodEstimate: boolean;
   /** Logging weight is one of the things that closes the day. On unless the user switches it off. */
@@ -78,6 +82,7 @@ export const DEFAULT_SETTINGS: Settings = {
   // Off until asked for: this is the one feature where journal text leaves the device.
   weeklyReview: { on: false, dayOfWeek: 0, time: "19:00", consent: false, telegram: false, speak: true },
   cloudTranscription: false,
+  journalInsights: "phone",
   foodEstimate: true,
   requireWeight: true,
   unlockOnOpen: true,
@@ -131,6 +136,7 @@ export function mergeSettings(stored: unknown): Settings {
       speak: s.weeklyReview?.speak !== false,
     },
     cloudTranscription: s.cloudTranscription === true,
+    journalInsights: s.journalInsights === "claude" ? "claude" : "phone",
     foodEstimate: s.foodEstimate !== false,
     requireWeight: s.requireWeight !== false,
     unlockOnOpen: s.unlockOnOpen !== false,

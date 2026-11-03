@@ -1,33 +1,34 @@
 "use client";
 
-// Insights: what the last week, month, two months or year actually looked like. It opens with the plain record,
-// one line a day (weight, closed or not and why not, what was done), because that is the part with no room for
-// flattery. Counts only; no claims the data cannot support.
+// Insights, rebuilt (David, 2026-11-02: "way too much information … talk about the insights that really matter").
+// Four things, in this order: what makes a great day, what the journal says on the good days, how the window went,
+// and weight. Every finding is worked out on this device (src/lib/great-days.ts) and is a pattern in the person's
+// own record, never a claim about cause. The journal is read on the phone, or by Claude with names and details taken
+// out first, as the person chooses in Settings (JournalTone.tsx).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { api, type Days } from "@/lib/api";
-import { dayLog, insights, type Factor, type LogRow } from "@/lib/insights";
-import { Patterns } from "./Patterns";
-import { addDays, dayKey, fromKey, indexDays, WEEKDAYS, type DayMap } from "@/lib/today";
-import { Bar, Button, Card, DayGlyph, Icon, Input, Segmented, Stat } from "@/components/ui";
+import { greatDays, journalTone, progress, TASK_LABEL, type Driver, type ToneDriver } from "@/lib/great-days";
+import { trailingAverage, weighIns } from "@/lib/patterns";
+import { addDays, dayKey, indexDays, streak, type DayMap } from "@/lib/today";
+import { Button, Card, Icon, Segmented } from "@/components/ui";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
 import { useJournal } from "./Journal";
+import { useJournalTone } from "./JournalTone";
 import { useRounds } from "./Rounds";
 import { useSession } from "./Session";
+import { useGoTab } from "./tabs";
 import a from "./app.module.css";
+import s from "./insights.module.css";
 
-const MIN_DAYS = 5;
+/** Fewer check-ins than this and there is nothing honest to say about great days yet. */
+const MIN_CHECKINS = 6;
+const MIN_TONE_DAYS = 6;
+type Range = "30" | "60" | "365";
+const RANGE_LABEL: Record<Range, string> = { "30": "30 days", "60": "60 days", "365": "year" };
 const pct = (n: number) => Math.round(n * 100);
-const of = (n: number, total: number) => `${n} of ${total}`;
-const hm = (min: number) => `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}m`;
-/** A difference smaller than this between good days and the rest is not worth a line. */
-const LIFT = 0.15;
-type Range = "7" | "30" | "60" | "365";
-const RANGE_LABEL: Record<Range, string> = { "7": "7 days", "30": "30 days", "60": "60 days", "365": "year" };
-const LOG_PREVIEW = 7;
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** The shared day map holds 60 days, which every other screen needs. A year is fetched here, only when asked for. */
 async function fetchYear(today: Date): Promise<DayMap> {
@@ -39,14 +40,12 @@ async function fetchYear(today: Date): Promise<DayMap> {
 
 export function InsightsScreen() {
   const { settings } = useSession();
-  const { map, error, reload, change, today } = useDays();
+  const { map, error, reload, today, windowDays } = useDays();
   const { target } = useRounds();
   const health = useHealth();
-  const { vault, openVault } = useJournal();
   const [range, setRange] = useState<Range>("30");
   const [year, setYear] = useState<DayMap | null>(null);
   const [yearError, setYearError] = useState(false);
-  const [allDays, setAllDays] = useState(false);
   const todayKey = dayKey(today);
 
   useEffect(() => {
@@ -58,275 +57,208 @@ export function InsightsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, year, todayKey]);
 
+  const n = range === "365" && !year ? 60 : Number(range);
+  const days = useMemo(() => Array.from({ length: n }, (_, i) => dayKey(addDays(today, i - (n - 1)))), [n, todayKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tone = useJournalTone(days);
+
   if (error) return <div className={a.page}><span className="d" style={{ fontSize: 28 }}>Couldn&apos;t load insights</span><p className="muted">{error}</p><div><Button onClick={reload}>Try again</Button></div></div>;
   if (!map) return <div className={a.page}><span className="eb">Loading</span></div>;
 
-  const n = Number(range);
-  const waiting = range === "365" && !year && !yearError;
   // The live 60 days go on top of the fetched year, so a tap made a minute ago on Today is already counted here.
   const data = range === "365" && year ? { ...year, ...map } : map;
-  const i = insights(data, settings, today, n, target, health.nights);
-  const log = dayLog(data, settings, today, n);
-  const closedDays = log.filter((r) => r.closed).length;
-  const more = i.factors.filter((f) => f.lift >= LIFT).slice(0, 6);
-  const less = i.factors.filter((f) => f.lift <= -LIFT).slice(-3).reverse();
-  const linked = health.status === "connected" || health.status === "reconnect";
-  const maxMood = Math.max(1, ...i.moods.map((m) => m.count));
-  const enough = i.checkedIn >= MIN_DAYS;
+  const g = greatDays(data, days, settings, target, health.nights);
+  const jt = journalTone(data, days, settings, target, health.nights, tone.tones, tone.themes);
+  const p = progress(data, days, settings);
+  const run = streak(map, settings, today, windowDays);
+  const waiting = range === "365" && !year && !yearError;
 
   return (
     <div className={a.page}>
       <div className={a.pageHead}>
         <div>
-          <div className="eb">{waiting ? "Loading a year…" : `Last ${RANGE_LABEL[range]} · ${i.closed} closed`}</div>
+          <div className="eb">{waiting ? "Loading a year…" : `The last ${RANGE_LABEL[range]}`}</div>
           <div className={`d ${a.pageTitle}`}>Insights</div>
         </div>
       </div>
-      {/* The window across the full width under the title: beside it, it ran off a phone's edge. */}
-      <Segmented block label="Window" value={range} onChange={(v) => { setRange(v as Range); setAllDays(false); }} options={[{ value: "7", label: "7 days" }, { value: "30", label: "30 days" }, { value: "60", label: "60 days" }, { value: "365", label: "1 year" }]} />
+      <Segmented block label="Window" value={range} onChange={(v) => setRange(v as Range)}
+        options={[{ value: "30", label: "30 days" }, { value: "60", label: "60 days" }, { value: "365", label: "1 year" }]} />
+      {yearError && <div className={a.unsaved} role="alert"><span>Couldn&apos;t load the year. Showing the last 60 days.</span><Button size="sm" variant="secondary" onClick={() => { setYearError(false); setYear(null); }}>Retry</Button></div>}
 
-      {yearError && <div className={a.unsaved} role="alert"><span>Couldn&apos;t load the year. Showing the last 60 days.</span><Button size="sm" variant="secondary" onClick={() => setYearError(false)}>Retry</Button></div>}
+      <GreatDaysCard g={g} />
+      <JournalCard jt={jt} tone={tone} />
+      <ProgressCard p={p} now={run.now} best={run.best} />
+      <WeightCard data={data} days={days} label={RANGE_LABEL[range]} />
 
       <Card>
-        <div className={a.entryHead}>
+        <div className={s.head}>
           <span className="eb">Week in review</span>
           <Link href="/review/" className={a.lnk}>Open</Link>
         </div>
-        <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>What your journal said last week, written up and read aloud. Encrypted like the journal itself.</p>
+        <p className={s.note}>What your journal said last week, written up and read aloud. Encrypted like the journal itself.</p>
       </Card>
 
-      <WeightCard
-        series={Array.from({ length: n }, (_, d) => { const day = dayKey(addDays(today, d - (n - 1))); return { day, weight: data[day]?.weight }; })}
-        label={RANGE_LABEL[range]}
-        current={map[todayKey]?.weight}
-        onLog={(v) => change("weight", todayKey, (d) => { d.weight.value = v; })}
-      />
+      <p className={s.footnote}>All of this is worked out on this phone from what you logged. It shows what tends to go together in your own days, not what causes what.</p>
+    </div>
+  );
+}
 
-      <Card>
-        <div className={a.entryHead}>
-          <span className="eb">Day by day</span>
-          <span className="muted" style={{ fontSize: 11 }}>{log.length ? `${closedDays} of ${log.length} closed` : ""}</span>
-        </div>
-        {log.length === 0 && <p className={a.signal}>Nothing logged in this window yet.</p>}
-        {(allDays ? log : log.slice(0, LOG_PREVIEW)).map((r) => <LogLine key={r.day} r={r} today={todayKey} />)}
-        {log.length > LOG_PREVIEW && <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={() => setAllDays((v) => !v)}>{allDays ? "Show the last week only" : `Show all ${log.length} days`}</button>}
-      </Card>
+/** Did it against didn't, as two bars on one scale, with the share on each. */
+function Compare({ did, didnt, hue, unit }: { did: number; didnt: number; hue: string; unit: (v: number) => string }) {
+  return (
+    <div className={s.compare} style={{ "--hue": hue } as CSSProperties} aria-hidden>
+      <div className={s.cmpRow}><span className={s.cmpLabel}>Did</span><span className={s.cmpTrack}><i style={{ width: `${Math.max(2, did * 100)}%` }} /></span><span className="m">{unit(did)}</span></div>
+      <div className={`${s.cmpRow} ${s.cmpOff}`}><span className={s.cmpLabel}>Didn&apos;t</span><span className={s.cmpTrack}><i style={{ width: `${Math.max(2, didnt * 100)}%` }} /></span><span className="m">{unit(didnt)}</span></div>
+    </div>
+  );
+}
 
-      <Card>
-        <span className="eb">How often each thing got done</span>
-        <Bar label="Check-in" value={pct(i.rates.checkin)} max={100} text={`${pct(i.rates.checkin)}%`} domain="journal" />
-        <Bar label="Journal" value={pct(i.rates.journal)} max={100} text={`${pct(i.rates.journal)}%`} color="var(--journal-soft)" />
-        <Bar label="All four meals" value={pct(i.rates.food)} max={100} text={`${pct(i.rates.food)}%`} domain="food" />
-        <Bar label="Weight" value={pct(i.rates.weight)} max={100} text={`${pct(i.rates.weight)}%`} color="var(--food-bar)" />
-        <Bar label="Any activity" value={pct(i.rates.activity)} max={100} text={`${pct(i.rates.activity)}%`} domain="activity" />
-      </Card>
-
+function GreatDaysCard({ g }: { g: ReturnType<typeof greatDays> }) {
+  const goTab = useGoTab();
+  const enough = g.checkedIn >= MIN_CHECKINS;
+  const share = (d: Driver["did"]) => d.hits / d.days;
+  return (
+    <Card className={s.hero}>
+      <span className="eb">What makes a great day</span>
+      <div className={s.big}><span className="dc">{g.great}</span><span className="muted">great day{g.great === 1 ? "" : "s"} of {g.checkedIn} checked in</span></div>
       {!enough ? (
-        <Card>
-          <span className="d" style={{ fontSize: 20 }}>Not enough yet</span>
-          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>Patterns need a few days to mean anything. Check in on {MIN_DAYS - i.checkedIn} more day{MIN_DAYS - i.checkedIn === 1 ? "" : "s"} and this page starts comparing your good days with your hard ones.</p>
-        </Card>
+        <>
+          <p className={s.note}>A great day is one you check in as Great, Focused, Peaceful, Grateful or Excited. Check in on {MIN_CHECKINS - g.checkedIn} more day{MIN_CHECKINS - g.checkedIn === 1 ? "" : "s"} and this starts showing what your great days have in common.</p>
+          <div><Button size="sm" variant="journal" onClick={() => goTab("today")}>Check in on Today</Button></div>
+        </>
+      ) : g.lifts.length === 0 ? (
+        <p className={s.note}>Nothing stands out yet: your great days and the rest look alike so far. It sharpens as the days add up.</p>
       ) : (
         <>
-          <Card>
-            <div className={a.signalHead}><i style={{ background: "var(--journal)" }} /><span className="eb">Your best-day signal</span></div>
-            {i.good.days ? (
-              <p className={a.signal}>
-                You rated <strong>{i.good.days}</strong> day{i.good.days === 1 ? "" : "s"} as a good one. On <strong>{of(i.good.withActivity, i.good.days)}</strong> you had logged some activity, against {pct(i.baselineActivity)}% of all the days you checked in. You ate all four meals on {of(i.good.withAllMeals, i.good.days)}.
-              </p>
-            ) : <p className={a.signal}>No days rated Focused, Great, Peaceful, Grateful or Excited in this window.</p>}
-          </Card>
-
-          <Card>
-            <span className="eb">What your best days have in common</span>
-            {more.length || less.length ? (
-              <>
-                {more.map((f) => <FactorRow key={f.label} f={f} />)}
-                {less.length > 0 && <span className="eb" style={{ paddingTop: 6 }}>Less often on your best days</span>}
-                {less.map((f) => <FactorRow key={f.label} f={f} />)}
-                <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Each bar pair is your best days against every other day you checked in. It shows what tends to go together in your own record, not what causes what.</p>
-              </>
-            ) : <p className={a.signal}>{i.good.days < 3 ? "This needs at least three days rated as good ones, and three that were not." : "Nothing stands out yet: your best days and the rest look alike on everything Soma records."}</p>}
-          </Card>
-
-          <Card>
-            <div className={a.entryHead}><span className="eb">Mood by sleep</span>{i.sleep && <span className="muted" style={{ fontSize: 11 }}>{i.sleep.nights} nights · avg {hm(i.sleep.avg)}</span>}</div>
-            {i.sleep ? (
-              <>
-                {i.sleep.buckets.map((b, x) => <Bar key={b.label} label={`${b.label} · ${b.nights} night${b.nights === 1 ? "" : "s"}`} value={b.nights ? pct(b.good / b.nights) : 0} max={100} text={b.nights ? `${pct(b.good / b.nights)}% good days` : "no nights"} color={["var(--journal-pale)", "var(--journal-soft)", "var(--journal)"][x]} />)}
-                <p className={a.signal}>
-                  {i.sleep.goodAvg !== null ? <>The night before your good days you slept <strong>{hm(i.sleep.goodAvg)}</strong> on average{i.sleep.hardAvg !== null ? <>, and <strong>{hm(i.sleep.hardAvg)}</strong> before the hard ones</> : null}. </> : null}
-                  {i.sleep.hardNights > 0 ? `${of(i.sleep.hardShort, i.sleep.hardNights)} hard day${i.sleep.hardNights === 1 ? "" : "s"} came after a night under six hours.` : ""}
-                </p>
-              </>
-            ) : vault !== "open" && linked ? (
-              <p className={a.signal}>Sleep is stored encrypted. <button type="button" className={a.lnk} style={{ color: "var(--journal)", fontSize: 14 }} onClick={openVault}>Unlock your vault</button> to see it here.</p>
-            ) : linked && health.sleepAllowed === false ? (
-              <p className={a.signal}>Your Fitbit connection was made before Soma asked for sleep. <Link href="/settings/" className={a.lnk} style={{ color: "var(--journal)", fontSize: 14 }}>Reconnect in Settings</Link> and allow sleep.</p>
-            ) : linked ? (
-              <p className={a.signal}>No nights recorded in this window yet. They arrive with the next sync.</p>
-            ) : (
-              <p className={a.signal}><Link href="/settings/" className={a.lnk} style={{ color: "var(--journal)", fontSize: 14 }}>Connect Fitbit in Settings</Link> to compare your days with the night before.</p>
-            )}
-          </Card>
-
-          <Card>
-            <div className={a.signalHead}><i style={{ background: "var(--activity)" }} /><span className="eb">Your hardest-day signal</span></div>
-            {i.hard.days ? (
-              <p className={a.signal}>
-                <strong>{i.hard.days}</strong> day{i.hard.days === 1 ? " was" : "s were"} rated Down, Anxious or Overwhelmed. Activity was logged on {of(i.hard.withActivity, i.hard.days)} and all four meals on {of(i.hard.withAllMeals, i.hard.days)}.
-                {i.hard.limitLabel && i.hard.overLimit > 0 ? ` On ${i.hard.overLimit} you were over your ${i.hard.limitLabel.toLowerCase()} limit.` : ""}
-              </p>
-            ) : <p className={a.signal}>No days rated Down, Anxious or Overwhelmed in this window.</p>}
-          </Card>
-
-          <Card>
-            <span className="eb">Mood mix · {i.checkedIn} check-ins</span>
-            {i.moods.map((m) => (
-              <div key={m.label} className={a.moodRow}>
-                <span className={a.moodLabel}>{m.label}</span>
-                <div className={a.moodTrack}><div className={a.moodFill} style={{ width: `${(m.count / maxMood) * 100}%` }} /></div>
-                <span className="m muted" style={{ fontSize: 12, width: 20, textAlign: "right" }}>{m.count}</span>
-              </div>
+          <p className={s.lead}>On your great days, you more often…</p>
+          <ol className={s.list}>
+            {g.lifts.slice(0, 3).map((d) => (
+              <li key={d.key} className={s.item}>
+                <span className={s.itemTitle}>{d.label}</span>
+                <Compare did={share(d.did)} didnt={share(d.didnt)} hue="var(--journal)" unit={(v) => `${pct(v)}%`} />
+                <span className={s.itemSub}>Great on {d.did.hits} of {d.did.days} days you did, {d.didnt.hits} of {d.didnt.days} when you didn&apos;t.</span>
+              </li>
             ))}
-          </Card>
+          </ol>
+          {g.drags[0] && <p className={s.note}><span className={s.dragDot} />Days you {lowerFirst(g.drags[0].label)} are less often great ({pct(share(g.drags[0].did))}% against {pct(share(g.drags[0].didnt))}%).</p>}
         </>
       )}
-
-      <Patterns map={data} days={Array.from({ length: n }, (_, d) => dayKey(addDays(today, d - (n - 1))))} settings={settings} nights={health.nights} />
-
-      <div className={a.statGrid}>
-        <Stat label="Avg kcal" value={<span className="m">{i.food.loggedDays ? i.food.avgKcal.toLocaleString("en-US") : "—"}</span>} note={i.food.loggedDays ? `${i.food.loggedDays} days logged · ${i.food.onTarget} within 10% of target` : "no food logged"} />
-        <Stat label="Avg protein" value={<span className="m">{i.food.loggedDays ? `${i.food.avgProtein} g` : "—"}</span>} note={`target ${settings.goals.protein} g`} />
-        <Stat label="Push-ups" value={<span className="m">{i.pushups.total.toLocaleString("en-US")}</span>} note={i.pushups.days ? `${i.pushups.hitDays} target days · best ${i.pushups.best}` : "none logged"} />
-        {i.steps.days > 0 && <Stat label="Avg steps" value={<span className="m">{i.steps.avg.toLocaleString("en-US")}</span>} note={`${i.steps.days} days · goal ${settings.goals.steps.toLocaleString("en-US")}`} />}
-        {i.sleep && <Stat label="Avg sleep" value={<span className="m">{hm(i.sleep.avg)}</span>} note={`${i.sleep.nights} nights asleep time`} />}
-        <Stat label="Weight" value={<span className="m">{i.weight ? `${i.weight.change > 0 ? "+" : ""}${i.weight.change}` : "—"}</span>} note={i.weight ? `${i.weight.first} → ${i.weight.last} lb` : "log two days to see a change"} />
-      </div>
-
-      <div className={a.privacy}>
-        <Icon name="lock" size={16} />
-        <p>These numbers come from check-ins, food, activity and, with your vault open, your sleep. All of it is compared on this device. Journal entries are encrypted and are not read here; written pattern analysis arrives with the Claude job, and only with your consent.</p>
-      </div>
-    </div>
-  );
-}
-
-/** One thing a day can have: how often on the best days (solid) against every other checked-in day (pale). */
-function FactorRow({ f }: { f: Factor }) {
-  const good = pct(f.good / f.goodDays), rest = pct(f.rest / f.restDays);
-  return (
-    <div className={a.factor}>
-      <div className={a.factorHead}><span>{f.label}</span><span className="m muted">{good}% · {rest}%</span></div>
-      <div className={a.factorTrack} role="img" aria-label={`${f.label}: ${of(f.good, f.goodDays)} best days, ${of(f.rest, f.restDays)} other days`}>
-        <i style={{ width: good + "%", background: "var(--journal)" }} />
-        <i style={{ width: rest + "%", background: "var(--hairline)" }} />
-      </div>
-      <span className="muted" style={{ fontSize: 11 }}>{of(f.good, f.goodDays)} best days · {of(f.rest, f.restDays)} other days</span>
-    </div>
-  );
-}
-
-/** A day as it was: the scale, closed or what kept it open, and what was done. Nothing is rounded up. */
-function LogLine({ r, today }: { r: LogRow; today: string }) {
-  const d = new Date(Number(r.day.slice(0, 4)), Number(r.day.slice(5, 7)) - 1, Number(r.day.slice(8, 10)), 12);
-  return (
-    <div className={`${a.logRow} ${r.empty ? a.logEmpty : ""}`}>
-      <div className={a.logDate}><span className="eb" style={{ color: r.day === today ? "var(--ink)" : undefined }}>{r.day === today ? "Today" : WEEKDAYS[d.getDay()]}</span><span className="m" style={{ fontSize: 12 }}>{MONTHS[d.getMonth()]} {d.getDate()}</span></div>
-      <div className={a.logBody}>
-        <div className={a.logTop}>
-          <span className="m" style={{ fontSize: 14, fontWeight: 500 }}>{r.weight !== null ? `${r.weight} lb` : "no weight"}</span>
-          <span className={r.closed ? a.logClosed : a.logOpen}>{r.empty ? "nothing logged" : r.closed ? "closed" : `${r.done}/${r.total} · missed ${r.missed.join(", ").toLowerCase()}`}</span>
-        </div>
-        {!r.empty && <span className="muted" style={{ fontSize: 12 }}>{r.did.length ? r.did.join(" · ") : "no activity"}{r.mood ? ` · ${r.mood.toLowerCase()}` : ""}</span>}
-      </div>
-      <DayGlyph done={r.done} total={r.total} />
-    </div>
-  );
-}
-
-/** Weight over the chosen window, and a box to log today's. Moved here from Food (David, 2026-09-23): the trend is
- *  a reading of the record, and Today keeps the tap that closes the day.
- *
- *  Hovering, dragging or arrowing along the line names the day it belongs to (David, 2026-09-23). The pointer only
- *  has to be nearest, not on the dot: a transparent band over the whole plot finds the closest logged day, which is
- *  the only thing that works on a phone. Nothing is hidden behind it - every weight is also a line in Day by day. */
-function WeightCard({ series, label, current, onLog }: { series: { day: string; weight?: number }[]; label: string; current: number | undefined; onLog: (v: number) => void }) {
-  const [value, setValue] = useState("");
-  const [at, setAt] = useState<number | null>(null);
-  const plot = useRef<SVGSVGElement>(null);
-
-  const marks = series.map((d, idx) => ({ ...d, idx })).filter((d): d is { day: string; weight: number; idx: number } => d.weight !== undefined);
-  const weights = marks.map((m) => m.weight);
-  const min = Math.min(...weights), max = Math.max(...weights), span = Math.max(1, max - min);
-  const step = 326 / Math.max(1, series.length - 1);
-  const x = (idx: number) => idx * step;
-  const y = (w: number) => 48 - ((w - min) / span) * 40;
-  const points = marks.map((m) => `${x(m.idx).toFixed(1)},${y(m.weight).toFixed(1)}`).join(" ");
-  const first = weights[0];
-  const parsed = parseFloat(value);
-  const valid = Number.isFinite(parsed) && parsed >= 1 && parsed <= 2000;
-  const shown = at !== null ? marks[at] : null;
-
-  /** The logged day nearest the pointer, in the SVG's own coordinates. */
-  const nearest = (clientX: number) => {
-    const svg = plot.current;
-    if (!svg || !marks.length) return null;
-    // Through the SVG's own matrix, never from the element's width: the drawing is centred inside the box when the
-    // card is wider than the viewBox, and assuming it fills the width put every pointer too far left (David,
-    // 2026-09-23: "hovering over the dots stops working and it's like the alignment is off").
-    const ctm = svg.getScreenCTM();
-    const box = svg.getBoundingClientRect();
-    const point = svg.createSVGPoint();
-    point.x = clientX;
-    point.y = box.top + box.height / 2;
-    const px = ctm ? point.matrixTransform(ctm.inverse()).x : ((clientX - box.left) / box.width) * 326;
-    let best = 0;
-    for (let i = 1; i < marks.length; i++) if (Math.abs(x(marks[i].idx) - px) < Math.abs(x(marks[best].idx) - px)) best = i;
-    return best;
-  };
-
-  const move = (e: React.PointerEvent) => { if (marks.length) setAt(nearest(e.clientX)); };
-  const keys = (e: React.KeyboardEvent) => {
-    if (!marks.length) return;
-    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-      e.preventDefault();
-      setAt((cur) => { const next = (cur === null ? marks.length - 1 : cur + (e.key === "ArrowRight" ? 1 : -1)); return Math.min(Math.max(next, 0), marks.length - 1); });
-    } else if (e.key === "Escape") setAt(null);
-  };
-
-  return (
-    <Card>
-      <div className={a.entryHead}>
-        <span className="eb">Weight · {label}</span>
-        {/* One readout: the point being pointed at, else today. The value leads, the day follows. */}
-        <span className="m" style={{ fontSize: 13 }} aria-live="polite">
-          {shown
-            ? <><span style={{ fontWeight: 500 }}>{shown.weight} lb</span><span className="muted"> · {dayLabel(shown.day)}</span></>
-            : current !== undefined
-              ? <><span style={{ fontWeight: 500 }}>{current} lb</span>{first !== undefined && marks.length > 1 && <span className="muted"> · {current - first <= 0 ? "↓" : "↑"}{Math.abs(current - first).toFixed(1)}</span>}</>
-              : <span className="muted">not logged today</span>}
-        </span>
-      </div>
-      {/* height auto, not 56: the viewBox keeps its shape, so the drawing fills the card instead of sitting
-          letterboxed in the middle of it on a wide screen. It grows a little taller there, which is no loss. */}
-      {marks.length > 1 ? (
-        <svg ref={plot} className={a.trend} viewBox="0 0 326 56" style={{ width: "100%", height: "auto", display: "block", touchAction: "pan-y" }} role="img" tabIndex={0}
-          aria-label={`Weight over the last ${label}, from ${first} to ${weights[weights.length - 1]} pounds. Use the arrow keys to hear each day.`}
-          onPointerMove={move} onPointerDown={move} onPointerLeave={() => setAt(null)} onBlur={() => setAt(null)} onKeyDown={keys}>
-          <path d="M0 48 L326 48" stroke="var(--surface-2)" /><path d="M0 8 L326 8" stroke="var(--surface-2)" />
-          <polyline key={label} pathLength={1} fill="none" stroke="var(--food)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" points={points} />
-          {marks.map((m, i) => <circle key={m.day} cx={x(m.idx)} cy={y(m.weight)} r={i === at ? 4 : 2.5} fill="var(--food)" stroke="var(--surface)" strokeWidth={i === at ? 2 : 0} />)}
-          {shown && <line x1={x(shown.idx)} y1="4" x2={x(shown.idx)} y2="52" stroke="var(--food)" strokeWidth="1" strokeDasharray="2 3" opacity="0.7" />}
-        </svg>
-      ) : <p className="muted" style={{ fontSize: 13 }}>Log a couple of days and the trend shows up here.</p>}
-      <form className={a.extraForm} onSubmit={(e) => { e.preventDefault(); if (!valid) return; onLog(Math.round(parsed * 10) / 10); setValue(""); }}>
-        <Input placeholder={current !== undefined ? String(current) : "182.0"} aria-label="Weight in pounds" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, "").slice(0, 6))} />
-        <Button type="submit" disabled={!valid}>Log weight</Button>
-      </form>
     </Card>
   );
 }
 
-/** "Fri 18 Sep", in the app's own short names (Intl gives "Sept" for September in en-GB). */
-const dayLabel = (key: string) => { const d = fromKey(key); return `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
+const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+/** -1…1 tone as a 0…1 bar, and as words. */
+const toneBar = (t: number) => (t + 1) / 2;
+const toneWord = (t: number) => (t >= 0.45 ? "bright" : t >= 0.15 ? "upbeat" : t > -0.15 ? "even" : t > -0.45 ? "low" : "heavy");
+
+function JournalCard({ jt, tone }: { jt: ReturnType<typeof journalTone>; tone: ReturnType<typeof useJournalTone> }) {
+  const { openVault } = useJournal();
+  const goTab = useGoTab();
+  const how = tone.source === "claude"
+    ? "Read by Claude with names, places and details taken out first, under no account, and nothing kept on the server."
+    : "Read on this phone. Nothing left it.";
+  return (
+    <Card>
+      <div className={s.head}><span className="eb">What your journal says</span>{tone.status === "ready" && jt.days > 0 && <span className={s.meta}>{jt.days} day{jt.days === 1 ? "" : "s"} read</span>}</div>
+      {tone.status === "locked" ? (
+        <>
+          <p className={s.note}>Your journal is encrypted. Unlock your vault to see how your entries sound on your good days.</p>
+          <div><Button size="sm" variant="journal" onClick={openVault}><Icon name="lock" size={15} />Unlock</Button></div>
+        </>
+      ) : tone.status === "loading" ? (
+        <p className={s.note}>Opening your entries…</p>
+      ) : tone.total === 0 ? (
+        <p className={s.note}>No words to read yet in this window. Written entries count, and recordings once they are transcribed (Settings → Journal & vault).</p>
+      ) : jt.days < MIN_TONE_DAYS ? (
+        <p className={s.note}>{tone.status === "reading" ? `Reading your entries… ${tone.read} of ${tone.total} days.` : `${jt.days} day${jt.days === 1 ? "" : "s"} with words so far. A few more and this shows which habits come with your brightest entries.`}</p>
+      ) : (
+        <>
+          <div className={s.big}><span className="d" style={{ fontSize: 30 }}>{cap(toneWord(jt.mean))}</span><span className="muted">is how your entries sound, on average</span></div>
+          {jt.brighter.length > 0 ? (
+            <>
+              <p className={s.lead}>Your entries sound brightest on days you…</p>
+              <ol className={s.list}>
+                {jt.brighter.slice(0, 3).map((d: ToneDriver) => (
+                  <li key={d.key} className={s.item}>
+                    <span className={s.itemTitle}>{d.label}</span>
+                    <Compare did={toneBar(d.did.mean)} didnt={toneBar(d.didnt.mean)} hue="var(--food)" unit={(v) => toneWord(v * 2 - 1)} />
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : <p className={s.note}>No habit stands out against how your entries sound yet.</p>}
+          {jt.brightThemes.length > 0 && (
+            <div className={s.themes}>
+              <span className={s.lead} style={{ margin: 0 }}>On your brightest days you talk about</span>
+              <div className={s.chips}>{jt.brightThemes.map((t) => <span key={t} className={s.chip}>{t}</span>)}</div>
+            </div>
+          )}
+          {tone.status === "reading" && <p className={s.note}>Still reading: {tone.read} of {tone.total} days.</p>}
+          {tone.status === "failed" && <p className={s.note}>Some days couldn&apos;t be read just now; those use the phone&apos;s reading until next time.</p>}
+        </>
+      )}
+      {tone.status !== "locked" && <p className={s.how}><Icon name="lock" size={13} />{how} <button type="button" className={a.lnk} onClick={() => goTab("settings")}>Change</button></p>}
+    </Card>
+  );
+}
+
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
+function ProgressCard({ p, now, best }: { p: ReturnType<typeof progress>; now: number; best: number }) {
+  // Up to two months: fifteen days a row. A year: a column a week, seven rows, like a wall calendar turned sideways.
+  const year = p.perDay.length > 60;
+  return (
+    <Card>
+      <div className={s.head}><span className="eb">How you&apos;re doing</span><span className={s.meta}><Icon name="flame" size={13} />{now} in a row · best {best}</span></div>
+      <div className={s.big}><span className="dc">{p.days ? pct(p.closed / p.days) : 0}%</span><span className="muted">of days closed, {p.closed} of {p.days}</span></div>
+      {/* One square a day, oldest first, filled by how much of it got done. */}
+      <div className={`${s.cal} ${year ? s.calYear : ""}`} style={year ? { gridTemplateColumns: `repeat(${Math.ceil(p.perDay.length / 7)}, minmax(0, 1fr))` } : undefined} role="img" aria-label={`${p.closed} of ${p.days} days closed`}>
+        {p.perDay.map((d) => (
+          <i key={d.day} title={d.day} className={d.done >= d.total ? s.calFull : undefined} style={d.done > 0 && d.done < d.total ? { "--f": `${Math.round((d.done / d.total) * 70)}%` } as CSSProperties : undefined} />
+        ))}
+      </div>
+      <div className={s.rates}>
+        {p.rates.map((r) => (
+          <div key={r.key} className={`${s.rate} ${p.weakest === r.key ? s.rateLow : ""}`}>
+            <span>{TASK_LABEL[r.key]}</span>
+            <span className={s.rateTrack}><i style={{ width: `${pct(r.rate)}%` }} /></span>
+            <span className="m">{pct(r.rate)}%</span>
+          </div>
+        ))}
+      </div>
+      {p.weakest && <p className={s.note}>{TASK_LABEL[p.weakest]} is what most often keeps a day open.</p>}
+    </Card>
+  );
+}
+
+function WeightCard({ data, days, label }: { data: DayMap; days: string[]; label: string }) {
+  const points = weighIns(data, days);
+  const avg = trailingAverage(points);
+  if (points.length < 2) {
+    return (
+      <Card>
+        <span className="eb">Weight</span>
+        <p className={s.note}>{points.length ? "One weigh-in so far." : "No weigh-ins in this window."} Log your weight on Today on a few more days and the trend shows here, with the day-to-day swings smoothed out.</p>
+      </Card>
+    );
+  }
+  const last = avg[avg.length - 1].avg, first = avg[0].avg, change = Math.round((last - first) * 10) / 10;
+  const W = 320, H = 110, P = 6;
+  const lo = Math.min(...points.map((q) => q.weight)) - 0.5, hi = Math.max(...points.map((q) => q.weight)) + 0.5;
+  const x = (day: string) => P + (days.indexOf(day) / Math.max(1, days.length - 1)) * (W - 2 * P);
+  const y = (v: number) => P + (1 - (v - lo) / (hi - lo)) * (H - 2 * P);
+  const line = avg.map((q, i) => `${i ? "L" : "M"}${x(q.day).toFixed(1)} ${y(q.avg).toFixed(1)}`).join(" ");
+  return (
+    <Card>
+      <div className={s.head}><span className="eb">Weight · seven-day average</span><span className={s.meta}>{points.length} weigh-ins</span></div>
+      <div className={s.big}>
+        <span className="dc">{last.toFixed(1)}</span><span className="muted">lb</span>
+        <span className={`${s.delta} ${change < 0 ? s.down : change > 0 ? s.up : ""}`}>{change === 0 ? "level" : `${change < 0 ? "↓" : "↑"} ${Math.abs(change).toFixed(1)} lb`} over {label}</span>
+      </div>
+      <svg className={s.chart} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`Seven-day average from ${first.toFixed(1)} to ${last.toFixed(1)} pounds`}>
+        {points.map((q) => <circle key={q.day} cx={x(q.day)} cy={y(q.weight)} r="2.2" className={s.dot} />)}
+        <path key={label} d={line} pathLength={1} className={s.line} />
+      </svg>
+    </Card>
+  );
+}

@@ -191,6 +191,14 @@ export function SettingsScreen() {
         <Field name="Cloud transcription" help="Off by default. When on, each recording is sent to Groq to be transcribed, then blanked and deleted from the server; the transcript is encrypted into the entry on this device.">
           <Switch checked={settings.cloudTranscription} label="Cloud transcription" onChange={(v) => void save({ cloudTranscription: v }, v ? "Cloud transcription on" : "Cloud transcription off")} />
         </Field>
+        <Field name="Read my journal for Insights"
+          help={settings.journalInsights === "claude"
+            ? "With Claude: before anything leaves this phone, names, places, emails, phone numbers, addresses and links are taken out, and the days go out shuffled with no dates. Soma sends them under its own key with nothing about your account; only a tone and a few general themes come back, kept encrypted on this phone. Nothing is stored on the server. Taking names out is careful but not perfect."
+            : "On this phone: a word list reads the tone of each day's entries. Nothing leaves your phone. With Claude reads tone and themes far better, with names and details taken out first."}>
+          <Segmented label="Read my journal for Insights" value={settings.journalInsights}
+            onChange={(v) => void save({ journalInsights: v as "phone" | "claude" }, v === "claude" ? "Insights will ask Claude, without your name" : "Insights reads your journal on this phone")}
+            options={[{ value: "phone", label: "On this phone" }, { value: "claude", label: "With Claude" }]} />
+        </Field>
         <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Entries and audio are encrypted on this device with AES-256-GCM before upload; the key comes from your passphrase and never leaves the browser. Food, activity and check-ins are readable by the server so leaderboards and admin fixes work.</p>
       </Card>
 
