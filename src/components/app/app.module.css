@@ -10,7 +10,7 @@
   .tabbar { display: none; }
 }
 
-.page { display: flex; flex-direction: column; gap: 12px; padding: calc(18px + var(--inset-top)) 16px calc(88px + var(--inset-bottom)); max-width: 560px; margin: 0 auto; }
+.page { display: flex; flex-direction: column; gap: 12px; padding: calc(18px + var(--inset-top)) 16px calc(104px + var(--inset-bottom)); max-width: 560px; margin: 0 auto; }
 .pageHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 4px 4px 0; }
 .pageTitle { font-size: 32px; }
 @media (min-width: 900px) {
@@ -90,8 +90,8 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .play:disabled { opacity: 0.5; }
 .pageHead .lnk { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
 /* Room for the floating mic so the last entry is never hidden behind it. */
-.journalPage { padding-bottom: calc(176px + var(--inset-bottom)); }
-.fab { position: fixed; left: 0; right: 0; bottom: calc(78px + var(--inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 30; }
+.journalPage { padding-bottom: calc(190px + var(--inset-bottom)); }
+.fab { position: fixed; left: 0; right: 0; bottom: calc(92px + var(--inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 30; }
 .fab > * { pointer-events: auto; }
 .recBadge { font-size: 12px; background: var(--ink); color: var(--bone); padding: 4px 10px; border-radius: var(--r-pill); }
 .recTime { font-size: 13px; color: var(--rec); font-weight: 500; }

@@ -20,6 +20,9 @@ export const CHANGES: Release[] = [
       "The Run button on the Activity card now shows someone running, instead of a stopwatch.",
       "Soma Night: the first step of Soma's new look. Soma now opens in Night, a warm near-black with the journal, food and activity colours lit up so they glow. If you picked Light or System before, you keep it. Switch any time in Settings → Appearance, where Dark is now called Night. More of the redesign follows screen by screen.",
       "A new Motion setting in Settings → Appearance: Lively, or Calm, which drops the bounce and stops anything that keeps moving on its own, like the drifting colours on the opening screen and the pulse while recording.",
+      "The tabs at the bottom now float in a frosted bar. The tab you're on grows into a pill in its own colour with its name; the others are just icons.",
+      "Sheets (weight, push-ups, unlocking your vault and the rest) float up from the bottom with a soft bounce over a blurred background, and confirmations like \"Checked in\" now drop in at the top of the screen.",
+      "Cards, buttons, chips and switches are rounder and press in when you tap them. A task's icon fills with its colour and pops when it's done.",
     ],
   },
   {

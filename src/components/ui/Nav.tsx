@@ -5,25 +5,26 @@ import s from "./ui.module.css";
 
 export type Section = "today" | "journal" | "food" | "activity" | "insights" | "settings";
 
-export const SECTIONS: { id: Section; label: string; icon: IconName }[] = [
-  { id: "today", label: "Today", icon: "today" },
-  { id: "journal", label: "Journal", icon: "mic" },
-  { id: "food", label: "Food", icon: "leaf" },
-  { id: "activity", label: "Activity", icon: "barbell" },
-  { id: "insights", label: "Insights", icon: "spark" },
+/** `hue` is the colour a section lights in when picked: its domain, or ink for the ones that belong to none. */
+export const SECTIONS: { id: Section; label: string; icon: IconName; hue: "journal" | "food" | "activity" | "ink" }[] = [
+  { id: "today", label: "Today", icon: "today", hue: "ink" },
+  { id: "journal", label: "Journal", icon: "mic", hue: "journal" },
+  { id: "food", label: "Food", icon: "leaf", hue: "food" },
+  { id: "activity", label: "Activity", icon: "barbell", hue: "activity" },
+  { id: "insights", label: "Insights", icon: "spark", hue: "ink" },
 ];
-const SETTINGS = { id: "settings" as const, label: "Settings", icon: "gear" as const };
+const SETTINGS = { id: "settings" as const, label: "Settings", icon: "gear" as const, hue: "ink" as const };
 
 type NavProps = { current: Section; onSelect: (s: Section) => void };
 
-/** Phones: five tabs. Settings is reached from the Today header, as in the prototype. */
+/** Phones: five tabs in a floating bar, icons only until picked. Settings is reached from the Today header. */
 export function TabBar({ current, onSelect, className }: NavProps & { className?: string }) {
   return (
     <nav className={cx(s.tabbar, className)} aria-label="Sections">
       {SECTIONS.map((t) => (
-        <button key={t.id} type="button" className={cx(s.tab, current === t.id && s.tabOn)} aria-current={current === t.id ? "page" : undefined} onClick={() => onSelect(t.id)}>
+        <button key={t.id} type="button" className={cx(s.tab, s[t.hue], current === t.id && s.tabOn)} aria-current={current === t.id ? "page" : undefined} onClick={() => onSelect(t.id)}>
           <Icon name={t.icon} size={22} />
-          <span>{t.label}</span>
+          <span className={s.tabLabel}>{t.label}</span>
         </button>
       ))}
     </nav>
@@ -36,7 +37,7 @@ export function Sidebar({ current, onSelect, footer, className }: NavProps & { f
     <nav className={cx(s.side, className)} aria-label="Sections">
       <div className={s.sideBrand}>Soma</div>
       {[...SECTIONS, SETTINGS].map((t) => (
-        <button key={t.id} type="button" className={cx(s.nav, current === t.id && s.navOn)} aria-current={current === t.id ? "page" : undefined} onClick={() => onSelect(t.id)}>
+        <button key={t.id} type="button" className={cx(s.nav, s[t.hue], current === t.id && s.navOn)} aria-current={current === t.id ? "page" : undefined} onClick={() => onSelect(t.id)}>
           <Icon name={t.icon} size={t.id === "settings" ? 18 : 22} />
           <span>{t.label}</span>
         </button>
