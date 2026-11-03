@@ -27,6 +27,10 @@ export const CHANGES: Release[] = [
       "Today greets you by name with your streak beside it. Under the orb: what's left, then the week (tap a day to fill it in, as before), then a card for each task. Weight and check-in sit side by side; journal, food and activity are wide, with the record and speak buttons on the right and the meals and activities along the bottom.",
       "Check-in opens a sheet with a face for each mood and your habits underneath.",
       "Weight: drag the ruler sideways to set it, nudge by 0.2, or tap the big number to type. Push-ups: tap the big pad once per rep, or use −5, +5 and +10, with a ring filling toward your target. Both still have the one-tap Same as last and Hit the target.",
+      "Recording a journal entry now fills the screen: a glowing orb ringed by moving bars, ripples going out, and the time. Tap stop and it shows the entry being sealed, then Saved, and steps aside. It works the same from Today, the Journal tab or the sidebar.",
+      "Saying what you ate also fills the screen: listen, then your words appear as they are written down, a shimmer while Soma works out the food, and then each item slides in with the total. It's already logged; tap Done.",
+      "Close the day while Soma is open and it celebrates: the orb blooms, light bursts out of it, your streak rolls over to the new number and the week's dots fill in. Once a day, and never for a past day you're filling in.",
+      "The opening screen has a small orb with the three colours drifting inside it, and the Soma letters rise in.",
     ],
   },
   {

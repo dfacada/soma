@@ -28,7 +28,10 @@ export function Splash({ steps = OPEN_STEPS, at, progress, detail, ready = false
         <span className={a.auroraX} style={WASH[1]}><span className={a.auroraY} /></span>
         <span className={a.auroraX} style={WASH[2]}><span className={a.auroraY} /></span>
       </div>
-      <span className={`d ${a.wordmark}`}>Soma</span>
+      {/* A small orb holding the three colours, and the letters rising in (only on the first splash: the overlay
+          that takes over from it keeps them still, so the hand-over does not replay). */}
+      <span className={`${a.splashOrb} ${overlay ? "" : a.splashIn}`} aria-hidden><i /><i /><i /></span>
+      <span className={`d ${a.wordmark} ${overlay ? "" : a.splashIn}`}>{"Soma".split("").map((c, i) => <span key={i} style={{ animationDelay: `${0.3 + i * 0.08}s` }}>{c}</span>)}</span>
       <div className={a.splashBar}>
         <StageBar labelMotion domain="journal" steps={[...steps]} at={Math.max(0, steps.indexOf(at))} progress={ready ? 1 : progress} detail={ready ? undefined : detail} note={ready ? "Ready" : undefined} />
       </div>

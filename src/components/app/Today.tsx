@@ -19,7 +19,8 @@ import { FitbitBanner } from "./FitbitBanner";
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
 import { describeError, mmss, useSayRecorder } from "./FoodSay";
-import { applySaid, describeFood, knownFromDays, saidLine } from "@/lib/food-say";
+import { applySaid, describeFood, knownFromDays, saidLine, type Said } from "@/lib/food-say";
+import { DayClosed, FoodMoment } from "./Moments";
 import { MoodFace } from "./MoodFace";
 import { PushSheet } from "./PushSheet";
 import { WeightSheet } from "./WeightSheet";
@@ -76,6 +77,21 @@ export function Today() {
   const days = map ? { ...map, [k]: { ...(map[k] || { entries: 0 }), entries: entriesToday } } : null;
   const st = dayStatus(days?.[k], settings);
   const run = days ? streak(days, settings, today, WINDOW_DAYS) : { now: 0, best: settings.bestStreak };
+
+  // The celebration: once, when today goes from open to closed while Soma is open on it. Never on opening the app
+  // to a day already closed, and never for a past day being filled in. Adjusted during render.
+  const todayKey = dayKey(today);
+  const todayEntries = Math.max(map?.[todayKey]?.entries || 0, journal.countOn(todayKey) || 0);
+  const todayClosed = map ? dayStatus({ ...(map[todayKey] || { entries: 0 }), entries: todayEntries }, settings).closed : null;
+  const [wasClosed, setWasClosed] = useState<boolean | null>(null);
+  const [celebrate, setCelebrate] = useState(false);
+  if (todayClosed !== null && todayClosed !== wasClosed) {
+    setWasClosed(todayClosed);
+    if (todayClosed && wasClosed === false && isToday) setCelebrate(true);
+  }
+
+  // Saying what you ate, shown full screen: what was heard once it is written down, then the items as they land.
+  const [said, setSaid] = useState<{ heard: string | null; items: Said[] } | null>(null);
 
   // Best streak outlives the 60-day window by being remembered in settings.
   useEffect(() => {
@@ -168,12 +184,14 @@ export function Today() {
     const day = k;
     const heard = await voice.stop();
     if (!heard) return;
+    setSaid({ heard, items: [] });
     setReading(true);
     try {
       const items = await describeFood(heard, knownFromDays(map, settings));
-      if (!items.length) voice.fail("Didn't hear any food in that. Tap and say what you ate.");
-      else { change("day-logs", day, (d) => applySaid(d.log, items)); say(saidLine(items), 3500); }
+      if (!items.length) { setSaid(null); voice.fail("Didn't hear any food in that. Tap and say what you ate."); }
+      else { change("day-logs", day, (d) => applySaid(d.log, items)); setSaid({ heard, items }); say(saidLine(items), 3500); }
     } catch (e) {
+      setSaid(null);
       voice.fail(describeError(e));
     } finally { setReading(false); }
   };
@@ -391,6 +409,15 @@ export function Today() {
           try { await journal.writeEntry(text, checkin?.mood ?? null, k); setWriting(false); return null; }
           catch (e) { report("journal", "backfill_write_failed", e); return "Couldn’t save that entry. Try again."; }
         }} />
+      {(listening || voice.state === "transcribing" || reading || (said && said.items.length > 0)) && (
+        <FoodMoment phase={listening ? "listening" : voice.state === "transcribing" ? "transcribing" : reading ? "reading" : "done"}
+          seconds={voice.seconds} heard={said?.heard ?? null} items={said?.items ?? []} onStop={() => void tapFood()} onClose={() => setSaid(null)} />
+      )}
+      {celebrate && (
+        <DayClosed streak={run.now} beads={st.ring.map((r) => ({ key: r.key, value: 1, ...BEADS[r.key] }))}
+          week={[6, 5, 4, 3, 2, 1, 0].map((i) => { const d = addDays(today, -i); return { label: WEEKDAYS[d.getDay()].charAt(0), full: dayStatus(days[dayKey(d)], settings).closed }; })}
+          onClose={() => { setCelebrate(false); say(`${run.now} full day${run.now === 1 ? "" : "s"} in a row`); }} />
+      )}
       <Toast message={toast} />
     </div>
   );

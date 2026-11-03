@@ -17,6 +17,7 @@ import { Food } from "./Food";
 import { InsightsScreen } from "./Insights";
 import { useJournal } from "./Journal";
 import { JournalScreen } from "./JournalScreen";
+import { RecordMoment } from "./Moments";
 import { useSession } from "./Session";
 import { SettingsScreen } from "./Settings";
 import { PATHS, tabOf, TabsGo } from "./tabs";
@@ -120,6 +121,8 @@ export function Shell({ children }: { children: ReactNode }) {
           {!tab && children}
         </div>
         <TabBar className={`${a.tabbar} ${typing ? a.tabbarAway : ""}`} current={current} onSelect={go} />
+        {/* Recording, from wherever it started, fills the screen until the entry is safe. */}
+        <RecordMoment />
       </div>
     </TabsGo.Provider>
   );

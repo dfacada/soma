@@ -8,6 +8,7 @@ import {
   ProgressRing, Row, RowHead, Segmented, Select, Sheet, Sidebar, SideNote, Stat, StageBar, Switch, TabBar, Tag, Tile, Tiles, Toast,
   type MedallionState, type Section,
 } from "@/components/ui";
+import { DayClosed, FoodMoment } from "@/components/app/Moments";
 import k from "./kit.module.css";
 
 const NEUTRALS = [
@@ -37,6 +38,7 @@ export default function Kit() {
   const [cloud, setCloud] = useState(true);
   const [snacks, setSnacks] = useState(["Apple", "Protein bar", "Almonds"]);
   const [sheet, setSheet] = useState(false);
+  const [moment, setMoment] = useState<"closed" | "food" | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const say = useCallback((m: string) => { setToast(m); window.setTimeout(() => setToast(null), 1800); }, []);
@@ -135,6 +137,10 @@ export default function Kit() {
         <div className={k.specimens}>
           <div className={k.phoneCol}>
             {/* The Soma Night hero (Today since 2026-11-02); the DayRing below is what it replaced. */}
+            <div className={k.wrap}>
+              <Button size="sm" variant="secondary" onClick={() => setMoment("closed")}>Show day closed</Button>
+              <Button size="sm" variant="secondary" onClick={() => setMoment("food")}>Show food logged</Button>
+            </div>
             <div style={{ display: "flex", justifyContent: "center", padding: "24px 0" }}>
               <Orb progress={(progress.checkin + progress.journal + progress.food + progress.activity) / 4} closed={closed} label="Orb specimen" beads={[
                 { key: "checkin", domain: "journal", icon: "heart", label: "Check-in", value: progress.checkin },
@@ -246,6 +252,10 @@ export default function Kit() {
           <Button variant="secondary" onClick={closeSheet}>Cancel</Button>
         </div>
       </Sheet>
+      {moment === "closed" && <DayClosed streak={13} onClose={() => setMoment(null)} week={["M", "T", "W", "T", "F", "S", "S"].map((label) => ({ label, full: true }))}
+        beads={[{ key: "checkin", domain: "journal", icon: "heart", label: "Check-in", value: 1 }, { key: "journal", domain: "journal", icon: "mic", label: "Journal", value: 1 }, { key: "food", domain: "food", icon: "leaf", label: "Meals", value: 1 }, { key: "activity", domain: "activity", icon: "run", label: "Activity", value: 1 }]} />}
+      {moment === "food" && <FoodMoment phase="done" seconds={12} heard="A bacon, egg and cheese on an everything bagel for breakfast" onStop={() => undefined} onClose={() => setMoment(null)}
+        items={[{ meal: "breakfast", name: "Bacon, egg & cheese on an everything bagel", kcal: 520, protein: 0, carbs: 0, fat: 0, note: "" }]} />}
       <Toast message={toast} />
     </main>
   );

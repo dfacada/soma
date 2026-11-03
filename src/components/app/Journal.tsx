@@ -45,6 +45,10 @@ type Journal = {
   reload: () => void;
   recording: boolean;
   seconds: number;
+  /** A recording that has just stopped and is being put somewhere safe on this device. */
+  sealing: boolean;
+  /** The last recording kept safe on this device: `n` counts them, so a change means a new one landed. */
+  lastSaved: { n: number; seconds: number };
   busy: boolean;
   /** Entries on a local day, including ones still waiting to upload. Null while the vault is closed. */
   countOn: (day: string) => number | null;
@@ -118,6 +122,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<PendingRecording[]>([]);
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
+  const [sealing, setSealing] = useState(false);
+  const [lastSaved, setLastSaved] = useState({ n: 0, seconds: 0 });
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -344,6 +350,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   }, [recording]);
 
   const stop = useCallback(async () => {
+    setSealing(true);
     const rec = await recorder.current?.stop();
     setRecording(false); setSeconds(0);
     // The cloud copy sends its last few seconds while the whole recording uploads. If the upload lands first, the
@@ -354,7 +361,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       streams.current.set(stream.draftId, stream);
       void stream.finish();
     }
-    if (!rec) return;
+    if (!rec) { setSealing(false); return; }
     const day = dayAtStart.current;
     const entry = newEntry(rec.audio, rec.seconds, moodAtStart.current, day ? { createdAt: onDay(day), addedLater: true, draftId: rec.draftId } : { draftId: rec.draftId });
     // Buffer first: if this fails the recording is not safe and we must not say it is.
@@ -362,10 +369,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       await putPending({ id: "pending_" + entry.id, userId, entry, audio: rec.audio, attempts: 0, lastAttemptAt: null });
       await clearDraft(rec.draftId);
     } catch (e) {
+      setSealing(false);
       say("This recording could not be saved on this device");
       report("journal", "device_save_failed", e, { audioBytes: rec.audio.size, mime: rec.audio.type, seconds: rec.seconds });
       return;
     }
+    setSealing(false);
+    setLastSaved((l) => ({ n: l.n + 1, seconds: rec.seconds }));
     fresh.current.set("pending_" + entry.id, rec.audio);
     setPending((p) => [...p, { id: "pending_" + entry.id, userId, entry, audio: rec.audio, attempts: 0, lastAttemptAt: null }]);
     if (rec.interrupted) report("journal", "recording_interrupted", undefined, { seconds: rec.seconds, audioBytes: rec.audio.size }, "warn");
@@ -592,8 +602,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), here: pkHere }), [pkSupported, pkHere]);
 
   const value = useMemo<Journal>(
-    () => ({ vault, items, loadFailed, entriesProgress, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys }),
-    [vault, items, loadFailed, entriesProgress, reload, recording, seconds, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys],
+    () => ({ vault, items, loadFailed, entriesProgress, reload, recording, seconds, sealing, lastSaved, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys }),
+    [vault, items, loadFailed, entriesProgress, reload, recording, seconds, sealing, lastSaved, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys],
   );
 
   return (
