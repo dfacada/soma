@@ -116,9 +116,19 @@ router.post('/morgen/events', member, wrap(async (req, res) => {
   // The accounts are asked side by side: a slow one must not push the whole read past the 30-second limit.
   const lists = await Promise.all([...accounts.entries()].slice(0, MAX_ACCOUNTS).map(([accountId, ids]) =>
     morgen(req, key, '/events/list?' + new URLSearchParams({ accountId, calendarIds: ids.join(','), start, end }).toString())));
-  const events = lists.flatMap((json) => listOf(json, 'events')).filter((ev) => ev && ev.start).map((ev) => eventOf(ev, byId));
+  const raw = lists.flatMap((json) => listOf(json, 'events')).filter((ev) => ev && ev.start);
+  const events = raw.map((ev) => eventOf(ev, byId));
 
-  console.log(JSON.stringify({ action: 'morgen_events', user: req.user.id, calendars: calendars.length, accounts: accounts.size, events: events.length }));
+  // Counts only, never content: enough to tell from the log whether a real account's events read the way the docs
+  // say (all-day, free, declined), and whether Morgen marks the account's owner among the attendees at all, which
+  // is what lets a declined meeting drop out of the brief.
+  const people = (ev) => Object.values(ev.participants || {}).filter(Boolean);
+  const tally = {
+    allDay: events.filter((e) => e.allDay).length, free: events.filter((e) => !e.busy).length,
+    declined: events.filter((e) => e.declined).length, withPeople: raw.filter((ev) => people(ev).length > 0).length,
+    ownerMarked: raw.filter((ev) => people(ev).some((p) => p.accountOwner === true || (p.roles && p.roles.accountOwner === true))).length
+  };
+  console.log(JSON.stringify(Object.assign({ action: 'morgen_events', user: req.user.id, calendars: calendars.length, accounts: accounts.size, events: events.length }, tally)));
   res.json({ events, calendars: calendars.map(({ readable: _r, ...c }) => c) });
 }));
 
