@@ -16,6 +16,7 @@ export const CHANGES: Release[] = [
     date: "2026-11-04",
     title: "Your steps, day by day",
     items: [
+      "Transcribe shows it's working. Tap Transcribe on a journal entry and it answers at once: a turning ring with each step (opening the recording, transcribing, saving), lines shimmering where the words will go, and the words rising into place when they arrive.",
       "Your steps, a tap away. Tap the steps pill on Today or Activity to see the day against your goal and how many are left, then your last 7 or 30 days as bars under a line at your goal. Days that reached it glow.",
       "Read any day. Tap a bar, or slide a finger along them, and the top shows that day. Under the bars: how many days reached your goal and your best day, with your average beside them (today joins it once the day is over).",
       "Sync now. The steps sheet says when your steps last came in from Google Health, with a button to fetch them now.",

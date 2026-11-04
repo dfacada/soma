@@ -30,6 +30,10 @@ export const needsTranscript = (e: JournalEntry | null): e is JournalEntry => !!
 
 /** One entry of a transcribeMissing run. `stage` and `code` are the ones the admin log gets. */
 export type BatchResult = { id: string; title: string; outcome: "done" | "empty" | "failed"; stage?: string; code?: string; message?: string };
+/** Where a transcription is: fetching and decrypting the recording, with the transcription service, or saving the words. */
+export type TxStep = "open" | "transcribe" | "save";
+// transcribeAudio's steps (transcribe, convert:<step>, transcribe_wav) are all the service's part; then the save.
+const txStep = (step: string): TxStep => (step === "save" ? "save" : "transcribe");
 // Between entries, and the waits after "too busy" (ours or Groq's) before trying the same entry again.
 const BATCH_GAP_MS = 2000;
 const BUSY_WAITS_MS = [15000, 30000, 60000, 120000];
@@ -65,8 +69,8 @@ type Journal = {
   remove: (id: string) => Promise<void>;
   /** A recording on this device comes back at once; an uploaded one reports its download and decrypt. */
   audioFor: (id: string, onProgress?: (p: AudioProgress) => void) => Promise<Blob>;
-  /** Entry ids with a transcription in flight. */
-  transcribing: string[];
+  /** Entries with a transcription in flight, and the step each is on. Set the moment one is asked for. */
+  transcribing: Record<string, TxStep>;
   cloudOn: boolean;
   transcribeEntry: (id: string) => void;
   /** Transcribe, one at a time, every uploaded recording of this account with no transcript yet (needsTranscript).
@@ -130,7 +134,19 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [transcribing, setTranscribing] = useState<string[]>([]);
+  const [transcribing, setTranscribing] = useState<Record<string, TxStep>>({});
+  // The same entries, readable at once: a second tap, or the Admin batch, must not start another job on an entry
+  // whose recording is still downloading, before any render has caught up.
+  const inFlight = useRef(new Set<string>());
+  const mark = useCallback((id: string, step: TxStep | null) => {
+    if (step) inFlight.current.add(id); else inFlight.current.delete(id);
+    setTranscribing((t) => {
+      if (step ? t[id] === step : !(id in t)) return t;
+      const next = { ...t };
+      if (step) next[id] = step; else delete next[id];
+      return next;
+    });
+  }, []);
   const [pkSupported, setPkSupported] = useState(false);
   const [pkHere, setPkHere] = useState(false);
 
@@ -330,11 +346,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const runTranscription = useCallback(async (entry: JournalEntry, audio: Blob) => {
-    if (!key.current) return;
-    setTranscribing((t) => [...t, entry.id]);
+    if (!key.current) return mark(entry.id, null);
+    mark(entry.id, "transcribe");
     let stage = "transcribe";
     try {
-      const text = await transcribeAndSave(entry, audio, (step) => { stage = step; });
+      const text = await transcribeAndSave(entry, audio, (step) => { stage = step; mark(entry.id, txStep(step)); });
       say(text ? "Transcript ready" : "Nothing could be made out in that recording");
     } catch (e) {
       const code = e instanceof TranscribeError ? e.code : "unknown";
@@ -342,9 +358,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       else report("journal", "transcription_failed", e, { code, stage, audioBytes: audio.size, mime: audio.type });
       say(e instanceof TranscribeError ? e.message : "Transcription failed. Try again.");
     } finally {
-      setTranscribing((t) => t.filter((x) => x !== entry.id));
+      mark(entry.id, null);
     }
-  }, [say, transcribeAndSave]);
+  }, [say, transcribeAndSave, mark]);
 
   // ── Recording ──
   useEffect(() => {
@@ -530,11 +546,17 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return loadAudio(key.current, id, found.entry?.audioMime || "audio/webm", onProgress);
   }, [pending, loaded]);
 
+  // Marked before the download, which can take a while for a long recording: the card shows the job from the tap.
   const transcribeEntry = useCallback((id: string) => {
     const found = loaded?.find((l) => l.meta.id === id)?.entry;
-    if (!found || transcribing.includes(id)) return;
-    void audioFor(id).then((audio) => runTranscription(found, audio), () => say("Couldn't load that recording"));
-  }, [loaded, transcribing, audioFor, runTranscription, say]);
+    if (!found || inFlight.current.has(id)) return;
+    mark(id, "open");
+    void within(audioFor(id), 120000, "download").then((audio) => runTranscription(found, audio), (e) => {
+      mark(id, null);
+      report("journal", "transcribe_open_failed", e, { audioBytes: found.audioSize, mime: found.audioMime });
+      say("Couldn't load that recording");
+    });
+  }, [loaded, audioFor, runTranscription, say, mark]);
 
   // Strictly one at a time: the jobs queue answers 429 when several run at once, and Groq has its own limits.
   // Every failure is logged with its stage; report() folds repeats within 15 s, so one summary row at the end
@@ -544,11 +566,15 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     const results: BatchResult[] = [];
     for (const entry of todo) {
       if (stop.now) break;
+      // Already running from its own Transcribe button.
+      if (inFlight.current.has(entry.id)) continue;
       let stage = "download";
       onUpdate([...results], `${entry.title} · downloading`);
-      setTranscribing((t) => [...t, entry.id]);
+      // The card follows along. Only this loop moves it on: a step that timed out may still report from underneath.
+      mark(entry.id, "open");
       try {
         const audio = await within(audioFor(entry.id), 120000, "download");
+        mark(entry.id, "transcribe");
         let text = "";
         for (let attempt = 0; ; attempt++) {
           try {
@@ -568,7 +594,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         report("journal", "transcription_failed", (e as { cause?: unknown }).cause ?? e, { code, stage, batch: true, entry: entry.id, audioBytes: entry.audioSize, mime: entry.audioMime });
         results.push({ id: entry.id, title: entry.title, outcome: "failed", stage, code, message });
       } finally {
-        setTranscribing((t) => t.filter((x) => x !== entry.id));
+        mark(entry.id, null);
       }
       onUpdate([...results], null);
       await new Promise((r) => setTimeout(r, BATCH_GAP_MS));
@@ -579,7 +605,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       failed: failed.length, stopped: stop.now, failures: failed.map((r) => `${r.id}:${r.stage}:${r.code}`).join("; ").slice(0, 2000),
     }, failed.length ? "warn" : "info");
     return results;
-  }, [loaded, audioFor, transcribeAndSave]);
+  }, [loaded, audioFor, transcribeAndSave, mark]);
 
   const items = useMemo<Item[] | null>(() => {
     if (vault !== "open" || !loaded) return null;

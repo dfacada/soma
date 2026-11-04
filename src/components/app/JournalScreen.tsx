@@ -12,7 +12,7 @@ import { journalRun, lookBack, recentDays } from "@/lib/journal-days";
 import { toWav, within } from "@/lib/playable";
 import { promptFor } from "@/lib/prompts";
 import { dayKey, fromKey } from "@/lib/today";
-import { useJournal, type Item } from "./Journal";
+import { useJournal, type Item, type TxStep } from "./Journal";
 import a from "./app.module.css";
 import sc from "./screens.module.css";
 import ui from "@/components/ui/ui.module.css";
@@ -27,6 +27,8 @@ const timeLabel = (ms: number) => new Date(ms).toLocaleTimeString("en-US", { hou
 const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "calm";
 /** A transcript longer than this folds to six lines until "Read all". */
 const FOLD_AT = 320;
+/** What a transcription is doing, under the entry while it runs. */
+const TX_LABEL: Record<TxStep, string> = { open: "Opening the recording…", transcribe: "Transcribing…", save: "Saving the words…" };
 
 /** The words of a search, each escaped for a RegExp. Empty when there is nothing to look for. */
 const termsOf = (q: string) => q.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
@@ -185,7 +187,13 @@ function EntryCard({ item, terms, flash }: { item: Item; terms: string[]; flash:
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [full, setFull] = useState(false);
-  const working = j.transcribing.includes(item.id);
+  const step: TxStep | undefined = j.transcribing[item.id];
+  const working = step !== undefined;
+  // Words a transcription brings rise into place. Each run is measured against the entry as it was when the run
+  // began, so a failed run, and words already there when the list opened, stay still. Adjusted during render.
+  const [run, setRun] = useState<{ working: boolean; from: string | null }>({ working: false, from: null });
+  if (working !== run.working) setRun({ working, from: working && e ? e.updatedAt ?? "" : run.from });
+  const landed = run.from !== null && !working && (e?.updatedAt ?? "") !== run.from;
   // A long transcript folds so the list stays scannable; a search shows every word it matched.
   const long = (e?.transcript || "").length > FOLD_AT && !terms.length;
 
@@ -231,18 +239,28 @@ function EntryCard({ item, terms, flash }: { item: Item; terms: string[]; flash:
         <>
           {e.transcript
             ? <>
-                <p className={`${a.transcript} ${long && !full ? a.folded : ""}`}><Marked text={e.transcript} terms={terms} /></p>
+                {/* Keyed on the save, so new words mount fresh and rise in; a transcript being redone waits, dimmed. */}
+                <p key={e.updatedAt ?? ""} className={`${a.transcript} ${long && !full ? a.folded : ""} ${working ? a.redoing : ""} ${landed ? a.landed : ""}`}><Marked text={e.transcript} terms={terms} /></p>
                 {long && <button type="button" className={a.readAll} aria-expanded={full} onClick={() => setFull(!full)}>{full ? "Show less" : "Read all"}</button>}
               </>
             : working
-              ? <p className="muted" style={{ fontSize: 13 }}>Transcribing… this usually takes a few seconds.</p>
+              ? <span className={a.coming} aria-hidden><i /><i /><i /></span>
               : <p className="muted" style={{ fontSize: 13 }}>{j.cloudOn ? "No transcript yet." : "No transcript. Cloud transcription is off; turn it on in Settings, or write a note."}</p>}
           <div className={a.entryActions}>
-            <span className={a.rowButtons}>
-              {!item.pending && <button type="button" className={a.lnk} onClick={() => setEditing(true)}>{e.transcript ? "Edit" : "Add a note"}</button>}
-              {!item.pending && e.hasAudio && j.cloudOn && !working && <button type="button" className={a.lnk} style={{ color: "var(--journal)" }} onClick={() => j.transcribeEntry(item.id)}>{e.transcript ? "Transcribe again" : "Transcribe"}</button>}
-            </span>
-            {confirming ? (
+            {/* From the tap until the words land, the links give way to what the job is doing. Editing or deleting
+                mid-run would be overwritten, or brought back, by the save at its end. */}
+            {working ? (
+              <span className={a.txStatus} role="status">
+                <span className={a.txSpin} aria-hidden />
+                <span key={step} className={a.txLabel}>{TX_LABEL[step]}</span>
+              </span>
+            ) : (
+              <span className={a.rowButtons}>
+                {!item.pending && <button type="button" className={a.lnk} onClick={() => setEditing(true)}>{e.transcript ? "Edit" : "Add a note"}</button>}
+                {!item.pending && e.hasAudio && j.cloudOn && <button type="button" className={`${a.lnk} ${a.lnkJournal}`} onClick={() => { haptic(); j.transcribeEntry(item.id); }}>{e.transcript ? "Transcribe again" : "Transcribe"}</button>}
+              </span>
+            )}
+            {working ? null : confirming ? (
               <span className={a.rowButtons}>
                 <Button size="sm" variant="danger" onClick={() => void j.remove(item.id).then(() => j.say("Entry deleted"), () => j.say("Couldn't delete the entry"))}>Delete for good</Button>
                 <Button size="sm" variant="secondary" onClick={() => setConfirming(false)}>Keep</Button>

@@ -48,6 +48,10 @@
 /* ── Shared small pieces ── */
 .lnk { position: relative; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
 button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
+/* A press shows under the finger: the link dips and fades, then springs back. */
+button.lnk { transition: opacity 0.2s ease, transform 0.3s var(--spring); }
+button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0.06s; }
+.lnkJournal { color: var(--journal); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .unsaved { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; border-radius: var(--r-ctl); background: var(--surface-2); color: var(--ink); font-size: 13px; }
 
@@ -65,9 +69,31 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .entryHead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .entryTags { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 .entryActions { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; flex-wrap: wrap; }
-.transcript { font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.transcript { font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; transition: opacity 0.35s ease; }
 .folded { display: -webkit-box; -webkit-line-clamp: 6; line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
 .readAll { align-self: flex-start; min-height: 32px; margin-top: -6px; font-size: 13px; font-weight: 600; color: var(--journal); }
+/* Transcribing (David, 2026-11-04: "I need some animation to know that I pressed it"). From the tap: a turning ring
+   and the step the job is on where the links were; lines for the words to come draw in and shimmer where they will
+   land; a transcript being redone dims. When the words arrive they rise into place out of a blur. */
+.txStatus { display: inline-flex; align-items: center; gap: 9px; min-height: 36px; font-size: 12px; font-weight: 500; color: var(--journal); animation: txIn 0.4s var(--spring) both; }
+@keyframes txIn { from { opacity: 0; transform: scale(0.85); } }
+.txSpin { width: 14px; height: 14px; flex-shrink: 0; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--journal) 22%, transparent); border-top-color: var(--journal); animation: txSpin 0.8s linear infinite; }
+@keyframes txSpin { to { transform: rotate(360deg); } }
+.txLabel { display: inline-block; animation: txLabel 0.3s var(--ease-out) both; }
+@keyframes txLabel { from { opacity: 0; transform: translateY(6px); } }
+.coming { display: flex; flex-direction: column; gap: 9px; padding: 5px 0; }
+.coming i { display: block; height: 10px; border-radius: var(--r-pill); transform-origin: left;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--journal) 12%, transparent) 35%, color-mix(in srgb, var(--journal) 38%, transparent) 50%, color-mix(in srgb, var(--journal) 12%, transparent) 65%) 100% 0 / 300% 100%;
+  animation: comingIn 0.55s var(--spring) both, coming 1.6s ease-in-out infinite; }
+.coming i:nth-child(2) { width: 86%; animation-delay: 0.07s, 0.15s; }
+.coming i:nth-child(3) { width: 52%; animation-delay: 0.14s, 0.3s; }
+@keyframes comingIn { from { opacity: 0; transform: scaleX(0.3); } }
+@keyframes coming { to { background-position: 0 0; } }
+.redoing { opacity: 0.4; }
+.landed { animation: landed 0.7s var(--spring) both, landedClear 0.5s ease-out both; }
+@keyframes landed { from { transform: translateY(10px); } }
+@keyframes landedClear { from { opacity: 0; filter: blur(6px); } }
+:global(:root[data-motion="calm"]) .txSpin, :global(:root[data-motion="calm"]) .coming i { animation: none; }
 /* An entry that something pointed at (Look back) lights up for a moment. */
 .flash { animation: flash 2.2s ease-out; }
 @keyframes flash { 0%, 35% { border-color: var(--journal); box-shadow: 0 0 0 1px var(--journal), 0 18px 44px -18px color-mix(in srgb, var(--journal) var(--glow-pct), transparent); } }
