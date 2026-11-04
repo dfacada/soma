@@ -46,6 +46,8 @@ export function Food() {
   }, []);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const closeRecipe = useCallback(() => setRecipe(null), []);
+  // The one meal row showing its macros and the rest of its actions.
+  const [openMeal, setOpenMeal] = useState<Meal | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const say = useCallback((m: string) => { setToast(m); window.setTimeout(() => setToast(null), 1800); }, []);
   const closeSwap = useCallback(() => setSwap(null), []);
@@ -59,6 +61,8 @@ export function Food() {
   const eaten = map[k]?.log?.meals || {};
   const extras = map[k]?.log?.extras || [];
   const g = settings.goals;
+  const left = g.kcal - st.kcal;
+  const mealsEaten = MEALS.filter((m) => eaten[m]).length;
 
   const addExtra = (x: Extra) => { change("day-logs", k, (d) => { d.log.extras = [...d.log.extras, x]; }); say(`Added · ${x.kcal} kcal`); };
   // What you ate in place of the plan: the slot holds a snapshot, so the plan itself is untouched and the meal counts.
@@ -95,7 +99,10 @@ export function Food() {
       {/* The day's calories, the bar split by what was eaten (each meal, then anything else), and the macros. */}
       <Card>
         <span className="eb">{isToday ? "Eaten today" : "Eaten that day"}</span>
-        <div className={sc.kcal}><span key={st.kcal} className={`dc ${sc.roll}`}>{fmt(st.kcal)}</span><span className="muted">/ {fmt(g.kcal)} kcal</span></div>
+        <div className={sc.kcal}>
+          <span key={st.kcal} className={`dc ${sc.roll}`}>{fmt(st.kcal)}</span><span className="muted">/ {fmt(g.kcal)} kcal</span>
+          <span className={`m ${sc.left} ${left < 0 ? sc.over : ""}`}>{left < 0 ? `${fmt(-left)} over` : `${fmt(left)} left`}</span>
+        </div>
         <div className={sc.split} role="img" aria-label={`${fmt(st.kcal)} of ${fmt(g.kcal)} kcal`}>
           {[...MEALS.filter((m) => eaten[m]).map((m) => (typeof eaten[m] === "object" ? (eaten[m] as PlannedMeal).kcal : settings.plan[m].kcal)), ...extras.map((x) => x.kcal)].map((kc, i) => (
             <i key={i} style={{ width: `${Math.min(100, (kc / Math.max(1, g.kcal)) * 100).toFixed(1)}%`, opacity: Math.max(0.3, 1 - i * 0.17) }} />
@@ -114,28 +121,49 @@ export function Food() {
 
       {settings.foodEstimate && <FoodSay known={known} eaten={eaten} onLog={logSaid} />}
 
-      {MEALS.map((m) => {
-        const slot = eaten[m];
-        const done = Boolean(slot);
-        // Show what was actually eaten if it differs from today's plan.
-        const shown: PlannedMeal = typeof slot === "object" ? slot : settings.plan[m];
-        return (
-          <Card key={m} className={done ? sc.mealDone : undefined}>
-            <div className={sc.mealHead}>
-              <span className={sc.mealIcon}><Icon name={done ? "check" : m} size={18} strokeWidth={done ? 2.4 : 1.75} /></span>
-              <span className="eb">{cap(m)}</span>
-              <span className={`${sc.mealState} ${done ? sc.mealStateOn : ""}`}>{done ? "Eaten" : "Planned"}</span>
-            </div>
-            <Row name={shown.name} sub={`${shown.protein} g protein${shown.carbs !== undefined ? ` · ${shown.carbs} g carbs · ${shown.fat ?? 0} g fat` : ""}`} value={<span style={{ color: done ? "var(--ink)" : "var(--muted)" }}>{shown.kcal} kcal</span>} />
-            <div className={sc.mealButtons}>
-              <Button size="sm" variant={done ? "secondary" : "food"} onClick={() => { haptic(done ? "tap" : "done"); change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; }); }}>{done ? "Undo" : "Mark eaten"}</Button>
-              {!done && <Button size="sm" variant="secondary" onClick={() => setSwap(m)}>Swap meal</Button>}
-              <Button size="sm" variant="secondary" onClick={() => ateSomethingElse(m)}>Ate something else</Button>
-              {findRecipe(shown.name, settings.mealPlan) && <Button size="sm" variant="secondary" onClick={() => setRecipe(findRecipe(shown.name, settings.mealPlan))}>Recipe</Button>}
-            </div>
-          </Card>
-        );
-      })}
+      {/* The four meals in one list: the round button ticks a meal off (or undoes it) in one tap; the rest of a row
+          opens its macros and the other actions (David, 2026-11-03: efficient). */}
+      <Card>
+        <div className={a.entryHead}>
+          <span className="eb">Meals</span>
+          <span className="m muted" style={{ fontSize: 12 }}>{mealsEaten} of {MEALS.length} eaten</span>
+        </div>
+        <div className={sc.meals}>
+          {MEALS.map((m) => {
+            const slot = eaten[m];
+            const done = Boolean(slot);
+            // Show what was actually eaten if it differs from today's plan.
+            const shown: PlannedMeal = typeof slot === "object" ? slot : settings.plan[m];
+            const book = findRecipe(shown.name, settings.mealPlan);
+            const open = openMeal === m;
+            return (
+              <div key={m} className={`${sc.meal} ${done ? sc.mealOn : ""}`}>
+                <div className={sc.mealRow}>
+                  <button type="button" className={sc.mealCheck} aria-pressed={done} aria-label={done ? `${cap(m)} eaten. Undo` : `Mark ${m} eaten`}
+                    onClick={() => { haptic(done ? "tap" : "done"); change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; }); }}>
+                    <Icon name={done ? "check" : m} size={18} strokeWidth={done ? 2.6 : 1.75} />
+                  </button>
+                  <button type="button" className={sc.mealMain} aria-expanded={open} onClick={() => setOpenMeal(open ? null : m)}>
+                    <span className={sc.mealText}><span className="eb">{cap(m)}</span><span className={sc.mealName}>{shown.name}</span></span>
+                    <span className={`m ${sc.mealKcal}`}>{shown.kcal}</span>
+                    <span className={sc.mealMore} aria-hidden><Icon name="chevron" size={14} /></span>
+                  </button>
+                </div>
+                {open && (
+                  <div className={sc.mealOpen}>
+                    <span className="muted" style={{ fontSize: 13 }}>{shown.protein} g protein{shown.carbs !== undefined ? ` · ${shown.carbs} g carbs · ${shown.fat ?? 0} g fat` : ""}</span>
+                    <div className={a.rowButtons}>
+                      {!done && <Button size="sm" variant="secondary" onClick={() => setSwap(m)}>Swap meal</Button>}
+                      <Button size="sm" variant="secondary" onClick={() => ateSomethingElse(m)}>Ate something else</Button>
+                      {book && <Button size="sm" variant="secondary" onClick={() => setRecipe(book)}>Recipe</Button>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
 
       <Card>
         <div className={a.entryHead}>
@@ -148,7 +176,7 @@ export function Food() {
         ))}
         {settings.snacks.length > 0 && (
           <div className={a.chips}>
-            {settings.snacks.map((s) => <Chip key={s.name} kind="habit" label={s.name} onClick={() => addExtra({ name: s.name, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat })} />)}
+            {settings.snacks.map((s) => <Chip key={s.name} kind="habit" label={`${s.name} · ${s.kcal}`} onClick={() => { haptic(); addExtra({ name: s.name, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat }); }} />)}
           </div>
         )}
         <ExtraForm onAdd={addExtra} onMeal={setMeal} eaten={eaten} known={known} estimateOn={settings.foodEstimate} slot={slot} onSlot={setSlot} fieldRef={field} />

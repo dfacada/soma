@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { describeFood, type Said } from "@/lib/food-say";
 import type { Known } from "@/lib/food-match";
+import { haptic } from "@/lib/haptics";
 import { report } from "@/lib/log";
 import { meter, type Meter } from "@/lib/meter";
 import { pickMime } from "@/lib/recorder";
@@ -21,7 +22,9 @@ import a from "./app.module.css";
 export type { Said };
 
 const TEXT_MAX = 1500;
-const PLACEHOLDER = "Bacon, egg and cheese on an everything bagel and a small fries for breakfast. A burger with a salad for lunch.";
+// One line until there is something in it; the example of how to say a day sits under the box instead.
+const PLACEHOLDER = "Say or type what you ate";
+const EXAMPLE = "Like “eggs and toast for breakfast, a burger with a salad for lunch”.";
 
 /** Records what you say and hands back the words: start, then stop resolves to the transcript ("" when nothing was
  *  heard). Errors are reported here and come back as a sentence: to `onError` when given (Today's toast), otherwise in
@@ -139,14 +142,19 @@ export function FoodSay({ known, eaten, onLog }: {
         <span className="eb">Tell me what you ate</span>
         <span className="muted" style={{ fontSize: 12 }}>the whole day at once</span>
       </div>
-      <textarea className={a.note} rows={3} maxLength={TEXT_MAX} placeholder={PLACEHOLDER} aria-label="What you ate today"
-        value={text} onChange={(e) => { setText(e.target.value); if (items) setItems(null); }} disabled={busy === "listening" || busy === "transcribing"} />
-      <div className={a.rowButtons}>
+      {/* The microphone stays put beside the box (it turns into Stop while listening), and Fill it in appears once
+          there is something to read: nothing moves under a finger when the box gains or loses focus. */}
+      <div className={a.sayBox}>
+        <textarea className={a.note} rows={text ? 3 : 1} maxLength={TEXT_MAX} placeholder={PLACEHOLDER} aria-label="What you ate today"
+          value={text} onChange={(e) => { setText(e.target.value); if (items) setItems(null); }} disabled={busy === "listening" || busy === "transcribing"} />
         {busy === "listening"
-          ? <Button variant="danger" onClick={() => void stopListening()}><Icon name="mic" />Stop · {mmss(voice.seconds)}</Button>
-          : <Button variant="secondary" disabled={busy !== null} onClick={() => void voice.start()}><Icon name="mic" />{busy === "transcribing" ? "Writing it down…" : "Speak"}</Button>}
-        <Button variant="food" disabled={!text.trim() || busy !== null} onClick={() => void read()}>{busy === "reading" ? "Reading…" : items ? "Read it again" : "Fill it in"}</Button>
+          ? <button type="button" className={`${a.sayMic} ${a.sayStop}`} onClick={() => { haptic(); void stopListening(); }} aria-label={`Stop listening, ${mmss(voice.seconds)}`}><i aria-hidden /><span className="m">{mmss(voice.seconds)}</span></button>
+          : <button type="button" className={a.sayMic} disabled={busy !== null} onClick={() => { haptic(); void voice.start(); }} aria-label="Say what you ate"><Icon name="mic" size={20} /></button>}
       </div>
+      {!text && busy === null && !error && <p className="muted" style={{ fontSize: 12, marginTop: -4 }}>{EXAMPLE}</p>}
+      {(text.trim() || busy === "transcribing" || busy === "reading") && (
+        <Button variant="food" block disabled={!text.trim() || busy !== null} onClick={() => void read()}>{busy === "transcribing" ? "Writing it down…" : busy === "reading" ? "Reading…" : items ? "Read it again" : "Fill it in"}</Button>
+      )}
       {error && <p role="alert" className={a.noteBad}>{error}</p>}
       {items && (
         <div className={a.draft}>

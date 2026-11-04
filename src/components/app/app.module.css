@@ -180,6 +180,17 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .draftHead { display: flex; flex-direction: column; gap: 4px; }
 .saidRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--hairline); }
 .saidActions { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+/* Tell me what you ate: the box, one line until it holds something, with the microphone beside it at the top. */
+.sayBox { display: flex; align-items: flex-start; gap: 8px; }
+.sayBox .note { flex: 1; min-width: 0; }
+.sayBox .note[rows="1"] { height: 52px; overflow: hidden; white-space: nowrap; }
+.sayMic { flex-shrink: 0; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: var(--on-hue); background: var(--food); box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--food) var(--glow-pct), transparent); transition: transform 0.3s var(--spring); }
+.sayMic:active { transform: scale(0.9); transition-duration: 0.06s; }
+.sayMic:disabled { opacity: 0.5; }
+/* Listening: a stop square and the time, on the critical colour, as a pill. */
+.sayStop { width: auto; display: inline-flex; gap: 8px; padding: 0 16px; border-radius: var(--r-pill); background: var(--critical); color: var(--critical-bg); }
+.sayStop i { width: 12px; height: 12px; border-radius: 3px; background: currentColor; }
+.sayStop .m { font-size: 13px; }
 @media (max-width: 420px) { .saidRow { flex-direction: column; align-items: stretch; } .saidActions { justify-content: space-between; } }
 .macroFields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .macroField { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

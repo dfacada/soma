@@ -15,6 +15,10 @@ export const CHANGES: Release[] = [
     date: "2026-11-03",
     title: "Feel and flow",
     items: [
+      "Meals in one list. On Food, tap the round button beside a meal to mark it eaten, or tap again to undo; tap the meal itself for its macros, Swap meal, Ate something else and the recipe.",
+      "Calories left. Food shows how many are left for the day beside the total, or how far over you are.",
+      "Quick snacks show their calories, so you can see what a tap adds.",
+      "Tell me what you ate stays one line until you use it. The microphone sits beside it and turns into Stop while it listens; Fill it in appears once there's something to read.",
       "A question a day. Not sure where to start? The Journal's record card and the recording screen offer one, like “What gave you energy today?”, and it changes every day.",
       "Two weeks of dots on the record card. A dot lights for each day you journaled, with how many days in a row you've kept it up.",
       "Look back. The Journal brings back what you said about a month or a week ago; tap it to find that entry and read or play it again. It's worked out on your phone and nothing is sent.",
