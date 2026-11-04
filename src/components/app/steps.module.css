@@ -1,0 +1,64 @@
+/* The steps sheet (Steps.tsx): the day against the goal, then 7 or 30 days as bars under a dashed goal line. In the
+   activity hue, the colour of steps everywhere in Soma; the days that reached the goal glow. Laid out like the sleep
+   sheet (sleep.module.css) so the two read as a pair. */
+
+.steps { display: flex; flex-direction: column; gap: 22px; padding-bottom: 6px; --hue: var(--activity); }
+
+.hero { display: flex; flex-direction: column; gap: 10px; }
+.big { display: flex; align-items: baseline; gap: 10px; }
+.big :global(.dc) { font-size: 64px; line-height: 0.9; }
+.unit { font-size: 15px; color: var(--muted); }
+.roll { display: inline-block; animation: roll 0.5s var(--spring) both; }
+@keyframes roll { from { opacity: 0; transform: translateY(30%); } }
+.goal { display: flex; align-items: center; gap: 12px; }
+.goal :global(.m) { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.goalTrack { flex: 1; height: 8px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--activity) 16%, var(--well)); overflow: hidden; }
+.goalTrack i { display: block; height: 100%; border-radius: var(--r-pill); background: color-mix(in srgb, var(--activity) 72%, var(--surface)); animation: grow 0.9s var(--spring) both; transform-origin: left; }
+.goalTrack i.met { background: var(--activity); box-shadow: 0 0 12px color-mix(in srgb, var(--activity) var(--glow-pct), transparent); }
+@keyframes grow { from { transform: scaleX(0); } }
+.when { font-size: 14px; color: var(--muted); line-height: 1.5; }
+.when b { color: var(--ink); font-weight: 600; }
+.none { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+.part { display: flex; flex-direction: column; gap: 12px; }
+.partHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.partHead :global(.m) { font-size: 12px; white-space: nowrap; }
+
+/* The chart: round numbers up the left, the goal as a dashed line in the hue, a lane per day with its bar rising
+   from the bottom. Slide a finger along it to read each day; up and down still scrolls the sheet. */
+.chart { display: grid; grid-template-columns: 40px 1fr; height: 170px; }
+.axis { position: relative; }
+.axis span { position: absolute; left: 0; transform: translateY(50%); font-family: var(--font-mono); font-size: 9.5px; color: var(--faint); white-space: nowrap; }
+.axis .axisGoal { color: var(--activity); font-weight: 600; }
+.cols { position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 6px; touch-action: pan-y; }
+.cols.month { gap: 2px; }
+.gridLine { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--hairline-soft); pointer-events: none; }
+.goalLine { position: absolute; left: 0; right: 0; height: 0; border-top: 1.5px dashed color-mix(in srgb, var(--activity) 75%, transparent); pointer-events: none; z-index: 1; }
+.col { position: relative; display: flex; justify-content: center; min-width: 0; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.col:focus-visible { outline: 2px solid var(--activity); outline-offset: 2px; border-radius: 6px; }
+.lane { position: relative; width: 14px; max-width: 100%; height: 100%; border-radius: var(--r-pill); background: color-mix(in srgb, var(--activity) 8%, transparent); }
+.month .lane { width: 9px; }
+.lane i { position: absolute; left: 0; right: 0; bottom: 0; min-height: 4px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--activity) 55%, var(--surface)); animation: rise 0.8s var(--spring) both; transform-origin: bottom; }
+.lane i.met { background: var(--activity); box-shadow: 0 0 12px color-mix(in srgb, var(--activity) var(--glow-pct), transparent); }
+@keyframes rise { from { transform: scaleY(0); opacity: 0; } }
+.colOn .lane { background: color-mix(in srgb, var(--activity) 22%, transparent); }
+/* A day picked from the bars: the others step back so it stands out, even thirty to a row. */
+.lane { transition: background 0.25s ease, opacity 0.25s ease; }
+.picking .col:not(.colOn) .lane { opacity: 0.4; }
+
+.foot { display: grid; grid-template-columns: 40px repeat(var(--n), minmax(0, 1fr)); gap: 0 6px; text-align: center; min-height: 14px; }
+.foot.month { gap: 0 2px; }
+.foot > span { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.foot > span.footEnd { align-items: flex-end; }
+.foot :global(.m) { font-size: 11px; color: var(--muted); }
+.footDay { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.footOn :global(.m) { color: var(--ink); }
+.footOn .footDay { color: var(--activity); }
+.line { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+.sync { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.note { font-size: 12px; color: var(--faint); line-height: 1.5; }
+
+:global(:root[data-motion="calm"]) .lane i,
+:global(:root[data-motion="calm"]) .goalTrack i,
+:global(:root[data-motion="calm"]) .roll { animation: none; }

@@ -20,6 +20,7 @@ import { longDay } from "./DayBanner";
 import { FitbitBanner } from "./FitbitBanner";
 import { useHealth } from "./Health";
 import { SleepSheet } from "./Sleep";
+import { StepsSheet } from "./Steps";
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
 import { describeError, mmss, useSayRecorder } from "./FoodSay";
@@ -71,6 +72,8 @@ export function Today() {
   const health = useHealth();
   const [sleepSheet, setSleepSheet] = useState(false);
   const closeSleep = useCallback(() => setSleepSheet(false), []);
+  const [stepsSheet, setStepsSheet] = useState(false);
+  const closeSteps = useCallback(() => setStepsSheet(false), []);
 
   // The server's count is from page load; the journal provider knows about entries recorded since, including
   // ones still waiting to upload. Whichever is higher is the truth for today.
@@ -317,8 +320,8 @@ export function Today() {
           {showSteps && (
             <StatPill compact domain="activity" icon="walk" label="Steps" fill={stepsK === null ? null : stepsK / Math.max(1, settings.goals.steps)}
               value={stepsK === null ? "Not synced yet" : fmt(stepsK)} dim={stepsK === null}
-              ariaLabel={`Steps: ${stepsK === null ? "not synced yet" : fmt(stepsK)}, goal ${fmt(settings.goals.steps)}. Opens Activity`}
-              onClick={() => goTab("activity")} />
+              ariaLabel={`Steps: ${stepsK === null ? "not synced yet" : fmt(stepsK)}, goal ${fmt(settings.goals.steps)}. Opens your steps`}
+              onClick={() => { haptic(); setStepsSheet(true); }} />
           )}
           {showSleep && (journal.vault !== "open"
             ? <StatPill compact domain="journal" icon="moon" label={isToday ? "Last night" : "Sleep"} fill={null} dim value={journal.vault === "checking" ? "…" : "Unlock to see"}
@@ -461,6 +464,7 @@ export function Today() {
       </Sheet>
       <WeightSheet open={weightSheet} onClose={closeWeight} current={st.weight} last={lastWeight} onSave={saveWeight} />
       <SleepSheet open={sleepSheet} onClose={closeSleep} day={k} isToday={isToday} />
+      <StepsSheet open={stepsSheet} onClose={closeSteps} day={k} />
       <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={forDay.dayNumber} onSave={savePushups}
         day={isToday ? undefined : longDay(view)} late={lateForRound} />
       <WriteSheet open={writing} day={longDay(view)} onClose={() => setWriting(false)}

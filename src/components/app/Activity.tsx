@@ -13,6 +13,7 @@ import { DayBanner, longDay } from "./DayBanner";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
 import { PushSheet } from "./PushSheet";
+import { StepsSheet } from "./Steps";
 import { useRounds, type RoundRow } from "./Rounds";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -35,6 +36,8 @@ export function Activity() {
   const say = useCallback((m: string) => { setToast(m); window.setTimeout(() => setToast(null), 2000); }, []);
   const closePush = useCallback(() => setPushSheet(false), []);
   const closeManage = useCallback(() => setManage(false), []);
+  const [stepsSheet, setStepsSheet] = useState(false);
+  const closeSteps = useCallback(() => setStepsSheet(false), []);
 
   if (error) return <div className={a.page}><span className="d" style={{ fontSize: 28 }}>Couldn&apos;t load activity</span><p className="muted">{error}</p><div><Button onClick={reload}>Try again</Button></div></div>;
   if (!map) return <div className={a.page}><span className="eb">Loading</span></div>;
@@ -135,7 +138,8 @@ export function Activity() {
       {steps !== null || health.status === "connected" ? (
         <StatPill domain="activity" icon="walk" label={`Steps · goal ${settings.goals.steps.toLocaleString("en-US")}`}
           fill={steps === null ? null : steps / Math.max(1, settings.goals.steps)} value={steps === null ? "Not synced yet" : steps.toLocaleString("en-US")} dim={steps === null}
-          ariaLabel={`Steps ${isToday ? "today" : "that day"}: ${steps === null ? "not synced yet" : steps.toLocaleString("en-US")}, goal ${settings.goals.steps.toLocaleString("en-US")}`} />
+          ariaLabel={`Steps ${isToday ? "today" : "that day"}: ${steps === null ? "not synced yet" : steps.toLocaleString("en-US")}, goal ${settings.goals.steps.toLocaleString("en-US")}. Opens your steps`}
+          onClick={() => { haptic(); setStepsSheet(true); }} />
       ) : health.status === "off" || health.status === "reconnect" ? (
         <Link href="/settings/#fitbit" className={a.lnk} style={{ alignSelf: "center", minHeight: 44, display: "inline-flex", alignItems: "center" }}>{health.status === "off" ? "Connect Fitbit in Settings to see steps" : "Reconnect Fitbit in Settings to keep steps coming"}</Link>
       ) : null}
@@ -152,6 +156,7 @@ export function Activity() {
 
       <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={rounds.forDay(k).dayNumber} onSave={savePushups}
         day={isToday ? undefined : longDay(view)} late={lateForRound} />
+      <StepsSheet open={stepsSheet} onClose={closeSteps} day={k} />
       <Sheet open={manage} title={current && !current.archived ? "Manage round" : "Start a round"} onClose={closeManage}>
         <ManageRound round={current} todayKey={todayKey} say={say} onDone={closeManage} />
       </Sheet>
