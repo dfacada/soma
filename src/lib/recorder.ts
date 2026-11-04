@@ -1,6 +1,7 @@
 // Microphone recorder. Every slice goes to IndexedDB as it arrives (recovery.ts), so a recording survives
 // a crash, a killed tab or a dead battery. Ported from Glimpse's startRec / stopRec.
 
+import { meter, type Meter } from "./meter";
 import { openDb, writeChunk } from "./recovery";
 
 // AAC in MP4 first: every browser plays it. Since iOS 18.4 Safari also offers WebM/Opus, but it cannot play
@@ -23,6 +24,7 @@ export class Recorder {
   private writes: Promise<void>[] = [];
   private startedAt = 0;
   private interrupted = false;
+  private meter: Meter | null = null;
   draftId: string | null = null;
 
   /** `onInterrupted` fires when the OS takes the microphone away (a phone call, iOS backgrounding the tab). */
@@ -31,6 +33,8 @@ export class Recorder {
 
   get active() { return this.mr !== null; }
   get seconds() { return this.active ? Math.floor((Date.now() - this.startedAt) / 1000) : 0; }
+  /** Live loudness while recording, for the screen; null when not recording or the browser cannot measure. */
+  get levels(): Meter | null { return this.active ? this.meter : null; }
 
   async start(stream?: MediaStream) {
     if (this.active) return;
@@ -54,6 +58,7 @@ export class Recorder {
       this.interrupted = true;
       this.onInterrupted();
     }));
+    this.meter = meter(this.stream);
     this.startedAt = Date.now();
     mr.start(SLICE_MS);
   }
@@ -68,6 +73,8 @@ export class Recorder {
       mr.addEventListener("stop", () => resolve(), { once: true });
       try { mr.stop(); } catch { resolve(); }
     });
+    this.meter?.close();
+    this.meter = null;
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
     // Waiting here stops a late write from resurrecting the draft after it has been cleared.

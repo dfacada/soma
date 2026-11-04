@@ -4,9 +4,10 @@
 // it is being kept safe, wherever recording started (Today, the Journal tab, the sidebar). FoodMoment is the Food
 // card's dictation, step by step. DayClosed is the celebration when today closes.
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { Icon, Orb, type OrbBead } from "@/components/ui";
 import { clock } from "@/lib/journal";
+import type { Meter } from "@/lib/meter";
 import type { Said } from "@/lib/food-say";
 import { cap } from "@/lib/today";
 import { useJournal } from "./Journal";
@@ -18,14 +19,56 @@ const hue = (d: "journal" | "food" | "activity") => ({ "--hue": `var(--${d})` })
 const VBARS = Array.from({ length: 56 }, (_, i) => ({ "--r": `${((i * 360) / 56).toFixed(1)}deg`, "--s": (0.6 + 0.8 * Math.abs(Math.sin(i * 1.9))).toFixed(2), "--dl": `${(-((i * 0.07) % 0.85)).toFixed(2)}s` }) as CSSProperties);
 const WAVE = Array.from({ length: 36 }, (_, i) => ({ "--h": `${14 + Math.round(42 * Math.abs(Math.sin(i * 1.3) * Math.cos(i * 0.5)))}px`, "--dl": `${(-((i * 0.09) % 0.7)).toFixed(2)}s` }) as CSSProperties);
 
-function Vox({ live, children }: { live: boolean; children: ReactNode }) {
+/** Every animation frame while live, hand `draw` the microphone's meter, and mark the box `metered` so the CSS loops
+ *  give way to it (David, 2026-11-03: "move according to the volume that I'm speaking"). Writes straight to the
+ *  elements, not React state: sixty renders a second would cost more than the drawing. With no meter (no Web Audio)
+ *  or Reduce Motion on, the decorative loops stay. */
+function useMeter(box: RefObject<HTMLElement | null>, live: boolean, levels: (() => Meter | null) | undefined, draw: (el: HTMLElement, mtr: Meter) => void) {
+  const paint = useRef(draw);
+  useEffect(() => { paint.current = draw; }, [draw]);
+  useEffect(() => {
+    const el = box.current;
+    if (!live || !levels || !el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const tick = () => {
+      const mtr = levels();
+      if (mtr) { el.classList.add(m.metered); paint.current(el, mtr); }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); el.classList.remove(m.metered); };
+  }, [box, live, levels]);
+}
+
+function Vox({ live, levels, children }: { live: boolean; levels?: () => Meter | null; children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  // The ring is mirrored left to right: low voices at the top, high at the bottom, so it breathes evenly.
+  useMeter(box, live, levels, (el, mtr) => {
+    const bars = el.querySelectorAll<HTMLElement>("i");
+    const half = Math.floor(bars.length / 2);
+    const b = mtr.bands(half + 1);
+    bars.forEach((bar, i) => bar.style.setProperty("--s", (0.25 + b[i <= half ? i : bars.length - i] * 1.9).toFixed(2)));
+    el.style.setProperty("--lv", mtr.level().toFixed(3));
+  });
   return (
-    <div className={`${m.vox} ${live ? m.live : m.still}`} aria-hidden>
+    <div ref={box} className={`${m.vox} ${live ? m.live : m.still}`} aria-hidden>
       <span className={m.ring} /><span className={m.ring} /><span className={m.ring} />
       {VBARS.map((s, i) => <i key={i} className={m.vbar} style={s} />)}
       <div className={m.core}>{children}</div>
     </div>
   );
+}
+
+/** The food screen's wave, loudest in the middle when there is a voice to follow. */
+function Wave({ levels }: { levels?: () => Meter | null }) {
+  const box = useRef<HTMLDivElement>(null);
+  useMeter(box, true, levels, (el, mtr) => {
+    const bars = el.querySelectorAll<HTMLElement>("i");
+    const mid = (bars.length - 1) / 2;
+    const b = mtr.bands(Math.ceil(bars.length / 2));
+    bars.forEach((bar, i) => { bar.style.transform = `scaleY(${(0.15 + b[Math.floor(Math.abs(i - mid))] * 1.1).toFixed(2)})`; });
+  });
+  return <div ref={box} className={m.wave} aria-hidden>{WAVE.map((s, i) => <i key={i} style={s} />)}</div>;
 }
 
 /** Characters that look like ciphertext while the recording is put away. Decoration: the real encryption is the vault's. */
@@ -60,7 +103,7 @@ export function RecordMoment() {
           <span className="eb">{phase === "rec" ? "Journal · recording" : phase === "seal" ? "Journal · sealing" : "Journal · saved"}</span>
           <span className={`m ${m.timer}`}>{clock(phase === "rec" ? j.seconds : j.lastSaved.seconds)}</span>
         </div>
-        <Vox live={phase === "rec"}>
+        <Vox live={phase === "rec"} levels={j.levels}>
           {phase === "rec" ? <Icon name="mic" size={48} strokeWidth={1.8} />
             : phase === "seal" ? <Icon name="lock" size={48} strokeWidth={1.8} />
             : <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path className={m.check} d="M5 12l5 5 9-10" /></svg>}
@@ -83,8 +126,10 @@ export function RecordMoment() {
 
 export type FoodPhase = "listening" | "transcribing" | "reading" | "done";
 
-export function FoodMoment({ phase, seconds, heard, items, onStop, onClose }: {
+export function FoodMoment({ phase, seconds, heard, items, onStop, onClose, levels }: {
   phase: FoodPhase; seconds: number; heard: string | null; items: Said[]; onStop: () => void; onClose: () => void;
+  /** The microphone's live loudness while listening. */
+  levels?: () => Meter | null;
 }) {
   const total = items.reduce((n, x) => n + x.kcal, 0);
   const words = heard ? heard.split(/\s+/).filter(Boolean) : [];
@@ -99,10 +144,10 @@ export function FoodMoment({ phase, seconds, heard, items, onStop, onClose }: {
         </div>
         {phase === "listening" && (
           <>
-            <Vox live><Icon name="mic" size={48} strokeWidth={1.8} /></Vox>
+            <Vox live levels={levels}><Icon name="mic" size={48} strokeWidth={1.8} /></Vox>
             <div className={m.text}><span className={`d ${m.head}`}>Say what you ate</span><span className={m.sub}>The whole day in one go, and which meal each thing was. Tap the check when you&apos;re done.</span></div>
             <div className={m.foot}>
-              <div className={m.wave} aria-hidden>{WAVE.map((s, i) => <i key={i} style={s} />)}</div>
+              <Wave levels={levels} />
               <button type="button" className={`${m.stop} ${m.go}`} onClick={onStop} aria-label="Done, log it"><Icon name="check" size={32} strokeWidth={2.4} /></button>
             </div>
           </>

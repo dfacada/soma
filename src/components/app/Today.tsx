@@ -414,7 +414,7 @@ export function Today() {
       {(listening || voice.state === "transcribing" || reading || (said && said.items.length > 0)) && (
         <Overlay>
           <FoodMoment phase={listening ? "listening" : voice.state === "transcribing" ? "transcribing" : reading ? "reading" : "done"}
-            seconds={voice.seconds} heard={said?.heard ?? null} items={said?.items ?? []} onStop={() => void tapFood()} onClose={() => setSaid(null)} />
+            seconds={voice.seconds} heard={said?.heard ?? null} items={said?.items ?? []} onStop={() => void tapFood()} onClose={() => setSaid(null)} levels={voice.levels} />
         </Overlay>
       )}
       {celebrate && (

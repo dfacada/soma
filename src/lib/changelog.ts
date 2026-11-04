@@ -15,6 +15,7 @@ export const CHANGES: Release[] = [
     date: "2026-11-03",
     title: "Who sees what",
     items: [
+      "While you record a journal entry, the bars around the microphone and the glowing circle now move with your voice: louder when you speak up, still when you pause. Saying what you ate on Today moves the same way. Nothing extra is recorded or sent; the sound is only measured on your phone to draw it.",
       "The privacy page now names everyone who handles your data. New on it: Claude, which reads the food you describe to estimate calories, your week's journal for the week in review if you've switched that on, and your journal for Insights if you chose With Claude (with names and details taken out first). Groq turns food you say aloud into words and reads your week in review aloud when you ask, as well as transcribing if you've switched that on. Morgen, Todoist and Telegram are on it too. Settings → Privacy policy, or soma-onkasary.onslate.com/privacy/.",
       "Tomorrow's brief now shows only the Todoist tasks due that day. Overdue tasks and ones still open from today stay in Todoist.",
       "The brief in Telegram is easier to read: a bold heading for each part, your events one to a line with the times lined up, each free block on its own line, your tasks with a coloured dot for their priority, and your meals and push-ups underneath.",

@@ -16,6 +16,11 @@
 .vbar { position: absolute; left: 50%; top: 50%; width: 3px; height: 22px; margin: -11px 0 0 -1.5px; border-radius: 2px; background: var(--hue); opacity: 0.85; transform: rotate(var(--r)) translateY(-130px) scaleY(var(--s)); transition: transform 0.6s cubic-bezier(0.5, 0, 0.2, 1), opacity 0.6s ease; }
 .live .vbar { animation: vb 0.85s ease-in-out infinite alternate; animation-delay: var(--dl); }
 @keyframes vb { from { transform: rotate(var(--r)) translateY(-130px) scaleY(0.3); } to { transform: rotate(var(--r)) translateY(-130px) scaleY(1.7); } }
+/* Following the voice (useMeter in Moments.tsx): the loops stop and each bar takes its own level, quickly. */
+.metered .vbar { animation: none !important; transition: transform 0.07s linear; }
+.metered .core { animation: none !important; transform: scale(calc(1 + var(--lv, 0) * 0.12)); transition: transform 0.08s linear; box-shadow: 0 0 calc(60px + var(--lv, 0) * 80px) color-mix(in srgb, var(--hue) 55%, transparent), inset 0 -16px 34px rgba(0, 0, 0, 0.25); }
+.metered.wave i, .metered i { animation: none !important; }
+.metered.wave i { transition: transform 0.07s linear; }
 .still .vbar { transform: rotate(var(--r)) translateY(-86px) scaleY(0.1); opacity: 0; }
 .ring { position: absolute; inset: 65px; border-radius: 50%; border: 1.5px solid var(--hue); opacity: 0; }
 .live .ring { animation: ring 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }

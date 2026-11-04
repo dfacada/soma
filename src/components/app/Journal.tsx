@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
 import { deleteDraft, deleteEntry, draftTransport, listDrafts, loadAudio, loadEntries, newEntry, onDay, saveEntry, textEntry, type AudioProgress, type LoadedEntry } from "@/lib/journal";
 import { DraftStream, rebuildDraft } from "@/lib/draft-stream";
+import type { Meter } from "@/lib/meter";
 import { Recorder, toneStream } from "@/lib/recorder";
 import { clearDraft, deletePending, listOrphanDrafts, listPending, putPending, type JournalEntry, type PendingRecording } from "@/lib/recovery";
 import { report } from "@/lib/log";
@@ -45,6 +46,8 @@ type Journal = {
   reload: () => void;
   recording: boolean;
   seconds: number;
+  /** Live loudness of the recording in progress, for the screen; null when not recording. */
+  levels: () => Meter | null;
   /** A recording that has just stopped and is being put somewhere safe on this device. */
   sealing: boolean;
   /** The last recording kept safe on this device: `n` counts them, so a change means a new one landed. */
@@ -134,6 +137,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const key = useRef<CryptoKey | null>(null);
   const meta = useRef<VaultMeta | null>(null);
   const recorder = useRef<Recorder | null>(null);
+  const levels = useCallback(() => recorder.current?.levels ?? null, []);
   const moodAtStart = useRef<string | null>(null);
   const dayAtStart = useRef<string | undefined>(undefined);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -602,8 +606,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), here: pkHere }), [pkSupported, pkHere]);
 
   const value = useMemo<Journal>(
-    () => ({ vault, items, loadFailed, entriesProgress, reload, recording, seconds, sealing, lastSaved, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys }),
-    [vault, items, loadFailed, entriesProgress, reload, recording, seconds, sealing, lastSaved, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys],
+    () => ({ vault, items, loadFailed, entriesProgress, reload, recording, seconds, levels, sealing, lastSaved, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys }),
+    [vault, items, loadFailed, entriesProgress, reload, recording, seconds, levels, sealing, lastSaved, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys],
   );
 
   return (

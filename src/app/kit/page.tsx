@@ -2,7 +2,8 @@
 
 // /kit — every token and component in one place, live. This stands in for Storybook (docs/HANDOFF.md §4.1).
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { meter, type Meter } from "@/lib/meter";
 import {
   Bar, Button, Card, Chip, DayGlyph, DayRing, Field, Icon, ICON_NAMES, Input, Medallion, MicButton, Mini, Orb, Pill,
   ProgressRing, Row, RowHead, Segmented, Select, Sheet, Sidebar, SideNote, Stat, StageBar, Switch, TabBar, Tag, Tile, Tiles, Toast,
@@ -38,7 +39,23 @@ export default function Kit() {
   const [cloud, setCloud] = useState(true);
   const [snacks, setSnacks] = useState(["Apple", "Protein bar", "Almonds"]);
   const [sheet, setSheet] = useState(false);
-  const [moment, setMoment] = useState<"closed" | "food" | null>(null);
+  const [moment, setMoment] = useState<"closed" | "food" | "listen" | null>(null);
+  // A voice stand-in for the listening screen: a tone whose loudness and pitch wander, measured like a microphone.
+  const tone = useRef<{ meter: Meter | null; stop: () => void } | null>(null);
+  const listen = () => {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator(), gain = ctx.createGain(), wobble = ctx.createOscillator(), depth = ctx.createGain(), sweep = ctx.createOscillator(), sweepDepth = ctx.createGain();
+    osc.type = "sawtooth"; osc.frequency.value = 220;
+    wobble.frequency.value = 2.3; depth.gain.value = 0.5; gain.gain.value = 0.5;
+    sweep.frequency.value = 0.4; sweepDepth.gain.value = 160;
+    wobble.connect(depth).connect(gain.gain); sweep.connect(sweepDepth).connect(osc.frequency);
+    const dest = ctx.createMediaStreamDestination();
+    osc.connect(gain).connect(dest);
+    [osc, wobble, sweep].forEach((o) => o.start());
+    tone.current = { meter: meter(dest.stream), stop: () => { tone.current?.meter?.close(); void ctx.close(); } };
+    setMoment("listen");
+  };
+  const toneLevels = useCallback(() => tone.current?.meter ?? null, []);
   const [toast, setToast] = useState<string | null>(null);
 
   const say = useCallback((m: string) => { setToast(m); window.setTimeout(() => setToast(null), 1800); }, []);
@@ -140,6 +157,7 @@ export default function Kit() {
             <div className={k.wrap}>
               <Button size="sm" variant="secondary" onClick={() => setMoment("closed")}>Show day closed</Button>
               <Button size="sm" variant="secondary" onClick={() => setMoment("food")}>Show food logged</Button>
+              <Button size="sm" variant="secondary" onClick={listen}>Show listening (test tone)</Button>
             </div>
             <div style={{ display: "flex", justifyContent: "center", padding: "24px 0" }}>
               <Orb progress={(progress.checkin + progress.journal + progress.food + progress.activity) / 4} closed={closed} label="Orb specimen" beads={[
@@ -254,6 +272,8 @@ export default function Kit() {
       </Sheet>
       {moment === "closed" && <DayClosed streak={13} onClose={() => setMoment(null)} week={["M", "T", "W", "T", "F", "S", "S"].map((label) => ({ label, full: true }))}
         beads={[{ key: "checkin", domain: "journal", icon: "heart", label: "Check-in", value: 1 }, { key: "journal", domain: "journal", icon: "mic", label: "Journal", value: 1 }, { key: "food", domain: "food", icon: "leaf", label: "Meals", value: 1 }, { key: "activity", domain: "activity", icon: "run", label: "Activity", value: 1 }]} />}
+      {moment === "listen" && <FoodMoment phase="listening" seconds={0} heard={null} items={[]} levels={toneLevels}
+        onStop={() => { tone.current?.stop(); tone.current = null; setMoment(null); }} onClose={() => undefined} />}
       {moment === "food" && <FoodMoment phase="done" seconds={12} heard="A bacon, egg and cheese on an everything bagel for breakfast" onStop={() => undefined} onClose={() => setMoment(null)}
         items={[{ meal: "breakfast", name: "Bacon, egg & cheese on an everything bagel", kcal: 520, protein: 0, carbs: 0, fat: 0, note: "" }]} />}
       <Toast message={toast} />

@@ -10,6 +10,7 @@ import { ApiError } from "@/lib/api";
 import { describeFood, type Said } from "@/lib/food-say";
 import type { Known } from "@/lib/food-match";
 import { report } from "@/lib/log";
+import { meter, type Meter } from "@/lib/meter";
 import { pickMime } from "@/lib/recorder";
 import { MEALS } from "@/lib/settings";
 import { cap } from "@/lib/today";
@@ -32,10 +33,10 @@ export function useSayRecorder(onError?: (message: string) => void) {
   const tell = useRef(onError);
   useEffect(() => { tell.current = onError; }, [onError]);
   const fail = useCallback((m: string) => { if (tell.current) tell.current(m); else setError(m); }, []);
-  const rec = useRef<{ mr: MediaRecorder; stream: MediaStream; chunks: Blob[]; timer: number } | null>(null);
+  const rec = useRef<{ mr: MediaRecorder; stream: MediaStream; chunks: Blob[]; timer: number; meter: Meter | null } | null>(null);
 
   // A recording left running when the screen goes away still has the microphone; let it go.
-  useEffect(() => () => { const r = rec.current; if (r) { window.clearInterval(r.timer); r.stream.getTracks().forEach((t) => t.stop()); } }, []);
+  useEffect(() => () => { const r = rec.current; if (r) { window.clearInterval(r.timer); r.meter?.close(); r.stream.getTracks().forEach((t) => t.stop()); } }, []);
 
   const start = useCallback(async () => {
     setError(null);
@@ -49,7 +50,7 @@ export function useSayRecorder(onError?: (message: string) => void) {
     mr.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     const started = Date.now();
     const timer = window.setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 500);
-    rec.current = { mr, stream, chunks, timer };
+    rec.current = { mr, stream, chunks, timer, meter: meter(stream) };
     setSeconds(0);
     mr.start(1000);
     setState("listening");
@@ -61,6 +62,7 @@ export function useSayRecorder(onError?: (message: string) => void) {
     if (!r) return "";
     rec.current = null;
     window.clearInterval(r.timer);
+    r.meter?.close();
     await new Promise<void>((resolve) => { r.mr.addEventListener("stop", () => resolve(), { once: true }); try { r.mr.stop(); } catch { resolve(); } });
     r.stream.getTracks().forEach((t) => t.stop());
     if (!r.chunks.length) { setState("idle"); return ""; }
@@ -76,7 +78,9 @@ export function useSayRecorder(onError?: (message: string) => void) {
     } finally { setState("idle"); }
   }, [fail]);
 
-  return { state, seconds, error: shown, setError, fail, start, stop };
+  /** Live loudness while listening, for the screen; null otherwise. */
+  const levels = useCallback(() => rec.current?.meter ?? null, []);
+  return { state, seconds, error: shown, setError, fail, start, stop, levels };
 }
 
 /** "1:05". */
