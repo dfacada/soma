@@ -16,6 +16,10 @@ export const CHANGES: Release[] = [
     date: "2026-11-03",
     title: "Feel and flow",
     items: [
+      "Steps and sleep on Today. Two pills under the week fill toward your goals: today's steps, and how long you slept last night. Tap steps for Activity, or last night for your sleep.",
+      "Your sleep, a tap away. Last night against your goal with bed and wake times, the stages (deep, light, REM and awake), and the week's nights drawn from bedtime to waking, with your usual times. Google doesn't share Fitbit's sleep score, so Soma doesn't show one.",
+      "A sleep goal. Settings → Fitbit has one next to the steps goal, 8 hours to start, as Fitbit sets it.",
+      "Steps on Activity are a pill that fills toward your goal, the same as on Today.",
       "What's new catches up. Lines added to an update after you've read it now come up the next time you open Soma, on their own.",
       "Every tab at the bottom says its name to VoiceOver, not just the one you're on.",
       "Settings fits on two screens. Its sections sit in groups (You, Your day, Reminders, Connections and privacy, Soma), each row shows what it's set to now, and a tap opens it right there.",

@@ -1,0 +1,59 @@
+/* The sleep sheet (Sleep.tsx): last night, its stages, and seven nights as windows on an evening axis. All in the
+   journal's hue family, the colour of the night in Soma, with awake in the warm activity hue. */
+
+.sleep { display: flex; flex-direction: column; gap: 22px; padding-bottom: 6px; --hue: var(--journal); }
+
+.hero { display: flex; flex-direction: column; gap: 10px; }
+.big { display: flex; align-items: baseline; gap: 10px; }
+.big :global(.dc) { font-size: 64px; line-height: 0.9; }
+.unit { font-size: 15px; color: var(--muted); }
+.goal { display: flex; align-items: center; gap: 12px; }
+.goal :global(.m) { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.goalTrack { flex: 1; height: 8px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--journal) 16%, var(--well)); overflow: hidden; }
+.goalTrack i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--journal); box-shadow: 0 0 12px color-mix(in srgb, var(--journal) var(--glow-pct), transparent); animation: grow 1s var(--spring) both; transform-origin: left; }
+@keyframes grow { from { transform: scaleX(0); } }
+.when { font-size: 14px; color: var(--muted); line-height: 1.5; }
+.when b { color: var(--ink); font-weight: 600; }
+.none { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+.part { display: flex; flex-direction: column; gap: 12px; }
+.partHead { display: flex; justify-content: space-between; align-items: baseline; }
+.partHead :global(.m) { font-size: 12px; }
+
+/* Stages: one bar, each stage as wide as its minutes. */
+.stages { display: flex; gap: 3px; height: 22px; border-radius: 8px; overflow: hidden; }
+.stages i { display: block; min-width: 3px; border-radius: 3px; animation: grow 0.9s var(--spring) both; transform-origin: left; }
+/* Darkest to palest as Fitbit orders them: deep, light, REM; awake in the warm activity hue. The same in both themes. */
+.deep { background: color-mix(in oklab, var(--journal) 52%, black); }
+.light { background: var(--journal); }
+.rem { background: color-mix(in oklab, var(--journal) 50%, white); }
+.awake { background: var(--activity); }
+.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+.leg { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.leg > i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.legName { flex: 1; color: var(--muted); }
+.leg :global(.m) { font-size: 12px; }
+.legPct { color: var(--faint); min-width: 30px; text-align: right; }
+
+/* Seven nights: the hours down the left, a lane per night, the window from bed to wake as a capsule. */
+.chart { display: grid; grid-template-columns: 40px 1fr; height: 180px; }
+.axis { position: relative; }
+.axis span { position: absolute; left: 0; transform: translateY(-50%); font-family: var(--font-mono); font-size: 9.5px; color: var(--faint); white-space: nowrap; }
+.cols { position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.gridLine { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--hairline-soft); pointer-events: none; }
+.col { position: relative; display: flex; justify-content: center; }
+.lane { position: relative; width: 14px; height: 100%; border-radius: var(--r-pill); background: color-mix(in srgb, var(--journal) 8%, transparent); }
+.lane i { position: absolute; left: 0; right: 0; border-radius: var(--r-pill); background: color-mix(in srgb, var(--journal) 55%, var(--surface)); animation: rise 0.8s var(--spring) both; transform-origin: top; }
+.lane i.met { background: var(--journal); box-shadow: 0 0 12px color-mix(in srgb, var(--journal) var(--glow-pct), transparent); }
+@keyframes rise { from { transform: scaleY(0); opacity: 0; } }
+.colOn .lane { background: color-mix(in srgb, var(--journal) 18%, transparent); }
+.foot { display: grid; grid-template-columns: 40px repeat(7, minmax(0, 1fr)); gap: 0 6px; text-align: center; }
+.foot > span { display: flex; flex-direction: column; gap: 2px; }
+.foot :global(.m) { font-size: 11px; color: var(--muted); }
+.footDay { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.footOn :global(.m) { color: var(--ink); }
+.footOn .footDay { color: var(--journal); }
+.line { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.note { font-size: 12px; color: var(--faint); line-height: 1.5; }
+
+:global(:root[data-motion="calm"]) .lane i, :global(:root[data-motion="calm"]) .stages i { animation: none; }

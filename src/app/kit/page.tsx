@@ -6,7 +6,7 @@ import { useCallback, useRef, useState } from "react";
 import { meter, type Meter } from "@/lib/meter";
 import {
   Bar, Button, Card, Chip, DayGlyph, DayRing, Field, Icon, ICON_NAMES, Input, Medallion, MicButton, Mini, Orb, Pill,
-  ProgressRing, Row, RowHead, Segmented, Select, Sheet, Sidebar, SideNote, Stat, StageBar, Switch, TabBar, Tag, Tile, Tiles, Toast,
+  ProgressRing, Row, RowHead, Segmented, Select, Sheet, Sidebar, SideNote, Stat, StageBar, StatPill, Switch, TabBar, Tag, Tile, Tiles, Toast,
   type MedallionState, type Section,
 } from "@/components/ui";
 import { DayClosed, FoodMoment } from "@/components/app/Moments";
@@ -212,6 +212,13 @@ export default function Kit() {
             </div>
             <Bar label="Protein" value={112} max={200} domain="food" />
             <Bar label="Carbs" value={96} max={150} color="var(--food-bar)" />
+            <span className="eb">Stat pill · steps and sleep (the pill fills toward the goal)</span>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: "1 1 0", minWidth: 0 }}><StatPill compact domain="activity" icon="walk" label="Steps" value="8,889" fill={8889 / 10000} ariaLabel="Steps: 8,889 of 10,000" /></div>
+              <div style={{ flex: "1 1 0", minWidth: 0 }}><StatPill compact domain="journal" icon="moon" label="Last night" value="5h 36m" fill={336 / 480} ariaLabel="Sleep: 5h 36m of 8h" /></div>
+            </div>
+            <StatPill domain="activity" icon="walk" label="Steps · goal 10,000" value="8,889" fill={8889 / 10000} ariaLabel="Steps: 8,889 of 10,000" />
+            <StatPill domain="journal" icon="moon" label="Last night" value="Unlock to see" dim fill={null} ariaLabel="Sleep: unlock to see" />
             <span className="eb">Stage bar · opening a recording</span>
             <StageBar domain="journal" steps={["Downloading…", "Decrypting…", "Converting…"]} at={0} progress={0.42} detail="1.8 / 4.4 MB" />
             <StageBar domain="journal" steps={["Downloading…", "Decrypting…"]} at={0} progress="unknown" detail="0.6 MB" />

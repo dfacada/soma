@@ -8,6 +8,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
 import { haptic } from "@/lib/haptics";
+import { hm } from "@/lib/sleep";
 import { report } from "@/lib/log";
 import { prepareChallenge } from "@/lib/vault-passkey";
 import { PALETTES, type MotionMode, type ThemeMode } from "@/lib/look";
@@ -31,6 +32,8 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(
 // Defaults from HANDOFF §6: kcal, protein, carbs, fat.
 const KCAL_PRESETS = [1800, 2000, 2100, 2200, 2400, 2600];
 const THEME_NAME: Record<ThemeMode, string> = { dark: "Night", light: "Light", system: "System" };
+/** Sleep goals to choose from: 6 to 10 hours by the half hour. */
+const SLEEP_GOALS = [360, 390, 420, 450, 480, 510, 540, 570, 600];
 const HEALTH_SHORT = { loading: "Checking…", unconfigured: "Not available yet", off: "Not connected", connected: "Connected", reconnect: "Needs reconnecting" } as const;
 /** The sections a link can open as /settings/#id: Activity's Fitbit link, Tomorrow's Open Settings, the return from Google. */
 const SECTIONS = ["account", "appearance", "opening", "checkin", "food", "weight", "activity", "nudge", "brief", "fitbit", "journal", "review", "whats-new", "feedback", "admin"];
@@ -207,8 +210,9 @@ export function SettingsScreen() {
       </Group>
 
       <Group label="Connections and privacy">
-        <Section {...sec("fitbit")} title="Fitbit · Google Health" summary={HEALTH_SHORT[health.status]}>
-          <HealthSettings steps={g.steps} onSteps={(n) => void save({ goals: { ...g, steps: n } }, `Steps goal set to ${n.toLocaleString("en-US")}`)} />
+        <Section {...sec("fitbit")} title="Fitbit · Google Health" summary={`${HEALTH_SHORT[health.status]} · ${g.steps.toLocaleString("en-US")} steps · ${hm(settings.sleepGoal)} sleep`}>
+          <HealthSettings steps={g.steps} onSteps={(n) => void save({ goals: { ...g, steps: n } }, `Steps goal set to ${n.toLocaleString("en-US")}`)}
+            sleep={settings.sleepGoal} onSleep={(n) => void save({ sleepGoal: n }, `Sleep goal set to ${hm(n)}`)} />
         </Section>
         <Section {...sec("journal")} title="Journal and vault" summary={`${journal.vault === "open" ? "Unlocked" : journal.vault === "none" ? "No vault yet" : "Locked"} · Insights ${settings.journalInsights === "claude" ? "with Claude" : "on this phone"}`}>
           <Field name="Vault" help={journal.vault === "open" ? "Open on this device until the tab closes." : journal.vault === "none" ? "Not created yet." : "Locked."}>
@@ -292,7 +296,7 @@ const HEALTH_LINE = {
 } as const;
 
 /** Fitbit now reports through Google Health. Read-only steps and sleep; the token and the sleep are vault ciphertext. */
-function HealthSettings({ steps, onSteps }: { steps: number; onSteps: (n: number) => void }) {
+function HealthSettings({ steps, onSteps, sleep, onSleep }: { steps: number; onSteps: (n: number) => void; sleep: number; onSleep: (n: number) => void }) {
   const health = useHealth();
   const s = health.status;
   const linked = s === "connected" || s === "reconnect";
@@ -309,8 +313,14 @@ function HealthSettings({ steps, onSteps }: { steps: number; onSteps: (n: number
           <Button size="sm" variant="journal" onClick={health.connect}>Reconnect</Button>
         </Field>
       )}
-      <Field name="Steps goal" help="The bar on Activity fills toward this.">
+      <Field name="Steps goal" help="The steps pills on Today and Activity fill toward this.">
         <Commit numeric value={String(steps)} label="Steps goal" onCommit={(v) => { const n = Number(v); if (n >= 1000 && n <= 40000 && n !== steps) onSteps(n); }} />
+      </Field>
+      <Field name="Sleep goal" help="Last night's pill on Today fills toward this, and the week counts the nights that reached it.">
+        <Select aria-label="Sleep goal" value={String(sleep)} onChange={(e) => onSleep(Number(e.target.value))}>
+          {SLEEP_GOALS.includes(sleep) ? null : <option value={sleep}>{hm(sleep)}</option>}
+          {SLEEP_GOALS.map((n) => <option key={n} value={n}>{hm(n)}</option>)}
+        </Select>
       </Field>
       {linked && <div><button type="button" className={a.lnk} style={{ minHeight: 44 }} onClick={() => void health.disconnect()}>Disconnect</button></div>}
       <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Fitbit moved to Google Health in 2026, so you sign in with the Google account your Fitbit uses. Soma asks to read two things, activity and sleep, and keeps daily step totals and one line per night (time asleep, stages, bed and wake times). There is no sleep score: Google does not share Fitbit’s. Sleep and the connection itself are encrypted with your vault key, so the server cannot read either.</p>

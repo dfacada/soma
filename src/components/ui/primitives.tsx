@@ -147,6 +147,33 @@ export function Bar({ label, value, max, unit = "g", domain, color, text }: { la
   );
 }
 
+/** A number on a pill that fills toward its goal: an icon chip, a label, the value large (David, 2026-11-03, after
+ *  Google Health's Today: steps and sleep). `fill` is 0–1, null for nothing to fill. A tap does `onClick`. */
+export function StatPill({ domain, icon, label, value, fill, onClick, ariaLabel, dim, compact }: {
+  domain: Domain; icon: IconName; label: string; value: ReactNode; fill: number | null; onClick?: () => void;
+  /** What a screen reader says: the label, the value and the goal in words. */
+  ariaLabel: string;
+  /** A quieter value: "Unlock to see", "Not synced yet". */
+  dim?: boolean;
+  /** Two to a row (Today): a smaller chip and number. */
+  compact?: boolean;
+}) {
+  const pct = fill === null ? 0 : Math.max(0, Math.min(1, fill)) * 100;
+  const body = (
+    <>
+      <span className={s.spFill} style={{ width: `${pct.toFixed(1)}%` }} aria-hidden />
+      <span className={s.spIcon} aria-hidden><Icon name={icon} size={20} strokeWidth={2} /></span>
+      <span className={s.spText}>
+        <span className={s.spLabel}>{label}</span>
+        <span className={cx(dim ? s.spDim : "dc", s.spValue)}>{value}</span>
+      </span>
+    </>
+  );
+  return onClick
+    ? <button type="button" className={cx(s.statPill, s[domain], compact && s.spCompact, s.spTap)} onClick={onClick} aria-label={ariaLabel}>{body}</button>
+    : <div className={cx(s.statPill, s[domain], compact && s.spCompact)} role="img" aria-label={ariaLabel}>{body}</div>;
+}
+
 /** How far the current step is: a fraction 0–1; "unknown" when its size is not known (a moving stripe); "atomic"
  *  for one call that reports nothing until it ends (fills toward 90% while it runs, full once the next step starts). */
 export type StepProgress = number | "unknown" | "atomic";

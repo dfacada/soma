@@ -10,13 +10,16 @@
 
 import { useGoTab } from "./tabs";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Overlay, Sheet, Toast, type IconName, type MedallionState, type OrbBead } from "@/components/ui";
+import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Overlay, Sheet, StatPill, Toast, type IconName, type MedallionState, type OrbBead } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
+import { hm } from "@/lib/sleep";
 import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS, type TaskKey } from "@/lib/today";
 import { haptic } from "@/lib/haptics";
 import { report } from "@/lib/log";
 import { longDay } from "./DayBanner";
 import { FitbitBanner } from "./FitbitBanner";
+import { useHealth } from "./Health";
+import { SleepSheet } from "./Sleep";
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
 import { describeError, mmss, useSayRecorder } from "./FoodSay";
@@ -65,6 +68,9 @@ export function Today() {
   const closePush = useCallback(() => setPushSheet(false), []);
   const closeWeight = useCallback(() => setWeightSheet(false), []);
   const closeCheckin = useCallback(() => setCheckinSheet(false), []);
+  const health = useHealth();
+  const [sleepSheet, setSleepSheet] = useState(false);
+  const closeSleep = useCallback(() => setSleepSheet(false), []);
 
   // The server's count is from page load; the journal provider knows about entries recorded since, including
   // ones still waiting to upload. Whichever is higher is the truth for today.
@@ -235,6 +241,15 @@ export function Today() {
   // The chips under the orb follow headline()'s order, which is card order with done tasks left out.
   const todoKeys = (["weight", "checkin", "journal", "food", "activity"] as TaskKey[]).filter((key) => open[key]);
 
+  // Steps and sleep as pills that fill toward their goals, after Google Health's Today (David, 2026-11-03). They
+  // inform and never close the day. Steps are in the day map; the night woken from on this day is vault ciphertext,
+  // readable only while the vault is open. Shown once Fitbit is connected, or while there is anything to show.
+  const stepsK = days?.[k]?.activity?.steps ?? null;
+  const nightK = health.nights?.[k] ?? null;
+  const linked = health.status === "connected" || health.status === "reconnect";
+  const showSteps = linked || stepsK !== null;
+  const showSleep = linked || nightK !== null;
+
   const hue = (d: "journal" | "food" | "activity") => ({ "--hue": `var(--${d})` }) as CSSProperties;
   const tile = (done: boolean, wide = false, rec = false, key?: TaskKey) =>
     `${t.tile} ${wide ? t.wide : ""} ${done ? t.tileDone : ""} ${rec ? t.tileRec : ""} ${key && key === next ? t.next : ""}`;
@@ -296,6 +311,24 @@ export function Today() {
           <span>Best <span className="m">{run.best}</span></span>
         </div>
       </div>
+
+      {(showSteps || showSleep) && (
+        <div className={t.body}>
+          {showSteps && (
+            <StatPill compact domain="activity" icon="walk" label="Steps" fill={stepsK === null ? null : stepsK / Math.max(1, settings.goals.steps)}
+              value={stepsK === null ? "Not synced yet" : fmt(stepsK)} dim={stepsK === null}
+              ariaLabel={`Steps: ${stepsK === null ? "not synced yet" : fmt(stepsK)}, goal ${fmt(settings.goals.steps)}. Opens Activity`}
+              onClick={() => goTab("activity")} />
+          )}
+          {showSleep && (journal.vault !== "open"
+            ? <StatPill compact domain="journal" icon="moon" label={isToday ? "Last night" : "Sleep"} fill={null} dim value={journal.vault === "checking" ? "…" : "Unlock to see"}
+                ariaLabel="Sleep: unlock your vault to see it" onClick={journal.openVault} />
+            : <StatPill compact domain="journal" icon="moon" label={isToday ? "Last night" : "Sleep"} fill={nightK ? nightK.asleep / settings.sleepGoal : null}
+                value={nightK ? hm(nightK.asleep) : health.nights === null ? "…" : "Not synced yet"} dim={!nightK}
+                ariaLabel={nightK ? `Sleep: ${hm(nightK.asleep)}, goal ${hm(settings.sleepGoal)}. Opens sleep` : "Sleep: nothing synced yet. Opens sleep"}
+                onClick={() => { haptic(); setSleepSheet(true); }} />)}
+        </div>
+      )}
 
       {unsaved && (
         <div className={a.unsaved} role="alert">
@@ -427,6 +460,7 @@ export function Today() {
         <Button block onClick={closeCheckin}>Done</Button>
       </Sheet>
       <WeightSheet open={weightSheet} onClose={closeWeight} current={st.weight} last={lastWeight} onSave={saveWeight} />
+      <SleepSheet open={sleepSheet} onClose={closeSleep} day={k} isToday={isToday} />
       <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={forDay.dayNumber} onSave={savePushups}
         day={isToday ? undefined : longDay(view)} late={lateForRound} />
       <WriteSheet open={writing} day={longDay(view)} onClose={() => setWriting(false)}

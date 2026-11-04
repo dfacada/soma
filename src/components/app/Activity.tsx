@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 import { chain, dayIndexOf, defaultRestDays, isRestDay, leaderboard, phaseOf, setBreakdown, type Log, type Member } from "@/lib/round";
 import { addDays, dayKey, dayStatus, streak, WEEKDAYS } from "@/lib/today";
 import Link from "next/link";
-import { Bar, Button, Card, Field, Icon, Input, Sheet, Switch, Tag, Toast, type IconName } from "@/components/ui";
+import { Button, Card, Field, Icon, Input, Sheet, StatPill, Switch, Tag, Toast, type IconName } from "@/components/ui";
 import { haptic } from "@/lib/haptics";
 import { DayBanner, longDay } from "./DayBanner";
 import { useDays } from "./Days";
@@ -133,9 +133,9 @@ export function Activity() {
       </div>
 
       {steps !== null || health.status === "connected" ? (
-        <Card>
-          <Bar label="Steps" value={steps ?? 0} max={settings.goals.steps} color="var(--activity)" text={`${(steps ?? 0).toLocaleString("en-US")} / ${settings.goals.steps.toLocaleString("en-US")}`} />
-        </Card>
+        <StatPill domain="activity" icon="walk" label={`Steps · goal ${settings.goals.steps.toLocaleString("en-US")}`}
+          fill={steps === null ? null : steps / Math.max(1, settings.goals.steps)} value={steps === null ? "Not synced yet" : steps.toLocaleString("en-US")} dim={steps === null}
+          ariaLabel={`Steps ${isToday ? "today" : "that day"}: ${steps === null ? "not synced yet" : steps.toLocaleString("en-US")}, goal ${settings.goals.steps.toLocaleString("en-US")}`} />
       ) : health.status === "off" || health.status === "reconnect" ? (
         <Link href="/settings/#fitbit" className={a.lnk} style={{ alignSelf: "center", minHeight: 44, display: "inline-flex", alignItems: "center" }}>{health.status === "off" ? "Connect Fitbit in Settings to see steps" : "Reconnect Fitbit in Settings to keep steps coming"}</Link>
       ) : null}

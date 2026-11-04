@@ -20,6 +20,8 @@ export type Settings = {
   bowl: BowlId;
   plan: Record<Meal, PlannedMeal>;
   goals: { kcal: number; protein: number; carbs: number; fat: number; steps: number };
+  /** Sleep to aim for, in minutes: the sleep pill fills toward it. 8 hours unless changed, as Fitbit's own default. */
+  sleepGoal: number;
   snacks: Snack[];
   activityTypes: ActivityType[];
   /** Per person, flat, no ramp. Round membership will carry its own target once rounds exist. */
@@ -78,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   snacks: SNACK_PRESETS.map((p) => ({ ...p })),
   // Standard plan defaults from docs/HANDOFF.md §6.
   goals: { kcal: 2100, protein: 200, carbs: 150, fat: 75, steps: 8000 },
+  sleepGoal: 480,
   activityTypes: [{ key: "walk", name: "Walk" }, { key: "gym", name: "Gym" }, { key: "run", name: "Run" }],
   pushupTarget: 100,
   bestStreak: 0,
@@ -126,6 +129,7 @@ export function mergeSettings(stored: unknown): Settings {
     bowl: s.bowl && s.bowl in BOWL_VARIANTS ? s.bowl : d.bowl,
     plan: Object.fromEntries(MEALS.map((m) => { const kept = s.plan?.[m]; return [m, kept && kept.name && !SAMPLE_MEALS.includes(kept.name) ? kept : d.plan[m]]; })) as Record<Meal, PlannedMeal>,
     goals: { ...d.goals, ...(s.goals || {}) },
+    sleepGoal: typeof s.sleepGoal === "number" && s.sleepGoal >= 240 && s.sleepGoal <= 720 ? Math.round(s.sleepGoal) : d.sleepGoal,
     snacks: Array.isArray(s.snacks) && !(s.snacks.length > 0 && s.snacks.every((x) => SAMPLE_SNACKS.includes(x?.name))) ? s.snacks : d.snacks,
     activityTypes: list(s.activityTypes, d.activityTypes),
     pushupTarget: Math.max(1, Math.round(num(s.pushupTarget, d.pushupTarget))),
