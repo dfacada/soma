@@ -175,9 +175,21 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .dayBanner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: var(--r-card); background: var(--journal-tint, var(--surface-2)); border: 1px solid var(--journal); }
 
 /* What's new, and the full list in Settings. */
-.releases { display: flex; flex-direction: column; gap: 18px; }
-.release { display: flex; flex-direction: column; gap: 6px; }
-.release ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
+/* Each change: a tag, a bold headline, and the detail held to two lines until it is opened. */
+.releases { display: flex; flex-direction: column; gap: 22px; }
+.release { display: flex; flex-direction: column; gap: 10px; }
+.releaseHead { display: flex; flex-direction: column; gap: 4px; }
+.releaseTitle { font-size: 22px; line-height: 1.1; }
+.changes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.change { border-radius: 18px; background: var(--well); }
+.changeHit { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; width: 100%; padding: 12px 14px; text-align: left; border-radius: 18px; transition: transform 0.25s var(--spring); }
+button.changeHit:active { transform: scale(0.98); transition-duration: 0.06s; }
+.changeTag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--journal) 18%, transparent); color: var(--journal); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+.changeFixed { background: color-mix(in srgb, var(--activity) 18%, transparent); color: var(--activity); }
+.changeLead { font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--ink); }
+.changeRest { font-size: 13.5px; line-height: 1.5; color: var(--muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.changeOpen { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.changeMore { font-size: 12px; font-weight: 600; color: var(--ink); }
 
 /* Admin: one member's recent activity. */
 .userActivity { display: flex; flex-direction: column; gap: 4px; padding: 8px 0 2px; }

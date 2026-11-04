@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type R
 import { Icon, Orb, type OrbBead } from "@/components/ui";
 import { clock } from "@/lib/journal";
 import type { Meter } from "@/lib/meter";
+import { haptic } from "@/lib/haptics";
 import type { Said } from "@/lib/food-say";
 import { cap } from "@/lib/today";
 import { useJournal } from "./Journal";
@@ -139,7 +140,7 @@ export function RecordMoment() {
         </div>
         {phase === "rec" && (
           <div className={m.foot}>
-            <button type="button" className={m.stop} onClick={() => j.toggleRecording(null)} aria-label="Stop and save"><i /></button>
+            <button type="button" className={m.stop} onClick={() => { haptic("done"); j.toggleRecording(null); }} aria-label="Stop and save"><i /></button>
             <span className="eb">Tap to stop</span>
           </div>
         )}
@@ -172,7 +173,7 @@ export function FoodMoment({ phase, seconds, heard, items, onStop, onClose, leve
             <div className={m.text}><span className={`d ${m.head}`}>Say what you ate</span><span className={m.sub}>The whole day in one go, and which meal each thing was. Tap the check when you&apos;re done.</span></div>
             <div className={m.foot}>
               <Wave levels={levels} />
-              <button type="button" className={`${m.stop} ${m.go}`} onClick={onStop} aria-label="Done, log it"><Icon name="check" size={32} strokeWidth={2.4} /></button>
+              <button type="button" className={`${m.stop} ${m.go}`} onClick={() => { haptic("done"); onStop(); }} aria-label="Done, log it"><Icon name="check" size={32} strokeWidth={2.4} /></button>
             </div>
           </>
         )}

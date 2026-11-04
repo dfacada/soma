@@ -6,7 +6,7 @@
 // once per phone. Settings keeps the whole history (ReleaseList).
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CHANGES, releaseDate, unseen, type Release } from "@/lib/changelog";
+import { CHANGES, releaseDate, splitChange, unseen, type Release } from "@/lib/changelog";
 import { report } from "@/lib/log";
 import { installDone, markNewsDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
@@ -47,17 +47,39 @@ export function WhatsNew() {
   );
 }
 
-/** Releases, newest first, each with its date, title and what changed. Used here and in Settings. */
+/** Releases, newest first, each with its date, title and what changed. Used here and in Settings. Each change shows
+ *  its tag and headline; the rest opens on a tap, so a long release can be scanned in seconds (David, 2026-11-03). */
 export function ReleaseList({ releases }: { releases: Release[] }) {
   return (
     <div className={a.releases}>
       {releases.map((r) => (
         <section key={r.id} className={a.release}>
-          <span className="eb">{releaseDate(r.date)}</span>
-          <span className="d" style={{ fontSize: 18 }}>{r.title}</span>
-          <ul>{r.items.map((x) => <li key={x}>{x}</li>)}</ul>
+          <div className={a.releaseHead}>
+            <span className="eb">{releaseDate(r.date)}</span>
+            <span className={`d ${a.releaseTitle}`}>{r.title}</span>
+          </div>
+          <ul className={a.changes}>{r.items.map((x) => <Change key={x} text={x} />)}</ul>
         </section>
       ))}
     </div>
+  );
+}
+
+function Change({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const { tag, lead, rest } = splitChange(text);
+  const body = (
+    <>
+      {tag && <span className={`${a.changeTag} ${tag === "Fixed" ? a.changeFixed : ""}`}>{tag}</span>}
+      <span className={a.changeLead}>{lead}</span>
+      {rest && <span className={`${a.changeRest} ${open ? a.changeOpen : ""}`}>{rest}</span>}
+    </>
+  );
+  return (
+    <li className={a.change}>
+      {rest
+        ? <button type="button" className={a.changeHit} aria-expanded={open} onClick={() => setOpen(!open)}>{body}<span className={a.changeMore}>{open ? "Less" : "More"}</span></button>
+        : <div className={a.changeHit}>{body}</div>}
+    </li>
   );
 }

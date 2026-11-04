@@ -17,16 +17,34 @@ const SETTINGS = { id: "settings" as const, label: "Settings", icon: "gear" as c
 
 type NavProps = { current: Section; onSelect: (s: Section) => void };
 
-/** Phones: five tabs in a floating bar, icons only until picked. Settings is reached from the Today header. */
-export function TabBar({ current, onSelect, className }: NavProps & { className?: string }) {
+/** How far today has got, for the ring round the Today tab. */
+export type TodayProgress = { done: number; total: number; closed: boolean };
+const RING = 2 * Math.PI * 13;
+
+/** Phones: five tabs in a floating bar, icons only until picked. Settings is reached from the Today header. The Today
+ *  tab wears the day's progress as a ring round its icon (David, 2026-11-03), so it can be read from any screen; a
+ *  closed day lights the whole ring. */
+export function TabBar({ current, onSelect, className, todayProgress }: NavProps & { className?: string; todayProgress?: TodayProgress }) {
   return (
     <nav className={cx(s.tabbar, className)} aria-label="Sections">
-      {SECTIONS.map((t) => (
-        <button key={t.id} type="button" className={cx(s.tab, s[t.hue], current === t.id && s.tabOn)} aria-current={current === t.id ? "page" : undefined} onClick={() => onSelect(t.id)}>
-          <Icon name={t.icon} size={22} />
-          <span className={s.tabLabel}>{t.label}</span>
-        </button>
-      ))}
+      {SECTIONS.map((t) => {
+        const p = t.id === "today" ? todayProgress : undefined;
+        return (
+          <button key={t.id} type="button" className={cx(s.tab, s[t.hue], current === t.id && s.tabOn)} aria-current={current === t.id ? "page" : undefined} onClick={() => onSelect(t.id)}
+            aria-label={p ? `${t.label}, ${p.closed ? "day closed" : `${p.done} of ${p.total} done`}` : undefined}>
+            {p ? (
+              <span className={cx(s.tabRing, p.closed && s.tabRingClosed)}>
+                <svg viewBox="0 0 30 30" aria-hidden>
+                  <circle cx="15" cy="15" r="13" className={s.tabRingTrack} />
+                  {p.done > 0 && <circle cx="15" cy="15" r="13" className={s.tabRingFill} transform="rotate(-90 15 15)" strokeDasharray={`${((p.done / Math.max(1, p.total)) * RING).toFixed(1)} ${RING.toFixed(1)}`} />}
+                </svg>
+                <Icon name={t.icon} size={16} strokeWidth={2} />
+              </span>
+            ) : <Icon name={t.icon} size={22} />}
+            <span className={s.tabLabel}>{t.label}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 }

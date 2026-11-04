@@ -63,10 +63,20 @@ div.hit:active { transform: none; }
 .sub { font-size: 13px; color: var(--muted); line-height: 1.35; }
 .row { display: flex; align-items: center; gap: 14px; width: 100%; }
 .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-/* The round action on a wide card: record, speak. It rings softly while its task is open. */
+/* The round action on a wide card: record, speak. Only the Up next card's rings, so one thing on the screen asks for
+   attention at a time; a recording rings faster in red. */
 .act { position: relative; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: var(--hue); color: var(--on-hue); flex-shrink: 0; box-shadow: 0 12px 30px -8px color-mix(in srgb, var(--hue) var(--glow-pct), transparent); }
-.act::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--hue); opacity: 0; animation: ping 2.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
-.tileDone .act::after { animation: none; }
+.act::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--hue); opacity: 0; }
+.next .act::after, .actRec::after { animation: ping 2.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
+
+/* Up next: the one open task worth doing now (Today.tsx picks it by the time of day). A lit edge, a soft glow
+   underneath, and its icon breathing a ring. */
+.next { border-color: color-mix(in srgb, var(--hue) 60%, var(--hairline-soft)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--hue) 30%, transparent), 0 20px 44px -22px color-mix(in srgb, var(--hue) var(--glow-pct), transparent), var(--shadow-card); }
+.next .th > :first-child { animation: nextRing 2.4s ease-out infinite; }
+@keyframes nextRing { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--hue) 45%, transparent); } 70%, 100% { box-shadow: 0 0 0 9px transparent; } }
+.todoNext { border-color: color-mix(in srgb, var(--c) 55%, transparent); background: color-mix(in srgb, var(--c) 16%, var(--surface)); color: var(--ink); font-weight: 600; }
+.ledeNext { color: var(--ink); }
+:global(:root[data-motion="calm"]) .next .th > :first-child, :global(:root[data-motion="calm"]) .next .act::after { animation: none; }
 .actRec { background: var(--rec); box-shadow: 0 0 0 6px color-mix(in srgb, var(--rec) 22%, transparent); }
 .actRec::after { border-color: var(--rec); animation-duration: 1.4s; }
 @keyframes ping { from { transform: scale(1); opacity: 0.6; } to { transform: scale(1.65); opacity: 0; } }

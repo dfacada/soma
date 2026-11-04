@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, type Extra } from "@/lib/api";
 import { matchFood, type Known } from "@/lib/food-match";
 import { applySaid, knownFromDays, saidLine, type Said } from "@/lib/food-say";
+import { haptic } from "@/lib/haptics";
 import { report } from "@/lib/log";
 import { BOWL_VARIANTS, MEAL_PLANS, RECIPES, type Recipe } from "@/lib/food-data";
 import { MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
@@ -127,7 +128,7 @@ export function Food() {
             </div>
             <Row name={shown.name} sub={`${shown.protein} g protein${shown.carbs !== undefined ? ` · ${shown.carbs} g carbs · ${shown.fat ?? 0} g fat` : ""}`} value={<span style={{ color: done ? "var(--ink)" : "var(--muted)" }}>{shown.kcal} kcal</span>} />
             <div className={sc.mealButtons}>
-              <Button size="sm" variant={done ? "secondary" : "food"} onClick={() => change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; })}>{done ? "Undo" : "Mark eaten"}</Button>
+              <Button size="sm" variant={done ? "secondary" : "food"} onClick={() => { haptic(done ? "tap" : "done"); change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; }); }}>{done ? "Undo" : "Mark eaten"}</Button>
               {!done && <Button size="sm" variant="secondary" onClick={() => setSwap(m)}>Swap meal</Button>}
               <Button size="sm" variant="secondary" onClick={() => ateSomethingElse(m)}>Ate something else</Button>
               {findRecipe(shown.name, settings.mealPlan) && <Button size="sm" variant="secondary" onClick={() => setRecipe(findRecipe(shown.name, settings.mealPlan))}>Recipe</Button>}

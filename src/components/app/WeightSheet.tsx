@@ -5,6 +5,7 @@
 
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { Button, Icon, Sheet } from "@/components/ui";
+import { haptic } from "@/lib/haptics";
 import w from "./sheets.module.css";
 
 type FormProps = { current: number | null; last: number | null; onSave: (v: number | null) => void };
@@ -38,7 +39,12 @@ function WeightForm({ current, last, onSave }: FormProps) {
   const [dragging, setDragging] = useState(false);
   const down = (e: PointerEvent<HTMLDivElement>) => { e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, v }; setDragging(true); };
   // Moving the ruler left brings bigger numbers under the needle; snapped to 0.2.
-  const move = (e: PointerEvent<HTMLDivElement>) => { if (drag.current) set(Math.round((drag.current.v - (e.clientX - drag.current.x) / PX) * 5) / 5); };
+  const move = (e: PointerEvent<HTMLDivElement>) => {
+    if (!drag.current) return;
+    const nv = Math.round((drag.current.v - (e.clientX - drag.current.x) / PX) * 5) / 5;
+    if (Math.floor(nv) !== Math.floor(v)) haptic();
+    set(nv);
+  };
   const up = () => { drag.current = null; setDragging(false); };
   const key = (e: KeyboardEvent<HTMLDivElement>) => {
     const by = e.shiftKey ? 1 : 0.2;
@@ -64,9 +70,9 @@ function WeightForm({ current, last, onSave }: FormProps) {
         <span className={w.needle} />
       </div>
       <div className={w.steps}>
-        <button type="button" className={w.step} onClick={() => set(v - 0.2)} aria-label="Minus 0.2"><Icon name="minus" size={20} /></button>
+        <button type="button" className={w.step} onClick={() => { haptic(); set(v - 0.2); }} aria-label="Minus 0.2"><Icon name="minus" size={20} /></button>
         <Button type="submit" className={w.grow} disabled={!valid}>Save weight</Button>
-        <button type="button" className={w.step} onClick={() => set(v + 0.2)} aria-label="Plus 0.2"><Icon name="plus" size={20} /></button>
+        <button type="button" className={w.step} onClick={() => { haptic(); set(v + 0.2); }} aria-label="Plus 0.2"><Icon name="plus" size={20} /></button>
       </div>
       {last !== null && current === null && <Button variant="food" block onClick={() => onSave(last)}>Same as last · {last} lb</Button>}
       <p className={w.note}>Same time of day gives the cleanest line.</p>

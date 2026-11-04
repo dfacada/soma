@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { Button, Sheet } from "@/components/ui";
+import { haptic } from "@/lib/haptics";
 import { fit } from "./WeightSheet";
 import a from "./app.module.css";
 import w from "./sheets.module.css";
@@ -56,14 +57,14 @@ function PushForm({ current, target, rest = false, dayNumber, onSave, day, late 
           {f > 0 && <circle className={w.padRing} cx="100" cy="100" r="94" strokeDasharray={`${(f * RING).toFixed(1)} ${RING.toFixed(1)}`} />}
         </svg>
         {taps > 0 && <span key={taps} className={w.ripple} />}
-        <button type="button" className={w.padButton} aria-label="Add one push-up" onClick={() => { set(count + 1); setTaps(taps + 1); }}>
+        <button type="button" className={w.padButton} aria-label="Add one push-up" onClick={() => { haptic(); set(count + 1); setTaps(taps + 1); }}>
           <span className="d">+1</span><span className="eb">Tap per rep</span>
         </button>
       </div>
       <div className={w.quick}>
-        <button type="button" className={w.q} onClick={() => set(count - 5)} aria-label="Minus 5">−5</button>
-        <button type="button" className={w.q} onClick={() => set(count + 5)} aria-label="Plus 5">+5</button>
-        <button type="button" className={w.q} onClick={() => set(count + 10)} aria-label="Plus 10">+10</button>
+        <button type="button" className={w.q} onClick={() => { haptic(); set(count - 5); }} aria-label="Minus 5">−5</button>
+        <button type="button" className={w.q} onClick={() => { haptic(); set(count + 5); }} aria-label="Plus 5">+5</button>
+        <button type="button" className={w.q} onClick={() => { haptic(); set(count + 10); }} aria-label="Plus 10">+10</button>
       </div>
       <div className={w.buttons}>
         {!rest && <Button variant="activity" onClick={() => onSave(target)}>Hit the target · {target}</Button>}

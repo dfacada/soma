@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Overlay, Sheet, Toast, type IconName, type MedallionState, type OrbBead } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
 import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS, type TaskKey } from "@/lib/today";
+import { haptic } from "@/lib/haptics";
 import { report } from "@/lib/log";
 import { longDay } from "./DayBanner";
 import { FitbitBanner } from "./FitbitBanner";
@@ -127,9 +128,11 @@ export function Today() {
   const lede = !isToday
     ? (st.closed ? "Closed. Nothing left to fill in." : `${st.doneCount} of ${st.taskCount} done. Fill in what is missing.`)
     : st.closed ? head.sub
-    : st.progress === 0 ? `${st.taskCount === 5 ? "Five" : "Four"} things close the day. Start anywhere.`
+    : st.progress === 0 ? `${st.taskCount === 5 ? "Five" : "Four"} things close the day.`
     : head.todos.length === 1 ? `${head.todos[0].label} closes the day.`
     : `${head.todos.length} left to close the day.`;
+  // Said after the lede when there is an Up next (below).
+  const NEXT_LABEL: Record<TaskKey, string> = { weight: "your weight", checkin: "check in", journal: "your journal", food: "food", activity: "move" };
   const beads: OrbBead[] = st.ring.map((r) => ({ key: r.key, value: r.value, ...BEADS[r.key] }));
 
   // ── Check-in ──
@@ -139,6 +142,7 @@ export function Today() {
   const pickMood = (label: string) => {
     const clearing = checkin?.mood === label;
     change("checkins", k, (d) => { d.checkin.mood = clearing ? null : label; });
+    haptic(clearing ? "tap" : "done");
     if (!clearing) say(`Checked in: ${label}`);
   };
 
@@ -175,6 +179,7 @@ export function Today() {
   // Food shows it all to change. The day is the one picked when the recording stopped.
   const tapFood = async () => {
     if (foodBusy) return;
+    haptic();
     if (voice.state !== "listening") { await voice.start(); return; }
     const day = k;
     const heard = await voice.stop();
@@ -201,6 +206,7 @@ export function Today() {
     : lastWeight !== null ? `Last weigh-in. Tap to log ${when}.` : `Tap to log ${isToday ? "today’s" : "that day’s"} weight.`;
   const saveWeight = (v: number | null) => {
     change("weight", k, (d) => { d.weight.value = v; });
+    haptic(v === null ? "tap" : "done");
     setWeightSheet(false);
     say(v === null ? "Weight cleared" : `Weight logged · ${v} lb`);
   };
@@ -212,13 +218,26 @@ export function Today() {
     : rest ? "Rest day for push-ups. Any activity closes it." : "Any activity closes it. Tap to count push-ups.";
   const savePushups = (n: number) => {
     change("activity", k, (d) => { d.activity.pushups = n; });
+    haptic(n > 0 && !rest && n >= target && st.pushups < target ? "done" : "tap");
     setPushSheet(false);
     say(lateForRound && n ? `${n} push-ups saved to your record · too late to count for the round` : n >= target && !rest ? `Target hit · ${n} push-ups` : n ? `${n} push-ups logged` : "Push-ups cleared");
   };
 
+  // ── Up next ──
+  // One open task, picked by the time of day, glows and is the only one whose button rings; the rest stay quiet
+  // (David, 2026-11-03: "a unique experience that's efficient"). Weight first thing, food through the day, the
+  // journal in the evening. Only on today, and not while something is recording.
+  const open: Record<TaskKey, boolean> = { weight: st.weightRequired && !st.weightDone, checkin: !st.checkinDone, journal: !st.journalDone, food: !st.foodDone, activity: !st.activityDone };
+  const order: TaskKey[] = hour < 11 ? ["weight", "checkin", "food", "activity", "journal"]
+    : hour < 17 ? ["food", "activity", "checkin", "weight", "journal"]
+    : ["journal", "food", "activity", "checkin", "weight"];
+  const next = isToday && !recording && !listening ? order.find((key) => open[key]) ?? null : null;
+  // The chips under the orb follow headline()'s order, which is card order with done tasks left out.
+  const todoKeys = (["weight", "checkin", "journal", "food", "activity"] as TaskKey[]).filter((key) => open[key]);
+
   const hue = (d: "journal" | "food" | "activity") => ({ "--hue": `var(--${d})` }) as CSSProperties;
-  const tile = (done: boolean, wide = false, rec = false) =>
-    `${t.tile} ${wide ? t.wide : ""} ${done ? t.tileDone : ""} ${rec ? t.tileRec : ""}`;
+  const tile = (done: boolean, wide = false, rec = false, key?: TaskKey) =>
+    `${t.tile} ${wide ? t.wide : ""} ${done ? t.tileDone : ""} ${rec ? t.tileRec : ""} ${key && key === next ? t.next : ""}`;
 
   return (
     <div className={a.page}>
@@ -249,10 +268,10 @@ export function Today() {
               <span className="eb">{isToday ? "done today" : "done that day"}</span>
             </>}
         </Orb>
-        <p className={t.lede}>{lede}</p>
+        <p className={t.lede}>{lede}{next && head.todos.length > 1 && <> <span className={t.ledeNext}>Up next: {NEXT_LABEL[next]}.</span></>}</p>
         {head.todos.length > 0 && (
           <div className={t.todos}>
-            {head.todos.map((x, i) => <span key={x.label} className={t.todo} style={{ "--c": x.color, animationDelay: `${0.3 + i * 0.06}s` } as CSSProperties}><i />{x.label}</span>)}
+            {head.todos.map((x, i) => <span key={x.label} className={`${t.todo} ${todoKeys[i] === next ? t.todoNext : ""}`} style={{ "--c": x.color, animationDelay: `${0.3 + i * 0.06}s` } as CSSProperties}><i />{x.label}</span>)}
           </div>
         )}
       </section>
@@ -265,7 +284,7 @@ export function Today() {
             const done = dk === k ? st.doneCount : dayStatus(days[dk], settings).doneCount;
             return (
               <button key={i} type="button" className={`${t.weekDay} ${i === 0 ? t.weekToday : ""} ${dk === k ? t.weekPicked : ""}`}
-                aria-pressed={dk === k} aria-label={i === 0 ? "Today" : `Fill in ${longDay(d)}`} onClick={() => setView(i === 0 ? null : dk)}>
+                aria-pressed={dk === k} aria-label={i === 0 ? "Today" : `Fill in ${longDay(d)}`} onClick={() => { haptic(); setView(i === 0 ? null : dk); }}>
                 <DayGlyph done={done} total={st.taskCount} today={i === 0} />
                 <span>{i === 0 ? "Today" : WEEKDAYS[d.getDay()]}</span>
               </button>
@@ -287,7 +306,7 @@ export function Today() {
 
       <div className={t.bento}>
         {/* Weight comes first: it is the one task with a right time of day, before anything is eaten. */}
-        <button type="button" className={`${tile(st.weight !== null)} ${t.hit}`} style={hue("food")} onClick={() => setWeightSheet(true)}
+        <button type="button" className={`${tile(st.weight !== null, false, false, "weight")} ${t.hit}`} style={hue("food")} onClick={() => setWeightSheet(true)}
           aria-label={isToday ? "Log today’s weight" : `Log weight for ${longDay(view)}`}>
           <span className={t.tint} /><span className={t.sweep} />
           <span className={t.th}><Medallion domain="food" icon="scale" state={st.weight !== null ? "done" : "idle"} /><span className="eb">Weight</span></span>
@@ -297,7 +316,7 @@ export function Today() {
           <span className={t.sub}>{weightSub}</span>
         </button>
 
-        <button type="button" className={`${tile(st.checkinDone)} ${t.hit}`} style={hue("journal")} onClick={() => setCheckinSheet(true)}
+        <button type="button" className={`${tile(st.checkinDone, false, false, "checkin")} ${t.hit}`} style={hue("journal")} onClick={() => setCheckinSheet(true)}
           aria-label={st.checkinDone ? `Check-in: ${checkin!.mood}. Change it` : "Check in"}>
           <span className={t.tint} /><span className={t.sweep} />
           <span className={t.th}><Medallion domain="journal" icon="heart" state={st.checkinDone ? "done" : "idle"} /><span className="eb">Check-in</span></span>
@@ -306,9 +325,9 @@ export function Today() {
         </button>
 
         {/* The Journal card is the record button: no floating mic on Today. The mood picked above rides along. */}
-        <div className={tile(st.journalDone, true, recording)} style={hue("journal")}>
+        <div className={tile(st.journalDone, true, recording, "journal")} style={hue("journal")}>
           <span className={t.tint} /><span className={t.sweep} />
-          <button type="button" className={t.hit} onClick={() => journal.toggleRecording(checkin?.mood ?? null, isToday ? undefined : k)}
+          <button type="button" className={t.hit} onClick={() => { haptic(); journal.toggleRecording(checkin?.mood ?? null, isToday ? undefined : k); }}
             aria-label={recording ? "Stop recording" : isToday ? "Record a journal entry" : `Record a journal entry for ${longDay(view)}`}>
             <span className={t.row}>
               <span className={t.grow}>
@@ -327,7 +346,7 @@ export function Today() {
           )}
         </div>
 
-        <div className={tile(st.foodDone, true, listening)} style={hue("food")}>
+        <div className={tile(st.foodDone, true, listening, "food")} style={hue("food")}>
           <span className={t.tint} /><span className={t.sweep} />
           {(() => {
             const inner = (
@@ -352,14 +371,14 @@ export function Today() {
           <div className={t.toggles}>
             {MEALS.map((m) => (
               <button key={m} type="button" className={`${t.toggle} ${eaten[m] ? t.toggleOn : ""}`} aria-pressed={Boolean(eaten[m])} aria-label={`${cap(m)}: ${settings.plan[m].name}`}
-                onClick={() => change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; })}>
+                onClick={() => { haptic(!eaten[m] && st.leftMeals.length === 1 ? "done" : "tap"); change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; }); }}>
                 <Icon name={m} size={18} /><span>{cap(m)}</span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className={tile(st.activityDone, true)} style={hue("activity")}>
+        <div className={tile(st.activityDone, true, false, "activity")} style={hue("activity")}>
           <span className={t.tint} /><span className={t.sweep} />
           <button type="button" className={t.hit} onClick={() => setPushSheet(true)}
             aria-label={rest ? `Push-ups: rest day, ${st.pushups} logged` : `Push-ups: ${st.pushups} of ${target}. Count them`}>
@@ -369,9 +388,13 @@ export function Today() {
             {!rest && <span className={t.bar}><i style={{ width: `${Math.min(100, (st.pushups / Math.max(1, target)) * 100).toFixed(1)}%` }} /></span>}
           </button>
           <div className={t.toggles}>
+            {/* Ten push-ups in one tap, without opening the counter: a set done between other things. */}
+            <button type="button" className={t.toggle} aria-label="Add ten push-ups" onClick={() => savePushups(st.pushups + 10)}>
+              <span className="dc">+10</span><span>Push-ups</span>
+            </button>
             {settings.activityTypes.map((x) => (
               <button key={x.key} type="button" className={`${t.toggle} ${types[x.key] ? t.toggleOn : ""}`} aria-pressed={Boolean(types[x.key])} aria-label={x.name}
-                onClick={() => change("activity", k, (d) => { d.activity.types[x.key] = !d.activity.types[x.key]; })}>
+                onClick={() => { haptic(!types[x.key] && !st.activityDone ? "done" : "tap"); change("activity", k, (d) => { d.activity.types[x.key] = !d.activity.types[x.key]; }); }}>
                 <Icon name={ACT_ICONS[x.key] || "pulse"} size={18} /><span>{x.name}</span>
               </button>
             ))}

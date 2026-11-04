@@ -12,7 +12,10 @@ import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type C
 import { Button, Icon, Sidebar, SideNote, TabBar, TabVisible, type Section } from "@/components/ui";
 import { clock } from "@/lib/journal";
 import { isDevIdentity } from "@/lib/catalyst";
+import { haptic } from "@/lib/haptics";
+import { dayKey, dayStatus } from "@/lib/today";
 import { Activity } from "./Activity";
+import { useDays } from "./Days";
 import { Food } from "./Food";
 import { InsightsScreen } from "./Insights";
 import { useJournal } from "./Journal";
@@ -38,8 +41,15 @@ const typesText = (el: Element | null) =>
 
 export function Shell({ children }: { children: ReactNode }) {
   const tab = tabOf(usePathname());
-  const { me } = useSession();
+  const { me, settings } = useSession();
   const journal = useJournal();
+  // Today's progress, drawn as a ring round the Today tab so it can be read from any screen. Entries recorded since
+  // the page loaded count, as they do on Today.
+  const { map, today } = useDays();
+  const todayKey = dayKey(today);
+  const todayData = map ? { ...(map[todayKey] || { entries: 0 }), entries: Math.max(map[todayKey]?.entries || 0, journal.countOn(todayKey) || 0) } : undefined;
+  const todaySt = map ? dayStatus(todayData, settings) : null;
+  const todayProgress = todaySt ? { done: todaySt.doneCount, total: todaySt.taskCount, closed: todaySt.closed } : undefined;
 
   // iOS keeps the fixed tab bar on the keyboard, where it covers the very field being typed in. It steps aside while
   // a text field has focus. focusout is read a tick late, so moving between fields does not flicker the bar.
@@ -60,8 +70,12 @@ export function Shell({ children }: { children: ReactNode }) {
   // is captured once React has shown the tab: the layout effect below resolves `landed`, or the guard does.
   const landed = useRef<(() => void) | null>(null);
   const go = useCallback((s: Section) => {
-    navigator.vibrate?.(10); // Android; iOS Safari has no vibration API
-    if (window.location.pathname === PATHS[s]) return;
+    haptic();
+    // The tab you are already on goes back to its top, as an iPhone's tab bar does.
+    if (window.location.pathname === PATHS[s]) {
+      window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      return;
+    }
     const push = () => window.history.pushState(null, "", PATHS[s]);
     if (!document.startViewTransition || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return push();
     const transition = document.startViewTransition(() => new Promise<void>((done) => {
@@ -124,7 +138,7 @@ export function Shell({ children }: { children: ReactNode }) {
           })}
           {!tab && children}
         </div>
-        <TabBar className={`${a.tabbar} ${typing ? a.tabbarAway : ""}`} current={current} onSelect={go} />
+        <TabBar className={`${a.tabbar} ${typing ? a.tabbarAway : ""}`} current={current} onSelect={go} todayProgress={todayProgress} />
         {/* Recording, from wherever it started, fills the screen until the entry is safe. */}
         <RecordMoment />
       </div>

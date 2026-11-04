@@ -13,13 +13,20 @@ export const CHANGES: Release[] = [
   {
     id: "2026-11-03",
     date: "2026-11-03",
-    title: "Who sees what",
+    title: "Feel and flow",
     items: [
-      "While you record a journal entry, the bars around the microphone and the glowing circle now move with your voice: louder when you speak up, still when you pause. Saying what you ate on Today moves the same way. Nothing extra is recorded or sent; the sound is only measured on your phone to draw it.",
-      "That movement is smoother now: each bar rises the moment you speak and settles gently as your voice tails off, and the bars blend into each other so the ring flows like a wave instead of flickering.",
+      "Up next on Today. One task glows and gently pulses: the one that suits the time of day, so your weight in the morning, food through the day and your journal in the evening. The line under the orb names it too.",
+      "+10 push-ups straight from Today. The Activity card has a +10 button: each tap adds ten without opening the counter.",
+      "The Today tab shows how your day is going. A ring around its icon fills as you finish each task, and glows once the day closes.",
+      "Taps you can feel. On iPhone (iOS 18 or later) and Android, Soma gives a small tap as you check things off, count push-ups, step your weight and switch tabs.",
+      "Swipe a sheet down to close it. Pull down on the handle or the title of any sheet: weight, push-ups, check-in and the rest.",
+      "Tap the tab you're on to jump back to the top.",
+      "What's new is easier to scan. Each change has a short headline; tap it to read the rest.",
+      "Recording moves with your voice. While you record a journal entry, the bars around the microphone and the glowing circle rise when you speak up and go still when you pause. Saying what you ate on Today moves the same way. Nothing extra is recorded or sent; the sound is only measured on your phone to draw it.",
+      "Smoother voice motion. Each bar rises the moment you speak and settles gently as your voice tails off, and the bars blend into each other so the ring flows like a wave instead of flickering.",
       "The privacy page now names everyone who handles your data. New on it: Claude, which reads the food you describe to estimate calories, your week's journal for the week in review if you've switched that on, and your journal for Insights if you chose With Claude (with names and details taken out first). Groq turns food you say aloud into words and reads your week in review aloud when you ask, as well as transcribing if you've switched that on. Morgen, Todoist and Telegram are on it too. Settings → Privacy policy, or soma-onkasary.onslate.com/privacy/.",
       "Tomorrow's brief now shows only the Todoist tasks due that day. Overdue tasks and ones still open from today stay in Todoist.",
-      "The brief in Telegram is easier to read: a bold heading for each part, your events one to a line with the times lined up, each free block on its own line, your tasks with a coloured dot for their priority, and your meals and push-ups underneath.",
+      "The brief in Telegram is easier to read. Each part has a bold heading, your events sit one to a line with the times lined up, each free block gets its own line, your tasks have a coloured dot for their priority, and your meals and push-ups come underneath.",
     ],
   },
   {
@@ -204,3 +211,16 @@ function shift(day: string, days: number): string {
 /** "21 September 2026". */
 export const releaseDate = (date: string) =>
   new Date(date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+/** One change, split so What's new can be scanned (David, 2026-11-03): a short tag when the line opens with one
+ *  ("Fixed:", "Food:", "Admin:"), its first sentence as the headline, and the rest as detail to open. A line with
+ *  one sentence has no detail. */
+export function splitChange(text: string): { tag: string | null; lead: string; rest: string } {
+  let body = text.trim();
+  let tag: string | null = null;
+  const t = body.match(/^([A-Z][A-Za-z' ]{1,22}):\s+/);
+  if (t && !/\s{2}/.test(t[1]) && t[1].split(" ").length <= 3) { tag = t[1] === "For the admin" ? "Admin" : t[1]; body = body.slice(t[0].length); body = body.charAt(0).toUpperCase() + body.slice(1); }
+  // The first sentence: up to a full stop, question or exclamation mark followed by a space and a capital or a quote.
+  const s = body.match(/^(.{12,220}?[.!?])\s+(?=[A-Z"“(])/);
+  return s ? { tag, lead: s[1], rest: body.slice(s[0].length).trim() } : { tag, lead: body, rest: "" };
+}

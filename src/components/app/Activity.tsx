@@ -8,6 +8,7 @@ import { chain, dayIndexOf, defaultRestDays, isRestDay, leaderboard, phaseOf, se
 import { addDays, dayKey, dayStatus, streak } from "@/lib/today";
 import Link from "next/link";
 import { Bar, Button, Card, Field, Icon, Input, Sheet, Switch, Tag, Toast, type IconName } from "@/components/ui";
+import { haptic } from "@/lib/haptics";
 import { DayBanner, longDay } from "./DayBanner";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
@@ -53,7 +54,7 @@ export function Activity() {
     say(lateForRound && n ? `${n} push-ups saved to your record · too late to count for the round` : n >= target && !rest ? `Target hit · ${n} push-ups` : n ? `${n} push-ups logged` : "Push-ups cleared");
   };
   const sr = setBreakdown(target);
-  const quick = (by: number) => savePushups(Math.max(0, st.pushups + by));
+  const quick = (by: number) => { haptic(); savePushups(Math.max(0, st.pushups + by)); };
 
   return (
     <div className={a.page}>
@@ -93,7 +94,7 @@ export function Activity() {
           const done = Boolean(types[t.key]);
           return (
             <button key={t.key} type="button" aria-pressed={done} className={`${sc.move} ${done ? sc.moveOn : ""}`}
-              onClick={() => change("activity", k, (d) => { d.activity.types[t.key] = !d.activity.types[t.key]; })}>
+              onClick={() => { haptic(); change("activity", k, (d) => { d.activity.types[t.key] = !d.activity.types[t.key]; }); }}>
               <span className={sc.moveIcon}><Icon name={ACT_ICONS[t.key] || "pulse"} size={18} /></span>
               <span className={sc.moveText}><span style={{ fontWeight: 600 }}>{t.name}</span><span className="muted" style={{ fontSize: 12 }}>{done ? "Logged" : "Tap to log"}</span></span>
             </button>

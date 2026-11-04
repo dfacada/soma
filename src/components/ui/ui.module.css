@@ -153,9 +153,11 @@ select.input { text-align: left; padding-right: 32px; background-image: url("dat
 /* ── Sheet: a floating card that springs up from the bottom on phones, a centred dialog on desktop ── */
 .sheetBg { position: fixed; inset: 0; background: var(--scrim); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); display: flex; align-items: flex-end; justify-content: center; padding: 8px 8px calc(8px + var(--inset-bottom)); z-index: 50; animation: fade 0.3s ease; }
 .sheet { position: relative; width: 100%; max-width: 560px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 34px; padding: 26px 20px 22px; display: flex; flex-direction: column; gap: 14px; max-height: 82dvh; overflow: auto; box-shadow: 0 -10px 60px rgba(0, 0, 0, 0.35); animation: sheetUp 0.55s var(--spring-soft); }
-/* The grab handle: says "this slides" without being a control. */
-.sheet::before { content: ""; position: absolute; top: 9px; left: 50%; width: 38px; height: 5px; margin-left: -19px; border-radius: var(--r-pill); background: var(--hairline-strong); }
-.sheetHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* The grab handle and the title row: drag either down to close (Sheet.tsx). touch-action none so the drag reaches
+   the sheet instead of scrolling it. */
+.sheetGrab { position: absolute; top: 0; left: 0; right: 0; height: 28px; touch-action: none; cursor: grab; }
+.sheetGrab::before { content: ""; position: absolute; top: 9px; left: 50%; width: 38px; height: 5px; margin-left: -19px; border-radius: var(--r-pill); background: var(--hairline-strong); }
+.sheetHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; touch-action: none; }
 .sheetTitle { font-family: var(--font-display); font-weight: 600; font-size: 24px; letter-spacing: -0.02em; }
 .sheetClose { width: 44px; height: 44px; margin: -8px -8px -8px 0; border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center; color: var(--muted); background: var(--well); }
 @keyframes fade { from { opacity: 0; } }
@@ -163,7 +165,8 @@ select.input { text-align: left; padding-right: 32px; background-image: url("dat
 @media (min-width: 900px) {
   .sheetBg { align-items: center; }
   .sheet { width: 520px; padding: 24px; animation: dialogIn 0.4s var(--spring-soft); }
-  .sheet::before { display: none; }
+  .sheetGrab { display: none; }
+  .sheetHead { touch-action: auto; }
 }
 @keyframes dialogIn { from { transform: translateY(16px) scale(0.96); opacity: 0; } }
 
@@ -182,6 +185,12 @@ select.input { text-align: left; padding-right: 32px; background-image: url("dat
 /* Pressed: in the touchdown frame, before anything loads (Shell's touchstart listener lets iOS show :active). */
 .tab svg { transition: transform 0.25s var(--spring); }
 .tab:active svg { transform: scale(0.82); transition-duration: 0.06s; }
+/* The Today tab's progress ring: a hairline track, the done share in the three hues, the whole ring lit once closed. */
+.tabRing { position: relative; width: 30px; height: 30px; display: grid; place-items: center; flex-shrink: 0; }
+.tabRing svg:first-child { position: absolute; inset: 0; width: 30px; height: 30px; overflow: visible; }
+.tabRingTrack { fill: none; stroke: color-mix(in srgb, currentColor 22%, transparent); stroke-width: 2; }
+.tabRingFill { fill: none; stroke: var(--food); stroke-width: 2.4; stroke-linecap: round; transition: stroke-dasharray 0.8s var(--spring); }
+.tabRingClosed .tabRingFill { stroke: var(--activity); filter: drop-shadow(0 0 4px var(--activity)); }
 
 .side { display: flex; flex-direction: column; width: 232px; flex-shrink: 0; padding: 28px 16px 20px; gap: 6px; background: var(--side); border-right: 1px solid var(--hairline-soft); height: 100dvh; position: sticky; top: 0; }
 .sideBrand { font-family: var(--font-display); font-weight: 600; font-size: 22px; letter-spacing: 0.02em; padding: 4px 12px 18px; }
