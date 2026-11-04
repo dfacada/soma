@@ -3,8 +3,9 @@
 // kept in Settings "so we can track all the great improvements").
 //
 // Every change a user can notice adds a line here in the same commit (CLAUDE.md). Group by the day it shipped:
-// a day that already has a release gets another item, a new day gets a new release at the top. Ids never change once
-// shipped: the app remembers the newest id each person has seen (settings.seenChanges) and shows what is newer.
+// a day that already has a release gets another item at the top of its list, a new day gets a new release at the
+// top. Ids never change once shipped: the app remembers the newest id each person has seen and how many lines it had
+// then (settings.seenChanges, "2026-11-03#12"), and shows what is newer, including lines added to that release since.
 // No React and no imports, so scripts/test-changelog.mjs runs this file as it is.
 
 export type Release = { id: string; date: string; title: string; items: string[] };
@@ -15,6 +16,8 @@ export const CHANGES: Release[] = [
     date: "2026-11-03",
     title: "Feel and flow",
     items: [
+      "What's new catches up. Lines added to an update after you've read it now come up the next time you open Soma, on their own.",
+      "Every tab at the bottom says its name to VoiceOver, not just the one you're on.",
       "Settings fits on two screens. Its sections sit in groups (You, Your day, Reminders, Connections and privacy, Soma), each row shows what it's set to now, and a tap opens it right there.",
       "Links into Settings open the right section: Connect Fitbit on Activity, Open Settings on Tomorrow's brief, and coming back from Google after connecting Fitbit.",
       "Your last seven days of push-ups. On Activity, a bar for each day fills toward that day's target and glows when you hit it, with how many days you hit. Tap a day to fill it in.",
@@ -203,12 +206,24 @@ export const CHANGES: Release[] = [
 ];
 
 /** The releases someone has not seen yet, newest first. Never seen anything: the last week's, at most three. */
-export function unseen(seenId: string, today: string, changes: Release[] = CHANGES): Release[] {
+/** What to remember as seen: the newest release and how many lines it had ("2026-11-03#12"). Lines are only ever
+ *  added to the newest release, at the top, so the count says which of its lines someone has not seen yet. */
+export const seenMark = (changes: Release[] = CHANGES) => (changes.length ? `${changes[0].id}#${changes[0].items.length}` : "");
+
+export function unseen(seen: string, today: string, changes: Release[] = CHANGES): Release[] {
   if (!changes.length) return [];
-  if (seenId) {
+  if (seen) {
+    const [seenId, lines] = seen.split("#");
     const at = changes.findIndex((r) => r.id === seenId);
     // An id this build does not know (an older build, a typo) shows only the newest, never the whole history.
-    return at === -1 ? changes.slice(0, 1) : changes.slice(0, at);
+    if (at === -1) return changes.slice(0, 1);
+    if (at > 0) return changes.slice(0, at);
+    // The newest was seen: show only lines added to it since (a second update the same day). A bare id, saved before
+    // lines were counted, cannot say how many there were, so the release shows again in full.
+    const newest = changes[0];
+    const count = lines === undefined ? -1 : Number(lines);
+    if (!(count >= 0)) return [newest];
+    return count >= newest.items.length ? [] : [{ ...newest, items: newest.items.slice(0, newest.items.length - count) }];
   }
   const weekAgo = shift(today, -7);
   const recent = changes.filter((r) => r.date >= weekAgo).slice(0, 3);

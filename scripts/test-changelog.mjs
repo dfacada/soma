@@ -2,7 +2,7 @@
 //
 //   node --import ./scripts/ts-resolve.mjs scripts/test-changelog.mjs
 
-import { CHANGES, splitChange, unseen } from "../src/lib/changelog.ts";
+import { CHANGES, seenMark, splitChange, unseen } from "../src/lib/changelog.ts";
 
 let passed = 0; const failures = [];
 const check = (name, ok, detail) => { if (ok) { passed++; console.log("  ok   " + name); } else { failures.push(name); console.log("  FAIL " + name, detail ?? ""); } };
@@ -14,7 +14,15 @@ const list = [
 ];
 
 console.log("what someone is shown");
-check("seen the newest: nothing", unseen("c", "2026-09-21", list).length === 0);
+check("what is remembered: the newest id and its line count", seenMark(list) === "c#1" && seenMark([]) === "");
+check("seen the newest with all its lines: nothing", unseen("c#1", "2026-09-21", list).length === 0);
+const grown = [{ ...list[0], items: ["c3", "c2", "c"] }, ...list.slice(1)];
+const later = unseen("c#1", "2026-09-21", grown);
+check("lines added to the newest since: just those lines", later.length === 1 && later[0].id === "c" && later[0].items.join() === "c3,c2", later);
+check("seen with more lines than it has now (one was taken out): nothing", unseen("c#5", "2026-09-21", list).length === 0);
+check("a bare id of the newest (saved before lines were counted): the whole release again", unseen("c", "2026-09-21", grown).map((r) => r.items.length).join() === "3");
+check("a bare id of an older release: everything newer, as before", unseen("b", "2026-09-21", list).map((r) => r.id).join() === "c");
+check("a count that is not a number: the whole release again", unseen("c#x", "2026-09-21", grown).map((r) => r.items.length).join() === "3");
 check("seen an older one: everything newer, newest first", unseen("a", "2026-09-21", list).map((r) => r.id).join() === "c,b");
 check("never seen anything: the last week's only", unseen("", "2026-09-21", list).map((r) => r.id).join() === "c,b");
 check("never seen, nothing this week: just the newest", unseen("", "2026-10-30", list).map((r) => r.id).join() === "c");

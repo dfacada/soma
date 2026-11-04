@@ -31,7 +31,7 @@ export function TabBar({ current, onSelect, className, todayProgress }: NavProps
         const p = t.id === "today" ? todayProgress : undefined;
         return (
           <button key={t.id} type="button" className={cx(s.tab, s[t.hue], current === t.id && s.tabOn)} aria-current={current === t.id ? "page" : undefined} onClick={() => onSelect(t.id)}
-            aria-label={p ? `${t.label}, ${p.closed ? "day closed" : `${p.done} of ${p.total} done`}` : undefined}>
+            aria-label={p ? `${t.label}, ${p.closed ? "day closed" : `${p.done} of ${p.total} done`}` : t.label}>
             {p ? (
               <span className={cx(s.tabRing, p.closed && s.tabRingClosed)}>
                 <svg viewBox="0 0 30 30" aria-hidden>

@@ -6,7 +6,7 @@
 // once per phone. Settings keeps the whole history (ReleaseList).
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CHANGES, releaseDate, splitChange, unseen, type Release } from "@/lib/changelog";
+import { releaseDate, seenMark, splitChange, unseen, type Release } from "@/lib/changelog";
 import { report } from "@/lib/log";
 import { installDone, markNewsDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
@@ -36,7 +36,8 @@ export function WhatsNew() {
     setShow(null);
     markNewsDone();
     // A failed save only means it shows again next time; say so in the log, not on the screen.
-    void saveSettings({ seenChanges: CHANGES[0].id }).catch((e) => report("app", "whats_new_save_failed", e, undefined, "warn"));
+    // The newest release and how many lines it has, so lines added to it later the same day still come up once.
+    void saveSettings({ seenChanges: seenMark() }).catch((e) => report("app", "whats_new_save_failed", e, undefined, "warn"));
   }, [saveSettings]);
 
   return (
