@@ -5,7 +5,7 @@
 
 import { useCallback, useState } from "react";
 import { chain, dayIndexOf, defaultRestDays, isRestDay, leaderboard, phaseOf, setBreakdown, type Log, type Member } from "@/lib/round";
-import { addDays, dayKey, dayStatus, streak } from "@/lib/today";
+import { addDays, dayKey, dayStatus, streak, WEEKDAYS } from "@/lib/today";
 import Link from "next/link";
 import { Bar, Button, Card, Field, Icon, Input, Sheet, Switch, Tag, Toast, type IconName } from "@/components/ui";
 import { haptic } from "@/lib/haptics";
@@ -56,6 +56,18 @@ export function Activity() {
   const sr = setBreakdown(target);
   const quick = (by: number) => { haptic(); savePushups(Math.max(0, st.pushups + by)); };
 
+  // The last seven days of push-ups against each day's own target (a round's, or yours). These are the days that
+  // can still be filled in, so a tap on one opens it, as the week on Today does.
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(today, i - 6);
+    const key = dayKey(d);
+    const f = rounds.forDay(key);
+    const n = map[key]?.activity?.pushups ?? 0;
+    return { key, d, n, target: f.target, rest: f.rest, hit: !f.rest && n >= f.target };
+  });
+  const weekHits = week.filter((w) => w.hit).length;
+  const weekScored = week.filter((w) => !w.rest).length;
+
   return (
     <div className={a.page}>
       <div className={a.pageHead}>
@@ -85,6 +97,24 @@ export function Activity() {
           <button type="button" className={sc.q} onClick={() => quick(-10)} disabled={st.pushups === 0} aria-label="Ten fewer push-ups">−10</button>
           <button type="button" className={sc.q} onClick={() => quick(10)} aria-label="Ten more push-ups">+10</button>
           <button type="button" className={`${sc.q} ${sc.qHi}`} onClick={() => quick(25)} aria-label="Twenty-five more push-ups">+25</button>
+        </div>
+        <div className={sc.week}>
+          <div className={a.entryHead}>
+            <span className="eb">Last 7 days</span>
+            <span className="m muted" style={{ fontSize: 12 }}>{weekHits} of {weekScored} hit</span>
+          </div>
+          <div className={sc.weekBars}>
+            {week.map((w) => (
+              <button key={w.key} type="button" aria-pressed={w.key === k}
+                className={`${sc.weekDay} ${w.key === k ? sc.weekOn : ""} ${w.hit ? sc.weekHit : ""} ${w.rest ? sc.weekRest : ""}`}
+                aria-label={`${w.key === todayKey ? "Today" : longDay(w.d)}: ${w.n} push-ups${w.rest ? ", a rest day" : w.hit ? ", target hit" : ` of ${w.target}`}`}
+                onClick={() => { haptic(); setView(w.key === todayKey ? null : w.key); }}>
+                <span className={sc.weekTrack}><i style={{ height: `${w.rest ? 0 : Math.min(100, (w.n / Math.max(1, w.target)) * 100).toFixed(0)}%` }} /></span>
+                <span className={`m ${sc.weekN}`}>{w.rest ? "rest" : w.n}</span>
+                <span className={sc.weekLabel}>{w.key === todayKey ? "Today" : WEEKDAYS[w.d.getDay()]}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </Card>
 
