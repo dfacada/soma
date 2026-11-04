@@ -69,14 +69,14 @@ export function Shell({ children }: { children: ReactNode }) {
   // A tap cross-fades the switch where the browser can (Safari 18+, Chromium) and motion is welcome. The new view
   // is captured once React has shown the tab: the layout effect below resolves `landed`, or the guard does.
   const landed = useRef<(() => void) | null>(null);
-  const go = useCallback((s: Section) => {
+  const go = useCallback((s: Section, part?: string) => {
     haptic();
     // The tab you are already on goes back to its top, as an iPhone's tab bar does.
-    if (window.location.pathname === PATHS[s]) {
+    if (window.location.pathname === PATHS[s] && !part) {
       window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
       return;
     }
-    const push = () => window.history.pushState(null, "", PATHS[s]);
+    const push = () => window.history.pushState(null, "", PATHS[s] + (part ? "#" + part : ""));
     if (!document.startViewTransition || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return push();
     const transition = document.startViewTransition(() => new Promise<void>((done) => {
       landed.current = done;

@@ -201,7 +201,7 @@ function JournalCard({ jt, tone }: { jt: ReturnType<typeof journalTone>; tone: R
           {tone.status === "failed" && <p className={s.note}>Some days couldn&apos;t be read just now; those use the phone&apos;s reading until next time.</p>}
         </>
       )}
-      {tone.status !== "locked" && <p className={s.how}><Icon name="lock" size={13} />{how} <button type="button" className={a.lnk} onClick={() => goTab("settings")}>Change</button></p>}
+      {tone.status !== "locked" && <p className={s.how}><Icon name="lock" size={13} />{how} <button type="button" className={a.lnk} onClick={() => goTab("settings", "journal")}>Change</button></p>}
     </Card>
   );
 }

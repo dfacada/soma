@@ -15,6 +15,7 @@ export function tabOf(pathname: string): Section | null {
   return first in PATHS ? (first as Section) : null;
 }
 
-/** Switch tab without a network round trip: Shell keeps the screens mounted and only the URL changes. */
-export const TabsGo = createContext<(s: Section) => void>(() => undefined);
+/** Switch tab without a network round trip: Shell keeps the screens mounted and only the URL changes. `part` lands on
+ *  one part of the tab (a Settings section: goTab("settings", "journal") opens /settings/#journal). */
+export const TabsGo = createContext<(s: Section, part?: string) => void>(() => undefined);
 export const useGoTab = () => useContext(TabsGo);
