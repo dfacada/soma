@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Button, Card, Field, Icon, Input, Medallion, Switch, Tag, type Domain, type IconName } from "@/components/ui";
+import { Button, Field, Icon, Input, Medallion, Switch, Tag, type Domain, type IconName } from "@/components/ui";
 import type { Provider } from "@/lib/brief-api";
 import type { Driver } from "@/lib/great-days";
 import { report } from "@/lib/log";
@@ -127,7 +127,7 @@ export function TomorrowScreen() {
           <section className={s.card} aria-label="Your calendar and tasks">
             <span className="eb">Your calendar and tasks</span>
             <p className={s.rowSub}>Connect Morgen and Todoist in Settings, under Tomorrow&apos;s brief, and the day&apos;s events, free time and tasks show here.</p>
-            <div><Link href="/settings/" className={s.pill}>Open Settings</Link></div>
+            <div><Link href="/settings/#brief" className={s.pill}>Open Settings</Link></div>
           </section>
         )}
         {connected && locked && (
@@ -331,8 +331,7 @@ export function TomorrowSettings({ say }: { say: (m: string) => void }) {
   const open = journal.vault === "open";
   const b = settings.brief;
   return (
-    <Card>
-      <span className="eb">Tomorrow&apos;s brief</span>
+    <>
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.55, margin: 0 }}>
         From 6 pm a card on Today opens the next day: your calendar with the free time between, your tasks, and Soma&apos;s side of it.
       </p>
@@ -368,7 +367,7 @@ export function TomorrowSettings({ say }: { say: (m: string) => void }) {
           })}
         </div>
       )}
-    </Card>
+    </>
   );
 }
 

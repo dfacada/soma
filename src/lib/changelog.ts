@@ -15,6 +15,8 @@ export const CHANGES: Release[] = [
     date: "2026-11-03",
     title: "Feel and flow",
     items: [
+      "Settings fits on two screens. Its sections sit in groups (You, Your day, Reminders, Connections and privacy, Soma), each row shows what it's set to now, and a tap opens it right there.",
+      "Links into Settings open the right section: Connect Fitbit on Activity, Open Settings on Tomorrow's brief, and coming back from Google after connecting Fitbit.",
       "Your last seven days of push-ups. On Activity, a bar for each day fills toward that day's target and glows when you hit it, with how many days you hit. Tap a day to fill it in.",
       "Meals in one list. On Food, tap the round button beside a meal to mark it eaten, or tap again to undo; tap the meal itself for its macros, Swap meal, Ate something else and the recipe.",
       "Calories left. Food shows how many are left for the day beside the total, or how far over you are.",

@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { report, watchUncaught } from "@/lib/log";
 import { disablePush, enablePush, pushState, refreshPush, sendTest, type PushState } from "@/lib/push";
-import { Button, Card, Field, Input, Switch } from "@/components/ui";
+import { Button, Field, Input, Switch } from "@/components/ui";
 import { useSession } from "./Session";
 
 /** What this device can do about notifications, in a sentence (also used by tomorrow's brief in Settings). */
@@ -48,7 +48,8 @@ export function NudgeKeeper() {
   return null;
 }
 
-export function NudgeCard({ say }: { say: (m: string) => void }) {
+/** The evening nudge's settings; Settings puts them in its Reminders group under their own heading. */
+export function NudgeSettings({ say }: { say: (m: string) => void }) {
   const { settings, saveSettings } = useSession();
   const { on, time } = settings.nudge;
   const [device, setDevice] = useState<PushState | "checking">("checking");
@@ -87,8 +88,7 @@ export function NudgeCard({ say }: { say: (m: string) => void }) {
   const test = useCallback(() => { void sendTest().then(() => say("Test sent. It should arrive within a minute."), (e) => say(e instanceof ApiError ? e.message : "Couldn't send a test")); }, [say]);
 
   return (
-    <Card>
-      <span className="eb">Evening nudge</span>
+    <>
       <Field name="Nudge me if the day is still open" help={`One notification at the time below, naming what is left. A closed day gets none. ${LINE[device]}`}>
         <Switch checked={on && device === "on"} label="Evening nudge" onChange={(v) => { if (!busy) void (v ? turnOn() : turnOff()); }} />
       </Field>
@@ -99,6 +99,6 @@ export function NudgeCard({ say }: { say: (m: string) => void }) {
       </Field>
       {on && device === "off" && <div><Button size="sm" variant="secondary" disabled={busy} onClick={() => void turnOn()}>Turn on for this device</Button></div>}
       {device === "on" && <div><Button size="sm" variant="secondary" onClick={test}>Send a test</Button></div>}
-    </Card>
+    </>
   );
 }

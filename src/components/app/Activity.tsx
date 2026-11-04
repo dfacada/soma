@@ -137,7 +137,7 @@ export function Activity() {
           <Bar label="Steps" value={steps ?? 0} max={settings.goals.steps} color="var(--activity)" text={`${(steps ?? 0).toLocaleString("en-US")} / ${settings.goals.steps.toLocaleString("en-US")}`} />
         </Card>
       ) : health.status === "off" || health.status === "reconnect" ? (
-        <Link href="/settings/" className={a.lnk} style={{ alignSelf: "center", minHeight: 44, display: "inline-flex", alignItems: "center" }}>{health.status === "off" ? "Connect Fitbit in Settings to see steps" : "Reconnect Fitbit in Settings to keep steps coming"}</Link>
+        <Link href="/settings/#fitbit" className={a.lnk} style={{ alignSelf: "center", minHeight: 44, display: "inline-flex", alignItems: "center" }}>{health.status === "off" ? "Connect Fitbit in Settings to see steps" : "Reconnect Fitbit in Settings to keep steps coming"}</Link>
       ) : null}
 
       {rounds.loading ? <span className="eb">Loading the round</span> : current ? (

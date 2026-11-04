@@ -35,7 +35,9 @@ export function takeOAuthReturn(): OAuthReturn {
   if (!code && !error) return null;
   const expected = sessionStorage.getItem(STATE_KEY);
   sessionStorage.removeItem(STATE_KEY);
-  window.history.replaceState(null, "", window.location.pathname);
+  // The address keeps only the section to show: Settings opens Fitbit, where the outcome is (SettingsScreen).
+  window.history.replaceState(null, "", window.location.pathname + "#fitbit");
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
   if (!state || state !== expected) return { error: "That Google sign-in did not start here. Try connecting again." };
   if (error || !code) return { error: error === "access_denied" ? "Google connection cancelled" : "Google could not connect" };
   return { code };
