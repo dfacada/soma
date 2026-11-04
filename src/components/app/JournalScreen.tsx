@@ -1,13 +1,17 @@
 "use client";
 
-// The Journal screen: entries newest first, playback, a written note per entry, and the floating mic.
+// The Journal screen: the record card (with the question of the day and the last two weeks as dots), one past entry
+// to look back on, then entries newest first with playback and a written note each.
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, Icon, Input, Medallion, StageBar, Tag, type StepProgress } from "@/components/ui";
+import { haptic } from "@/lib/haptics";
 import { report } from "@/lib/log";
 import { clock } from "@/lib/journal";
+import { journalRun, lookBack, recentDays } from "@/lib/journal-days";
 import { toWav, within } from "@/lib/playable";
-import { dayKey } from "@/lib/today";
+import { promptFor } from "@/lib/prompts";
+import { dayKey, fromKey } from "@/lib/today";
 import { useJournal, type Item } from "./Journal";
 import a from "./app.module.css";
 import sc from "./screens.module.css";
@@ -20,6 +24,9 @@ const dayLabel = (ms: number) => {
   return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 };
 const timeLabel = (ms: number) => new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
+const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "calm";
+/** A transcript longer than this folds to six lines until "Read all". */
+const FOLD_AT = 320;
 
 /** The words of a search, each escaped for a RegExp. Empty when there is nothing to look for. */
 const termsOf = (q: string) => q.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
@@ -45,6 +52,29 @@ export function JournalScreen() {
     return j.items.filter((i) => { const text = index.get(i.id) || ""; return res.every((re) => re.test(text)); });
   }, [j.items, terms, index]);
 
+  // The dots, the run and the look back are worked out here from what is already decrypted; none of it leaves the phone.
+  const todayKey = dayKey(new Date());
+  const dots = useMemo(() => recentDays(j.items || [], fromKey(todayKey)), [j.items, todayKey]);
+  const run = useMemo(() => journalRun(j.items || [], fromKey(todayKey)), [j.items, todayKey]);
+  const back = useMemo(() => (j.items ? lookBack(j.items.filter((i) => i.entry && !i.pending), fromKey(todayKey)) : null), [j.items, todayKey]);
+  const prompt = promptFor(fromKey(todayKey));
+  const daysOn = dots.filter((d) => d.on).length;
+
+  // Look back (and anything else that points at an entry) scrolls to it and lights it for a moment.
+  const [flash, setFlash] = useState<string | null>(null);
+  const jumpTo = useCallback((id: string) => {
+    haptic();
+    setQuery("");
+    setFlash(id);
+    // After the search clears, the entry is back in the list.
+    window.setTimeout(() => document.getElementById("entry-" + id)?.scrollIntoView({ behavior: calm() ? "auto" : "smooth", block: "center" }), 60);
+  }, []);
+  useEffect(() => {
+    if (!flash) return;
+    const t = window.setTimeout(() => setFlash(null), 2400);
+    return () => window.clearTimeout(t);
+  }, [flash]);
+
   return (
     <div className={a.page}>
       <div className={a.pageHead}>
@@ -61,7 +91,13 @@ export function JournalScreen() {
           <span className={sc.recordText}>
             <span className="eb">New entry</span>
             <span className={`d ${sc.recordTitle}`}>Say how today went.</span>
-            <span className={sc.recordSub}>Two minutes is plenty. It is encrypted with your vault key before it uploads.</span>
+            <span className={sc.recordSub}>Not sure where to start? {prompt}</span>
+            {!!j.items?.length && (
+              <span className={sc.recordRun}>
+                <span className={sc.dots} aria-hidden>{dots.map((d) => <i key={d.key} className={d.on ? sc.dotOn : undefined} />)}</span>
+                <span className="m">{run >= 2 ? `${run} days in a row` : `${daysOn} of the last 14 days`}</span>
+              </span>
+            )}
           </span>
           <span className={sc.recordButton}><Icon name="mic" size={32} strokeWidth={2} /></span>
         </button>
@@ -97,6 +133,15 @@ export function JournalScreen() {
         <Card><p className="muted">Nothing here yet. Your entries land here, sealed, and open only with your vault.</p></Card>
       )}
 
+      {/* One entry from about a month or a week ago, read back. Only on this phone, only with the vault open. */}
+      {j.vault === "open" && back && !terms.length && (
+        <button type="button" className={sc.back} onClick={() => jumpTo(back.item.id)}>
+          <span className={sc.backHead}><span className="eb">{back.label}</span><span className="m muted">{dayLabel(back.item.createdMs)}</span></span>
+          <span className={sc.backText}>{back.item.entry!.transcript.trim() ? `“${back.item.entry!.transcript.trim()}”` : `A recording, ${clock(back.item.entry!.audioDuration)} long.`}</span>
+          <span className={sc.backGo}>{back.item.entry!.transcript.trim() ? "Read it again" : "Play it again"}<Icon name="chevron" size={14} /></span>
+        </button>
+      )}
+
       {j.vault === "open" && !!j.items?.length && (
         <div className={a.searchRow}>
           <Input type="search" placeholder="Search your transcripts" aria-label="Search transcripts" value={query} enterKeyHint="search"
@@ -109,12 +154,18 @@ export function JournalScreen() {
         </div>
       )}
 
-      {shown && groupByDay(shown).map(([label, list]) => (
-        <section key={label} className={a.dayGroup}>
-          <span className="eb">{label}</span>
-          {list.map((item) => <EntryCard key={item.id} item={item} terms={terms} />)}
-        </section>
-      ))}
+      {shown && groupByDay(shown).map(([label, list]) => {
+        const secs = list.reduce((n, i) => n + (i.entry?.audioDuration || 0), 0);
+        return (
+          <section key={label} className={a.dayGroup}>
+            <div className={a.dayHead}>
+              <span className="eb">{label}</span>
+              <span className="m muted">{list.length} {list.length === 1 ? "entry" : "entries"}{secs ? ` · ${clock(secs)}` : ""}</span>
+            </div>
+            {list.map((item) => <EntryCard key={item.id} item={item} terms={terms} flash={flash === item.id} />)}
+          </section>
+        );
+      })}
 
     </div>
   );
@@ -126,14 +177,17 @@ function groupByDay(items: Item[]): [string, Item[]][] {
   return [...groups.entries()];
 }
 
-function EntryCard({ item, terms }: { item: Item; terms: string[] }) {
+function EntryCard({ item, terms, flash }: { item: Item; terms: string[]; flash: boolean }) {
   const j = useJournal();
   const e = item.entry;
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(e?.transcript || "");
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [full, setFull] = useState(false);
   const working = j.transcribing.includes(item.id);
+  // A long transcript folds so the list stays scannable; a search shows every word it matched.
+  const long = (e?.transcript || "").length > FOLD_AT && !terms.length;
 
   async function save() {
     setSaving(true);
@@ -144,7 +198,7 @@ function EntryCard({ item, terms }: { item: Item; terms: string[] }) {
 
   if (!e) {
     return (
-      <Card>
+      <Card id={"entry-" + item.id}>
         <div className={a.entryHead}><span className="m muted" style={{ fontSize: 12 }}>{timeLabel(item.createdMs)}</span><Tag>can&apos;t decrypt</Tag></div>
         <p className="muted" style={{ fontSize: 13 }}>This entry was encrypted with a different passphrase. It is still stored; it just cannot be read with this one.</p>
       </Card>
@@ -152,7 +206,7 @@ function EntryCard({ item, terms }: { item: Item; terms: string[] }) {
   }
 
   return (
-    <Card>
+    <Card id={"entry-" + item.id} className={flash ? a.flash : undefined}>
       <div className={a.entryHead}>
         <span className="m muted" style={{ fontSize: 12 }}>{timeLabel(item.createdMs)}{e.audioDuration ? ` · ${clock(e.audioDuration)}` : ""}</span>
         <span className={a.entryTags}>
@@ -163,7 +217,7 @@ function EntryCard({ item, terms }: { item: Item; terms: string[] }) {
         </span>
       </div>
 
-      {e.hasAudio && <Player id={item.id} mime={e.audioMime} local={item.pending} />}
+      {e.hasAudio && <Player id={item.id} mime={e.audioMime} local={item.pending} seconds={e.audioDuration} />}
 
       {editing ? (
         <>
@@ -176,7 +230,10 @@ function EntryCard({ item, terms }: { item: Item; terms: string[] }) {
       ) : (
         <>
           {e.transcript
-            ? <p className={a.transcript}><Marked text={e.transcript} terms={terms} /></p>
+            ? <>
+                <p className={`${a.transcript} ${long && !full ? a.folded : ""}`}><Marked text={e.transcript} terms={terms} /></p>
+                {long && <button type="button" className={a.readAll} aria-expanded={full} onClick={() => setFull(!full)}>{full ? "Show less" : "Read all"}</button>}
+              </>
             : working
               ? <p className="muted" style={{ fontSize: 13 }}>Transcribing… this usually takes a few seconds.</p>
               : <p className="muted" style={{ fontSize: 13 }}>{j.cloudOn ? "No transcript yet." : "No transcript. Cloud transcription is off; turn it on in Settings, or write a note."}</p>}
@@ -218,8 +275,9 @@ const stepOf = (stage: string): Step => stage === "download" || stage === "decry
 type Shown = { steps: Step[]; at: Step; progress: StepProgress; detail?: string; failed?: string; note?: string };
 
 /** Downloads and decrypts the audio on first play, then keeps the object URL for the life of the card. While it
- *  opens, a bar under the button shows each step that will run; a failure names the stage the admin log names. */
-function Player({ id, mime: entryMime, local }: { id: string; mime: string; local: boolean }) {
+ *  opens, a bar under the button shows each step that will run; a failure names the stage the admin log names.
+ *  The track beside the button fills as it plays, and once it has played a tap on the track jumps there. */
+function Player({ id, mime: entryMime, local, seconds }: { id: string; mime: string; local: boolean; seconds: number }) {
   const j = useJournal();
   const audio = useRef<HTMLAudioElement | null>(null);
   const url = useRef<string | null>(null);
@@ -329,13 +387,28 @@ function Player({ id, mime: entryMime, local }: { id: string; mime: string; loca
     }
   }, [state, id, entryMime, local, j]);
 
+  // The recording's own length, saved with the entry: WebM from a phone often reports no duration of its own.
+  const total = seconds > 0 ? seconds : 0;
+  const live = state === "playing" || state === "paused";
+  const seek = (ev: React.PointerEvent<HTMLSpanElement>) => {
+    const el = audio.current;
+    if (!el || !url.current || !total) return;
+    const r = ev.currentTarget.getBoundingClientRect();
+    const at = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) * total;
+    try { el.currentTime = at; setPos(at); }
+    catch (e) { report("journal", "seek_failed", e, { mime: el.dataset.mime || "" }, "warn"); }
+  };
+
   return (
     <div className={a.playerBox}>
       <div className={a.player}>
         <button type="button" className={a.play} onClick={() => void toggle()} aria-label={state === "playing" ? "Pause" : state === "failed" ? "Try again" : "Play"} disabled={state === "loading"}>
           <Icon name={state === "playing" ? "pause" : "play"} size={16} />
         </button>
-        <span className="m muted" style={{ fontSize: 12 }}>{state === "loading" ? "Opening recording" : state === "idle" ? "Play recording" : state === "failed" ? "Try again" : state === "ready" ? "Tap to play" : clock(pos)}</span>
+        <span className={`${a.track} ${live ? a.trackLive : ""}`} onPointerDown={live ? seek : undefined} aria-hidden>
+          <i style={{ width: `${total ? Math.min(100, (pos / total) * 100).toFixed(1) : 0}%` }} />
+        </span>
+        <span className={`m muted ${a.playTime}`}>{state === "loading" ? "Opening" : state === "failed" ? "Try again" : state === "ready" ? "Tap play" : live ? `${clock(pos)} / ${clock(total || pos)}` : total ? clock(total) : "Play"}</span>
       </div>
       {shown && <StageBar domain="journal" steps={shown.steps.map((st) => STEP_LABEL[st])} at={shown.steps.indexOf(shown.at)} progress={shown.progress} detail={shown.detail} failed={shown.failed} note={shown.note} />}
     </div>

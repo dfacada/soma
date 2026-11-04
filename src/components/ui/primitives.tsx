@@ -50,7 +50,7 @@ export function Chip({ label, on = false, kind = "mood", count, className, ...re
 }
 
 // ── Card. With onClick it renders as a button: every daily task completes with a tap. ──
-type CardProps = { children: ReactNode; onClick?: () => void; recording?: boolean; className?: string; "aria-label"?: string };
+type CardProps = { children: ReactNode; onClick?: () => void; recording?: boolean; className?: string; id?: string; "aria-label"?: string };
 export function Card({ children, onClick, recording, className, ...rest }: CardProps) {
   const cls = cx(s.card, onClick && s.cardTap, recording && s.cardRecording, className);
   if (onClick) {

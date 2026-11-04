@@ -9,6 +9,7 @@ import { Icon, Orb, type OrbBead } from "@/components/ui";
 import { clock } from "@/lib/journal";
 import type { Meter } from "@/lib/meter";
 import { haptic } from "@/lib/haptics";
+import { promptFor } from "@/lib/prompts";
 import type { Said } from "@/lib/food-say";
 import { cap } from "@/lib/today";
 import { useJournal } from "./Journal";
@@ -134,7 +135,7 @@ export function RecordMoment() {
             : <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path className={m.check} d="M5 12l5 5 9-10" /></svg>}
         </Vox>
         <div className={m.text} key={phase} aria-live="polite">
-          {phase === "rec" && <><span className={`d ${m.head}`}>Listening…</span><span className={m.sub}>Say how today went. Tap stop when you&apos;re done.</span></>}
+          {phase === "rec" && <><span className={`d ${m.head}`}>Listening…</span><span className={m.sub}>Say how today went. Not sure where to start? {promptFor(new Date())}</span></>}
           {phase === "seal" && <><span className={`d ${m.head}`}>Sealing it</span><span className={`m ${m.hex}`} aria-hidden>{hex}</span><span className={m.sub}>Kept on this phone, and encrypted with your vault key before it uploads.</span></>}
           {phase === "saved" && <><span className={`d ${m.head}`}>Saved · {clock(j.lastSaved.seconds)}</span><span className={m.sub}>Only your passphrase opens it.</span></>}
         </div>

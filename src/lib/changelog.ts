@@ -15,6 +15,12 @@ export const CHANGES: Release[] = [
     date: "2026-11-03",
     title: "Feel and flow",
     items: [
+      "A question a day. Not sure where to start? The Journal's record card and the recording screen offer one, like “What gave you energy today?”, and it changes every day.",
+      "Two weeks of dots on the record card. A dot lights for each day you journaled, with how many days in a row you've kept it up.",
+      "Look back. The Journal brings back what you said about a month or a week ago; tap it to find that entry and read or play it again. It's worked out on your phone and nothing is sent.",
+      "The player shows where you are. A line fills as an entry plays, with the time so far and the length; while it plays, tap the line to jump ahead or back.",
+      "Long entries fold to six lines. Tap Read all for the rest; a search always shows the whole entry.",
+      "Each day in the Journal shows how many entries it holds and how long they run.",
       "Up next on Today. One task glows and gently pulses: the one that suits the time of day, so your weight in the morning, food through the day and your journal in the evening. The line under the orb names it too.",
       "+10 push-ups straight from Today. The Activity card has a +10 button: each tap adds ten without opening the counter.",
       "The Today tab shows how your day is going. A ring around its icon fills as you finish each task, and glows once the day closes.",

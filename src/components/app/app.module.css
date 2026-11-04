@@ -59,16 +59,30 @@ button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
 .vaultLinks > button { min-height: 44px; }
 .dayGroup { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; }
 .dayGroup > :first-child { padding: 0 4px; }
+/* The day's label, and how many entries and minutes it holds. */
+.dayHead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.dayHead :global(.m) { font-size: 11px; }
 .entryHead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .entryTags { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 .entryActions { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; flex-wrap: wrap; }
 .transcript { font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.folded { display: -webkit-box; -webkit-line-clamp: 6; line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.readAll { align-self: flex-start; min-height: 32px; margin-top: -6px; font-size: 13px; font-weight: 600; color: var(--journal); }
+/* An entry that something pointed at (Look back) lights up for a moment. */
+.flash { animation: flash 2.2s ease-out; }
+@keyframes flash { 0%, 35% { border-color: var(--journal); box-shadow: 0 0 0 1px var(--journal), 0 18px 44px -18px color-mix(in srgb, var(--journal) var(--glow-pct), transparent); } }
 /* Text boxes: the field look of an Input, a quiet scrollbar, and the same soft ring on focus. */
 .note, .writeBox { width: 100%; border-radius: 18px; border: 1px solid var(--hairline); background: var(--field); padding: 14px 16px; font: inherit; font-size: 16px; line-height: 1.5; color: var(--ink); resize: none; scrollbar-width: thin; scrollbar-color: var(--hairline-strong) transparent; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
 .note::placeholder, .writeBox::placeholder { color: var(--faint); }
 .note:focus, .writeBox:focus { outline: none; border-color: var(--hairline-strong); box-shadow: 0 0 0 4px var(--well); }
 .playerBox { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.player { display: flex; align-items: center; gap: 10px; }
+.player { display: flex; align-items: center; gap: 12px; }
+/* The track: a 4px line in a 44px-tall hit area, filling with the journal colour as it plays. */
+.track { position: relative; flex: 1; min-width: 0; height: 44px; display: flex; align-items: center; }
+.track::before { content: ""; position: absolute; inset: 20px 0; border-radius: var(--r-pill); background: var(--well); }
+.track i { position: relative; height: 4px; border-radius: var(--r-pill); background: var(--journal); box-shadow: 0 0 8px color-mix(in srgb, var(--journal) 50%, transparent); transition: width 0.25s linear; }
+.trackLive { cursor: pointer; touch-action: none; }
+.playTime { font-size: 12px; flex-shrink: 0; min-width: 44px; text-align: right; }
 .play { width: 44px; height: 44px; border-radius: var(--r-pill); border: 1px solid var(--hairline); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ink); background: var(--surface); }
 .play:disabled { opacity: 0.5; }
 .pageHead .lnk { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
