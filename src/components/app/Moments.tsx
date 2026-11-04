@@ -23,16 +23,19 @@ const WAVE = Array.from({ length: 36 }, (_, i) => ({ "--h": `${14 + Math.round(4
  *  give way to it (David, 2026-11-03: "move according to the volume that I'm speaking"). Writes straight to the
  *  elements, not React state: sixty renders a second would cost more than the drawing. With no meter (no Web Audio)
  *  or Reduce Motion on, the decorative loops stay. */
-function useMeter(box: RefObject<HTMLElement | null>, live: boolean, levels: (() => Meter | null) | undefined, draw: (el: HTMLElement, mtr: Meter) => void) {
+function useMeter(box: RefObject<HTMLElement | null>, live: boolean, levels: (() => Meter | null) | undefined, draw: (el: HTMLElement, mtr: Meter, dt: number) => void) {
   const paint = useRef(draw);
   useEffect(() => { paint.current = draw; }, [draw]);
   useEffect(() => {
     const el = box.current;
     if (!live || !levels || !el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let raf = 0;
-    const tick = () => {
+    let raf = 0, last = performance.now();
+    const tick = (now: number) => {
+      // Seconds since the last frame, capped so a stalled tab does not jump on its return.
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
       const mtr = levels();
-      if (mtr) { el.classList.add(m.metered); paint.current(el, mtr); }
+      if (mtr) { el.classList.add(m.metered); paint.current(el, mtr, dt); }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -40,15 +43,34 @@ function useMeter(box: RefObject<HTMLElement | null>, live: boolean, levels: (()
   }, [box, live, levels]);
 }
 
+/** Smooth motion out of a jumpy signal (David: "smoother to truly mimic the sound as it's coming in"): each value
+ *  rises fast (a syllable lands at once) and falls slowly (a voice tails off), the same at any frame rate, and each
+ *  is blended with its neighbours so the shape flows rather than flickers. `ring` joins the two ends. */
+const ATTACK = 0.04, RELEASE = 0.22;
+function follow(state: Float32Array, target: number[], dt: number, ring: boolean) {
+  const n = target.length;
+  for (let i = 0; i < n; i++) {
+    const prev = target[ring ? (i - 1 + n) % n : Math.max(0, i - 1)], next = target[ring ? (i + 1) % n : Math.min(n - 1, i + 1)];
+    const want = prev * 0.25 + target[i] * 0.5 + next * 0.25;
+    state[i] += (want - state[i]) * (1 - Math.exp(-dt / (want > state[i] ? ATTACK : RELEASE)));
+  }
+  return state;
+}
+
 function Vox({ live, levels, children }: { live: boolean; levels?: () => Meter | null; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
+  const bars = useRef(new Float32Array(VBARS.length));
+  const glow = useRef(0);
   // The ring is mirrored left to right: low voices at the top, high at the bottom, so it breathes evenly.
-  useMeter(box, live, levels, (el, mtr) => {
-    const bars = el.querySelectorAll<HTMLElement>("i");
-    const half = Math.floor(bars.length / 2);
+  useMeter(box, live, levels, (el, mtr, dt) => {
+    const els = el.querySelectorAll<HTMLElement>("i");
+    const half = Math.floor(els.length / 2);
     const b = mtr.bands(half + 1);
-    bars.forEach((bar, i) => bar.style.setProperty("--s", (0.25 + b[i <= half ? i : bars.length - i] * 1.9).toFixed(2)));
-    el.style.setProperty("--lv", mtr.level().toFixed(3));
+    const s = follow(bars.current, Array.from({ length: els.length }, (_, i) => b[i <= half ? i : els.length - i]), dt, true);
+    els.forEach((bar, i) => bar.style.setProperty("--s", (0.25 + s[i] * 1.9).toFixed(3)));
+    const lv = mtr.level();
+    glow.current += (lv - glow.current) * (1 - Math.exp(-dt / (lv > glow.current ? 0.05 : 0.3)));
+    el.style.setProperty("--lv", glow.current.toFixed(3));
   });
   return (
     <div ref={box} className={`${m.vox} ${live ? m.live : m.still}`} aria-hidden>
@@ -62,11 +84,13 @@ function Vox({ live, levels, children }: { live: boolean; levels?: () => Meter |
 /** The food screen's wave, loudest in the middle when there is a voice to follow. */
 function Wave({ levels }: { levels?: () => Meter | null }) {
   const box = useRef<HTMLDivElement>(null);
-  useMeter(box, true, levels, (el, mtr) => {
-    const bars = el.querySelectorAll<HTMLElement>("i");
-    const mid = (bars.length - 1) / 2;
-    const b = mtr.bands(Math.ceil(bars.length / 2));
-    bars.forEach((bar, i) => { bar.style.transform = `scaleY(${(0.15 + b[Math.floor(Math.abs(i - mid))] * 1.1).toFixed(2)})`; });
+  const bars = useRef(new Float32Array(WAVE.length));
+  useMeter(box, true, levels, (el, mtr, dt) => {
+    const els = el.querySelectorAll<HTMLElement>("i");
+    const mid = (els.length - 1) / 2;
+    const b = mtr.bands(Math.ceil(els.length / 2));
+    const s = follow(bars.current, Array.from({ length: els.length }, (_, i) => b[Math.floor(Math.abs(i - mid))]), dt, false);
+    els.forEach((bar, i) => { bar.style.transform = `scaleY(${(0.15 + s[i] * 1.1).toFixed(3)})`; });
   });
   return <div ref={box} className={m.wave} aria-hidden>{WAVE.map((s, i) => <i key={i} style={s} />)}</div>;
 }

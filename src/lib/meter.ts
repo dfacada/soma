@@ -18,15 +18,18 @@ export function meter(stream: MediaStream): Meter | null {
     const ctx = new AC();
     const source = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-    analyser.smoothingTimeConstant = 0.72;
+    // Finer bins and only light smoothing here: the screen eases every frame itself (follow in Moments.tsx), and
+    // smoothing twice made the motion trail behind the voice.
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.45;
     source.connect(analyser);
     // iOS starts an AudioContext suspended; recording always begins from a tap, so resuming here is allowed.
     void ctx.resume?.().catch(() => undefined);
     const freq = new Uint8Array(analyser.frequencyBinCount);
     const wave = new Uint8Array(analyser.fftSize);
-    // About 190 Hz a bin at 48 kHz: bins 1–24 hold a speaking voice (roughly 190 Hz to 4.5 kHz).
-    const LO = 1, HI = Math.min(freq.length, 25);
+    // A speaking voice sits between about 120 Hz and 4.5 kHz; which bins those are depends on the phone's sample rate.
+    const hz = ctx.sampleRate / analyser.fftSize;
+    const LO = Math.max(1, Math.round(120 / hz)), HI = Math.min(freq.length, Math.round(4500 / hz));
     return {
       bands(n) {
         analyser.getByteFrequencyData(freq);
