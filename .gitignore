@@ -46,3 +46,7 @@ catalyst/functions/*/.build/
 
 # function secrets, merged into catalyst-config.json at deploy time by catalyst/deploy.js
 catalyst/secrets.json
+
+# the polish loop (docs/POLISH.md): screenshots, and reference images of other apps that must never be published
+/shots/
+/design-ref/

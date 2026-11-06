@@ -34,6 +34,11 @@ Source for all three lives in `C:\Users\david\Downloads\Claude\` (`Glimpse`, `Ma
 - `docs/design/*.dc.html` + `canvas.json` — design canvas sources (Claude Design format). Published canvas: https://claude.ai/code/artifact/53e5c6ee-63d3-4342-ba2d-95520015650e. Note: the canvas Today still shows the earlier sun-arc hero; the prototype is authoritative where they differ.
 - `docs/migration-plan.html` — the earlier Glimpse-only Catalyst plan. Still the best reference for the platform constraints and the service mapping; its data-migration phases are superseded by the fresh-start decision. Published: https://claude.ai/code/artifact/99995c84-64e1-41b1-9ca8-3d8b4d0616f5
 - `docs/checks/` — the two fake-DOM tap-through scripts used to verify the prototype. Reuse the approach for the real app's smoke tests.
+- `docs/POLISH.md` — the polish loop (built 2026-11-06).
+  - **The rig:** `npm run shots` (`scripts/shots/`) takes deterministic iPhone-size screenshots of every screen, in Night and Light. It runs on a fixture member, and the page never reaches Catalyst or Stratus.
+  - **Two agents:** `.claude/agents/soma-critic.md` is a harsh, read-only critic with a written rubric. `.claude/agents/soma-judge.md` is a blind A/B judge.
+  - **The workflow:** `.claude/workflows/soma-polish.js` runs critique, fix one area at a time, `npm run check`, then a blind before/after judgment in both orders, and repeats until every area passes or the round cap is reached.
+  - **Reference screenshots** of other apps go in the gitignored `design-ref/<area>/`.
 
 ## 4. Build plan (~7–9 weeks)
 
