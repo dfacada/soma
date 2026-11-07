@@ -156,7 +156,7 @@ const toneBar = (t: number) => (t + 1) / 2;
 const toneWord = (t: number) => (t >= 0.45 ? "bright" : t >= 0.15 ? "upbeat" : t > -0.15 ? "even" : t > -0.45 ? "low" : "heavy");
 
 function JournalCard({ jt, tone }: { jt: ReturnType<typeof journalTone>; tone: ReturnType<typeof useJournalTone> }) {
-  const { openVault } = useJournal();
+  const { openVault, vault } = useJournal();
   const goTab = useGoTab();
   const how = tone.source === "claude"
     ? "Read by Claude with names, places and details taken out first, under no account, and nothing kept on the server."
@@ -166,8 +166,12 @@ function JournalCard({ jt, tone }: { jt: ReturnType<typeof journalTone>; tone: R
       <div className={s.head}><span className="eb">What your journal says</span>{tone.status === "ready" && jt.days > 0 && <span className={s.meta}>{jt.days} day{jt.days === 1 ? "" : "s"} read</span>}</div>
       {tone.status === "locked" ? (
         <>
-          <p className={s.note}>Your journal is encrypted. Unlock your vault to see how your entries sound on your good days.</p>
-          <div><Button size="sm" variant="journal" onClick={openVault}><Icon name="lock" size={15} />Unlock</Button></div>
+          {vault === "none" ? (
+            <p className={s.note}>Your journal is sealed with a passphrase only you know. Make your vault and record a few days, and this shows how your entries sound on your good days.</p>
+          ) : (
+            <p className={s.note}>Your journal is encrypted. Unlock your vault to see how your entries sound on your good days.</p>
+          )}
+          <div><Button size="sm" variant="journal" onClick={openVault}><Icon name="lock" size={15} />{vault === "none" ? "Create vault" : "Unlock"}</Button></div>
         </>
       ) : tone.status === "loading" ? (
         <p className={s.note}>Opening your entries…</p>

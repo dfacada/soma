@@ -4,7 +4,7 @@
 // Steps are Playwright locators by role and accessible name, so a renamed button breaks the scene loudly (the
 // capture names the step that failed) instead of quietly shooting the wrong screen.
 
-import type { DayShape } from "./world";
+import type { DayShape, Who } from "./world";
 
 export type Step =
   | { click: string; role?: "button" | "link" | "tab" | "switch" | "checkbox"; exact?: boolean; nth?: number }
@@ -26,6 +26,8 @@ export type Scene = {
   frames?: number;
   /** Shoot as someone with Reduce Motion on sees it. Every other scene plays its animations to the end first. */
   reduced?: boolean;
+  /** Whose screen: the settled member (the default), someone on their first day, or someone waiting for approval. */
+  who?: Who;
 };
 
 export type Area = {
@@ -46,6 +48,7 @@ export const AREAS: Area[] = [
   { id: "tomorrow", title: "Tomorrow: the evening brief", files: ["src/components/app/Tomorrow.tsx", "src/components/app/tomorrow.module.css"] },
   { id: "settings", title: "Settings and What's new", files: ["src/components/app/Settings.tsx", "src/components/app/WhatsNew.tsx", "src/components/app/Telegram.tsx"] },
   { id: "moments", title: "Full-screen moments: recording, saying what you ate, the day closing", files: ["src/components/app/Moments.tsx", "src/components/app/moments.module.css"] },
+  { id: "welcome", title: "Getting in: waiting for approval and making the vault", files: ["src/components/app/Session.tsx", "src/components/app/Journal.tsx"] },
 ];
 
 /** The shared design system: tokens, primitives, the shell and the shared CSS modules. One maker, run alone. */
@@ -79,4 +82,16 @@ export const SCENES: Scene[] = [
   { id: "moment-closed-reduced", area: "moments", title: "The same day-closing moment as someone with Reduce Motion on sees it: no animation, but it must still end showing 13 and the full week", path: "/", day: "last", reduced: true, steps: [{ click: "Dinner:" }, { wait: 600 }] },
   { id: "moment-record", area: "moments", title: "Recording a journal entry, full screen", path: "/", steps: [{ click: "Record a journal entry" }, { wait: 1500 }] },
   { id: "moment-food", area: "moments", title: "Saying what you ate, full screen, listening", path: "/", steps: [{ click: "Say what you ate" }, { wait: 1500 }] },
+
+  // Day one. Everyone who joins starts here, and Soma starts empty for all of them (no data is migrated): the account
+  // is minutes old, nothing is logged, there is no vault yet and Fitbit is not connected. A round is under way and open.
+  { id: "new-pending", area: "welcome", who: "pending", title: "Just signed up: the account waits for the admin to approve it", path: "/" },
+  { id: "new-vault", area: "welcome", who: "new", title: "Day one: the Journal card tapped for the first time, which asks to create the vault", path: "/", steps: [{ click: "Record a journal entry" }] },
+  { id: "new-today", area: "today", who: "new", title: "Today on day one, minutes after approval: nothing logged, no streak yet, no vault, Fitbit not connected", path: "/", frames: 1 },
+  { id: "new-journal", area: "journal", who: "new", title: "Journal on day one: no vault made yet and no entries", path: "/journal/" },
+  { id: "new-food", area: "food", who: "new", title: "Food on day one: the default plan, nothing logged yet", path: "/food/", frames: 1 },
+  { id: "new-activity", area: "activity", who: "new", title: "Activity on day one: no push-ups yet, and a round on its twentieth day that is open to join", path: "/activity/", frames: 1 },
+  { id: "new-insights", area: "insights", who: "new", title: "Insights on day one: not one day logged yet", path: "/insights/" },
+  { id: "new-tomorrow", area: "tomorrow", who: "new", title: "Tomorrow's brief on day one: nothing connected", path: "/tomorrow/" },
+  { id: "new-settings", area: "settings", who: "new", title: "Settings on day one: no vault, Fitbit not connected", path: "/settings/", frames: 2 },
 ];

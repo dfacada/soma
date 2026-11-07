@@ -66,11 +66,13 @@ export function Activity() {
     const key = dayKey(d);
     const f = rounds.forDay(key);
     const n = map[key]?.activity?.pushups ?? 0;
-    return { key, d, n, target: f.target, rest: f.rest, hit: !f.rest && n >= f.target };
+    // A day before this person joined Soma is not a miss: it is left out of the count and cannot be opened.
+    const before = key !== todayKey && settings.joined !== "" && key < settings.joined;
+    return { key, d, n, target: f.target, rest: f.rest, before, hit: !f.rest && n >= f.target };
   });
   const weekHits = week.filter((w) => w.hit).length;
   // Today counts once its target is in, as the round's chain does, so this note and the round's foot keep one rule.
-  const weekScored = week.filter((w) => !w.rest && (w.hit || w.key !== todayKey)).length;
+  const weekScored = week.filter((w) => !w.before && !w.rest && (w.hit || w.key !== todayKey)).length;
 
   return (
     <div className={a.page}>
@@ -105,16 +107,16 @@ export function Activity() {
         <div className={sc.week}>
           <div className={a.entryHead}>
             <span className="eb">Last 7 days</span>
-            <span className="m muted" style={{ fontSize: 12 }}>{weekHits} of {weekScored} hit</span>
+            <span className="m muted" style={{ fontSize: 12 }}>{weekScored ? `${weekHits} of ${weekScored} hit` : "Your first day"}</span>
           </div>
           <div className={sc.weekBars}>
             {week.map((w) => (
-              <button key={w.key} type="button" aria-pressed={w.key === k}
-                className={`${sc.weekDay} ${w.key === k ? sc.weekOn : ""} ${w.hit ? sc.weekHit : ""} ${w.rest ? sc.weekRest : ""}`}
-                aria-label={`${w.key === todayKey ? "Today" : longDay(w.d)}: ${w.n} push-ups${w.rest ? ", a rest day" : w.hit ? ", target hit" : ` of ${w.target}`}`}
+              <button key={w.key} type="button" aria-pressed={w.key === k} disabled={w.before}
+                className={`${sc.weekDay} ${w.key === k ? sc.weekOn : ""} ${w.hit ? sc.weekHit : ""} ${w.rest ? sc.weekRest : ""} ${w.before ? sc.weekBefore : ""}`}
+                aria-label={w.before ? `${longDay(w.d)}, before you joined` : `${w.key === todayKey ? "Today" : longDay(w.d)}: ${w.n} push-ups${w.rest ? ", a rest day" : w.hit ? ", target hit" : ` of ${w.target}`}`}
                 onClick={() => { haptic(); setView(w.key === todayKey ? null : w.key); }}>
                 <span className={sc.weekTrack}><i style={{ height: `${w.rest ? 0 : Math.min(100, (w.n / Math.max(1, w.target)) * 100).toFixed(0)}%` }} /></span>
-                <span className={`m ${sc.weekN}`}>{w.rest ? "rest" : w.n}</span>
+                <span className={`m ${sc.weekN}`}>{w.before ? "–" : w.rest ? "rest" : w.n}</span>
                 <span className={sc.weekLabel}>{w.key === todayKey ? "Today" : WEEKDAYS[w.d.getDay()]}</span>
               </button>
             ))}

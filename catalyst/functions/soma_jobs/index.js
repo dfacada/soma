@@ -87,7 +87,7 @@ async function transcribe(app, params) {
 
   try {
     // Inside the try, so a row the browser already deleted (it gave up waiting) still ends with the audio shredded.
-    await table.updateRow({ ROWID: rowId, status: 'running' });
+    await table.updateRow({ ROWID: rowId, status: 'running' }).catch(() => { throw new JobError('row_gone', 'the job was cancelled before it started'); });
     const audio = await readObject(bucket, prefix + params.source).catch(() => { throw new JobError('source_missing', 'the uploaded audio was not found'); });
     const result = await groq(audio, params.source);
     const name = 'tx-result-' + rowId + '.json';

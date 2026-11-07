@@ -18,7 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
-import { answer, buildWorld, STRATUS, USER_ID, type DayShape, type Theme, type World } from "./world";
+import { answer, buildWorld, STRATUS, USER_ID, type DayShape, type Theme, type Who, type World } from "./world";
 import { AREAS, SCENES, SYSTEM_FILES, type Scene, type Step } from "./scenes";
 
 const ROOT = process.cwd();
@@ -92,7 +92,7 @@ async function prime(ctx: BrowserContext, w: World, theme: Theme, scene: Scene) 
       localStorage.setItem("soma-gh-sleep." + p.userId, "1");
       localStorage.setItem("soma.fitbitSnooze." + p.userId, String(p.stamp + 86400000));
       sessionStorage.setItem("soma-vault-asked." + p.userId, "1");
-      if (p.locked) sessionStorage.removeItem("soma-ck-v1." + p.userId);
+      if (p.locked || !p.key) sessionStorage.removeItem("soma-ck-v1." + p.userId);
       else sessionStorage.setItem("soma-ck-v1." + p.userId, p.key);
     } catch { /* a scene without storage still shoots */ }
   }, {
@@ -232,9 +232,9 @@ async function main() {
   fs.mkdirSync(o.out, { recursive: true });
   const shots: Shot[] = [], problems: Problem[] = [];
   const worlds = new Map<string, Promise<World>>();
-  const world = (theme: Theme, day: DayShape) => {
-    const k = theme + day;
-    if (!worlds.has(k)) worlds.set(k, buildWorld({ now: o.at, theme, day }));
+  const world = (theme: Theme, day: DayShape, who: Who) => {
+    const k = theme + day + who;
+    if (!worlds.has(k)) worlds.set(k, buildWorld({ now: o.at, theme, day, who }));
     return worlds.get(k)!;
   };
 
@@ -249,7 +249,7 @@ async function main() {
     for (const scene of scenes) {
       for (const theme of o.themes) {
         const note = (kind: string, detail: string) => { if (!problems.some((p) => p.scene === scene.id && p.theme === theme && p.detail === detail)) problems.push({ scene: scene.id, theme, kind, detail }); };
-        const w = await world(theme, scene.day || "open");
+        const w = await world(theme, scene.day || "open", scene.who || "settled");
         const ctx = await browser.newContext({
           viewport: VIEW, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: "en-US",
           colorScheme: theme === "night" ? "dark" : "light", reducedMotion: scene.reduced ? "reduce" : "no-preference",
@@ -264,7 +264,9 @@ async function main() {
           await page.clock.setFixedTime(o.at);
           await page.goto(o.url + scene.path, { waitUntil: "load", timeout: 120_000 });
           // Ready: the tab bar is up (the desktop sidebar is a hidden nav at this size) and the opening overlay has gone.
-          await page.locator("nav:visible").first().waitFor({ state: "visible", timeout: 60_000 });
+          // An account waiting for approval has no tab bar: its screen is ready when its Check again button is.
+          const ready = scene.who === "pending" ? page.getByRole("button", { name: "Check again" }) : page.locator("nav:visible").first();
+          await ready.waitFor({ state: "visible", timeout: 60_000 });
           if (await page.getByRole("button", { name: /^sign in/i }).count()) throw new Error("the dev server shows the sign-in: it must run as the test member (NEXT_PUBLIC_DEV_TEST_KEY in .env.development.local)");
           await settle(page);
           for (const [i, s] of (scene.steps || []).entries()) {

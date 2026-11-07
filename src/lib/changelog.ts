@@ -16,6 +16,12 @@ export const CHANGES: Release[] = [
     date: "2026-11-07",
     title: "Every screen, polished",
     items: [
+      "A first day that starts clean. Someone opening Soma for the first time no longer gets What's new about screens they have never seen, and the days before they joined stay quiet in the week instead of counting as missed.",
+      "Today: No flame until there is a streak. On a first day the corner stays clear and the week says “Close today for your first full day.”",
+      "Food: A newcomer can make the plan theirs. A card says everyone starts on the same targets, with a button to set your own calories and protein, or keep these.",
+      "Making your vault comes with advice. A short sentence of four or five words works best, and your phone can save it for you.",
+      "Insights asks you to make your vault, not unlock it, when you haven't made one yet.",
+      "Admin: A new sign-up reaches you on Telegram. Someone waiting for approval no longer waits unseen, and the waiting screen now shows Soma itself.",
       "Privacy: Tighter locks on where your data lives. Soma's database and file storage now answer only to Soma's own server, and a voice transcription you walk away from mid-way no longer leaves its words on the server: whatever it left is shredded within the hour.",
       "Telegram connects only to your own chat with the bot. A code sent in a group is refused, so nothing Soma sends can land in a group.",
       "Admin: Someone you take out of a round stays out. Before, they could join it again on their own; now only you can put them back.",

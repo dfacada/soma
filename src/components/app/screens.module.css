@@ -107,6 +107,9 @@
 .weekDay { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 6px; border-radius: 14px; transition: background 0.3s ease, transform 0.3s var(--spring); }
 .weekDay:active { transform: scale(0.92); transition-duration: 0.06s; }
 .weekOn { background: color-mix(in srgb, var(--activity) 13%, transparent); }
+/* A day before the member joined: quiet, not counted, not a button (Activity.tsx). */
+.weekBefore { opacity: 0.35; cursor: default; }
+.weekBefore:active { transform: none; }
 .weekTrack { width: 12px; height: 56px; border-radius: var(--r-pill); background: var(--well); overflow: hidden; display: flex; align-items: flex-end; }
 .weekTrack i { display: block; width: 100%; border-radius: var(--r-pill); background: color-mix(in srgb, var(--activity) 50%, transparent); transition: height 0.9s var(--spring); }
 .weekHit .weekTrack i { background: var(--activity); box-shadow: 0 0 10px color-mix(in srgb, var(--activity) var(--glow-pct), transparent); }

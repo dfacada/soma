@@ -20,6 +20,8 @@ The idea comes from a prompt that went around for building a game: fan out sub-a
   - journal entries, sealed with a vault made fresh for each run;
   - sleep, steps and a push-up round.
 
+  Scenes with `who: "new"` or `who: "pending"` run on a second world instead: someone on their first day (approved minutes ago, nothing logged, no vault, Fitbit not connected, settings empty as a new account's are) or someone waiting for approval. Every member starts there, so every area has a day-one scene (`new-*`), and the `welcome` area holds the waiting screen and making the vault.
+
   **The page never reaches Catalyst or Stratus.** Every API and storage request is answered from that fixture, and anything else trying to leave the machine is refused and listed in the report. So the rig cannot see or change anyone's data, and it works the same in any checkout. It is deterministic: two runs on the same `--at` give identical pictures. `--against <earlier run>` writes `diff.json`, which says which screens changed. Images also go to `shots/blind/` under content-hash names, so a judge can't tell which version a file is.
 - **The critic: `.claude/agents/soma-critic.md`.** Read-only. It holds the rubric and Soma's design rules, and returns a punch list plus a `keep` list.
 - **The judge: `.claude/agents/soma-judge.md`.** It can only read images. It gets two sets of images with neutral names and says which is better crafted, and what the loser did better.

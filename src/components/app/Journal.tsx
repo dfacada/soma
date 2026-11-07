@@ -679,6 +679,13 @@ function VaultForm({ creating, busy, onSubmit, onSkip, passkeyName, onPasskey }:
           ? "Your journal is encrypted on this device before it is uploaded. The passphrase never leaves it, so nobody can read your entries, David included. It also cannot be reset: if you forget it, the entries are gone."
           : "Your journal, sleep and Fitbit are encrypted. Food, weight, check-in and activity work without unlocking."}
       </p>
+      {/* The one secret Soma cannot reset, chosen once, usually on day one: worth a sentence of advice. */}
+      {creating && (
+        <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
+          A short sentence works best: four or five words only you would put together. When your phone offers to save it,
+          say yes.
+        </p>
+      )}
       {passkeyName && !typing && <>
         <Button type="button" variant="journal" block disabled={busy} onClick={async () => setError(await onPasskey())}>{busy ? "Unlocking…" : `Unlock with ${passkeyName}`}</Button>
         <div className={a.vaultLinks}>

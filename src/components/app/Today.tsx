@@ -270,8 +270,9 @@ export function Today() {
         <div className={t.topRow}>
           <span className="eb">{eyebrow}</span>
           <div className={t.topRight}>
+            {/* No flame until there has been a full day to count: on day one a 0 is not a streak, it is a scold. */}
             {isToday
-              ? <span className={t.streak} aria-label={`${run.now} full day${run.now === 1 ? "" : "s"} in a row`}>
+              ? run.best > 0 && <span className={t.streak} aria-label={`${run.now} full day${run.now === 1 ? "" : "s"} in a row`}>
                 <Icon name="flame" size={17} /><span key={run.now} className={`m ${t.roll}`}>{run.now}</span>
               </span>
               : <button type="button" className={t.back} onClick={() => setView(null)}><Icon name="today" size={15} />Back to today</button>}
@@ -304,9 +305,11 @@ export function Today() {
             const d = addDays(today, -i);
             const dk = dayKey(d);
             const done = dk === k ? st.doneCount : dayStatus(days[dk], settings).doneCount;
+            // A day before this person joined is not a missed day: it stays quiet and there is nothing to fill in.
+            const before = i > 0 && settings.joined !== "" && dk < settings.joined;
             return (
-              <button key={i} type="button" className={`${t.weekDay} ${i === 0 ? t.weekToday : ""} ${dk === k ? t.weekPicked : ""}`}
-                aria-pressed={dk === k} aria-label={i === 0 ? "Today" : `Fill in ${longDay(d)}`} onClick={() => { haptic(); setView(i === 0 ? null : dk); }}>
+              <button key={i} type="button" className={`${t.weekDay} ${i === 0 ? t.weekToday : ""} ${dk === k ? t.weekPicked : ""} ${before ? t.weekBefore : ""}`}
+                disabled={before} aria-pressed={dk === k} aria-label={i === 0 ? "Today" : before ? `${longDay(d)}, before you joined` : `Fill in ${longDay(d)}`} onClick={() => { haptic(); setView(i === 0 ? null : dk); }}>
                 <DayGlyph done={done} total={st.taskCount} today={i === 0} />
                 <span>{i === 0 ? "Today" : WEEKDAYS[d.getDay()]}</span>
               </button>
@@ -314,8 +317,12 @@ export function Today() {
           })}
         </div>
         <div className={t.weekLine}>
-          <span><span className="m">{run.now}</span> full day{run.now === 1 ? "" : "s"} in a row</span>
-          <span>Best <span className="m">{run.best}</span></span>
+          {run.best === 0 && run.now === 0
+            ? <span>Close today for your first full day.</span>
+            : <>
+              <span><span className="m">{run.now}</span> full day{run.now === 1 ? "" : "s"} in a row</span>
+              <span>Best <span className="m">{run.best}</span></span>
+            </>}
         </div>
       </div>
 

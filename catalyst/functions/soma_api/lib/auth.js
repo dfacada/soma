@@ -48,6 +48,28 @@ async function findProfile(admin, userId) {
   return rows[0] || null;
 }
 
+// A new sign-up waits for approval, and nothing else tells the admin it is there. Every active admin with a paired
+// Telegram chat (routes/telegram.js) gets one line. No name and no email: a person who has only just signed up has
+// not agreed to Telegram, so nothing about them goes there. Best effort; it never holds up the request.
+async function tellAdmins(admin) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+  try {
+    const rows = await select(admin, 'profiles', "SELECT telegram_chat FROM profiles WHERE role = 'admin' AND status = 'active' LIMIT 20");
+    const chats = rows.map((r) => r.telegram_chat).filter(Boolean).map(String);
+    await Promise.all(chats.map(async (chat) => {
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chat_id: chat, text: 'Someone new signed up for Soma and is waiting for you. Approve them in Settings → Admin.' }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!res.ok) throw new Error('Telegram answered ' + res.status);
+    }));
+  } catch (e) {
+    void require('./log').writeLog(admin, { level: 'warn', source: 'api', area: 'auth', event: 'tell_admins_failed', message: e.message });
+  }
+}
+
 async function loadProfile(admin, user, startActive, seen) {
   let row = await findProfile(admin, user.id);
   if (!row) {
@@ -62,6 +84,7 @@ async function loadProfile(admin, user, startActive, seen) {
         last_seen_ms: Date.now()
       });
       console.log(JSON.stringify({ action: 'profile_created', user: user.id, status: row.status }));
+      if (row.status === 'pending') void tellAdmins(admin);
     } catch (e) {
       // user_id is unique: a concurrent first request won the insert.
       row = await findProfile(admin, user.id);

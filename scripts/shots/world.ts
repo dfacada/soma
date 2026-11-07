@@ -26,6 +26,10 @@ export const STRATUS = "https://stratus.fixture.test";
 /** How today looks: part done (the usual evening), all but dinner (one tap from closing), or closed (all five). */
 export type DayShape = "open" | "last" | "closed";
 export type Theme = "night" | "light";
+/** Whose screens these are: the settled member with two months behind them, someone on their first day (approved
+ *  minutes ago: nothing logged, no vault, Fitbit not connected, settings as the app makes them), or someone who has
+ *  just signed up and is waiting for approval. Everyone who joins Soma starts as the last two. */
+export type Who = "settled" | "new" | "pending";
 
 export type World = {
   now: Date;
@@ -34,8 +38,9 @@ export type World = {
   displayName: string;
   days: { checkins: Checkin[]; dayLogs: DayLog[]; activity: ActivityDay[]; weight: { day: string; value: number }[] };
   entries: EntryMeta[];
-  vault: VaultMeta;
-  /** The vault key, base64, as the app stores it in sessionStorage once unlocked. */
+  /** null: no vault made yet. */
+  vault: VaultMeta | null;
+  /** The vault key, base64, as the app stores it in sessionStorage once unlocked ("" with no vault). */
   keyB64: string;
   health: HealthLink;
   months: { month: string; ciphertext: string }[];
@@ -93,7 +98,31 @@ function wav(seconds: number, rate = 8000) {
   return new Uint8Array(b.buffer);
 }
 
-export async function buildWorld({ now, theme, day }: { now: Date; theme: Theme; day: DayShape }): Promise<World> {
+/** Day one. The account is minutes old: nothing logged, no vault, Fitbit not connected, and settings holding only
+ *  the look, as a new profile does (the app fills the rest from its defaults, What's new included: never seen). A
+ *  round is under way and open to join, because the admin made it before this person arrived. */
+function newcomer(now: Date, theme: Theme, who: "new" | "pending"): World {
+  const round: Round = {
+    id: "round_fx", name: "November round", startDate: dayKey(addDays(now, -19)), lengthDays: 30, restDays: [7, 14, 21, 28],
+    bonusHit: 30, bonusStreak: 10, badgeStreak: 7, badgeHits: 30, joinOpen: true, archived: false,
+  };
+  return {
+    now,
+    me: { id: USER_ID, email: "sam@fixture.test", name: "Sam Okafor", profile: { rowId: "2", displayName: "Sam Okafor", role: "member", status: who === "pending" ? "pending" : "active" } },
+    displayName: "Sam Okafor",
+    settings: { theme: theme === "night" ? "dark" : "light" },
+    days: { checkins: [], dayLogs: [], activity: [], weight: [] },
+    entries: [], vault: null, keyB64: "",
+    health: { configured: true, link: null },
+    months: [],
+    rounds: [{ ...round, me: null }],
+    board: { round, members: [], logs: {} },
+    blobs: new Map(),
+  };
+}
+
+export async function buildWorld({ now, theme, day, who = "settled" }: { now: Date; theme: Theme; day: DayShape; who?: Who }): Promise<World> {
+  if (who !== "settled") return newcomer(now, theme, who);
   const todayKey = dayKey(now);
   const r = rng(hash(todayKey));
   // The passphrase never leaves this function: only the key is kept, and only for this run.
@@ -222,7 +251,7 @@ export function answer(w: World, method: string, path: string, body: unknown): {
         return ok(days);
       }
       case "/entries": return ok({ entries: w.entries });
-      case "/vault-meta": return ok({ exists: true, ...w.vault });
+      case "/vault-meta": return ok(w.vault ? { exists: true, ...w.vault } : { exists: false });
       case "/google-health": return ok(w.health);
       case "/health-months": return ok({ months: w.months });
       case "/rounds": return ok({ rounds: w.rounds });
@@ -236,7 +265,9 @@ export function answer(w: World, method: string, path: string, body: unknown): {
       case "/admin/profiles": return ok({ profiles: [] });
       case "/admin/feedback": return ok({ items: [] });
     }
-    if (route === `/rounds/${w.board.round.id}/board`) return ok(w.board);
+    if (route === `/rounds/${w.board.round.id}/board`) {
+      return w.board.members.some((m) => m.userId === USER_ID) ? ok(w.board) : { status: 403, json: { error: "join the round to see its board" } };
+    }
     return { status: 404, json: { error: "not in the fixture" }, unknown: true };
   }
   if (method === "POST" && route === "/sign") {

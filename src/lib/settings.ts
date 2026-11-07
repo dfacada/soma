@@ -31,6 +31,11 @@ export type Settings = {
   seenChanges: string;
   /** Whether they have been shown how to put Soma on their Home Screen (or are already running it from there). */
   seenInstall: boolean;
+  /** The local day this person first opened Soma (YYYY-MM-DD), set on that open (Session.tsx). Days before it are
+   *  not missed days, so the week strips leave them out. "" for everyone who joined before this existed. */
+  joined: string;
+  /** Whether a newcomer has answered Food's "make the plan yours" card (set their own targets, or kept these). */
+  foodSetUp: boolean;
   /** The week in review: when it is written, whether the journal may be read to write it, and where it is sent. */
   weeklyReview: { on: boolean; dayOfWeek: number; time: string; consent: boolean; telegram: boolean; speak: boolean };
   /** Off until the user opts in: transcription is the one thing that sends plaintext audio off the device. */
@@ -86,6 +91,8 @@ export const DEFAULT_SETTINGS: Settings = {
   bestStreak: 0,
   seenChanges: "",
   seenInstall: false,
+  joined: "",
+  foodSetUp: false,
   // Off until asked for: this is the one feature where journal text leaves the device.
   weeklyReview: { on: false, dayOfWeek: 0, time: "19:00", consent: false, telegram: false, speak: true },
   cloudTranscription: false,
@@ -136,6 +143,8 @@ export function mergeSettings(stored: unknown): Settings {
     bestStreak: Math.round(num(s.bestStreak, 0)),
     seenChanges: typeof s.seenChanges === "string" ? s.seenChanges.slice(0, 40) : "",
     seenInstall: s.seenInstall === true,
+    joined: typeof s.joined === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.joined) ? s.joined : "",
+    foodSetUp: s.foodSetUp === true,
     weeklyReview: {
       on: s.weeklyReview?.on === true,
       dayOfWeek: [0, 1, 2, 3, 4, 5, 6].includes(Number(s.weeklyReview?.dayOfWeek)) ? Number(s.weeklyReview!.dayOfWeek) : d.weeklyReview.dayOfWeek,

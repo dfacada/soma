@@ -24,12 +24,22 @@ export function WhatsNew() {
     let alive = true;
     void installDone.then((installShown) => {
       if (!alive) return;
+      // Someone opening Soma for the first time has nothing to compare: every note is about a change to a screen they
+      // have never seen. Their first open marks the current release as seen, so What's new starts with the next one.
+      // (Every account that existed before this has a mark already; settings that failed to load never get here.)
+      if (!seen.current) {
+        markNewsDone();
+        void saveSettings({ seenChanges: seenMark() }).catch((e) => report("app", "whats_new_save_failed", e, undefined, "warn"));
+        return;
+      }
       // One thing an open: if the install splash ran, these notes keep until next time.
       const list = installShown ? [] : unseen(seen.current, dayKey(new Date()));
       if (list.length) setShow(list);
       else markNewsDone();
     });
     return () => { alive = false; };
+    // Once, when the app opens: the save belongs to that moment, and a later change to settings must not re-run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const close = useCallback(() => {

@@ -16,7 +16,7 @@ import { report } from "@/lib/log";
 import { BOWL_VARIANTS, MEAL_PLANS, RECIPES, type Recipe } from "@/lib/food-data";
 import { MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
 import { cap, dayStatus } from "@/lib/today";
-import { Button, Card, Chip, Icon, Input, Row, Sheet, Toast } from "@/components/ui";
+import { Button, ButtonLink, Card, Chip, Icon, Input, Row, Sheet, Toast } from "@/components/ui";
 import { DayBanner } from "./DayBanner";
 import { FoodSay } from "./FoodSay";
 import { useDays } from "./Days";
@@ -59,6 +59,10 @@ export function Food() {
   const eaten = map[k]?.log?.meals || {};
   const extras = map[k]?.log?.extras || [];
   const g = settings.goals;
+  // A plain function, not a hook: it sits below the early returns above.
+  const markFoodSetUp = () => {
+    void saveSettings({ foodSetUp: true }).catch((e) => report("food", "food_setup_save_failed", e, undefined, "warn"));
+  };
   const left = g.kcal - st.kcal;
   const mealsEaten = MEALS.filter((m) => eaten[m]).length;
 
@@ -94,6 +98,22 @@ export function Food() {
 
       {!isToday && <DayBanner view={view} onBack={() => setView(null)} />}
       {unsaved && <div className={a.unsaved} role="alert"><span>Some changes are not saved yet.</span><Button size="sm" variant="secondary" onClick={retry}>Retry</Button></div>}
+
+      {/* A newcomer starts on Soma's standard plan and targets, which were made for one particular person. Until they
+          say otherwise, say so plainly, once: set their own, or keep these (settings.foodSetUp). */}
+      {isToday && settings.joined !== "" && !settings.foodSetUp && (
+        <Card>
+          <span className="eb">Your plan</span>
+          <p className="muted" style={{ fontSize: 14, lineHeight: 1.5 }}>
+            Everyone starts on the same plan and targets: <span className="m">{g.kcal.toLocaleString("en-US")}</span> kcal
+            and <span className="m">{g.protein}</span> g protein a day. Make them yours in Settings, or keep these.
+          </p>
+          <div className={a.rowButtons}>
+            <ButtonLink href="/settings/#food" size="sm" variant="food" onClick={() => { haptic(); markFoodSetUp(); }}>Set my targets</ButtonLink>
+            <Button size="sm" variant="secondary" onClick={() => { haptic(); markFoodSetUp(); }}>Keep these</Button>
+          </div>
+        </Card>
+      )}
 
       {/* The day's calories, the bar split by what was eaten (each meal, then anything else), and the macros. Every
           portion is the same green, notched apart, so the bar reads as one total and not as a key to the three macros. */}

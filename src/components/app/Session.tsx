@@ -8,7 +8,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { api, ApiError, type Me } from "@/lib/api";
 import { catalystAuth, currentUser, isDevIdentity } from "@/lib/catalyst";
 import { applyLook } from "@/lib/look";
+import { report } from "@/lib/log";
 import { mergeSettings, type Settings } from "@/lib/settings";
+import { dayKey } from "@/lib/today";
 import { Button, Input, type StepProgress } from "@/components/ui";
 import { Splash, type OpenStep } from "./Splash";
 import a from "./app.module.css";
@@ -69,8 +71,12 @@ export function SessionGate({ children }: { children: ReactNode }) {
 
   const apply = useCallback((r: Resolved) => {
     if (r.kind === "ready") {
-      stored = r.stored;
-      setSettings(mergeSettings(r.stored));
+      // A first open: no release ever seen and no day joined yet (a new account's settings are empty). Today becomes
+      // the day this person joined, so the week strips never count the days before it as missed.
+      const fresh = !r.stored.seenChanges && !r.stored.joined;
+      stored = fresh ? { ...r.stored, joined: dayKey(new Date()) } : r.stored;
+      if (fresh) void api("PUT", "/settings", { settings: stored }).catch((e) => report("app", "joined_save_failed", e, undefined, "warn"));
+      setSettings(mergeSettings(stored));
       setDisplayName(r.displayName);
       setState({ kind: "ready", me: r.me });
     } else setState(r);
@@ -152,10 +158,15 @@ function Blocked({ me, onRetry, onSignOut }: { me: Me; onRetry: () => void; onSi
   const disabled = me.profile.status === "disabled";
   return (
     <Centered>
+      {/* Soma's own face on the first screen a new member sees, so the wait reads as the app's, not an error's. */}
+      <span className={a.splashOrb} aria-hidden><i /><i /><i /></span>
+      <span className={`d ${a.wordmark}`} style={{ fontSize: 40 }} aria-label="Soma">Soma</span>
       <span className="eb">{me.email}</span>
       <span className="d" style={{ fontSize: 30 }}>{disabled ? "Account disabled" : "Waiting for approval"}</span>
-      <p className="muted" style={{ maxWidth: 320 }}>
-        {disabled ? "This account has been turned off. Ask David if that is a mistake." : "You are signed up. David has to approve new accounts before anything opens; you will get in as soon as he does."}
+      <p className="muted" style={{ maxWidth: 320, textWrap: "balance" }}>
+        {disabled
+          ? "This account has been turned off. Ask David if that is a mistake."
+          : "You're signed up. David lets each new member in by hand. Open Soma again later, or tap Check again."}
       </p>
       <div className={a.rowButtons}>
         {!disabled && <Button onClick={onRetry}>Check again</Button>}
