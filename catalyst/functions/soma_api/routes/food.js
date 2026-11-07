@@ -17,7 +17,7 @@
 'use strict';
 
 const express = require('express');
-const { member, wrap } = require('../lib/auth');
+const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 
@@ -95,7 +95,7 @@ async function ask(req, { system, content, schema, maxTokens, plainShape, event 
       request.system = system + ' Answer with one JSON object and nothing else: ' + plainShape + '.';
       message = await client.messages.create(request);
     } else if (e && (e.status === 429 || e.status === 529)) {
-      await writeLog(req.admin, { level: 'warn', source: 'api', area: 'food', event, message: String(e.message).slice(0, 200), status: e.status, userId: req.user.id, test: req.user.id === '999000000000000001' });
+      await writeLog(req.admin, { level: 'warn', source: 'api', area: 'food', event, message: String(e.message).slice(0, 200), status: e.status, userId: req.user.id, test: isTestUser(req) });
       throw new HttpError(503, 'the estimator is busy; try again in a moment');
     } else {
       throw new HttpError(502, 'the estimator could not be reached');

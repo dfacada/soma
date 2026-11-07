@@ -11,15 +11,23 @@ const { select, needId } = require('./db');
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean);
 const STATUSES = ['pending', 'active', 'disabled'];
 
-// Development-only test identity. When TEST_KEY is set (secrets.json, never Production) a request
-// carrying it runs as a fixed synthetic member that owns no real data and can never be an admin.
-// It cannot name a user id, so it cannot impersonate anyone.
+// Development-only test identities. When TEST_KEY is set (secrets.json) a request carrying it runs as one of two
+// fixed synthetic members that own no real data and can never be admins: the first by default, the second with
+// `x-test-member: 2` (catalyst/test-api.js uses it to prove one member cannot reach another's rows). The key cannot
+// name a user id, so it cannot impersonate anyone. It only works where the gateway says the environment is
+// Development (x-zc-environment, the header the SDK itself reads), so a TEST_KEY deployed to Production by mistake
+// opens nothing.
 const TEST_KEY = process.env.TEST_KEY || '';
-const TEST_USER = { id: '999000000000000001', email: 'test@soma.invalid', name: 'Test User' };
+const TEST_USERS = {
+  1: { id: '999000000000000001', email: 'test@soma.invalid', name: 'Test User' },
+  2: { id: '999000000000000002', email: 'test2@soma.invalid', name: 'Test User Two' }
+};
+const TEST_IDS = new Set(Object.values(TEST_USERS).map((u) => u.id));
 function isTestCall(req) {
   const given = req.get('x-test-key') || '';
-  return TEST_KEY.length >= 32 && given.length === TEST_KEY.length &&
+  const keyOk = TEST_KEY.length >= 32 && given.length === TEST_KEY.length &&
     crypto.timingSafeEqual(Buffer.from(given), Buffer.from(TEST_KEY));
+  return keyOk && String(req.get('x-zc-environment') || '').toLowerCase() === 'development';
 }
 
 const PROFILE_COLS = 'ROWID, user_id, email, display_name, role, status, last_seen_ms, CREATEDTIME';
@@ -70,7 +78,9 @@ async function withUser(req, res, next) {
   const test = isTestCall(req);
   try {
     if (test) {
-      req.user = Object.assign({}, TEST_USER);
+      const which = TEST_USERS[String(req.get('x-test-member') || '1')];
+      if (!which) return res.status(401).json({ error: 'not signed in' });
+      req.user = Object.assign({}, which);
     } else {
       const user = await catalyst.initialize(req).userManagement().getCurrentUser();
       if (!user || !user.user_id) return res.status(401).json({ error: 'not signed in' });
@@ -111,6 +121,7 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 const member = [withUser, requireActive];
 const admin = [withUser, requireActive, requireAdmin];
 
-const isTestUser = (req) => req.user && req.user.id === TEST_USER.id;
+const isTestId = (id) => TEST_IDS.has(String(id));
+const isTestUser = (req) => Boolean(req.user && isTestId(req.user.id));
 
-module.exports = { isTestUser, withUser, requireActive, requireAdmin, wrap, member, admin, findProfile, STATUSES, PROFILE_COLS, SEEN_EVERY_MS };
+module.exports = { isTestId, isTestUser, withUser, requireActive, requireAdmin, wrap, member, admin, findProfile, STATUSES, PROFILE_COLS, SEEN_EVERY_MS };

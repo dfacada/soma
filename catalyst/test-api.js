@@ -236,20 +236,32 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   check('kind form refuses a slash in a name', r.status === 400, r.text);
   r = await call('POST', '/sign', { kind: 'secrets', names: ['x.enc'] });
   check('unknown kind is 400', r.status === 400, r.text);
-  r = await call('POST', '/sign', { bucket: 'soma-drafts', method: 'PUT', keys: ['999000000000000001/test.bin'] });
-  check('signs a key under own prefix', r.status === 200 && /^https:\/\//.test(r.json.urls[0].url), r.json);
-  r = await call('POST', '/sign', { bucket: 'soma-drafts', method: 'GET', keys: ['120218000000022011/spike-25mb.bin'] });
-  check("refuses another user's prefix", r.status === 403, r.text);
-  r = await call('POST', '/sign', { bucket: 'soma-drafts', keys: ['999000000000000001/../120218000000022011/x'] });
-  check('refuses path traversal', r.status === 403, r.text);
+  r = await call('POST', '/sign', { bucket: 'soma-drafts', method: 'GET', keys: ['999000000000000001/test.bin'] });
+  check("the spike page's old whole-key form is gone", r.status === 400, r.text);
+  r = await call('POST', '/spike/sign', {});
+  check('the spike routes are gone', r.status === 404, r.text);
 
   console.log('jobs');
   r = await call('POST', '/jobs', { type: 'mine-bitcoin', entryId: 'test-entry-0001', source: 'tx-test-entry-0001.webm' });
   check('unknown job type is 400', r.status === 400, r.text);
   r = await call('POST', '/jobs', { type: 'transcribe', entryId: 'test-entry-0001', source: '../../etc/passwd' });
   check('a source that is not a tx- file is 400', r.status === 400, r.text);
-  r = await call('POST', '/sign', { kind: 'drafts', method: 'PUT', names: ['tx-test-entry-0001.webm'] });
-  await fetch(r.json.urls[0].url, { method: 'PUT', body: new Uint8Array(2048), headers: { 'Content-Type': 'application/octet-stream' } });
+  const upload = async () => {
+    const s = await call('POST', '/sign', { kind: 'drafts', method: 'PUT', names: ['tx-test-entry-0001.webm'] });
+    await fetch(s.json.urls[0].url, { method: 'PUT', body: new Uint8Array(2048), headers: { 'Content-Type': 'application/octet-stream', overwrite: 'true' } });
+  };
+  const leftOf = async (name) => {
+    const s = await call('POST', '/sign', { kind: 'drafts', method: 'GET', names: [name] });
+    const got = await fetch(s.json.urls[0].url);
+    return got.status === 404 ? 0 : (await got.arrayBuffer()).byteLength;
+  };
+  await upload();
+  await call('PUT', '/settings', { settings: { cloudTranscription: false } });
+  r = await call('POST', '/jobs', { type: 'transcribe', entryId: 'test-entry-0001', source: 'tx-test-entry-0001.webm' });
+  check('a journal recording is refused while cloud transcription is off (the server keeps the switch too)', r.status === 403, r.text);
+  check('…and the audio it refused is shredded at once', (await leftOf('tx-test-entry-0001.webm')) <= 1);
+  await upload();
+  await call('PUT', '/settings', { settings: { cloudTranscription: true } });
   r = await call('POST', '/jobs', { type: 'transcribe', entryId: 'test-entry-0001', source: 'tx-test-entry-0001.webm' });
   check('transcribe job queues', r.status === 201 && r.json.status === 'queued', r.json);
   const jobId = r.json && r.json.id;
@@ -261,11 +273,9 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   }
   // Without a provider key the job must fail cleanly; with one, 2 KB of zeros is not audio and the provider says so.
   check('the job finishes with a recorded outcome', job && job.status === 'failed' && ['not_configured', 'provider_error'].includes(job.error), job);
-  r = await call('POST', '/sign', { kind: 'drafts', method: 'GET', names: ['tx-test-entry-0001.webm'] });
   // Stratus deletes are scheduled, so the object can still exist for a minute: what matters is that it was blanked.
-  const gone = await fetch(r.json.urls[0].url);
-  const left = gone.status === 404 ? 0 : (await gone.arrayBuffer()).byteLength;
-  check('the plaintext audio is unreadable the moment the job ends', left <= 1, { status: gone.status, bytes: left });
+  const left = await leftOf('tx-test-entry-0001.webm');
+  check('the plaintext audio is unreadable the moment the job ends', left <= 1, { bytes: left });
   r = await call('GET', '/jobs/120218000000022006');
   check("someone else's job is 404", r.status === 404, r.text);
   r = await call('DELETE', '/jobs/' + jobId);
@@ -397,6 +407,75 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   check('the test member has no Telegram chat', r.status === 200 && r.json.connected === false, r.json);
   r = await call('POST', '/telegram/send', { text: 'Tomorrow · Tuesday 3 November\n\nSoma\nWeigh in · 100 push-ups', speak: false, title: "Tomorrow's brief" });
   check('the brief cannot go to Telegram before a chat is paired (409, which the brief explains)', r.status === 409, r.text);
+
+  console.log('consent is kept on the server too');
+  await call('PUT', '/settings', { settings: { weeklyReview: { consent: false } } });
+  r = await call('POST', '/review/write', { entries: [{ day: '2001-02-03', text: 'A test day.' }] });
+  check('the week in review is refused while reading the journal is switched off', r.status === 403, r.text);
+  await call('PUT', '/settings', { settings: {} });
+  r = await call('POST', '/insights/journal-tone', { items: [{ id: 'a1', text: 'A test day.' }] });
+  check('journal insights are refused unless With Claude is chosen', r.status === 403, r.text);
+
+  // Data Store has no row-level security: every query is scoped by the caller in code. A second synthetic member
+  // (x-test-member: 2) tries every way to see or change the first member's rows, which exist at this point.
+  console.log('isolation between members');
+  {
+    const as2 = (method, route, body) => call(method, route, body, { 'x-test-member': '2' });
+    const sealed2 = Buffer.from('member one sealed this, not member two'.repeat(2)).toString('base64');
+    await call('PUT', '/reviews/2001-02-05', { ciphertext: sealed2, hasAudio: false });
+    await call('PUT', '/health-months/2001-03', { ciphertext: sealed2 });
+    await call('PUT', '/links/todoist', { ciphertext: sealed2 });
+
+    r = await as2('GET', '/me');
+    check('the second test member is someone else', r.status === 200 && r.json.id === '999000000000000002' && r.json.profile.role === 'member' && r.json.profile.status === 'active', r.json);
+    r = await call('GET', '/me', undefined, { 'x-test-member': '3' });
+    check('there is no third test member', r.status === 401, r.text);
+    r = await as2('GET', '/checkins/' + day);
+    check("member two cannot read member one's day", r.status === 404, r.text);
+    r = await as2('GET', '/days?from=2001-02-01&to=2001-02-28&fromMs=981000000000&toMs=983000000000');
+    check("…nor find it in a /days window, entries included", r.status === 200 && ['checkins', 'dayLogs', 'activity', 'weight', 'entries'].every((k) => r.json[k].length === 0), r.json);
+    r = await as2('PUT', '/checkins/' + day, { mood: 'intruder' });
+    check('member two writing the same day writes their own row', r.status === 200 && r.json.mood === 'intruder', r.json);
+    r = await call('GET', '/checkins/' + day);
+    check("…and member one's row is untouched", r.status === 200 && r.json.mood === 'tired', r.json);
+    r = await as2('DELETE', '/checkins/' + day);
+    check('member two deleting that day removes only their own row', r.status === 200 && r.json.deleted === true, r.json);
+    r = await call('GET', '/checkins/' + day);
+    check("…member one's is still there", r.status === 200 && r.json.mood === 'tired', r.json);
+
+    r = await as2('GET', '/entries');
+    check("member one's journal entry is not in member two's list", r.status === 200 && !r.json.entries.some((e) => e.id === entryId), r.json);
+    r = await as2('PUT', '/entries/' + entryId, { transcriptStatus: 'failed' });
+    check("member two cannot take over member one's entry id", r.status === 409, r.text);
+    r = await call('GET', '/entries');
+    check('…and the entry is unchanged', r.status === 200 && r.json.entries.some((e) => e.id === entryId && e.transcriptStatus === 'done'), r.json);
+    r = await as2('DELETE', '/entries/' + entryId);
+    check("member two cannot delete member one's entry", r.status === 404, r.text);
+
+    r = await as2('GET', '/recipes');
+    check("member one's recipe is not in member two's list", r.status === 200 && !r.json.recipes.some((x) => x.id === recipeId), r.json);
+    r = await as2('PUT', '/recipes/' + recipeId, { recipe: { name: 'stolen' } });
+    check("member two cannot change member one's recipe", r.status === 404, r.text);
+    r = await as2('DELETE', '/recipes/' + recipeId);
+    check("member two cannot delete member one's recipe", r.status === 404, r.text);
+
+    r = await as2('GET', '/vault-meta');
+    check("member two does not get member one's vault salt", r.status === 200 && (r.json.exists === false || r.json.salt !== vault.salt), r.json);
+    r = await as2('GET', '/reviews');
+    check("member two does not get member one's weekly reviews", r.status === 200 && !r.json.reviews.some((x) => x.ciphertext === sealed2), r.json);
+    r = await as2('GET', '/health-months?from=2001-01&to=2001-12');
+    check("member two does not get member one's sleep months", r.status === 200 && r.json.months.length === 0, r.json);
+    r = await as2('GET', '/links');
+    check("member two does not get member one's sealed Todoist token", r.status === 200 && r.json.links.todoist === null, r.json);
+    r = await as2('POST', '/sign', { kind: 'entries', method: 'GET', names: [entryId + '.enc'] });
+    check("signing the same file name as member two points into member two's own folder", r.status === 200 && r.json.urls[0].key === '999000000000000002/entries/' + entryId + '.enc', r.json);
+    r = await as2('GET', '/admin/profiles');
+    check('member two is not an admin either', r.status === 403, r.text);
+
+    await call('DELETE', '/reviews/2001-02-05');
+    await call('DELETE', '/health-months/2001-03');
+    await call('DELETE', '/links/todoist');
+  }
 
   console.log('cleanup');
   r = await call('DELETE', '/recipes/' + recipeId);

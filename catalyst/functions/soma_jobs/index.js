@@ -4,7 +4,8 @@
 //                The audio is deleted as soon as Groq has answered, whatever the answer was. The transcript is
 //                written next to it for the browser to collect, encrypt into the entry and delete.
 //   nudge        the evening nudge, from a 15-minute cron (nudge.js); with test=1, a test notification for one user.
-//   (none)       the spike's sleep-and-write job, kept until the spike routes are removed.
+//                The same cron prunes the log once a day and sweeps stale transcription jobs once an hour.
+//   anything else is logged and dropped: only soma_api submits jobs, and it only submits these two.
 //
 // The jobs row is the contract with soma_api/routes/jobs.js:
 //   status      queued → running → done | failed
@@ -84,32 +85,53 @@ async function transcribe(app, params) {
   const prefix = params.user_id + '/drafts/';
   const started = Date.now();
 
-  await table.updateRow({ ROWID: rowId, status: 'running' });
   try {
+    // Inside the try, so a row the browser already deleted (it gave up waiting) still ends with the audio shredded.
+    await table.updateRow({ ROWID: rowId, status: 'running' });
     const audio = await readObject(bucket, prefix + params.source).catch(() => { throw new JobError('source_missing', 'the uploaded audio was not found'); });
     const result = await groq(audio, params.source);
     const name = 'tx-result-' + rowId + '.json';
     await bucket.putObject(prefix + name, JSON.stringify(result), { contentType: 'application/json', overwrite: true });
-    await table.updateRow({ ROWID: rowId, status: 'done', result_ref: name });
+    // The transcript is plain text until the browser collects it. If nobody is coming for it (the row is gone),
+    // it must not stay behind.
+    try { await table.updateRow({ ROWID: rowId, status: 'done', result_ref: name }); }
+    catch (_e) { await shred(bucket, prefix + name); throw new JobError('row_gone', 'the job was cancelled before the transcript was ready'); }
     console.log(JSON.stringify({ action: 'transcribe_done', row: rowId, bytes: audio.length, chars: result.text.length, ms: Date.now() - started }));
   } catch (e) {
     const code = e instanceof JobError ? e.code : 'internal';
     await table.updateRow({ ROWID: rowId, status: 'failed', result_ref: 'error:' + code }).catch(() => undefined);
     console.error(JSON.stringify({ action: 'transcribe_failed', row: rowId, code, error: e.message, ms: Date.now() - started }));
-    await writeLog(app, { source: 'job', area: 'transcribe', event: code, message: e.message, detail: { row: rowId, ms: Date.now() - started }, userId: params.user_id, test: String(params.user_id) === '999000000000000001' });
+    await writeLog(app, { level: code === 'row_gone' ? 'warn' : 'error', source: 'job', area: 'transcribe', event: code, message: e.message, detail: { row: rowId, ms: Date.now() - started }, userId: params.user_id, test: /^99900000000000000[12]$/.test(String(params.user_id)) });
   } finally {
     // The plaintext audio never outlives the attempt.
     await shred(bucket, prefix + params.source);
   }
 }
 
-async function spike(app, params, context, started) {
-  const sleepMs = Math.max(0, parseInt(params.sleep_ms || '90000', 10));
-  const key = params.result_key || ('spike/job-' + started + '.json');
-  await new Promise((r) => setTimeout(r, sleepMs));
-  const body = JSON.stringify({ ok: true, sleptMs: Date.now() - started, maxExecutionMs: context.getMaxExecutionTimeMs(), node: process.version, finishedAt: new Date().toISOString() });
-  await app.stratus().bucket(BUCKET).putObject(key, body, { contentType: 'application/json', overwrite: true });
-  if (params.row_id) await app.datastore().table('jobs').updateRow({ ROWID: params.row_id, status: 'done', result_ref: key });
+// The backstop for plain text left on the server. A transcription the browser never came back for (the tab closed,
+// the phone locked mid-way) leaves its row, and with it the uploaded audio or the finished transcript. The browser
+// and soma_api clean up on every path they can see; this catches the rest, so nothing readable outlives an hour.
+// Hourly, on the first run of the 15-minute cron in each hour, so it costs one query an hour when there is nothing to do.
+const STALE_MS = 60 * 60 * 1000;
+const TX_NAME = /^tx-[A-Za-z0-9_-][A-Za-z0-9_.-]{0,80}$/;
+async function sweepJobs(app) {
+  const now = Date.now();
+  if (new Date(now).getUTCMinutes() >= 15) return;
+  // created_ms IS NULL: rows from before the column existed, all long stale.
+  const rows = (await app.zcql().executeZCQLQuery(
+    `SELECT ROWID, user_id, result_ref FROM jobs WHERE type = 'transcribe' AND (created_ms < ${now - STALE_MS} OR created_ms IS NULL) LIMIT 100`
+  )).map((r) => r.jobs).filter(Boolean);
+  if (!rows.length) return;
+  const bucket = app.stratus().bucket(BUCKET);
+  for (const row of rows) {
+    const ref = String(row.result_ref || '');
+    const name = ref.startsWith('src:') ? ref.slice(4) : ref.startsWith('error:') ? '' : ref;
+    // Only ever a tx- object in that member's own drafts folder.
+    if (/^\d{1,19}$/.test(String(row.user_id)) && TX_NAME.test(name) && !name.includes('..')) await shred(bucket, `${row.user_id}/drafts/${name}`);
+    await app.datastore().table('jobs').deleteRow(row.ROWID);
+  }
+  console.log(JSON.stringify({ action: 'jobs_swept', rows: rows.length }));
+  await writeLog(app, { level: 'info', source: 'job', area: 'transcribe', event: 'swept', message: `shredded what ${rows.length} unfinished transcription${rows.length === 1 ? '' : 's'} left behind`, detail: { rows: rows.length } });
 }
 
 module.exports = async (jobRequest, context) => {
@@ -118,8 +140,15 @@ module.exports = async (jobRequest, context) => {
   try {
     const params = jobRequest.getAllJobParams() || {};
     if (params.type === 'transcribe') await transcribe(app, params);
-    else if (params.type === 'nudge') { await nudge.run(app, params); if (params.test !== '1') await pruneLogs(app).catch(() => undefined); }
-    else await spike(app, params, context, started);
+    else if (params.type === 'nudge') {
+      await nudge.run(app, params);
+      if (params.test !== '1') {
+        await sweepJobs(app).catch((e) => writeLog(app, { source: 'job', area: 'transcribe', event: 'sweep_failed', message: e.message }));
+        await pruneLogs(app).catch(() => undefined);
+      }
+    } else {
+      await writeLog(app, { level: 'warn', source: 'job', area: 'jobs', event: 'unknown_type', message: 'a job with no known type was dropped', detail: { type: String(params.type || '').slice(0, 40) } });
+    }
     // A failed transcription is a handled outcome recorded on the row, not a failed job: retrying it would
     // find the audio already deleted.
     context.closeWithSuccess();

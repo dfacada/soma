@@ -16,6 +16,9 @@ export const CHANGES: Release[] = [
     date: "2026-11-07",
     title: "Every screen, polished",
     items: [
+      "Privacy: Tighter locks on where your data lives. Soma's database and file storage now answer only to Soma's own server, and a voice transcription you walk away from mid-way no longer leaves its words on the server: whatever it left is shredded within the hour.",
+      "Telegram connects only to your own chat with the bot. A code sent in a group is refused, so nothing Soma sends can land in a group.",
+      "Admin: Someone you take out of a round stays out. Before, they could join it again on their own; now only you can put them back.",
       "Coloured buttons are easier to read in Light. Hit the target, Log all, Look up, Unlock, Activity's +25 and the other buttons filled with a colour are a shade deeper, so their white words stand out clearly.",
       "The steps chart is easier to read in Light. The 8k on the goal line and today's day under the bars are a deeper orange. The bars and the goal line keep their colour.",
       "Today: The week row matches the others. The day names under the checks are in Soma's number font, like Activity's week and the steps and sleep sheets.",

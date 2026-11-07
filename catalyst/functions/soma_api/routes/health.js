@@ -21,11 +21,11 @@
 'use strict';
 
 const express = require('express');
-const { member, wrap } = require('../lib/auth');
+const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, upsert, needId, needDay, fitText } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 
-const note = (req, event, message, detail, level) => writeLog(req.admin, { level: level || 'error', source: 'api', area: 'google-health', event, message, detail, userId: req.user.id, test: req.user.id === '999000000000000001' });
+const note = (req, event, message, detail, level) => writeLog(req.admin, { level: level || 'error', source: 'api', area: 'google-health', event, message, detail, userId: req.user.id, test: isTestUser(req) });
 
 const router = express.Router();
 const PROVIDER = 'google-health';

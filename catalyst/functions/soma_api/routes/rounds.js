@@ -8,6 +8,7 @@
 const express = require('express');
 const { member, admin, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, selectAll, upsert, needId, needDay, packJson, unpackJson, fitText, bool } = require('../lib/db');
+const { writeLog } = require('../lib/log');
 
 const router = express.Router();
 const ROUND_COLS = 'ROWID, name, start_date, length_days, rest_days_json, bonus_hit, bonus_streak, badge_streak, badge_hits, join_open, archived';
@@ -109,6 +110,8 @@ router.post('/rounds/:id/join', member, wrap(async (req, res) => {
   const roundId = String(round.ROWID);
   const existing = await membership(req, roundId, req.user.id);
   if (existing && existing.status === 'active') throw new HttpError(409, 'you are already in this round');
+  // Leaving is undone by joining again; being taken out by the admin is not.
+  if (existing && existing.status === 'banned' && req.profile.role !== 'admin') throw new HttpError(403, 'the admin took you out of this round');
   let joinSeq = existing ? Number(existing.join_seq) : null;
   if (joinSeq === null) {
     const all = await select(req.admin, 'round_members', `SELECT join_seq FROM round_members WHERE round_id = ${roundId} LIMIT 300`);
@@ -128,15 +131,18 @@ router.put('/rounds/:id/me', member, wrap(async (req, res) => {
   res.json(shapeMember(await membership(req, String(round.ROWID), req.user.id)));
 }));
 
-async function remove(req, res, userId) {
+// 'removed' when a member leaves (they may join again), 'banned' when the admin takes them out (only the admin can put
+// them back). A banned member leaving changes nothing.
+async function remove(req, res, userId, status) {
   const round = await findRound(req, req.params.id);
   const row = await membership(req, String(round.ROWID), userId);
   if (!row) throw new HttpError(404, 'not a member');
-  await req.admin.datastore().table('round_members').updateRow({ ROWID: row.ROWID, status: 'removed' });
-  res.json({ userId: String(userId), status: 'removed' });
+  if (row.status !== 'banned' || status === 'banned') await req.admin.datastore().table('round_members').updateRow({ ROWID: row.ROWID, status });
+  if (status === 'banned') void writeLog(req.admin, { level: 'info', source: 'api', area: 'admin', event: 'round_member_removed', message: 'took a member out of a round', detail: { round: String(round.ROWID), user: String(userId) }, userId: req.user.id });
+  res.json({ userId: String(userId), status: row.status === 'banned' ? 'banned' : status });
 }
-router.delete('/rounds/:id/me', member, wrap((req, res) => remove(req, res, req.user.id)));
-router.delete('/rounds/:id/members/:userId', admin, wrap((req, res) => remove(req, res, needId(req.params.userId, 'user id'))));
+router.delete('/rounds/:id/me', member, wrap((req, res) => remove(req, res, req.user.id, 'removed')));
+router.delete('/rounds/:id/members/:userId', admin, wrap((req, res) => remove(req, res, needId(req.params.userId, 'user id'), 'banned')));
 
 // ── The board: round + members + everyone's push-ups inside the round's dates ──
 // Members see each other's daily counts. That is what a leaderboard is; nothing else about a member is exposed.

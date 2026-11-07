@@ -8,7 +8,7 @@
 'use strict';
 
 const express = require('express');
-const { withUser } = require('./lib/auth');
+const { withUser, isTestId } = require('./lib/auth');
 const catalyst = require('zcatalyst-sdk-node');
 const { HttpError } = require('./lib/db');
 const { writeLog } = require('./lib/log');
@@ -57,7 +57,6 @@ app.use(require('./routes/health'));
 app.use(require('./routes/push'));
 app.use(require('./routes/logs'));
 app.use(require('./routes/admin'));
-app.use('/spike', require('./spike'));
 
 app.use((_req, res) => res.status(404).json({ error: 'no such route' }));
 // Anything that ends as a 5xx goes into the log: a crash (500) and the 502/503s this API raises on purpose when
@@ -69,7 +68,7 @@ function logFailure(req, err, status) {
   void writeLog(admin, {
     level: 'error', source: 'api', area, event: status === 500 ? 'crash' : 'http_' + status, status,
     message: err.message, detail: { method: req.method, path: req.path, stack: status === 500 ? String(err.stack || '').split('\n').slice(0, 8).join('\n') : undefined },
-    userId: req.user && req.user.id, test: Boolean(req.user && req.user.id === '999000000000000001')
+    userId: req.user && req.user.id, test: Boolean(req.user && isTestId(req.user.id))
   });
 }
 

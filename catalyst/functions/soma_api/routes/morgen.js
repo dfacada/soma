@@ -18,7 +18,7 @@
 'use strict';
 
 const express = require('express');
-const { member, wrap } = require('../lib/auth');
+const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 
@@ -31,7 +31,7 @@ const MAX_SPAN_MS = 3 * 86400000;
 
 const note = (req, event, message, detail, level) => writeLog(req.admin, {
   level: level || 'warn', source: 'api', area: 'morgen', event, message, detail,
-  userId: req.user.id, test: req.user.id === '999000000000000001'
+  userId: req.user.id, test: isTestUser(req)
 });
 
 const needKey = (v) => { if (typeof v !== 'string' || !/^[\x21-\x7e]{16,4096}$/.test(v)) throw new HttpError(400, 'bad key'); return v; };

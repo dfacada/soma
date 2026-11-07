@@ -167,7 +167,7 @@ async function run(app, params) {
       const fails = (Number(sub.fails) || 0) + 1;
       sub.fails = fails;
       console.error(JSON.stringify({ action: 'nudge_send', status: e.statusCode || null, error: String(e.body || e.message).slice(0, 200) }));
-      await writeLog(app, { source: 'job', area: 'push', event: 'send_failed', message: String(e.body || e.message).slice(0, 200), status: e.statusCode || undefined, detail: { fails, host: (() => { try { return new URL(sub.endpoint).hostname; } catch (_e) { return null; } })() }, userId: uid, test: uid === '999000000000000001' });
+      await writeLog(app, { source: 'job', area: 'push', event: 'send_failed', message: String(e.body || e.message).slice(0, 200), status: e.statusCode || undefined, detail: { fails, host: (() => { try { return new URL(sub.endpoint).hostname; } catch (_e) { return null; } })() }, userId: uid, test: /^99900000000000000[12]$/.test(uid) });
       if (fails >= 8) { sub.gone = true; await table.deleteRow(sub.ROWID).catch(() => undefined); } else await table.updateRow({ ROWID: sub.ROWID, fails }).catch(() => undefined);
       return false;
     }

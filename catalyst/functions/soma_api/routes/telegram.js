@@ -20,7 +20,7 @@
 
 const crypto = require('crypto');
 const express = require('express');
-const { member, wrap } = require('../lib/auth');
+const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, needId } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 const { join, seconds } = require('../lib/wav');
@@ -39,7 +39,7 @@ const TTS_VOICE = 'troy';
 
 const note = (req, event, message, detail, level) => writeLog(req.admin, {
   level: level || 'error', source: 'api', area: 'telegram', event, message, detail,
-  userId: req.user.id, test: req.user.id === '999000000000000001'
+  userId: req.user.id, test: isTestUser(req)
 });
 
 function token() {
@@ -107,6 +107,11 @@ router.post('/telegram/pair', member, wrap(async (req, res) => {
     .reverse()
     .find((u) => codes.some((c) => u.message.text.toUpperCase().includes(c)));
   if (!hit) throw new HttpError(404, 'no message with that code yet. Send the code to the bot, then tap Connect again.');
+  // A person's own chat with the bot, never a group or channel: what Soma sends is a reading of someone's journal,
+  // and a group would hand it to everyone in it (and let the bot be used to post into any group).
+  if (!hit.message.chat || hit.message.chat.type !== 'private') {
+    throw new HttpError(409, 'that code was sent in a group. Send it to @Soma_me_bot in a private chat, then tap Connect again.');
+  }
 
   const chat = String(hit.message.chat.id).slice(0, 32);
   const row = await mine(req);
@@ -157,7 +162,8 @@ router.post('/telegram/send', member, wrap(async (req, res) => {
           body: JSON.stringify({ model: TTS_MODEL, voice: TTS_VOICE, input: piece, response_format: 'wav' }),
           signal: AbortSignal.timeout(20000)
         });
-        if (!answer.ok) throw new Error('speech ' + answer.status + ' ' + (await answer.text().catch(() => '')).slice(0, 120));
+        // The status only: the service's message can quote the text it was given.
+        if (!answer.ok) throw new Error('speech service answered ' + answer.status);
         pieces.push(Buffer.from(await answer.arrayBuffer()));
         said += piece.length;
       }

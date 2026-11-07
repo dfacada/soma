@@ -14,7 +14,7 @@
 'use strict';
 
 const express = require('express');
-const { member, wrap } = require('../lib/auth');
+const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, needId, unpackJson } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 
@@ -26,7 +26,7 @@ const MAX_CHARS = 60000;
 
 const note = (req, event, message, detail, level) => writeLog(req.admin, {
   level: level || 'error', source: 'api', area: 'insights', event, message, detail,
-  userId: req.user.id, test: req.user.id === '999000000000000001'
+  userId: req.user.id, test: isTestUser(req)
 });
 
 const SYSTEM = [

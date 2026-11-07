@@ -38,6 +38,13 @@ async function signedUrl(method: "PUT" | "GET", name: string) {
   return res.urls[0].url;
 }
 
+/** Overwrites an upload no job will ever read. The server shreds what it refuses, but when the request to start the
+ *  job never reached it (a dropped connection), only the browser knows the audio is there, and there is no job row
+ *  for the hourly sweep to find. Best effort: if this fails too, the network is down for both. */
+async function blank(name: string) {
+  try { await fetch(await signedUrl("PUT", name), { method: "PUT", body: " ", headers: PUT_HEADERS }); } catch { /* nothing more to try */ }
+}
+
 export async function transcribe(entryId: string, audio: Blob): Promise<string> {
   const source = `tx-${entryId}.${extension(audio.type || "")}`;
   // fetch rejects (rather than returning a status) when the network or CORS stops the request.
@@ -47,7 +54,12 @@ export async function transcribe(entryId: string, audio: Blob): Promise<string> 
 
   let job: Job;
   try { job = await api<Job>("POST", "/jobs", { type: "transcribe", entryId, source }); }
-  catch (e) { throw e instanceof ApiError && e.status === 429 ? new TranscribeError("queue_busy", "Several transcriptions are already running. Try again shortly.") : new TranscribeError("queue_failed", "The transcription could not be started."); }
+  catch (e) {
+    if (!(e instanceof ApiError)) await blank(source);
+    if (e instanceof ApiError && e.status === 429) throw new TranscribeError("queue_busy", "Several transcriptions are already running. Try again shortly.");
+    if (e instanceof ApiError && e.status === 403) throw new TranscribeError("switched_off", "Cloud transcription is off. Turn it on in Settings → Journal & vault.");
+    throw new TranscribeError("queue_failed", "The transcription could not be started.");
+  }
 
   try {
     const started = Date.now();

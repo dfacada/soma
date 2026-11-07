@@ -14,7 +14,6 @@ const BUCKET = 'soma-drafts';
 const KINDS = ['entries', 'audio', 'photos', 'drafts'];
 const ENTRY_KINDS = ['entries', 'audio', 'photos'];
 const NAME = /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,79}$/;
-const LEGACY_BUCKETS = ['soma-entries', 'soma-audio', 'soma-photos', 'soma-drafts']; // spike page only
 const SIGN_EXPIRY_S = 900;
 // Stratus signs only so many URLs at a time: measured 2026-10-20, 16 at once is fine and 17 fails the whole call
 // with "Concurrency limit reached for the feature COMPONENT". A journal of 23 entries therefore stopped loading
@@ -78,10 +77,12 @@ router.get('/entries', member, wrap(async (req, res) => {
 router.put('/entries/:id', member, wrap(async (req, res) => {
   const id = needToken(req.params.id, 'entry id');
   const b = req.body || {};
-  const find = `SELECT ${ENTRY_COLS} FROM entries WHERE entry_id = '${id}'`;
-  const existing = (await select(req.admin, 'entries', find))[0];
+  const existing = (await select(req.admin, 'entries', `SELECT ${ENTRY_COLS} FROM entries WHERE entry_id = '${id}'`))[0];
   // entry_id is unique across users, so an id that exists under someone else is simply unavailable.
   if (existing && String(existing.user_id) !== req.user.id) throw new HttpError(409, 'entry id is taken');
+  // From here every read and write is held to the caller's own rows: a row someone else inserted under this id in
+  // the moment since the check above makes the insert fail on the unique id, never an update of their row.
+  const find = `SELECT ${ENTRY_COLS} FROM entries WHERE entry_id = '${id}' AND user_id = ${needId(req.user.id)}`;
   if (!existing && !Number.isInteger(b.createdMs)) throw new HttpError(400, 'createdMs is required for a new entry');
   if (b.transcriptStatus !== undefined && !TRANSCRIPT.includes(b.transcriptStatus)) throw new HttpError(400, 'unknown transcriptStatus');
 
@@ -177,34 +178,19 @@ async function signOne(bucket, key, action) {
 // ── Batch pre-signed URLs so audio and draft chunks never pass through this function ──
 //   { kind: 'audio', names: ['e_123.enc'], method: 'PUT' | 'GET' }  →  <user_id>/audio/e_123.enc
 // The caller never supplies a path, only a kind and flat file names, so it cannot reach outside its own prefix.
+// (The spike page's old { bucket, keys } form, which took whole keys, is gone with the spike.)
 router.post('/sign', member, wrap(async (req, res) => {
   const b = req.body || {};
   const action = b.method === 'GET' ? 'GET' : 'PUT';
-  let bucketName = BUCKET;
-  let keys;
-  if (b.kind !== undefined) {
-    if (!KINDS.includes(b.kind)) throw new HttpError(400, 'unknown kind');
-    if (!Array.isArray(b.names) || b.names.length === 0 || b.names.length > 100) throw new HttpError(400, '1–100 names required');
-    if (b.names.some((n) => typeof n !== 'string' || !NAME.test(n) || n.includes('..'))) throw new HttpError(400, 'bad name');
-    keys = b.names.map((n) => `${req.user.id}/${b.kind}/${n}`);
-  } else {
-    // Legacy form used by public/spike.html; goes away with the spike cleanup.
-    if (!LEGACY_BUCKETS.includes(b.bucket)) throw new HttpError(400, 'unknown bucket');
-    if (!Array.isArray(b.keys) || b.keys.length === 0 || b.keys.length > 100) throw new HttpError(400, '1–100 keys required');
-    const prefix = req.user.id + '/';
-    if (b.keys.some((k) => typeof k !== 'string' || k.length > 200 || !k.startsWith(prefix) || k.includes('..'))) {
-      throw new HttpError(403, 'keys must live under your own prefix');
-    }
-    bucketName = b.bucket;
-    keys = b.keys;
-  }
-  const bucket = req.admin.stratus().bucket(bucketName);
+  if (!KINDS.includes(b.kind)) throw new HttpError(400, 'unknown kind');
+  if (!Array.isArray(b.names) || b.names.length === 0 || b.names.length > 100) throw new HttpError(400, '1–100 names required');
+  if (b.names.some((n) => typeof n !== 'string' || !NAME.test(n) || n.includes('..'))) throw new HttpError(400, 'bad name');
+  const keys = b.names.map((n) => `${req.user.id}/${b.kind}/${n}`);
+  const bucket = req.admin.stratus().bucket(BUCKET);
   const urls = [];
   for (let from = 0; from < keys.length; from += SIGN_AT_ONCE) {
     const batch = keys.slice(from, from + SIGN_AT_ONCE);
-    urls.push(...await Promise.all(batch.map(async (k, j) => ({
-      name: b.names ? b.names[from + j] : undefined, key: k, url: await signOne(bucket, k, action)
-    }))));
+    urls.push(...await Promise.all(batch.map(async (k, j) => ({ name: b.names[from + j], key: k, url: await signOne(bucket, k, action) }))));
   }
   res.json({ method: action, expiresIn: SIGN_EXPIRY_S, urls });
 }));

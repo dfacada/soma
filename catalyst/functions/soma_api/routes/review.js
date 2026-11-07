@@ -16,8 +16,8 @@
 'use strict';
 
 const express = require('express');
-const { member, wrap } = require('../lib/auth');
-const { HttpError, select, upsert, needId, needDay, fitText } = require('../lib/db');
+const { member, wrap, isTestUser } = require('../lib/auth');
+const { HttpError, select, upsert, needId, needDay, fitText, unpackJson } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 
 const router = express.Router();
@@ -32,7 +32,7 @@ const TTS_VOICE = 'troy';
 
 const note = (req, event, message, detail, level) => writeLog(req.admin, {
   level: level || 'error', source: 'api', area: 'review', event, message, detail,
-  userId: req.user.id, test: req.user.id === '999000000000000001'
+  userId: req.user.id, test: isTestUser(req)
 });
 
 const SYSTEM = [
@@ -86,6 +86,10 @@ function readJson(message) {
 router.post('/review/write', member, wrap(async (req, res) => {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new HttpError(503, 'the weekly review is not set up on the server yet');
+  // The choice is checked here too, not only in the browser: no journal text goes to Claude without it.
+  const rows = await select(req.admin, 'profiles', `SELECT settings_json FROM profiles WHERE user_id = ${needId(req.user.id)}`);
+  const review = unpackJson(rows[0] && rows[0].settings_json, {}).weeklyReview;
+  if (!review || review.consent !== true) throw new HttpError(403, 'reading the journal for the week in review is switched off in Settings');
   const body = req.body || {};
   const entries = Array.isArray(body.entries) ? body.entries.slice(0, MAX_ENTRIES) : [];
   if (!entries.length) throw new HttpError(400, 'no entries to review');
@@ -156,8 +160,10 @@ router.post('/review/speak', member, wrap(async (req, res) => {
     throw new HttpError(502, 'the voice could not be reached');
   }
   if (!answer.ok) {
-    const detail = (await answer.text().catch(() => '')).slice(0, 200);
-    await note(req, 'speak_failed', 'the speech service refused', { status: answer.status, detail }, answer.status === 429 ? 'warn' : 'error');
+    // Only the service's error code: its message can quote the text it was given, which is the review.
+    const reply = await answer.json().catch(() => null);
+    const code = reply && reply.error && (reply.error.code || reply.error.type);
+    await note(req, 'speak_failed', 'the speech service refused', { status: answer.status, code: code ? String(code).slice(0, 60) : null }, answer.status === 429 ? 'warn' : 'error');
     throw new HttpError(answer.status === 429 ? 503 : 502, answer.status === 429 ? 'the voice is busy; try again in a moment' : 'the voice could not read that');
   }
   const audio = Buffer.from(await answer.arrayBuffer());

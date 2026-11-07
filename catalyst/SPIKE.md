@@ -105,7 +105,7 @@ Pass: a job submitted from `soma_api` sleeps 60 s, then writes a row to a `jobs`
 4. ~~Custom domain.~~ Dropped: staying on the onslate.com URL. Instead, before inviting anyone, confirm the Production hostname.
 5. Export `analyze-entry` from the Glimpse Supabase dashboard.
 
-After that: delete the `/spike/*` routes, `SPIKE_KEY`, `public/spike.html`, the `spike_text` table and `soma-drafts/spike/*` objects.
+Cleanup, done 2026-11-07 in the security review: the `/spike/*` routes, `SPIKE_KEY` (out of `secrets.json` and so out of the live function) and `public/spike.html` are gone, as is `/sign`'s old whole-key form that the page used. Left for the console when convenient: the `spike_text` table, the `soma-drafts/spike/*` objects, the spike row in `jobs` (user 0) and the three legacy buckets (`soma-entries`, `soma-audio`, `soma-photos`), which nothing reads or writes any more.
 
 ## Function skeleton
 

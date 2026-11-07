@@ -19,7 +19,7 @@
 
 const crypto = require('crypto');
 const express = require('express');
-const { member, wrap } = require('../lib/auth');
+const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, upsert, needId } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 
@@ -33,7 +33,7 @@ const ALGS = { '-7': 'sha256', '-257': 'sha256', '-8': null }; // ES256, RS256, 
 const CRED_ID = /^[A-Za-z0-9_-]{16,512}$/;
 const B64URL = /^[A-Za-z0-9_-]*$/;
 
-const note = (req, event, message, detail) => writeLog(req.admin, { level: 'warn', source: 'api', area: 'vault', event, message, detail, userId: req.user.id, test: req.user.id === '999000000000000001' });
+const note = (req, event, message, detail) => writeLog(req.admin, { level: 'warn', source: 'api', area: 'vault', event, message, detail, userId: req.user.id, test: isTestUser(req) });
 
 function secret() {
   const s = process.env.PASSKEY_SECRET;

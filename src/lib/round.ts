@@ -20,7 +20,7 @@ export type Round = {
   bonusHit: number; bonusStreak: number; badgeStreak: number; badgeHits: number;
   joinOpen: boolean; archived: boolean;
 };
-export type Member = { userId: string; displayName: string; dailyTarget: number; startDay: number; joinSeq: number; status: "active" | "removed" };
+export type Member = { userId: string; displayName: string; dailyTarget: number; startDay: number; joinSeq: number; status: "active" | "removed" | "banned" };
 /** dayIndex → reps. An absent key means nothing was logged that day. */
 export type Log = Record<number, number>;
 export type Phase = "upcoming" | "running" | "finished" | "archived";
