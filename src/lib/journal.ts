@@ -69,21 +69,41 @@ export async function saveEntry(key: CryptoKey, entry: JournalEntry, audio?: Blo
   });
 }
 
-export type LoadedEntry = { meta: EntryMeta; entry: JournalEntry | null };
+/** `error` says why an entry could not be read: a download's status, or only an error's name, because a parse
+ *  error's message can quote the decrypted text and this goes to the log. */
+export type LoadedEntry = { meta: EntryMeta; entry: JournalEntry | null; error?: string };
 
-/** Newest first. An entry that fails to decrypt is kept as metadata only, never dropped. `onProgress` hears the
- *  count once the list is known and after each entry is downloaded and decrypted (the opening splash shows it). */
+const PAGE = 100; // the API's page of entries, and the most names /sign takes at once
+const whyUnread = (e: unknown) => (e instanceof Error && /^download failed \(\d+\)$/.test(e.message) ? e.message : (e as { name?: string } | null)?.name || "unknown");
+
+/** Every entry, newest first. An entry that fails to download or decrypt is kept as metadata only, never dropped.
+ *  `onProgress` hears the count once the list is known and after each entry is downloaded and decrypted (the opening
+ *  splash shows it). The list comes 100 at a time: reading only the first page lost every entry past the hundredth. */
 export async function loadEntries(key: CryptoKey, onProgress?: (done: number, total: number) => void): Promise<LoadedEntry[]> {
-  const { entries } = await api<{ entries: EntryMeta[] }>("GET", "/entries");
+  const entries: EntryMeta[] = [];
+  const seen = new Set<string>();
+  // Each page starts at the last one's time, inclusive, so entries sharing that millisecond are not skipped; the
+  // repeats are dropped by id. Capped far past any real journal, so a misbehaving list cannot loop for ever.
+  for (let page = 0; page < 200; page++) {
+    const last = entries[entries.length - 1];
+    const res = await api<{ entries: EntryMeta[]; more?: boolean }>("GET", "/entries" + (last ? `?before=${last.createdMs + 1}` : ""));
+    const had = entries.length;
+    for (const e of res.entries) if (!seen.has(e.id)) { seen.add(e.id); entries.push(e); }
+    if (!res.more || entries.length === had) break;
+  }
   onProgress?.(0, entries.length);
-  if (!entries.length) return [];
-  const urls = await signed("entries", "GET", entries.map((e) => fileOf(e.id)));
   let done = 0;
-  return Promise.all(entries.map(async (meta) => {
-    try { return { meta, entry: await decryptJson<JournalEntry>(key, await getObject(urls.get(fileOf(meta.id))!)) }; }
-    catch { return { meta, entry: null }; }
-    finally { onProgress?.(++done, entries.length); }
-  }));
+  const out: LoadedEntry[] = [];
+  for (let i = 0; i < entries.length; i += PAGE) {
+    const batch = entries.slice(i, i + PAGE);
+    const urls = await signed("entries", "GET", batch.map((e) => fileOf(e.id)));
+    out.push(...await Promise.all(batch.map(async (meta): Promise<LoadedEntry> => {
+      try { return { meta, entry: await decryptJson<JournalEntry>(key, await getObject(urls.get(fileOf(meta.id))!)) }; }
+      catch (e) { return { meta, entry: null, error: whyUnread(e) }; }
+      finally { onProgress?.(++done, entries.length); }
+    })));
+  }
+  return out;
 }
 
 /** Where loadAudio has got to. The step names are the ones the player logs (JournalScreen.tsx). */

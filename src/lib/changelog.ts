@@ -16,6 +16,10 @@ export const CHANGES: Release[] = [
     date: "2026-11-07",
     title: "Every screen, polished",
     items: [
+      "Journal: Every entry loads, however many you write. Soma read only your newest 100 before; nobody had got that far yet, and now it reads them all.",
+      "Fixed: entries you could already read stay readable when you leave mid-load. Jumping out of Soma while it loads your journal (to reconnect Fitbit, say) cut the downloads short, and those entries showed as unreadable until the next load.",
+      "Fixed: Face ID unlock no longer waits forever if your phone has lost what it saved for Face ID. Soma asks for your passphrase instead, and you can set Face ID up again in Settings.",
+      "Fixed: one unreadable recording on your phone no longer holds up the rest. If Safari can't read back something Soma saved on your phone, the other recordings still upload, and Soma no longer says a recording wasn't saved when it was.",
       "A first day that starts clean. Someone opening Soma for the first time no longer gets What's new about screens they have never seen, and the days before they joined stay quiet in the week instead of counting as missed.",
       "Today: No flame until there is a streak. On a first day the corner stays clear and the week says “Close today for your first full day.”",
       "Food: A newcomer can make the plan theirs. A card says everyone starts on the same targets, with a button to set your own calories and protein, or keep these.",

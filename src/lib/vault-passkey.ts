@@ -10,6 +10,7 @@
 // the unlock sheet or the Settings row appears, and the tap goes straight to the passkey prompt.
 
 import { api, ApiError } from "./api";
+import { report } from "./log";
 import { checkKey, newDeviceKey, openOnDevice, sealForDevice, type VaultMeta } from "./vault-crypto";
 
 /** A failure with a sentence for the person. `cancelled` is their choice (or a timeout) and is not a fault. */
@@ -37,8 +38,12 @@ async function idb<T>(mode: IDBTransactionMode, work: (s: IDBObjectStore) => IDB
     return await new Promise<T>((resolve, reject) => {
       const t = d.transaction(STORE, mode);
       const r = work(t.objectStore(STORE));
-      t.oncomplete = () => resolve(r.result as T);
+      // Reading `result` can throw: Safari rebuilds a stored record (this one holds a CryptoKey) only when it is read,
+      // and one it can no longer rebuild throws "UnknownError: Cannot inject key into script value" here. Uncaught, the
+      // promise would never settle and the unlock would wait forever. Now the read fails (recovery.ts tx has the same).
+      t.oncomplete = () => { try { resolve(r.result as T); } catch (e) { reject(e); } };
       t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error);
     });
   } finally { d.close(); }
 }
@@ -138,7 +143,11 @@ export async function enrolPasskey(key: CryptoKey, user: { id: string; email: st
 /** Face ID → the vault key, checked against the vault's verifier before it is handed back. */
 export async function unlockWithPasskey(userId: string, meta: VaultMeta): Promise<CryptoKey> {
   try {
-    const rec = await readRecord(userId);
+    // A record this browser can no longer read back opens nothing; setting Face ID up again writes a new one.
+    const rec = await readRecord(userId).catch((e) => {
+      report("vault", "passkey_record_unreadable", e, undefined, "warn");
+      throw new PasskeyError("stale", "Face ID needs setting up again on this device. Use your passphrase, then set it up in Settings.");
+    });
     if (!rec) throw new PasskeyError("stale", "Face ID isn't set up on this device. Use your passphrase.");
     const challenge = await takeChallenge("unlock");
     const cred = (await navigator.credentials.get({

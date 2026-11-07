@@ -207,9 +207,27 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         document.removeEventListener("visibilitychange", onHide);
       }
     }
-    const [left, latest] = await Promise.all([listPending(userId).catch(() => []), loadEntries(k, (done, total) => setEntriesProgress({ done, total })).catch((e) => { report("journal", "entries_load_failed", e); return null; })]);
-    const unreadable = latest ? latest.filter((l) => !l.entry).length : 0;
-    if (unreadable) report("journal", "entries_unreadable", undefined, { count: unreadable, of: latest!.length }, "warn");
+    let loadHidden = document.hidden;
+    const onLoadHide = () => { if (document.hidden) loadHidden = true; };
+    document.addEventListener("visibilitychange", onLoadHide);
+    const [left, loaded] = await Promise.all([listPending(userId).catch(() => []), loadEntries(k, (done, total) => setEntriesProgress({ done, total })).catch((e) => { report("journal", "entries_load_failed", e); return null; })])
+      .finally(() => document.removeEventListener("visibilitychange", onLoadHide));
+    // iOS cuts every download in flight when the app leaves the screen: four times from 30 October to 6 November,
+    // each around a Fitbit reconnect, every entry came back unreadable. An entry already read keeps that copy now;
+    // only one never read shows as unreadable.
+    const held = new Map((latestLoaded.current || []).flatMap((l) => (l.entry ? [[l.meta.id, l.entry] as const] : [])));
+    const failed = loaded ? loaded.filter((l) => !l.entry) : [];
+    const latest = loaded && (failed.length ? loaded.map((l) => (!l.entry && held.has(l.meta.id) ? { ...l, entry: held.get(l.meta.id)! } : l)) : loaded);
+    if (failed.length) {
+      const reasons: Record<string, number> = {};
+      for (const l of failed) reasons[l.error || "unknown"] = (reasons[l.error || "unknown"] || 0) + 1;
+      // Network failures while the app was away are expected: worth a note, not a warning.
+      const expected = loadHidden && Object.keys(reasons).every((r) => r === "TypeError");
+      report("journal", "entries_unreadable", undefined, {
+        count: failed.length, of: loaded!.length, kept: failed.filter((l) => held.has(l.meta.id)).length,
+        reasons: JSON.stringify(reasons), wentHidden: loadHidden, ids: failed.slice(0, 3).map((l) => l.meta.id).join(" "),
+      }, expected ? "info" : "warn");
+    }
     setPending(left);
     // A load that failed has to say so: without this the screen sat on "Decrypting entries" for as long as you
     // cared to wait, while the log held the real answer (David, 2026-10-20).
@@ -387,13 +405,15 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     // Buffer first: if this fails the recording is not safe and we must not say it is.
     try {
       await putPending({ id: "pending_" + entry.id, userId, entry, audio: rec.audio, attempts: 0, lastAttemptAt: null });
-      await clearDraft(rec.draftId);
     } catch (e) {
       setSealing(false);
       say("This recording could not be saved on this device");
       report("journal", "device_save_failed", e, { audioBytes: rec.audio.size, mime: rec.audio.type, seconds: rec.seconds });
       return;
     }
+    // The recording is safe now. Slices left behind would only be adopted again later as a twin, which flushOnce
+    // recognises by draft id and skips, so a failure here is logged, not told.
+    await clearDraft(rec.draftId).catch((e) => report("journal", "draft_clear_failed", e, undefined, "warn"));
     setSealing(false);
     setLastSaved((l) => ({ n: l.n + 1, seconds: rec.seconds }));
     fresh.current.set("pending_" + entry.id, rec.audio);
