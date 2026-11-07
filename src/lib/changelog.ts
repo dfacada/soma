@@ -16,6 +16,12 @@ export const CHANGES: Release[] = [
     date: "2026-11-07",
     title: "Every screen, polished",
     items: [
+      "Coloured buttons are easier to read in Light. Hit the target, Log all, Look up, Unlock, Activity's +25 and the other buttons filled with a colour are a shade deeper, so their white words stand out clearly.",
+      "The steps chart is easier to read in Light. The 8k on the goal line and today's day under the bars are a deeper orange. The bars and the goal line keep their colour.",
+      "Today: The week row matches the others. The day names under the checks are in Soma's number font, like Activity's week and the steps and sleep sheets.",
+      "Today: Numbers are in the number font. The count in the line under the orb, your weight change, a counted habit and the push-up target beside your count now match every other number in Soma.",
+      "Food: The date reads the way Today writes it. The top of Food says Friday 6 Nov instead of Friday · November 6.",
+      "Activity: The line above the title says which streak it counts. It reads 12 full days in a row, the same full days as Today's week card, so it no longer looks like a push-up streak.",
       "Today: The ring around the orb matches its beads. Each task lights its own stretch of the ring in its own colour: a done task sits on a lit arc, food fills in meal by meal, and a task still to do leaves its stretch empty.",
       "Today: Only what's up next asks for a tap. The Journal and Food record buttons stay soft until their card is Up next, so one thing at a time stands out. The words inside the orb (Done today, Day closed and the /5) are brighter, with a soft shadow, so they read clearly against its colours.",
       "Today: The cards line up. Your mood sits level with your weight and the lines under them start at the same height, and Food's calories are a big number like your weight and your push-ups.",

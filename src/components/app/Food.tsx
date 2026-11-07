@@ -25,8 +25,6 @@ import a from "./app.module.css";
 import sc from "./screens.module.css";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
-const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const MONTH = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const digits = (v: string, max = 5) => v.replace(/\D/g, "").slice(0, max);
 
 export function Food() {
@@ -88,7 +86,8 @@ export function Food() {
     <div className={a.page}>
       <div className={a.pageHead}>
         <div>
-          <div className="eb">{WEEKDAY[view.getDay()]} · {MONTH[view.getMonth()]} {view.getDate()}</div>
+          {/* The date as Today's header writes it, "Friday 6 Nov", so one day reads one way on every tab. */}
+          <div className="eb">{view.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}</div>
           <div className={`d ${a.pageTitle}`}>Food</div>
         </div>
       </div>

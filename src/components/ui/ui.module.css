@@ -19,6 +19,10 @@
 /* Not yet usable: one look in both themes, the secondary's well with a readable muted label and no glow (a faded hue
    read as a pale wash in Light and as a dim but working button in Night). */
 .btnHue:disabled { opacity: 1; background: var(--well); color: var(--muted); box-shadow: none; }
+/* In Light, white words on a bare hue fall under the 4.5:1 that button text needs (activity 4.1, food 4.3), so the
+   fill takes a third of the hue's own deep shade: about 4.9 and 5. The glow keeps the bare hue, and Night (dark words
+   on a lit hue) is unchanged. */
+:global(:root[data-theme="light"]) .btnHue:not(:disabled) { background: color-mix(in srgb, var(--hue) 70%, var(--hue-ink)); }
 .btnDanger { background: var(--rec); color: var(--on-hue); }
 .btnSm { position: relative; height: 40px; padding: 0 16px; font-size: 13px; }
 /* 40 to look at, 44 to hit. */

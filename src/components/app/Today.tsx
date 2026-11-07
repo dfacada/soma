@@ -9,7 +9,7 @@
 // recorded, and the entry is filed under that day marked "added later".
 
 import { useGoTab } from "./tabs";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Overlay, Sheet, StatPill, Toast, type IconName, type MedallionState, type OrbBead } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
 import { hm } from "@/lib/sleep";
@@ -37,6 +37,9 @@ import a from "./app.module.css";
 import t from "./today.module.css";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
+/** A sentence with its numbers in mono, as every number in Soma is (the week line's streak and best): "2 left to
+ *  close the day", "↑ 0.9 lb since last", "3 meals left". The words keep the body face. */
+const nums = (text: string): ReactNode => text.split(/(\d[\d,.]*\d|\d)/).map((part, i) => (i % 2 ? <span key={i} className="m">{part}</span> : part));
 const ACT_ICONS: Record<string, IconName> = { walk: "walk", gym: "barbell", run: "run" };
 const BEADS: Record<TaskKey, Omit<OrbBead, "key" | "value">> = {
   weight: { domain: "food", icon: "scale", label: "Weight" },
@@ -287,7 +290,7 @@ export function Today() {
               <span className={`eb ${t.orbWords}`}>{isToday ? "done today" : "done that day"}</span>
             </>}
         </Orb>
-        {lede && <p className={t.lede}>{lede}{next && head.todos.length > 1 && <> <span className={t.ledeNext}>Up next: {NEXT_LABEL[next]}.</span></>}</p>}
+        {lede && <p className={t.lede}>{nums(lede)}{next && head.todos.length > 1 && <> <span className={t.ledeNext}>Up next: {NEXT_LABEL[next]}.</span></>}</p>}
         {head.todos.length > 0 && (
           <div className={t.todos}>
             {head.todos.map((x, i) => <span key={x.label} className={`${t.todo} ${todoKeys[i] === next ? t.todoNext : ""}`} style={{ "--c": x.color, animationDelay: `${0.3 + i * 0.06}s` } as CSSProperties}><i />{x.label}</span>)}
@@ -350,7 +353,7 @@ export function Today() {
           {weightShown !== null
             ? <span className={`${t.big} ${st.weight === null ? t.ghost : ""}`}><span className="dc">{weightShown}</span><span className={t.unit}>lb</span></span>
             : <span className={`d ${t.title}`}>Weigh in</span>}
-          <span className={t.sub}>{weightSub}</span>
+          <span className={t.sub}>{nums(weightSub)}</span>
         </button>
 
         <button type="button" className={`${tile(st.checkinDone, false, false, "checkin")} ${t.hit}`} style={hue("journal")} onClick={() => setCheckinSheet(true)}
@@ -358,7 +361,7 @@ export function Today() {
           <span className={t.tint} /><span className={t.sweep} />
           <span className={t.th}><Medallion domain="journal" icon="heart" state={st.checkinDone ? "done" : "idle"} /><span className="eb">Check-in</span></span>
           <span className={`d ${t.title}`}>{st.checkinDone ? checkin!.mood : "How's today?"}</span>
-          <span className={t.sub}>{st.checkinDone ? ([...habitsOn, ...countsOn].join(" · ") || "No habits ticked") : "Mood and habits, ten seconds"}</span>
+          <span className={t.sub}>{st.checkinDone ? nums([...habitsOn, ...countsOn].join(" · ") || "No habits ticked") : "Mood and habits, ten seconds"}</span>
         </button>
 
         {/* The Journal card is the record button: no floating mic on Today. The mood picked above rides along. */}
@@ -395,7 +398,7 @@ export function Today() {
                     {!listening && st.meals
                       ? <span className={t.big}><span className="dc">{fmt(st.kcal)}</span><span className={t.unit}>kcal</span></span>
                       : <span className={`d ${t.title} ${listening ? `m ${t.recTime}` : ""}`}>{listening ? mmss(voice.seconds) : sayFood ? "Say what you ate" : "Four meals"}</span>}
-                    <span className={t.sub}>{sayFood ? foodLine : foodSub}</span>
+                    <span className={t.sub}>{nums(sayFood ? foodLine : foodSub)}</span>
                   </span>
                   {sayFood && <span className={`${t.act} ${listening ? t.actRec : ""}`}><Icon name={listening ? "pause" : "mic"} size={24} strokeWidth={2} /></span>}
                 </span>
@@ -423,8 +426,9 @@ export function Today() {
           <button type="button" className={t.hit} onClick={() => setPushSheet(true)}
             aria-label={rest ? `Push-ups: rest day, ${st.pushups} logged` : `Push-ups: ${st.pushups} of ${target}. Count them`}>
             <span className={t.th}><Medallion domain="activity" icon="barbell" state={st.activityDone ? "done" : "idle"} /><span className="eb">Activity</span></span>
-            <span className={t.big}><span key={st.pushups} className={`dc ${t.roll}`}>{st.pushups}</span><span className={t.unit}>{rest ? "push-ups · rest day" : `/ ${target} push-ups`}</span></span>
-            <span className={t.sub}>{actSub}</span>
+            {/* The target is mono, like Food's "/ 2,100 kcal" and the push-up sheet's "/ 100"; a bare unit is not. */}
+            <span className={t.big}><span key={st.pushups} className={`dc ${t.roll}`}>{st.pushups}</span><span className={rest ? t.unit : `m ${t.unit}`}>{rest ? "push-ups · rest day" : `/ ${target} push-ups`}</span></span>
+            <span className={t.sub}>{nums(actSub)}</span>
             {!rest && <span className={t.bar}><i style={{ width: `${Math.min(100, (st.pushups / Math.max(1, target)) * 100).toFixed(1)}%` }} /></span>}
           </button>
           <div className={t.toggles}>

@@ -76,7 +76,7 @@ export function Activity() {
     <div className={a.page}>
       <div className={a.pageHead}>
         <div>
-          <div className="eb">{st.acts} of {st.actTotal} logged {isToday ? "today" : "that day"}{run ? ` · ${run} day${run === 1 ? "" : "s"} in a row` : ""}</div>
+          <div className="eb">{st.acts} of {st.actTotal} logged {isToday ? "today" : "that day"}{run ? ` · ${run} full day${run === 1 ? "" : "s"} in a row` : ""}</div>
           <div className={`d ${a.pageTitle}`}>Activity</div>
         </div>
       </div>

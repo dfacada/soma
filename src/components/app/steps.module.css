@@ -56,6 +56,9 @@
 .footDay { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
 .footOn :global(.m) { color: var(--ink); }
 .footOn .footDay { color: var(--activity); }
+/* In Light the bare hue is 4.1:1 on the white sheet, under the 4.5 these 9.5px words need, so the goal's 8k and today's
+   day take its deep shade, as the Activity week row's today does. The goal line, the bars and today's lane keep the hue. */
+:global(:root[data-theme="light"]) .axis .axisGoal, :global(:root[data-theme="light"]) .footOn .footDay { color: var(--activity-ink); }
 .line { font-size: 13px; color: var(--muted); line-height: 1.5; }
 
 .sync { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
