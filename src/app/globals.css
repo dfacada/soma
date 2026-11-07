@@ -12,7 +12,9 @@
   --field: #FAF9F6;
   --hairline: #DCD9D0;
   --hairline-soft: #E4E0D6;
-  --faint: #8A857B;
+  /* The quietest text (chart axes, weekday labels, footnotes), a step lighter than muted: 4.5:1 on the bone page itself,
+     5:1 on white. */
+  --faint: #736E66;
   --muted: #6E6A62;
   --ink-2: #4A4741;
   --ink: #1B1A17;
@@ -65,6 +67,13 @@
   --island: #1B1A17;
   --island-ink: #F4F3EF;
 
+  /* The orb (Orb.tsx): in Light a pale glass sphere with the hues multiplied in and the halo at half strength; Night
+     lights it from inside. Here so a Night island (.night) draws Night's sphere inside a Light page. */
+  --orb-halo: 0.5;
+  --orb-blend: multiply;
+  --orb-sphere: radial-gradient(circle at 50% 28%, var(--surface), var(--surface-2) 85%);
+  --orb-sphere-shadow: inset 0 1px 0 #FFFFFF, inset 0 -24px 50px rgba(27, 26, 23, 0.06), 0 28px 50px -26px rgba(27, 26, 23, 0.35);
+
   /* Motion. Springs overshoot a little; Calm (Settings → Appearance) swaps them for plain ease-outs. */
   --spring: cubic-bezier(0.3, 1.4, 0.5, 1);
   --spring-soft: cubic-bezier(0.2, 1.2, 0.35, 1);
@@ -112,8 +121,9 @@
 
 /* ── Night (data-theme="dark", the default since 2026-11-02): warm near-black, and the three hues lit so they glow
    rather than sit. Text on a hue turns dark. Comes after the palette block on purpose: same specificity, later wins.
-   The stored setting is still called "dark" so nobody's choice had to move. ── */
-:root[data-theme="dark"] {
+   The stored setting is still called "dark" so nobody's choice had to move.
+   .night is a Night island in either theme: the day-closing moment is always dark, so it takes the whole set. ── */
+:root[data-theme="dark"], .night {
   color-scheme: dark;
   --bone: #0B0A09;
   --surface: #161513;
@@ -149,6 +159,11 @@
   --island: #000000;
   --island-ink: #F5F2EB;
 
+  --orb-halo: 1;
+  --orb-blend: screen;
+  --orb-sphere: radial-gradient(circle at 50% 28%, var(--surface-2), var(--bone) 80%);
+  --orb-sphere-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -30px 60px rgba(0, 0, 0, 0.35), 0 34px 60px -30px rgba(0, 0, 0, 0.8);
+
   --critical: #F0A79D;
   --critical-bg: #4A211C;
   --warning: #E8C66A;
@@ -167,7 +182,7 @@
 }
 
 /* Soma's own hues at night are picked by hand, brighter than mixing toward white gets them. */
-:root[data-theme="dark"]:not([data-palette]) {
+:root[data-theme="dark"]:not([data-palette]), :root:not([data-palette]) .night {
   --journal: #8F8AF7;
   --journal-soft: #B2AEFA;
   --journal-ink: #C9C6FC;
@@ -176,6 +191,10 @@
   --activity: #F39A57;
   --activity-ink: #F8C49C;
 }
+
+/* A rest day, wherever it is drawn (the round grid, the week's bars): stripes of the strong hairline. Set on .night as
+   well, so a Night island reads its own hairline rather than the page's. */
+:root, .night { --hatch-rest: repeating-linear-gradient(-45deg, var(--hairline-strong) 0 2px, transparent 2px 5px); }
 
 /* Calm motion: the same moves, without the overshoot. Endless loops (the splash drift, the recording pulse) stop in
    the components themselves under [data-motion="calm"]. */

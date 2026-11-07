@@ -17,19 +17,32 @@
 .roll { display: inline-block; animation: roll 0.6s var(--spring) both; }
 @keyframes roll { from { opacity: 0; transform: translateY(65%) scale(0.85); } }
 
-.hero { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 6px; }
+/* The caption sits close under the ring (the orb's 280 box leaves 22 bare below it) and the hero ends with room, so
+   the caption and chips read as the orb's and the week card starts a new block. A closed day has nothing under the
+   orb: the week card comes up to sit about 28 under the ring. */
+.hero { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 6px 0 12px; }
+.heroBare { padding-bottom: 0; margin-bottom: -6px; }
 .count { display: flex; align-items: baseline; font-size: 84px; }
-.count small { font-size: 30px; color: var(--muted); margin-left: 3px; }
+.count small { font-size: 30px; color: var(--ink-2); margin-left: 3px; }
+/* The words inside the orb sit on its brightest colour, so they take ink, never muted, and with the /5 a soft halo of
+   the page colour, which holds their contrast over any mix of the hues (the sphere's middle is mid-bright in both
+   themes). */
+.orbWords { color: var(--ink); }
+.orbWords, .count small { text-shadow: 0 0 1px var(--bone), 0 0 8px var(--bone), 0 0 16px var(--bone); }
 .closedMark { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--ink); animation: pop 0.8s var(--spring) both; }
 @keyframes pop { 0% { transform: scale(0.4); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
-.lede { font-size: 15px; color: var(--muted); text-align: center; }
-.todos { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+/* Positioned so it paints over the orb's halo, which spills below the orb's box. */
+.lede { position: relative; margin-top: -16px; font-size: 15px; color: var(--muted); text-align: center; }
+/* Positioned for the same reason: the chips' pop (a transform) lifts them over the halo, but with Reduce Motion there is
+   no pop, and the glow would stain their surface. */
+.todos { position: relative; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .todo { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--hairline-soft); font-size: 12.5px; font-weight: 500; animation: pop 0.5s var(--spring) both; }
 .todo i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
 
 /* The week: today and the six days before it, each a button that picks the day to fill in. */
-/* The streak sits along the bottom of the same card, under a hairline. */
-.week { padding: 8px 6px 0; border-radius: 24px; background: var(--surface); border: 1px solid var(--hairline-soft); box-shadow: var(--shadow-card); }
+/* The streak sits along the bottom of the same card, under a hairline. Positioned, as .lede is, so the card paints over
+   the orb's halo: on a closed day it sits inside the glow's reach, and the glow stops at its edge instead of staining it. */
+.week { position: relative; padding: 8px 6px 0; border-radius: 24px; background: var(--surface); border: 1px solid var(--hairline-soft); box-shadow: var(--shadow-card); }
 .weekDays { display: flex; gap: 2px; }
 .weekDay { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 64px; padding: 7px 0 8px; border-radius: 16px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); transition: background 0.3s ease, color 0.3s ease, transform 0.3s var(--spring); }
 .weekDay:active { transform: scale(0.92); }
@@ -63,12 +76,18 @@ div.hit:active { transform: none; }
 .ghost :global(.dc) { color: var(--muted); }
 .unit { font-size: 13px; color: var(--muted); }
 .title { font-size: 24px; line-height: 1.05; }
+/* The half-width tiles side by side (Weight, Check-in): the value row is one height, the hero number's, with a title
+   set on its bottom, so a word ("Great") sits level with a number ("183") and both sub-lines start together. */
+.tile:not(.wide) .title { min-height: 38px; display: flex; align-items: flex-end; }
 .sub { font-size: 13px; color: var(--muted); line-height: 1.35; }
 .row { display: flex; align-items: center; gap: 14px; width: 100%; }
-.grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-/* The round action on a wide card: record, speak. Only the Up next card's rings, so one thing on the screen asks for
-   attention at a time; a recording rings faster in red. */
-.act { position: relative; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: var(--hue); color: var(--on-hue); flex-shrink: 0; box-shadow: 0 12px 30px -8px color-mix(in srgb, var(--hue) var(--glow-pct), transparent); }
+/* The same 12 between eyebrow row, value and sub-line as the tiles and the Activity card, so every card keeps one rhythm. */
+.grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+/* The round action on a wide card: record, speak. Quiet (a tint and the icon in the hue, as an idle medallion) except
+   on the Up next card, where it is solid, glows and rings, so one thing on the screen asks for attention at a time; a
+   recording rings faster in red. */
+.act { position: relative; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--hue) 16%, var(--surface)); color: var(--hue); flex-shrink: 0; transition: background 0.4s ease, color 0.4s ease, box-shadow 0.6s ease; }
+.next .act { background: var(--hue); color: var(--on-hue); box-shadow: 0 12px 30px -8px color-mix(in srgb, var(--hue) var(--glow-pct), transparent); }
 .act::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--hue); opacity: 0; }
 .next .act::after, .actRec::after { animation: ping 2.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
 
@@ -80,7 +99,7 @@ div.hit:active { transform: none; }
 .todoNext { border-color: color-mix(in srgb, var(--c) 55%, transparent); background: color-mix(in srgb, var(--c) 16%, var(--surface)); color: var(--ink); font-weight: 600; }
 .ledeNext { color: var(--ink); }
 :global(:root[data-motion="calm"]) .next .th > :first-child, :global(:root[data-motion="calm"]) .next .act::after { animation: none; }
-.actRec { background: var(--rec); box-shadow: 0 0 0 6px color-mix(in srgb, var(--rec) 22%, transparent); }
+.act.actRec { background: var(--rec); color: var(--on-hue); box-shadow: 0 0 0 6px color-mix(in srgb, var(--rec) 22%, transparent); }
 .actRec::after { border-color: var(--rec); animation-duration: 1.4s; }
 @keyframes ping { from { transform: scale(1); opacity: 0.6; } to { transform: scale(1.65); opacity: 0; } }
 .recTime { color: var(--rec); }
@@ -104,6 +123,8 @@ div.hit:active { transform: none; }
 .moodOn { background: color-mix(in srgb, var(--journal) 20%, transparent); border-color: var(--journal); color: var(--ink); transform: scale(1.04); }
 .moodOn svg { color: var(--journal); animation: wob 0.7s var(--spring); }
 @keyframes wob { 30% { transform: rotate(-12deg) scale(1.2); } 65% { transform: rotate(6deg); } }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+/* The habits under their label, as a part of the sleep sheet sits under its own (sleep.module.css .part): the label
+   closer to its chips than to the moods above. The chips are app.module.css .chips, rows 10 apart for their hit areas. */
+.habits { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
 
 :global(:root[data-motion="calm"]) .act::after { animation: none; }

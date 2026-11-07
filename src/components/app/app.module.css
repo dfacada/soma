@@ -43,16 +43,19 @@
 .noteBad { background: var(--critical-bg); color: var(--critical); }
 
 /* ── A label in the middle of a ring (the round ring on Activity) ── */
-.ringLabel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+.ringLabel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; line-height: 1; }
 
 /* ── Shared small pieces ── */
 .lnk { position: relative; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
-button.lnk::before { content: ""; position: absolute; inset: -14px -8px; }
+/* A 44px hit area round the words, for a link as well as a button. Not for a link inside a sentence: there it would
+   spill over the words around it. */
+button.lnk::before, a.lnk:not(p a)::before { content: ""; position: absolute; inset: -14px -8px; }
 /* A press shows under the finger: the link dips and fades, then springs back. */
 button.lnk { transition: opacity 0.2s ease, transform 0.3s var(--spring); }
 button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0.06s; }
 .lnkJournal { color: var(--journal); }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+/* 10 between rows, so each chip keeps its own 44px hit area; 6 across. */
+.chips { display: flex; gap: 10px 6px; flex-wrap: wrap; }
 .unsaved { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; border-radius: var(--r-ctl); background: var(--surface-2); color: var(--ink); font-size: 13px; }
 
 /* ── Journal ── */
@@ -61,6 +64,16 @@ button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0
 .vaultRow > input { flex: 1; min-width: 0; }
 .vaultLinks { display: flex; justify-content: center; gap: 24px; }
 .vaultLinks > button { min-height: 44px; }
+/* The vault locked, or not made yet: opening it is the one thing to do, so the page fills the screen and its card sits
+   in the middle of what is left under the title, everything in it centred and the one action spanning it. Paired
+   (vaultPage > vaultCard) so it outranks ui's .card, whatever order the two sheets load in. */
+.vaultPage { min-height: 100dvh; }
+.vaultPage > .vaultCard { margin-block: auto; align-self: center; max-width: 420px; align-items: center; text-align: center; }
+.vaultCard p { text-wrap: balance; }
+/* Unlock (or Create vault) on a compositor layer of its own. Its glow is one wide blur: drawn into the page's own tiles,
+   the GPU now and then redrew a middle strip of it a shade darker, which left two faint vertical seams under the
+   button. On its own layer the button and its glow are rastered whole, so the glow fades out in one piece. */
+.vaultGo { will-change: transform; }
 .dayGroup { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; }
 .dayGroup > :first-child { padding: 0 4px; }
 /* The day's label, and how many entries and minutes it holds. */
@@ -68,14 +81,21 @@ button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0
 .dayHead :global(.m) { font-size: 11px; }
 .entryHead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .entryTags { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-.entryActions { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; flex-wrap: wrap; }
+/* The links' own ::before gives each a 44px hit area, so the row is only as tall as the words: the gaps above and
+   below it match the card's other rows. */
+.entryActions { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 20px; flex-wrap: wrap; }
+/* Edit (or Add a note) and Transcribe: 20 apart, so they read as two actions, not one phrase, and their hit areas
+   stay apart; 28 between rows if they ever wrap, for the same reason. A short word's hit area widens to 45, so it
+   never rounds under 44 (Edit is about 22 wide); a longer one keeps the 8 either side every link has. */
+.entryLinks { display: flex; flex-wrap: wrap; gap: 28px 20px; }
+.entryLinks .lnk::before { left: min(-8px, calc(50% - 22.5px)); right: min(-8px, calc(50% - 22.5px)); }
 .transcript { font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; transition: opacity 0.35s ease; }
 .folded { display: -webkit-box; -webkit-line-clamp: 6; line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
 .readAll { align-self: flex-start; min-height: 32px; margin-top: -6px; font-size: 13px; font-weight: 600; color: var(--journal); }
 /* Transcribing (David, 2026-11-04: "I need some animation to know that I pressed it"). From the tap: a turning ring
    and the step the job is on where the links were; lines for the words to come draw in and shimmer where they will
    land; a transcript being redone dims. When the words arrive they rise into place out of a blur. */
-.txStatus { display: inline-flex; align-items: center; gap: 9px; min-height: 36px; font-size: 12px; font-weight: 500; color: var(--journal); animation: txIn 0.4s var(--spring) both; }
+.txStatus { display: inline-flex; align-items: center; gap: 9px; min-height: 20px; font-size: 12px; font-weight: 500; color: var(--journal); animation: txIn 0.4s var(--spring) both; }
 @keyframes txIn { from { opacity: 0; transform: scale(0.85); } }
 .txSpin { width: 14px; height: 14px; flex-shrink: 0; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--journal) 22%, transparent); border-top-color: var(--journal); animation: txSpin 0.8s linear infinite; }
 @keyframes txSpin { to { transform: rotate(360deg); } }
@@ -100,6 +120,8 @@ button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0
 /* Text boxes: the field look of an Input, a quiet scrollbar, and the same soft ring on focus. */
 .note, .writeBox { width: 100%; border-radius: 18px; border: 1px solid var(--hairline); background: var(--field); padding: 14px 16px; font: inherit; font-size: 16px; line-height: 1.5; color: var(--ink); resize: none; scrollbar-width: thin; scrollbar-color: var(--hairline-strong) transparent; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
 .note::placeholder, .writeBox::placeholder { color: var(--faint); }
+/* Light's faint is too pale on the field for 16px words: the placeholder takes muted there, as Input's does. */
+:global(:root[data-theme="light"]) .note::placeholder, :global(:root[data-theme="light"]) .writeBox::placeholder { color: var(--muted); }
 .note:focus, .writeBox:focus { outline: none; border-color: var(--hairline-strong); box-shadow: 0 0 0 4px var(--well); }
 .playerBox { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .player { display: flex; align-items: center; gap: 12px; }
@@ -119,7 +141,14 @@ button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0
 .kcalInput { width: 84px !important; flex: none; text-align: right; }
 .pickList { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 4px 14px; max-height: 46dvh; overflow: auto; }
 .pickRow { display: flex; align-items: center; gap: 10px; min-height: 48px; width: 100%; text-align: left; }
-.pickRow + .pickRow { border-top: 1px solid var(--surface-2); }
+/* Every rule between rows inside a card is --hairline-soft, as ui's .row and .field are. */
+.pickRow + .pickRow { border-top: 1px solid var(--hairline-soft); }
+/* The Recipes card's rows sit in the card's 12px gap, so the rule between two of them goes in the middle of that gap,
+   with the same air above and below. On the lower row's top edge it read as part of that row. The Swap sheet's list
+   has no gap and keeps the border-top above. */
+.bookRow { position: relative; }
+.bookRow + .bookRow { border-top: 0; }
+.bookRow + .bookRow::before { content: ""; position: absolute; left: 0; right: 0; top: -6.5px; height: 1px; background: var(--hairline-soft); pointer-events: none; }
 .pickName { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .macroRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .macroRow input { padding: 0 8px; text-align: center; }
@@ -156,11 +185,19 @@ button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0
 .logPairs dd { margin: 0; font-family: var(--font-mono); font-size: 11.5px; overflow-wrap: anywhere; }
 .logDetail { margin: 0 0 10px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-2); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
 .palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.palette { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; border-radius: var(--r-ctl); border: 1px solid var(--hairline); background: var(--surface); color: var(--ink); text-align: left; }
+/* Stacked: the dots on a row of their own, then the name, then the note, all on the left padding. Beside the dots the
+   note had about half the tile and broke with one word alone on a second line; stacked, the name and note get the
+   whole tile, every note fits on one line, and every tile is the same height. */
+.palette { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 52px; padding: 10px 12px; border-radius: var(--r-ctl); border: 1px solid var(--hairline); background: var(--surface); color: var(--ink); text-align: left; }
 .paletteOn { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .paletteDots { display: flex; flex-shrink: 0; }
-.paletteDots i { width: 16px; height: 16px; border-radius: 999px; border: 2px solid var(--surface); }
+/* --dot is the palette's hue as Light shows it (look.ts PALETTES). */
+.paletteDots i { width: 16px; height: 16px; border-radius: 999px; border: 2px solid var(--surface); background: var(--dot); }
 .paletteDots i + i { margin-left: -6px; }
+/* Night shows each dot in the hue Night really lights it to: the same mix toward white as globals.css (76% for
+   activity, the third dot), or the hand-picked Night hue a palette names (--dot-night: Soma's own). */
+:global(:root[data-theme="dark"]) .paletteDots i { background: var(--dot-night, color-mix(in oklab, var(--dot) 74%, white)); }
+:global(:root[data-theme="dark"]) .paletteDots i:nth-child(3) { background: var(--dot-night, color-mix(in oklab, var(--dot) 76%, white)); }
 /* Settings: labelled groups, each one card of rows; a row names a section and says what it is set to now, and opens
    in place to the controls (Settings.tsx Group and Section). */
 .group { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
@@ -181,41 +218,48 @@ button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0
 .legal { display: flex; justify-content: center; gap: 20px; font-size: 12px; }
 .legal a { color: var(--muted); min-height: 44px; display: inline-flex; align-items: center; }
 .roundIntro { display: flex; align-items: center; gap: 14px; }
-.roundRing { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+.roundRing { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
 .grid { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 4px; }
 .cell { display: block; aspect-ratio: 1; border-radius: 4px; }
+/* Each state its own kind of mark: a hit solid, a miss a hollow box, a day to come a blank slot, a rest day hatched
+   (--hatch-rest, the same hatch as the rest day in the week strip, screens.module.css .weekRest). */
 .cell_hit { background: var(--activity); }
-.cell_miss { background: var(--surface); border: 1px solid var(--hairline); }
-.cell_rest { background: var(--surface-2); }
+.cell_miss { background: transparent; border: 1.5px solid var(--faint); }
+.cell_rest, .cell_futureRest { background: var(--hatch-rest); }
 .cell_today { background: var(--surface); border: 2px solid var(--activity); }
-.cell_future { background: var(--bone); border: 1px solid var(--surface-2); }
-.cell_futureRest { background: var(--surface-2); opacity: 0.6; }
+.cell_future { background: var(--well); }
+.cell_futureRest { opacity: 0.5; }
 .cell_before { background: transparent; border: 1px dashed var(--surface-2); }
 .gridFoot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .legend { display: flex; gap: 10px; font-size: 11px; align-items: center; }
 .legend span { display: inline-flex; align-items: center; gap: 4px; }
-.legend .cell { width: 10px; height: 10px; }
+.legend .cell { width: 10px; height: 10px; border-radius: 2px; }
 .board { gap: 2px !important; }
-.lb { display: flex; align-items: center; gap: 10px; min-height: 40px; }
-.lb + .lb { border-top: 1px solid var(--surface-2); }
-.lbYou { background: var(--activity-tint); margin: 0 -16px; padding: 0 16px; color: var(--activity-ink); }
+.lb { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+.lb + .lb { border-top: 1px solid var(--hairline-soft); }
+/* You: a rounded tile in the hue's tint, as the picked day is in the week strip, with no rule touching it. */
+.lbYou { background: var(--activity-tint); margin: 0 -10px; padding: 0 10px; border-radius: 14px; color: var(--activity-ink); }
+.lbYou + .lb, .lb + .lbYou { border-top-color: transparent; }
 .lbRank { width: 20px; font-size: 12px; color: var(--muted); }
-.lbName { flex: 1; min-width: 0; font-weight: 500; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.lbStat { font-size: 12px; color: var(--muted); white-space: nowrap; }
+/* Badges sit on the name's line. A name too long for them (three badges, a long name) wraps with a 4px row gap, so
+   even then the cell is 22 + 4 + 22 = 48 and the row keeps the board's height. */
+.lbName { flex: 1; min-width: 0; font-weight: 500; display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
+/* Hits over the daily target in one right-aligned cell, so the figures share one right edge down the board. */
+.lbStats { display: flex; flex-direction: column; align-items: flex-end; min-width: 56px; flex-shrink: 0; font-size: 11px; line-height: 1.25; color: var(--muted); white-space: nowrap; }
 .lbPts { font-size: 13px; width: 40px; text-align: right; }
-.lbYou .lbRank, .lbYou .lbStat { color: var(--activity-ink); }
+.lbYou .lbRank, .lbYou .lbStats { color: var(--activity-ink); }
 .restGrid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; max-height: 36dvh; overflow: auto; }
 .restCell { aspect-ratio: 1; min-height: 30px; border-radius: 6px; border: 1px solid var(--hairline); background: var(--surface); font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
 .restOn { background: var(--ink); border-color: var(--ink); color: var(--bone); }
 
 /* ── Settings and admin ── */
 .habitRow { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
-.habitRow + .habitRow { border-top: 1px solid var(--surface-2); }
+.habitRow + .habitRow { border-top: 1px solid var(--hairline-soft); }
 .habitTop { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .habitControls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .habitControls input { width: 72px !important; }
 .adminUser { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
-.adminUser + .adminUser { border-top: 1px solid var(--surface-2); }
+.adminUser + .adminUser { border-top: 1px solid var(--hairline-soft); }
 
 
 /* Food: the estimate waiting to be checked before it is logged. */
@@ -223,11 +267,13 @@ button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0
 .draftHead { display: flex; flex-direction: column; gap: 4px; }
 .saidRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--hairline); }
 .saidActions { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-/* Tell me what you ate: the box, one line until it holds something, with the microphone beside it at the top. */
+/* Tell me what you ate: the box, one line until it holds something, with the microphone beside it at the top. One line
+   is an Input's shape (48 tall, control corners) beside a 48 round mic, the same as the Something else field and its
+   Look up button lower on the screen. 11px above and below centres the 24px line inside the 1px border. */
 .sayBox { display: flex; align-items: flex-start; gap: 8px; }
-.sayBox .note { flex: 1; min-width: 0; }
-.sayBox .note[rows="1"] { height: 52px; overflow: hidden; white-space: nowrap; }
-.sayMic { flex-shrink: 0; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: var(--on-hue); background: var(--food); box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--food) var(--glow-pct), transparent); transition: transform 0.3s var(--spring); }
+.sayBox .note { flex: 1; min-width: 0; border-radius: var(--r-ctl); }
+.sayBox .note[rows="1"] { height: 48px; padding: 11px 16px; overflow: hidden; white-space: nowrap; }
+.sayMic { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: var(--on-hue); background: var(--food); box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--food) var(--glow-pct), transparent); transition: transform 0.3s var(--spring); }
 .sayMic:active { transform: scale(0.9); transition-duration: 0.06s; }
 .sayMic:disabled { opacity: 0.5; }
 /* Listening: a stop square and the time, on the critical colour, as a pill. */
@@ -254,6 +300,9 @@ button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0
 button.changeHit:active { transform: scale(0.98); transition-duration: 0.06s; }
 .changeTag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--journal) 18%, transparent); color: var(--journal); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; }
 .changeFixed { background: color-mix(in srgb, var(--activity) 18%, transparent); color: var(--activity); }
+/* Light: a hue is too faint on its own tint for 10.5px text, so the tag takes the hue's ink (Night's lit hues pass). */
+:global(:root[data-theme="light"]) .changeTag { color: var(--journal-ink); }
+:global(:root[data-theme="light"]) .changeFixed { color: var(--activity-ink); }
 .changeLead { font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--ink); }
 .changeRest { font-size: 13.5px; line-height: 1.5; color: var(--muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .changeOpen { display: block; -webkit-line-clamp: unset; overflow: visible; }

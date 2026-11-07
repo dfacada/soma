@@ -1,4 +1,4 @@
-import { useId, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "./Icon";
 import { cx, type Domain } from "./primitives";
 import s from "./ui.module.css";
@@ -8,26 +8,31 @@ export type OrbBead = { key: string; domain: Domain; icon: IconName; value: numb
 
 const R = 118; // the bead ring, in the 280 box
 const C = 2 * Math.PI * R;
+const GAP = 6; // degrees of bare track between two tasks' arcs
 
 /** The Today hero (Soma Night): a sphere holding the three hues, brighter as their tasks get done, with one bead
- *  per task on a ring around it and an arc for the day's progress. Closed, the ring turns into a spinning glow.
- *  `children` sits in the middle (the count, or the closed mark). */
-export function Orb({ beads, progress, closed = false, label, children }: { beads: OrbBead[]; progress: number; closed?: boolean; label: string; children?: ReactNode }) {
-  const grad = "orb" + useId().replace(/[^a-zA-Z0-9]/g, "");
+ *  per task on a ring around it. Each bead owns the stretch of ring centred on it and lights it in its own hue for the
+ *  share done (food meal by meal), so the ring always says what its beads say. Closed, the ring turns into a spinning
+ *  glow. `children` sits in the middle (the count, or the closed mark). */
+export function Orb({ beads, closed = false, label, children }: { beads: OrbBead[]; closed?: boolean; label: string; children?: ReactNode }) {
   // How lit each hue is: the mean of its tasks' values, so a half-eaten day half-lights the green.
   const lit = (d: Domain) => { const of = beads.filter((b) => b.domain === d); return of.length ? of.reduce((n, b) => n + b.value, 0) / of.length : 0; };
   const style = { "--pj": lit("journal").toFixed(2), "--pf": lit("food").toFixed(2), "--pa": lit("activity").toFixed(2) } as CSSProperties;
+  const slot = 360 / Math.max(1, beads.length);
+  const span = ((slot - GAP) / 360) * C; // one task's arc when done, in ring units
   return (
     <div className={cx(s.orb, closed && s.orbClosed)} style={style} role="img" aria-label={label}>
       <div className={s.orbHalo} aria-hidden><i className={s.haloJ} /><i className={s.haloF} /><i className={s.haloA} /></div>
       <div className={s.orbTrack} />
       <svg className={s.orbArc} viewBox="0 0 280 280" aria-hidden>
-        <defs>
-          <linearGradient id={grad} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="var(--journal)" /><stop offset="0.5" stopColor="var(--food)" /><stop offset="1" stopColor="var(--activity)" />
-          </linearGradient>
-        </defs>
-        {progress > 0 && <circle cx="140" cy="140" r={R} stroke={`url(#${grad})`} strokeDasharray={`${(Math.min(1, progress) * C).toFixed(1)} ${C.toFixed(1)}`} />}
+        {beads.map((b, i) => {
+          const v = Math.max(0, Math.min(1, b.value));
+          // The svg is turned a quarter back, so 0° is 12 o'clock, where the first bead sits. Each arc starts half a
+          // slot before its bead and fills clockwise. Not done, it is hidden rather than removed (a zero dash with
+          // round caps still paints a dot), so finishing a task grows its arc instead of popping it in.
+          return <circle key={b.key} cx="140" cy="140" r={R} stroke={`var(--${b.domain})`} opacity={v > 0 ? 1 : 0}
+            strokeDasharray={`${(v * span).toFixed(1)} ${C.toFixed(1)}`} transform={`rotate(${(i * slot - slot / 2 + GAP / 2).toFixed(1)} 140 140)`} />;
+        })}
       </svg>
       <div className={s.orbGlow} />
       <div className={s.orbSphere} aria-hidden><i className={cx(s.blob, s.blobJ)} /><i className={cx(s.blob, s.blobF)} /><i className={cx(s.blob, s.blobA)} /><span className={s.orbGloss} /></div>

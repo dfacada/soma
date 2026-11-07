@@ -19,7 +19,13 @@ const hue = (d: "journal" | "food" | "activity") => ({ "--hue": `var(--${d})` })
 
 // Fixed shapes for the bars, so they do not jump on every render.
 const VBARS = Array.from({ length: 56 }, (_, i) => ({ "--r": `${((i * 360) / 56).toFixed(1)}deg`, "--s": (0.6 + 0.8 * Math.abs(Math.sin(i * 1.9))).toFixed(2), "--dl": `${(-((i * 0.07) % 0.85)).toFixed(2)}s` }) as CSSProperties);
-const WAVE = Array.from({ length: 36 }, (_, i) => ({ "--h": `${14 + Math.round(42 * Math.abs(Math.sin(i * 1.3) * Math.cos(i * 0.5)))}px`, "--dl": `${(-((i * 0.09) % 0.7)).toFixed(2)}s` }) as CSSProperties);
+// The food wave's bars by their distance from the middle: tallest at the two centre bars, tapering to 12px at the
+// ends, so the still wave mirrors around the check under it as the meter draws it. 48px at most, so the meter's
+// loudest (1.25 times) still fits the 60px box.
+const WAVE = Array.from({ length: 36 }, (_, i) => {
+  const u = (Math.abs(i - 17.5) - 0.5) / 17;
+  return { "--h": `${Math.round(12 + 36 * Math.exp(-((u / 0.45) ** 2)))}px`, "--dl": `${(-((i * 0.09) % 0.7)).toFixed(2)}s` } as CSSProperties;
+});
 
 /** Every animation frame while live, hand `draw` the microphone's meter, and mark the box `metered` so the CSS loops
  *  give way to it (David, 2026-11-03: "move according to the volume that I'm speaking"). Writes straight to the
@@ -135,7 +141,7 @@ export function RecordMoment() {
             : <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path className={m.check} d="M5 12l5 5 9-10" /></svg>}
         </Vox>
         <div className={m.text} key={phase} aria-live="polite">
-          {phase === "rec" && <><span className={`d ${m.head}`}>Listening…</span><span className={m.sub}>Say how today went. Not sure where to start? {promptFor(new Date())}</span></>}
+          {phase === "rec" && <><span className={`d ${m.head}`}>Say how today went</span><span className={m.sub}>Not sure where to start? <span className={m.ask}>{promptFor(new Date())}</span></span></>}
           {phase === "seal" && <><span className={`d ${m.head}`}>Sealing it</span><span className={`m ${m.hex}`} aria-hidden>{hex}</span><span className={m.sub}>Kept on this phone, and encrypted with your vault key before it uploads.</span></>}
           {phase === "saved" && <><span className={`d ${m.head}`}>Saved · {clock(j.lastSaved.seconds)}</span><span className={m.sub}>Only your passphrase opens it.</span></>}
         </div>
@@ -171,10 +177,11 @@ export function FoodMoment({ phase, seconds, heard, items, onStop, onClose, leve
         {phase === "listening" && (
           <>
             <Vox live levels={levels}><Icon name="mic" size={48} strokeWidth={1.8} /></Vox>
-            <div className={m.text}><span className={`d ${m.head}`}>Say what you ate</span><span className={m.sub}>The whole day in one go, and which meal each thing was. Tap the check when you&apos;re done.</span></div>
+            <div className={`${m.text} ${m.steady}`}><span className={`d ${m.head}`}>Say what you ate</span><span className={m.sub}>The whole day in one go, and which meal each thing was.</span></div>
             <div className={m.foot}>
               <Wave levels={levels} />
               <button type="button" className={`${m.stop} ${m.go}`} onClick={() => { haptic("done"); onStop(); }} aria-label="Done, log it"><Icon name="check" size={32} strokeWidth={2.4} /></button>
+              <span className="eb">Tap when you&apos;re done</span>
             </div>
           </>
         )}
@@ -199,7 +206,7 @@ export function FoodMoment({ phase, seconds, heard, items, onStop, onClose, leve
               ))}
             </div>
             <div className={m.foot}>
-              <button type="button" className={m.lovely} style={{ background: "var(--ink)", color: "var(--bone)" }} onClick={onClose}>Done</button>
+              <button type="button" className={m.lovely} onClick={onClose}>Done</button>
               <span className={m.sub}>Already logged. Change anything on Food.</span>
             </div>
           </>
@@ -219,11 +226,11 @@ export function DayClosed({ streak, beads, week, onClose }: { streak: number; be
   const lovely = useRef<HTMLButtonElement>(null);
   useEffect(() => { lovely.current?.focus(); }, []);
   return (
-    <div className={`${m.moment} ${m.closed}`} role="dialog" aria-modal="true" aria-label={`Day closed. ${streak} full day${streak === 1 ? "" : "s"} in a row`}>
+    <div className={`${m.moment} ${m.closed} night`} role="dialog" aria-modal="true" aria-label={`Day closed. ${streak} full day${streak === 1 ? "" : "s"} in a row`}>
       <div className={m.burst} aria-hidden>
         <div className={m.rays} />
         {DOTS.map((s, i) => <i key={i} className={m.dot} style={s} />)}
-        <Orb beads={beads} progress={1} closed label="">
+        <Orb beads={beads} closed label="">
           <Icon name="check" size={52} strokeWidth={2.2} />
         </Orb>
       </div>

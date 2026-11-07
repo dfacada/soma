@@ -69,7 +69,8 @@ export function Activity() {
     return { key, d, n, target: f.target, rest: f.rest, hit: !f.rest && n >= f.target };
   });
   const weekHits = week.filter((w) => w.hit).length;
-  const weekScored = week.filter((w) => !w.rest).length;
+  // Today counts once its target is in, as the round's chain does, so this note and the round's foot keep one rule.
+  const weekScored = week.filter((w) => !w.rest && (w.hit || w.key !== todayKey)).length;
 
   return (
     <div className={a.page}>
@@ -121,7 +122,17 @@ export function Activity() {
         </div>
       </Card>
 
-      <div className={sc.sec}><span className="eb">{isToday ? "Today's moves" : "Moves that day"}</span><span className="eb">Any one closes it</span></div>
+      {/* Steps sit under the push-ups, above the moves' header: they inform, they never close the day. */}
+      {steps !== null || health.status === "connected" ? (
+        <StatPill domain="activity" icon="walk" label={<>Steps · goal <span className="m">{settings.goals.steps.toLocaleString("en-US")}</span></>}
+          fill={steps === null ? null : steps / Math.max(1, settings.goals.steps)} value={steps === null ? "Not synced yet" : steps.toLocaleString("en-US")} dim={steps === null}
+          ariaLabel={`Steps ${isToday ? "today" : "that day"}: ${steps === null ? "not synced yet" : steps.toLocaleString("en-US")}, goal ${settings.goals.steps.toLocaleString("en-US")}. Opens your steps`}
+          onClick={() => { haptic(); setStepsSheet(true); }} />
+      ) : health.status === "off" || health.status === "reconnect" ? (
+        <Link href="/settings/#fitbit" className={a.lnk} style={{ alignSelf: "center", minHeight: 44, display: "inline-flex", alignItems: "center" }}>{health.status === "off" ? "Connect Fitbit in Settings to see steps" : "Reconnect Fitbit in Settings to keep steps coming"}</Link>
+      ) : null}
+
+      <div className={sc.sec}><span className="eb">{isToday ? "Today's moves" : "Moves that day"}</span><span className="muted" style={{ fontSize: 12 }}>Any one closes it</span></div>
       <div className={sc.moves}>
         {settings.activityTypes.map((t) => {
           const done = Boolean(types[t.key]);
@@ -134,15 +145,6 @@ export function Activity() {
           );
         })}
       </div>
-
-      {steps !== null || health.status === "connected" ? (
-        <StatPill domain="activity" icon="walk" label={`Steps · goal ${settings.goals.steps.toLocaleString("en-US")}`}
-          fill={steps === null ? null : steps / Math.max(1, settings.goals.steps)} value={steps === null ? "Not synced yet" : steps.toLocaleString("en-US")} dim={steps === null}
-          ariaLabel={`Steps ${isToday ? "today" : "that day"}: ${steps === null ? "not synced yet" : steps.toLocaleString("en-US")}, goal ${settings.goals.steps.toLocaleString("en-US")}. Opens your steps`}
-          onClick={() => { haptic(); setStepsSheet(true); }} />
-      ) : health.status === "off" || health.status === "reconnect" ? (
-        <Link href="/settings/#fitbit" className={a.lnk} style={{ alignSelf: "center", minHeight: 44, display: "inline-flex", alignItems: "center" }}>{health.status === "off" ? "Connect Fitbit in Settings to see steps" : "Reconnect Fitbit in Settings to keep steps coming"}</Link>
-      ) : null}
 
       {rounds.loading ? <span className="eb">Loading the round</span> : current ? (
         <RoundCards round={current} myLog={myLogFrom(map, current)} say={say} onManage={isAdmin ? () => setManage(true) : undefined} />
@@ -186,10 +188,13 @@ function RoundCards({ round, myLog, say, onManage }: { round: RoundRow; myLog: L
   const day = Math.min(Math.max(dayIndexOf(round, todayKey), 0), round.lengthDays);
   const joined = round.me?.status === "active";
 
+  // While the round runs, a member's ring says which day it is, so the head says it only to someone not in it yet.
+  // The head is the round's name alone: a member's target is in the paragraph under it.
+  const when = phase === "upcoming" ? `starts ${round.startDate}` : phase === "finished" ? "finished" : joined ? null : `Day ${day} of ${round.lengthDays}`;
   const head = (
     <div className={a.entryHead}>
-      <span className="eb">{joined ? `${round.me!.dailyTarget} push-ups · ` : ""}{round.name}</span>
-      <span className="m muted" style={{ fontSize: 12 }}>{phase === "upcoming" ? `starts ${round.startDate}` : phase === "finished" ? "finished" : `Day ${day} of ${round.lengthDays}`}</span>
+      <span className="eb">{round.name}</span>
+      {when && <span className="m muted" style={{ fontSize: 12 }}>{when}</span>}
     </div>
   );
 
@@ -215,7 +220,6 @@ function RoundCards({ round, myLog, say, onManage }: { round: RoundRow; myLog: L
   const hits = cells.filter((c) => c === "hit").length;
   const scored = hits + cells.filter((c) => c === "miss").length;
   const nextRest = round.restDays.find((d) => d > day);
-  const pct = Math.round((day / round.lengthDays) * 100);
 
   const board = rounds.board;
   // My row comes from the live log, so the board agrees with the grid the moment a count is saved.
@@ -230,19 +234,21 @@ function RoundCards({ round, myLog, say, onManage }: { round: RoundRow; myLog: L
             {round.me!.dailyTarget} push-ups a day for {round.lengthDays} days, in as many sets as you like. Your target; others set their own.
             {nextRest ? ` Next rest day: day ${nextRest}${nextRest === day + 1 ? ", tomorrow." : "."}` : ""}
           </p>
+          {/* The day of the round, said the way the push-up ring says its count: the number over its eyebrow. */}
           <div className={a.roundRing}>
-            <svg width="64" height="64" viewBox="0 0 64 64" role="img" aria-label={`${pct}% of the round`}>
-              <circle cx="32" cy="32" r="26" fill="none" stroke="var(--surface-2)" strokeWidth="6" />
-              {pct > 0 && <circle cx="32" cy="32" r="26" fill="none" stroke="var(--activity)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(Math.min(1, day / round.lengthDays) * 163.4).toFixed(1)} 163.4`} transform="rotate(-90 32 32)" />}
+            <svg width="72" height="72" viewBox="0 0 72 72" role="img" aria-label={`Day ${day} of ${round.lengthDays}`}>
+              <circle cx="36" cy="36" r="30" fill="none" stroke="var(--well)" strokeWidth="6" />
+              {day > 0 && <circle cx="36" cy="36" r="30" fill="none" stroke="var(--activity)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(Math.min(1, day / round.lengthDays) * 188.5).toFixed(1)} 188.5`} transform="rotate(-90 36 36)" />}
             </svg>
-            <div className={`m ${a.ringLabel}`} style={{ fontSize: 11, fontWeight: 500, lineHeight: 1.1 }}><span>{pct}%</span><span className="muted" style={{ fontSize: 8 }}>of round</span></div>
+            <div className={a.ringLabel} aria-hidden><span className="dc" style={{ fontSize: 22 }}>{day}</span><span className="eb">of {round.lengthDays}</span></div>
           </div>
         </div>
         <div className={a.grid} role="img" aria-label={`${hits} of ${scored} targets hit`}>
           {cells.map((c, i) => <i key={i} className={`${a.cell} ${a["cell_" + c]}`} title={`Day ${i + 1}${isRestDay(round, i + 1) ? " · rest" : ""}`} />)}
         </div>
         <div className={a.gridFoot}>
-          <span>{hits} of {scored} targets hit · <span className="m">{scored ? Math.round((hits / scored) * 100) : 0}%</span></span>
+          {/* One mono run, worded like the week's "x of y hit" note; the grid's label above keeps "targets hit". */}
+          <span className="m">{hits} of {scored} hit · {scored ? Math.round((hits / scored) * 100) : 0}%</span>
           <span className={a.legend}><span><i className={`${a.cell} ${a.cell_hit}`} />Hit</span><span><i className={`${a.cell} ${a.cell_miss}`} />Missed</span><span><i className={`${a.cell} ${a.cell_rest}`} />Rest</span></span>
         </div>
         <div className={a.rowButtons}>
@@ -261,8 +267,7 @@ function RoundCards({ round, myLog, say, onManage }: { round: RoundRow; myLog: L
           <div key={r.userId} className={`${a.lb} ${r.userId === me.id ? a.lbYou : ""}`}>
             <span className={`m ${a.lbRank}`}>{r.rank}</span>
             <span className={a.lbName}>{r.userId === me.id ? "You" : r.displayName}{r.badges.map((b) => <Tag key={b} tone="activity">{BADGE[b]}</Tag>)}</span>
-            <span className={`m ${a.lbStat}`}>{r.hits} / {r.scored}</span>
-            <span className={`m ${a.lbStat}`}>{r.dailyTarget}/d</span>
+            <span className={`m ${a.lbStats}`}><span>{r.hits} / {r.scored}</span><span>{r.dailyTarget}/d</span></span>
             <span className={`m ${a.lbPts}`}>{r.points}</span>
           </div>
         ))}

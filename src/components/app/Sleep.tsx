@@ -17,8 +17,12 @@ import z from "./sleep.module.css";
 // The axis runs 6 pm to 2 pm (src/lib/sleep.ts), 20 hours; the chart shows only the hours the week used.
 const HOURS = 20;
 const hourLabel = (h: number) => { const c = (18 + h) % 24; return c === 0 ? "12 am" : c === 12 ? "noon" : `${c % 12} ${c < 12 ? "am" : "pm"}`; };
-/** Time asleep under a column, as a clock reads: 336 → "5:36". */
-const short = (min: number) => `${Math.floor(min / 60)}:${String(Math.round(min % 60)).padStart(2, "0")}`;
+/** Time asleep under a column, in the sheet's own unit made compact (a clock face would read as a time of day on an
+ *  axis of clock times): 336 → "5h36m", 420 → "7h00m", 45 → "45m". */
+const short = (min: number) => {
+  const m = Math.max(0, Math.round(min)), h = Math.floor(m / 60);
+  return h ? `${h}h${String(m % 60).padStart(2, "0")}m` : `${m}m`;
+};
 
 export function SleepSheet({ open, onClose, day, isToday }: { open: boolean; onClose: () => void; day: string; isToday: boolean }) {
   const { nights } = useHealth();
@@ -44,7 +48,7 @@ export function SleepSheet({ open, onClose, day, isToday }: { open: boolean; onC
           <div className={z.hero}>
             <div className={z.big}><span className="dc">{hm(night.asleep)}</span><span className={z.unit}>asleep</span></div>
             <div className={z.goal} role="img" aria-label={`${Math.round((night.asleep / goal) * 100)}% of your ${hm(goal)} goal`}>
-              <span className={z.goalTrack}><i style={{ width: `${Math.min(100, (night.asleep / goal) * 100).toFixed(1)}%` }} /></span>
+              <span className={z.goalTrack}><i className={night.asleep >= goal ? z.met : undefined} style={{ width: `${Math.min(100, (night.asleep / goal) * 100).toFixed(1)}%` }} /></span>
               <span className="m">{Math.round((night.asleep / goal) * 100)}% of {hm(goal)}</span>
             </div>
             {night.start && night.end && (

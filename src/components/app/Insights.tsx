@@ -252,10 +252,18 @@ function WeightCard({ data, days, label, week }: { data: DayMap; days: string[];
     );
   }
   const last = avg[avg.length - 1].avg, first = avg[0].avg, change = Math.round((last - first) * 10) / 10;
-  const W = 320, H = 110, P = 6;
-  const lo = Math.min(...points.map((q) => q.weight)) - 0.5, hi = Math.max(...points.map((q) => q.weight)) + 0.5;
+  // The drawing's size is the plot's on a phone (the card's 320 less the 32 of the scale beside it), so it is drawn
+  // one to one there and the dots stay round.
+  const W = 288, H = 120, P = 6;
+  // The weigh-ins with half a pound either side, and never under two pounds tall: a few ounces' drift can't fill the
+  // chart, and there are always two whole pounds inside it to draw the scale on.
+  const wLo = Math.min(...points.map((q) => q.weight)), wHi = Math.max(...points.map((q) => q.weight));
+  const pad = Math.max(0.5, (2 - (wHi - wLo)) / 2);
+  const lo = wLo - pad, hi = wHi + pad;
+  const scale = [Math.floor(hi), Math.ceil(lo)];
   const x = (day: string) => P + (days.indexOf(day) / Math.max(1, days.length - 1)) * (W - 2 * P);
   const y = (v: number) => P + (1 - (v - lo) / (hi - lo)) * (H - 2 * P);
+  const top = (v: number) => `${((y(v) / H) * 100).toFixed(2)}%`;
   const line = avg.map((q, i) => `${i ? "L" : "M"}${x(q.day).toFixed(1)} ${y(q.avg).toFixed(1)}`).join(" ");
   // The weigh-in nearest the finger or pointer, read through the drawing's own transform so it matches what is seen.
   const pick = (e: PointerEvent<SVGSVGElement>) => {
@@ -274,19 +282,27 @@ function WeightCard({ data, days, label, week }: { data: DayMap; days: string[];
       <div className={s.head}><span className="eb">Weight · seven-day average</span><span className={s.meta}>{shown ? `${shown.weight} lb · ${shortDay(shown.day)}` : `${points.length} weigh-ins`}</span></div>
       <div className={s.big}>
         <span className="dc">{last.toFixed(1)}</span><span className="muted">lb</span>
-        <span className={`${s.delta} ${change < 0 ? s.down : change > 0 ? s.up : ""}`}>{change === 0 ? "level" : `${change < 0 ? "↓" : "↑"} ${Math.abs(change).toFixed(1)} lb`} over {label}</span>
+        <span className={`m ${s.delta} ${change < 0 ? s.down : change > 0 ? s.up : ""}`}>{change === 0 ? "level" : `${change < 0 ? "↓" : "↑"} ${Math.abs(change).toFixed(1)} lb`} over {label}</span>
       </div>
-      <svg ref={plot} className={s.chart} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`Seven-day average from ${first.toFixed(1)} to ${last.toFixed(1)} pounds. Touch a point for its day.`}
-        onPointerMove={pick} onPointerDown={pick} onPointerLeave={() => setAt(null)} style={{ touchAction: "pan-y" }}>
-        {points.map((q, i) => <circle key={q.day} cx={x(q.day)} cy={y(q.weight)} r={i === at ? 4.5 : 2.2} className={i === at ? s.dotOn : s.dot} />)}
-        <path key={label} d={line} pathLength={1} className={s.line} />
-      </svg>
+      {/* Two whole pounds up the left on dashed lines, as the steps chart has its counts, so the slope reads against a
+          scale. The numbers are beside the drawing, not in it: it is stretched to fit and would squash them. */}
+      <div className={s.plot}>
+        <div className={s.axis} aria-hidden>{scale.map((v) => <span key={v} style={{ top: top(v) }}>{v}</span>)}</div>
+        <div className={s.area}>
+          {scale.map((v) => <i key={v} className={s.gridLine} style={{ top: top(v) }} aria-hidden />)}
+          <svg ref={plot} className={s.chart} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`Seven-day average from ${first.toFixed(1)} to ${last.toFixed(1)} pounds. Touch a point for its day.`}
+            onPointerMove={pick} onPointerDown={pick} onPointerLeave={() => setAt(null)} style={{ touchAction: "pan-y" }}>
+            {points.map((q, i) => <circle key={q.day} cx={x(q.day)} cy={y(q.weight)} r={i === at ? 4.5 : 2.2} className={i === at ? s.dotOn : s.dot} />)}
+            <path key={label} d={line} pathLength={1} className={s.line} />
+          </svg>
+        </div>
+      </div>
       {/* What changed around the weight: the last seven days next to the seven before. */}
       {wk && (
         <div className={s.week}>
           <div className={s.weekHead}>
             <span className="eb">This week against last</span>
-            <span className={`${s.delta} ${wkChange < 0 ? s.down : wkChange > 0 ? s.up : ""}`}>{wkChange === 0 ? "level" : `${wkChange < 0 ? "↓" : "↑"} ${Math.abs(wkChange).toFixed(1)} lb`}</span>
+            <span className={`m ${s.delta} ${wkChange < 0 ? s.down : wkChange > 0 ? s.up : ""}`}>{wkChange === 0 ? "level" : `${wkChange < 0 ? "↓" : "↑"} ${Math.abs(wkChange).toFixed(1)} lb`}</span>
           </div>
           <div className={`${s.weekRow} ${s.weekCols}`}><span /><span>Last</span><span>This</span></div>
           {week.rows.map((r) => {
@@ -347,7 +363,7 @@ function DayByDay({ log, todayKey, proteinGoal }: { log: LogRow[]; todayKey: str
           );
         })}
       </div>
-      {log.length > LOG_PREVIEW && <button type="button" className={s.more} onClick={() => setAll((v) => !v)}>{all ? "Show the last week only" : `Show all ${log.length} days`}</button>}
+      {log.length > LOG_PREVIEW && <Button size="sm" variant="secondary" className={s.more} onClick={() => setAll((v) => !v)}>{all ? "Show the last week only" : `Show all ${log.length} days`}</Button>}
     </Card>
   );
 }

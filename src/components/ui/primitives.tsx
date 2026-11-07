@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, Ref, SelectHTMLAttributes } from "react";
+import Link from "next/link";
+import type { ButtonHTMLAttributes, ComponentProps, InputHTMLAttributes, ReactNode, Ref, SelectHTMLAttributes } from "react";
 import { Icon, type IconName } from "./Icon";
 import s from "./ui.module.css";
 
@@ -6,45 +7,53 @@ export type Domain = "journal" | "food" | "activity";
 
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
 
-// ── Button ──
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+// ── Button, and ButtonLink: the same look on a link ──
+type ButtonLook = {
   /** primary is ink; a domain name paints the button in that domain's hue */
   variant?: "primary" | "secondary" | "danger" | Domain;
   size?: "md" | "sm";
   block?: boolean;
+  className?: string;
 };
-export function Button({ variant = "primary", size = "md", block, className, type = "button", ...rest }: ButtonProps) {
+function buttonClass({ variant = "primary", size = "md", block, className }: ButtonLook) {
   const hue = variant === "journal" || variant === "food" || variant === "activity";
-  return (
-    <button
-      type={type}
-      className={cx(
-        s.btn,
-        variant === "secondary" && s.btnSecondary,
-        variant === "danger" && s.btnDanger,
-        hue && s[variant],
-        hue && s.btnHue,
-        size === "sm" && s.btnSm,
-        block && s.btnBlock,
-        className,
-      )}
-      {...rest}
-    />
+  return cx(
+    s.btn,
+    variant === "secondary" && s.btnSecondary,
+    variant === "danger" && s.btnDanger,
+    hue && s[variant],
+    hue && s.btnHue,
+    size === "sm" && s.btnSm,
+    block && s.btnBlock,
+    className,
   );
 }
 
-// ── Chip: mood (38) and habit (30). A count turns a habit chip into a counter. ──
-type ChipProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & ButtonLook;
+export function Button({ variant, size, block, className, type = "button", ...rest }: ButtonProps) {
+  return <button type={type} className={buttonClass({ variant, size, block, className })} {...rest} />;
+}
+
+/** A link that looks like a Button (Settings' How to install, Tomorrow's Open Settings), so it stays in step with it. */
+export function ButtonLink({ variant, size, block, className, ...rest }: ComponentProps<typeof Link> & ButtonLook) {
+  return <Link className={cx(buttonClass({ variant, size, block, className }), s.btnLink)} {...rest} />;
+}
+
+// ── Chip: mood (42) and habit (34). A count turns a habit chip into a counter; a value is a number that belongs to the
+//    label (a quick snack's kcal), set after it in mono like every number. ──
+type ChipProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "value"> & {
   label: string;
   on?: boolean;
   kind?: "mood" | "habit";
   count?: number;
+  value?: number | string;
 };
-export function Chip({ label, on = false, kind = "mood", count, className, ...rest }: ChipProps) {
+export function Chip({ label, on = false, kind = "mood", count, value, className, ...rest }: ChipProps) {
   return (
     <button type="button" aria-pressed={on} className={cx(s.chip, kind === "habit" && s.chipHabit, on && s.chipOn, className)} {...rest}>
       {label}
       {count !== undefined && <span className={s.chipCount}>×{count}</span>}
+      {value !== undefined && <span className={s.chipCount}>{value}</span>}
     </button>
   );
 }
@@ -150,7 +159,10 @@ export function Bar({ label, value, max, unit = "g", domain, color, text }: { la
 /** A number on a pill that fills toward its goal: an icon chip, a label, the value large (David, 2026-11-03, after
  *  Google Health's Today: steps and sleep). `fill` is 0–1, null for nothing to fill. A tap does `onClick`. */
 export function StatPill({ domain, icon, label, value, fill, onClick, ariaLabel, dim, compact }: {
-  domain: Domain; icon: IconName; label: string; value: ReactNode; fill: number | null; onClick?: () => void;
+  domain: Domain; icon: IconName;
+  /** A number that belongs to the label (the steps goal) goes after it in a `.m` span: mono, like every number. */
+  label: ReactNode;
+  value: ReactNode; fill: number | null; onClick?: () => void;
   /** What a screen reader says: the label, the value and the goal in words. */
   ariaLabel: string;
   /** A quieter value: "Unlock to see", "Not synced yet". */

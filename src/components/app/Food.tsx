@@ -96,16 +96,17 @@ export function Food() {
       {!isToday && <DayBanner view={view} onBack={() => setView(null)} />}
       {unsaved && <div className={a.unsaved} role="alert"><span>Some changes are not saved yet.</span><Button size="sm" variant="secondary" onClick={retry}>Retry</Button></div>}
 
-      {/* The day's calories, the bar split by what was eaten (each meal, then anything else), and the macros. */}
+      {/* The day's calories, the bar split by what was eaten (each meal, then anything else), and the macros. Every
+          portion is the same green, notched apart, so the bar reads as one total and not as a key to the three macros. */}
       <Card>
         <span className="eb">{isToday ? "Eaten today" : "Eaten that day"}</span>
         <div className={sc.kcal}>
-          <span key={st.kcal} className={`dc ${sc.roll}`}>{fmt(st.kcal)}</span><span className="muted">/ {fmt(g.kcal)} kcal</span>
+          <span key={st.kcal} className={`dc ${sc.roll}`}>{fmt(st.kcal)}</span><span className="m muted" style={{ fontSize: 13 }}>/ {fmt(g.kcal)} kcal</span>
           <span className={`m ${sc.left} ${left < 0 ? sc.over : ""}`}>{left < 0 ? `${fmt(-left)} over` : `${fmt(left)} left`}</span>
         </div>
         <div className={sc.split} role="img" aria-label={`${fmt(st.kcal)} of ${fmt(g.kcal)} kcal`}>
           {[...MEALS.filter((m) => eaten[m]).map((m) => (typeof eaten[m] === "object" ? (eaten[m] as PlannedMeal).kcal : settings.plan[m].kcal)), ...extras.map((x) => x.kcal)].map((kc, i) => (
-            <i key={i} style={{ width: `${Math.min(100, (kc / Math.max(1, g.kcal)) * 100).toFixed(1)}%`, opacity: Math.max(0.3, 1 - i * 0.17) }} />
+            <i key={i} style={{ width: `${Math.min(100, (kc / Math.max(1, g.kcal)) * 100).toFixed(1)}%` }} />
           ))}
         </div>
         <div className={sc.macros}>
@@ -168,7 +169,8 @@ export function Food() {
       <Card>
         <div className={a.entryHead}>
           <span className="eb">Something else</span>
-          <span className="m muted" style={{ fontSize: 12 }}>{extras.length ? `${extras.reduce((n, x) => n + x.kcal, 0)} kcal` : "off-plan items"}</span>
+          {/* Mono for the number, the body face for the words, as the other cards' notes. */}
+          <span className={extras.length ? "m muted" : "muted"} style={{ fontSize: 12 }}>{extras.length ? `${extras.reduce((n, x) => n + x.kcal, 0)} kcal` : "off-plan items"}</span>
         </div>
         {extras.map((x, i) => (
           <Row key={i} name={x.name} sub={x.protein ? `${x.protein} g protein` : undefined} value={x.kcal}
@@ -176,7 +178,7 @@ export function Food() {
         ))}
         {settings.snacks.length > 0 && (
           <div className={a.chips}>
-            {settings.snacks.map((s) => <Chip key={s.name} kind="habit" label={`${s.name} · ${s.kcal}`} onClick={() => { haptic(); addExtra({ name: s.name, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat }); }} />)}
+            {settings.snacks.map((s) => <Chip key={s.name} kind="habit" label={s.name} value={s.kcal} onClick={() => { haptic(); addExtra({ name: s.name, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat }); }} />)}
           </div>
         )}
         <ExtraForm onAdd={addExtra} onMeal={setMeal} eaten={eaten} known={known} estimateOn={settings.foodEstimate} slot={slot} onSlot={setSlot} fieldRef={field} />
@@ -188,7 +190,7 @@ export function Food() {
           <span className="muted" style={{ fontSize: 12 }}>{MEAL_PLANS[settings.mealPlan].name} plan and any-plan dishes</span>
         </div>
         {RECIPES.filter((r) => r.group === settings.mealPlan || r.group === "general").map((r) => (
-          <button key={r.id} type="button" className={a.pickRow} onClick={() => setRecipe(r)}>
+          <button key={r.id} type="button" className={`${a.pickRow} ${a.bookRow}`} onClick={() => setRecipe(r)}>
             <span className={a.pickName}><span style={{ fontWeight: 500 }}>{r.name}</span><span className="muted" style={{ fontSize: 12 }}>{r.isMealPrep ? `Meal prep · makes ${r.servings}` : r.servings > 1 ? `Makes ${r.servings}` : "Single serving"}{r.time ? ` · ${r.time}` : ""}</span></span>
             <span className="m" style={{ fontSize: 13 }}>{r.kcal}</span>
           </button>
@@ -299,7 +301,8 @@ function ExtraForm({ onAdd, onMeal, eaten, known, estimateOn, slot, onSlot, fiel
   return (
     <div>
       <form className={a.extraForm} onSubmit={look}>
-        <Input ref={fieldRef} placeholder="What did you eat?" aria-label="What did you eat" value={text} maxLength={200}
+        {/* One item at a time, so the words don't echo the day box above it, which takes the whole day. */}
+        <Input ref={fieldRef} placeholder="Name one item" aria-label="What did you eat" value={text} maxLength={200}
           onChange={(e) => { setText(e.target.value); if (draft) setDraft(null); }} />
         <Button type="submit" variant="food" disabled={!text.trim() || busy}>{busy ? "…" : draft ? "Redo" : "Look up"}</Button>
       </form>

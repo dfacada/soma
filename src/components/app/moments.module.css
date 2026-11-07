@@ -1,5 +1,7 @@
 /* Full-screen moments (Soma Night, 2026-11-02): recording a journal entry, saying what you ate, and the day
-   closing. Each opens as a circle growing from the bottom of the screen and covers the tab bar. */
+   closing. Each opens as a circle growing from the bottom of the screen and covers the tab bar.
+   Every end state is the element's resting style, and its animation plays in from the start (fill both): Reduce
+   Motion stops every animation (globals.css), so it lands straight on the finished screen. */
 
 .moment { position: fixed; inset: 0; z-index: 55; background: var(--bone); color: var(--ink); display: flex; flex-direction: column; align-items: center; padding: calc(18px + var(--inset-top)) 22px calc(28px + var(--inset-bottom)); overflow: hidden auto; animation: open 0.7s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
 @keyframes open { from { clip-path: circle(0% at 50% 70%); } to { clip-path: circle(150% at 50% 70%); } }
@@ -27,7 +29,8 @@
 .live .ring { animation: ring 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
 .live .ring:nth-child(2) { animation-delay: 0.8s; } .live .ring:nth-child(3) { animation-delay: 1.6s; }
 @keyframes ring { from { transform: scale(1); opacity: 0.55; } to { transform: scale(1.8); opacity: 0; } }
-.core { width: 170px; height: 170px; border-radius: 50%; display: grid; place-items: center; color: #FFFFFF;
+/* The glyph is the colour of anything on a hue: white on Light's deep hues, dark on Night's lit ones. */
+.core { width: 170px; height: 170px; border-radius: 50%; display: grid; place-items: center; color: var(--on-hue);
   background: radial-gradient(circle at 38% 28%, color-mix(in srgb, var(--hue) 55%, #FFFFFF), var(--hue) 52%, color-mix(in srgb, var(--hue) 55%, #000000));
   box-shadow: 0 0 90px color-mix(in srgb, var(--hue) 55%, transparent), inset 0 -16px 34px rgba(0, 0, 0, 0.25); transition: transform 0.7s var(--spring); }
 .live .core { animation: breathe 1.6s ease-in-out infinite; }
@@ -35,14 +38,21 @@
 .still .core { transform: scale(0.74); }
 .core svg { animation: pop 0.6s var(--spring) both; }
 @keyframes pop { 0% { transform: scale(0.4); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
-.check { stroke-dasharray: 24; stroke-dashoffset: 24; animation: draw 0.55s 0.1s cubic-bezier(0.6, 0, 0.2, 1) forwards; }
-@keyframes draw { to { stroke-dashoffset: 0; } }
+.check { stroke-dasharray: 24; animation: draw 0.55s 0.1s cubic-bezier(0.6, 0, 0.2, 1) both; }
+@keyframes draw { from { stroke-dashoffset: 24; } }
 
 .text { margin-top: 24px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-height: 110px; }
+/* Food's listening line never changes, so it keeps no spare room: on a notched phone the wave and the check need it. */
+.text.steady { min-height: 0; }
 .text > * { animation: rise 0.5s var(--ease-out) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
 .head { font-size: 30px; line-height: 1.05; }
-.sub { font-size: 14px; color: var(--muted); line-height: 1.45; max-width: 320px; }
+.sub { font-size: 14px; color: var(--muted); line-height: 1.45; max-width: 320px; text-wrap: balance; }
+/* The day's journal question gets a line of its own under "Not sure where to start?". */
+.ask { display: block; }
+/* In Light the hue's glow tints the page under the voice moments' text and muted falls below 4.5:1 there, so their
+   sub takes the secondary ink. */
+:global(:root[data-theme="light"]) .text .sub { color: var(--ink-2); }
 .hex { font-size: 12px; letter-spacing: 0.08em; color: var(--hue); max-width: 290px; word-break: break-all; line-height: 1.5; }
 .foot { margin-top: auto; padding-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
 .stop { width: 82px; height: 82px; border-radius: 50%; background: var(--ink); display: grid; place-items: center; box-shadow: 0 0 0 7px color-mix(in srgb, var(--ink) 12%, transparent); transition: transform 0.15s ease; }
@@ -55,7 +65,8 @@
 .said span { display: inline-block; margin-right: 0.26em; animation: word 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
 @keyframes word { from { opacity: 0; transform: translateY(12px); filter: blur(8px); } }
 .dim { opacity: 0.35; }
-.wave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 60px; width: 100%; }
+/* The margin keeps the bars about 15px clear of the check's halo; the foot grows upward, so the check stays put. */
+.wave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 60px; width: 100%; margin-bottom: 12px; }
 .wave i { width: 4px; height: var(--h); border-radius: 2px; background: var(--hue); opacity: 0.9; animation: hb 0.7s ease-in-out infinite alternate; animation-delay: var(--dl); }
 @keyframes hb { from { transform: scaleY(0.25); } to { transform: scaleY(1.15); } }
 .skel { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 18px; }
@@ -70,8 +81,11 @@
 .itemText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .itemName { font-size: 15px; line-height: 1.25; }
 
-/* The day closing: the orb blooms, light bursts out of it, and the streak rolls over. Always dark. */
-.closed { justify-content: center; gap: 8px; background: #0B0A09; color: #F5F2EB; --muted: #A39E94; --well: rgba(255, 255, 255, 0.07); --ink: #F5F2EB; --bone: #0B0A09; }
+/* The day closing: the orb blooms, light bursts out of it, and the streak rolls over. Always dark: DayClosed wears
+   the global .night class, Night's whole token set (globals.css), so Light shows the same moment as Night. */
+/* --day: the day's three hues, on the streak number and today's dot. Its ends sit 12% in, because the figures fill
+   only the middle of their line box: at 0 and 100% the violet and orange would land on empty space. */
+.closed { justify-content: center; gap: 8px; --day: linear-gradient(160deg, var(--journal) 12%, var(--food) 50%, var(--activity) 88%); }
 .burst { position: relative; width: 300px; height: 300px; display: grid; place-items: center; margin-bottom: 4px; }
 .burst > :last-child { animation: bloom 1.1s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
 @keyframes bloom { from { transform: scale(0.3); opacity: 0; } }
@@ -83,19 +97,26 @@
 .dot { position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px; border-radius: 50%; background: var(--c); opacity: 0; animation: burst 1.5s cubic-bezier(0.1, 0.8, 0.3, 1) both; animation-delay: var(--dl); z-index: 5; }
 @keyframes burst { 0% { transform: translate(0, 0) scale(0.3); opacity: 0; } 12% { opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 0; } }
 .streak { position: relative; width: 260px; height: 118px; overflow: hidden; font-size: 132px; line-height: 118px; text-align: center; }
-.streak span { position: absolute; left: 0; right: 0; top: 0; background: linear-gradient(160deg, var(--journal), var(--food) 50%, var(--activity)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.old { animation: outUp 0.55s 1s cubic-bezier(0.6, 0, 0.3, 1) forwards; }
-.new { transform: translateY(105%); animation: inUp 0.75s 1.15s var(--spring) forwards; }
-@keyframes outUp { to { transform: translateY(-105%); opacity: 0; } }
-@keyframes inUp { to { transform: none; } }
+/* Each number's box is as wide as its digits and centred by its margins (transform stays free for the roll), so the
+   gradient is measured on the digits: violet at the top of the first, orange at the foot of the last. The padding gives
+   back .dc's trailing letter-spacing, which would otherwise cut the last digit's right edge off. */
+.streak span { position: absolute; left: 0; right: 0; top: 0; width: fit-content; margin-inline: auto; padding-right: 0.025em; background: var(--day); -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* At rest: yesterday's number gone above, today's in place, the week filled. The rolls and fills play in from there. */
+.old { opacity: 0; transform: translateY(-105%); animation: outUp 0.55s 1s cubic-bezier(0.6, 0, 0.3, 1) both; }
+.new { animation: inUp 0.75s 1.15s var(--spring) both; }
+@keyframes outUp { from { opacity: 1; transform: none; } }
+@keyframes inUp { from { transform: translateY(105%); } }
 .week { display: flex; gap: 12px; margin: 12px 0 18px; }
 .wd { display: flex; flex-direction: column; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
 .wd i { width: 24px; height: 24px; border-radius: 50%; background: var(--well); }
-.wdOn i { animation: fillW 0.5s both; animation-delay: var(--dl); }
-@keyframes fillW { to { background: #F5F2EB; } }
-.wdToday i { animation: fillT 0.5s both; animation-delay: var(--dl); }
-@keyframes fillT { to { background: var(--activity); box-shadow: 0 0 18px var(--activity); } }
-.lovely { width: 100%; max-width: 360px; height: 56px; border-radius: var(--r-pill); background: #F5F2EB; color: #0B0A09; font-weight: 600; font-size: 16px; }
+.wdOn i { background: var(--ink); animation: fillW 0.5s both; animation-delay: var(--dl); }
+@keyframes fillW { from { background: var(--well); } }
+/* Today wears the streak number's three hues, not one domain's, with a quiet ivory glow. The gradient fades in on a
+   layer of its own, because a colour cannot blend into a gradient. */
+.wdToday i { position: relative; box-shadow: 0 0 14px color-mix(in srgb, var(--ink) 40%, transparent); animation: fillT 0.5s both; animation-delay: var(--dl); }
+.wdToday i::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--day); animation: fadeIn 0.5s both; animation-delay: var(--dl); }
+@keyframes fillT { from { box-shadow: none; } }
+.lovely { width: 100%; max-width: 360px; height: 56px; border-radius: var(--r-pill); background: var(--ink); color: var(--bone); font-weight: 600; font-size: 16px; }
 
 :global(:root[data-motion="calm"]) .glow, :global(:root[data-motion="calm"]) .live .vbar, :global(:root[data-motion="calm"]) .live .ring,
 :global(:root[data-motion="calm"]) .live .core, :global(:root[data-motion="calm"]) .wave i, :global(:root[data-motion="calm"]) .rays { animation: none; }

@@ -8,6 +8,8 @@
 .how svg { margin-top: 2px; }
 .how button { font-size: 12px; color: var(--ink); }
 .footnote { font-size: 12px; color: var(--faint); line-height: 1.5; text-align: center; padding: 0 12px; }
+/* It sits on the page, not a card, and Light's faint is under 4.5:1 on bone for 12px words: muted there. */
+:global(:root[data-theme="light"]) .footnote { color: var(--muted); }
 
 .big { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
 .big :global(.dc) { font-size: 60px; }
@@ -51,16 +53,28 @@
 .rateLow .rateTrack i { background: var(--activity); opacity: 1; }
 .rateLow span:first-child { font-weight: 600; }
 
-.delta { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: var(--r-pill); background: var(--well); color: var(--muted); }
+/* The weight's change, drawn as Food's "276 left" pill is (mono, its own weight, one line), and placed as that one is:
+   at the right end of the big number's line, centred on it, in line with the week's pill below. */
+.delta { font-size: 12px; padding: 5px 10px; border-radius: var(--r-pill); background: var(--well); color: var(--muted); white-space: nowrap; }
+.big .delta { margin-left: auto; align-self: center; }
 .down { color: var(--food); background: color-mix(in srgb, var(--food) 15%, transparent); }
 .up { color: var(--activity); background: color-mix(in srgb, var(--activity) 15%, transparent); }
-.chart { display: block; width: 100%; height: 120px; overflow: visible; }
+/* The weight chart's scale, as the steps sheet's (steps.module.css): two whole pounds in faint mono up the left, each
+   on a dashed hairline across the plot, under the line and its dots. */
+.plot { display: grid; grid-template-columns: 32px minmax(0, 1fr); }
+.axis { position: relative; }
+.axis span { position: absolute; left: 0; transform: translateY(-50%); font-family: var(--font-mono); font-size: 9.5px; color: var(--faint); white-space: nowrap; }
+.area { position: relative; }
+.gridLine { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--hairline-soft); pointer-events: none; }
+.chart { position: relative; display: block; width: 100%; height: 120px; overflow: visible; }
 .dot { fill: var(--hairline-strong); }
-.line { fill: none; stroke: var(--journal); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.4s 0.15s cubic-bezier(0.5, 0, 0.2, 1) forwards; filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--journal) 45%, transparent)); }
+/* Weight is a Food thing (its card, medallion and orb bead on Today are green), so its line is drawn in the food hue;
+   violet stays with the check-ins on this screen. */
+.line { fill: none; stroke: var(--food); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.4s 0.15s cubic-bezier(0.5, 0, 0.2, 1) forwards; filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--food) 45%, transparent)); }
 @keyframes draw { to { stroke-dashoffset: 0; } }
 
 /* Weight: the point being touched, and this week against last. */
-.dotOn { fill: var(--journal); stroke: var(--surface); stroke-width: 2; }
+.dotOn { fill: var(--food); stroke: var(--surface); stroke-width: 2; }
 .week { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--hairline-soft); }
 .weekHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .weekRow { display: grid; grid-template-columns: 1fr 64px 64px; gap: 10px; align-items: baseline; font-size: 13.5px; }
@@ -84,11 +98,20 @@
 .open { font-family: var(--font-mono); font-size: 12px; height: 22px; display: inline-flex; align-items: center; padding: 0 8px; border-radius: var(--r-pill); background: var(--well); color: var(--muted); }
 .mood { color: var(--journal); font-weight: 600; font-size: 13px; }
 .dayChips { display: flex; flex-wrap: wrap; gap: 5px; }
-.food, .did { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 3px 10px; border-radius: 13px; font-size: 12px; background: var(--well); color: var(--ink-2); }
-.food { font-family: var(--font-mono); font-size: 11.5px; }
+/* One strip, one type: every chip is mono, as a Tag is, so the push-up and step counts are mono numbers like the food's. */
+.food, .did { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 3px 10px; border-radius: 13px; font-family: var(--font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; background: var(--well); color: var(--ink-2); }
 .foodMet { background: color-mix(in srgb, var(--food) 16%, transparent); color: var(--ink); }
 .foodMet svg { color: var(--food); }
 .hit { color: var(--food); font-weight: 600; }
 .over { color: var(--activity); font-weight: 600; }
+
+/* Light: a hue is too faint for small words on its own wash, the well or white, so this screen's status words (Closed,
+   over or on goal, the weight's direction, this week's moves) take the hue's ink, as a hue Tag does. Night's lit hues
+   pass as they are. */
+:global(:root[data-theme="light"]) .closed, :global(:root[data-theme="light"]) .over,
+:global(:root[data-theme="light"]) .up, :global(:root[data-theme="light"]) .weekBad { color: var(--activity-ink); }
+:global(:root[data-theme="light"]) .hit, :global(:root[data-theme="light"]) .down,
+:global(:root[data-theme="light"]) .weekGood { color: var(--food-ink); }
 .missed { font-size: 12px; color: var(--muted); }
-.more { align-self: center; min-height: 44px; padding: 0 18px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--ink); background: var(--well); }
+/* The system's small secondary Button, as every other secondary action in a card is; only its place is set here. */
+.more { align-self: center; }

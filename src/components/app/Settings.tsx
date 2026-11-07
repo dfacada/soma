@@ -3,7 +3,7 @@
 // Settings (docs/HANDOFF.md §6). Every control saves on change; nothing has a Save button.
 // Sections still to come with their features: exports and import, rounds, passphrase change.
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
@@ -15,7 +15,7 @@ import { PALETTES, type MotionMode, type ThemeMode } from "@/lib/look";
 import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX } from "@/lib/opening";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
 import { planMeals, type Habit, type Settings } from "@/lib/settings";
-import { Button, Chip, Field, Icon, Input, Pill, Segmented, Select, Sheet, Switch, Toast, useTabVisible } from "@/components/ui";
+import { Button, ButtonLink, Chip, Field, Icon, Input, Pill, Segmented, Select, Sheet, Switch, Toast, useTabVisible } from "@/components/ui";
 import { Admin } from "./Admin";
 import { useHealth } from "./Health";
 import { NudgeSettings } from "./Nudge";
@@ -92,19 +92,19 @@ export function SettingsScreen() {
 
         <Section {...sec("appearance")} title="Appearance" summary={`${THEME_NAME[settings.theme]} · ${settings.motion === "calm" ? "Calm" : "Lively"} · ${PALETTES.find((p) => p.id === settings.palette)?.name || "Soma"}`}>
           <Field name="Theme" help="System follows your phone: Night when it is dark, Light when it is not.">
-            <Segmented label="Theme" value={settings.theme} onChange={(v) => void save({ theme: v as ThemeMode })}
+            <Segmented block label="Theme" value={settings.theme} onChange={(v) => void save({ theme: v as ThemeMode })}
               options={[{ value: "dark", label: "Night" }, { value: "light", label: "Light" }, { value: "system", label: "System" }]} />
           </Field>
           <Field name="Motion" help="Calm drops the bounce and anything that keeps moving on its own.">
-            <Segmented label="Motion" value={settings.motion} onChange={(v) => void save({ motion: v as MotionMode })}
+            <Segmented block label="Motion" value={settings.motion} onChange={(v) => void save({ motion: v as MotionMode })}
               options={[{ value: "lively", label: "Lively" }, { value: "calm", label: "Calm" }]} />
           </Field>
           <span className="eb" style={{ paddingTop: 6 }}>Accent palette</span>
           <div className={a.palettes} role="radiogroup" aria-label="Accent palette">
             {PALETTES.map((p) => (
               <button key={p.id} type="button" role="radio" aria-checked={settings.palette === p.id} className={`${a.palette} ${settings.palette === p.id ? a.paletteOn : ""}`} onClick={() => void save({ palette: p.id })}>
-                <span className={a.paletteDots}>{p.hues.map((h) => <i key={h} style={{ background: h }} />)}</span>
-                <span className={a.pickName}><span style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</span><span className="muted" style={{ fontSize: 11 }}>{p.note}</span></span>
+                <span className={a.paletteDots}>{p.hues.map((h, i) => <i key={h} style={{ "--dot": h, "--dot-night": "night" in p ? p.night[i] : undefined } as CSSProperties} />)}</span>
+                <span className={a.pickName}><span style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</span><span className="muted" style={{ fontSize: 12 }}>{p.note}</span></span>
               </button>
             ))}
           </div>
@@ -244,19 +244,15 @@ export function SettingsScreen() {
         <Section {...sec("whats-new")} title="What's new" summary={`${CHANGES[0].title} · ${releaseDate(CHANGES[0].date)}`}>
           <ChangesSettings />
         </Section>
-        <Section {...sec("feedback")} title="Feedback" summary="Something broken, confusing or missing? Tell David.">
+        <Section {...sec("feedback")} title="Feedback" summary="Something broken or missing? Tell David.">
           <Feedback say={say} />
         </Section>
+        {me.profile.role === "admin" && <Section {...sec("admin")} title="Admin" summary="Approvals, users, the log and feedback" />}
       </Group>
+      {me.profile.role === "admin" && open.has("admin") && <Admin say={say} />}
 
+      {/* The legal links close the page, for everyone. */}
       <p className={a.legal}><Link href="/privacy/">Privacy policy</Link><Link href="/terms/">Terms of service</Link></p>
-
-      {me.profile.role === "admin" && (
-        <>
-          <Group label="Admin"><Section {...sec("admin")} title="Admin" summary="Approvals, users, the log and feedback" /></Group>
-          {open.has("admin") && <Admin say={say} />}
-        </>
-      )}
 
       <Toast message={toast} />
     </div>
@@ -456,14 +452,15 @@ function PasskeyField({ say }: { say: (m: string) => void }) {
 /** Every change ever made to Soma, newest first (src/lib/changelog.ts). What's new shows the unseen ones on opening. */
 function ChangesSettings() {
   const [open, setOpen] = useState(false);
-  const latest = CHANGES[0];
+  // The latest release's title and date are on the row above; this field is named for what its button opens.
   return (
     <>
-      <Field name={latest.title} help={`Latest update, ${releaseDate(latest.date)}. ${CHANGES.length} updates so far.`}>
+      <Field name="Every change" help={`${CHANGES.length} ${CHANGES.length === 1 ? "update" : "updates"} so far, newest first.`}>
         <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>See all changes</Button>
       </Field>
       <Field name="Soma on your Home Screen" help="An icon, full screen, and the evening reminder. The steps for your phone, and a link you can send to someone else.">
-        <Link href="/install/" className={a.lnk}>How to install</Link>
+        {/* The same small secondary pill as See all changes, so the two fields end alike. Still a link to the page. */}
+        <ButtonLink href="/install/" variant="secondary" size="sm">How to install</ButtonLink>
       </Field>
       <Sheet open={open} title="Every change" onClose={() => setOpen(false)}>
         <ReleaseList releases={CHANGES} />

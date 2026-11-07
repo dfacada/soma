@@ -40,7 +40,7 @@ function PushForm({ current, target, rest = false, dayNumber, onSave, day, late 
 
   return (
     <form style={{ display: "contents" }} onSubmit={(e) => { e.preventDefault(); onSave(count); }}>
-      <p className={w.note}>
+      <p className={`${w.note} ${w.lead}`}>
         {rest
           ? `${dayNumber ? `Day ${dayNumber} is` : day ? "That day is" : "Today is"} a rest day. Anything you do still counts as activity.`
           : <>The target is <strong style={{ color: "var(--ink)" }}>{target}</strong> a day, in as many sets as you like.</>}
@@ -49,7 +49,7 @@ function PushForm({ current, target, rest = false, dayNumber, onSave, day, late 
       <div className={w.num}>
         <input className={`dc ${w.numInput}`} inputMode="numeric" pattern="[0-9]*" value={value} placeholder="0" style={{ width: fit(value || "0") }} aria-label={day ? `Push-ups on ${day}` : "Push-ups today"}
           onChange={(e) => setValue(e.target.value.replace(/\D/g, "").slice(0, 6))} />
-        {!rest && <span className={w.unit}>/ {target}</span>}
+        {!rest && <span className={`m ${w.unit} ${w.target}`}>/ {target}</span>}
       </div>
       <div className={w.pad}>
         <svg viewBox="0 0 200 200" aria-hidden>

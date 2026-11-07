@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Button, Field, Icon, Input, Medallion, Switch, Tag, type Domain, type IconName } from "@/components/ui";
+import { Button, ButtonLink, Field, Icon, Input, Medallion, Switch, Tag, type Domain, type IconName } from "@/components/ui";
 import type { Provider } from "@/lib/brief-api";
 import type { Driver } from "@/lib/great-days";
 import { report } from "@/lib/log";
@@ -57,9 +57,11 @@ export function TomorrowScreen() {
   const { settings } = useSession();
   const { day, soma, links, brief, awake, free, insight, building, build, refreshIfStale, send } = useTomorrow();
   const close = useCallback(() => goTab("today"), [goTab]);
-  const shut = useRef<HTMLButtonElement>(null);
+  // Focus goes to the screen, the way a sheet focuses its panel: on a cold open (a tap on the notification) focusing
+  // the X would ring it. The X stays first in tab order, so the ring shows once someone tabs to it.
+  const screen = useRef<HTMLElement>(null);
   useEffect(() => {
-    shut.current?.focus({ preventScroll: true });
+    screen.current?.focus({ preventScroll: true });
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
@@ -95,10 +97,10 @@ export function TomorrowScreen() {
   const [firstTime, firstHalf] = first ? clockLabel(first.start).split(" ") : ["—", ""];
 
   return (
-    <main className={s.screen} aria-label={`Tomorrow's brief, ${weekday} ${date}`}>
+    <main ref={screen} tabIndex={-1} className={s.screen} aria-label={`Tomorrow's brief, ${weekday} ${date}`}>
       <div className={s.inner}>
         <div className={s.bar}>
-          <button ref={shut} type="button" className={s.x} onClick={close} aria-label="Close the brief"><Icon name="close" size={18} /></button>
+          <button type="button" className={s.x} onClick={close} aria-label="Close the brief"><Icon name="close" size={18} /></button>
           <span className="eb">Tomorrow&apos;s brief</span>
           {connected && !locked
             ? <button type="button" className={`${s.x} ${building ? s.spin : ""}`} onClick={build} disabled={building} aria-label="Read the calendar and tasks again"><Icon name="refresh" size={18} /></button>
@@ -127,7 +129,7 @@ export function TomorrowScreen() {
           <section className={s.card} aria-label="Your calendar and tasks">
             <span className="eb">Your calendar and tasks</span>
             <p className={s.rowSub}>Connect Morgen and Todoist in Settings, under Tomorrow&apos;s brief, and the day&apos;s events, free time and tasks show here.</p>
-            <div><Link href="/settings/#brief" className={s.pill}>Open Settings</Link></div>
+            <div><ButtonLink href="/settings/#brief" variant="secondary" size="sm">Open Settings</ButtonLink></div>
           </section>
         )}
         {connected && locked && (

@@ -1,13 +1,23 @@
 /* The weight and push-up sheets (Soma Night, 2026-11-02): one big number you can type into, and a way to change
    it without the keyboard: a ruler to drag for weight, a pad to tap per rep for push-ups. */
 
-.num { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
-.numInput { border: 0; background: none; padding: 0; text-align: center; color: var(--ink); font-size: 88px; line-height: 0.9; -webkit-appearance: none; appearance: none; border-radius: 12px; }
+/* The number on the sheet's centre line (over the ruler's needle, over the pad), its unit hung after it. The input is
+   as wide as its digits (fit() in WeightSheet.tsx), so the unit sits as close as Steps' and Sleep's do. */
+.num { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; column-gap: 6px; }
+.numInput { grid-column: 2; border: 0; background: none; padding: 0; text-align: center; color: var(--ink); font-size: 88px; line-height: 0.9; -webkit-appearance: none; appearance: none; border-radius: 12px; }
 .numInput:focus { outline: none; box-shadow: 0 0 0 3px var(--well); }
 .numInput::placeholder { color: var(--faint); }
-.unit { font-size: 18px; color: var(--muted); }
-.delta { align-self: center; display: inline-flex; align-items: center; height: 30px; padding: 0 13px; border-radius: var(--r-pill); background: var(--well); font-size: 12.5px; color: var(--muted); }
+.unit { justify-self: start; font-size: 18px; color: var(--muted); }
+/* The push-up target is a number, so it is mono (with the global .m) where "lb" is a word; at 16px the wider mono
+   digits keep about the weight of "lb". */
+.target { font-size: 16px; }
+/* The input keeps the font's empty descent under the digits: the chip comes up into it, so it reads with the number
+   it describes, and the ruler steps back from it. */
+.delta { align-self: center; display: inline-flex; align-items: center; height: 30px; padding: 0 13px; margin-top: -20px; border-radius: var(--r-pill); background: var(--well); font-size: 12.5px; color: var(--muted); }
+.delta + .ruler { margin-top: 10px; }
 .note { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.45; }
+/* A note that leads a sheet, straight under its title: on the title's left edge. */
+.lead { text-align: left; }
 
 /* Drag the ruler sideways; the needle stays in the middle. 40px a pound, a tick every 0.2. */
 .ruler { position: relative; height: 74px; overflow: hidden; touch-action: none; cursor: grab; border-radius: 14px;
@@ -26,17 +36,27 @@
 .grow { flex: 1; }
 .buttons { display: flex; gap: 8px; }
 .buttons > * { flex: 1; }
-.clear { align-self: center; min-height: 44px; padding: 0 12px; font-size: 13px; color: var(--muted); }
+/* Clearing the day is a link (app.module.css .link), so it never reads as one more line of the hint above it. */
+.clear { align-self: center; min-height: 44px; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
 
 /* Push-ups: a big pad, +1 a tap, ringed by the day's progress. */
 .pad { position: relative; width: 200px; height: 200px; align-self: center; display: grid; place-items: center; }
-.pad svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+/* The pad comes up into the input's empty descent and gives the same room back over the quick row, so it sits centred
+   between the number and the pills (as the ruler does on the weight sheet) and the sheet keeps its height. */
+.num + .pad { margin-top: -12px; }
+.pad + .quick { margin-top: 12px; }
+/* overflow visible: the ring's glow reaches past the box, and clipped it would end in straight edges. */
+.pad svg { position: absolute; inset: 0; transform: rotate(-90deg); overflow: visible; }
 .padTrack { fill: none; stroke: var(--well); stroke-width: 8; }
 .padRing { fill: none; stroke: var(--activity); stroke-width: 8; stroke-linecap: round; transition: stroke-dasharray 0.6s var(--spring); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--activity) var(--glow-pct), transparent)); }
 .padButton { position: relative; width: 164px; height: 164px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   background: radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--activity) 34%, var(--surface-2)), var(--surface-2) 75%); border: 1px solid color-mix(in srgb, var(--activity) 40%, transparent); color: var(--ink); transition: transform 0.12s ease; }
 .padButton:active { transform: scale(0.92); }
 .padButton :global(.d) { font-size: 32px; color: var(--activity); }
+/* Light: the peach at the pad's heart is too close to the hue for its words, so they take the hue's ink and ink-2.
+   Night's lit hue passes on its dark pad as it is. */
+:global(:root[data-theme="light"]) .padButton :global(.d) { color: var(--activity-ink); }
+:global(:root[data-theme="light"]) .padButton :global(.eb) { color: var(--ink-2); }
 .ripple { position: absolute; inset: 18px; border-radius: 50%; border: 2px solid var(--activity); pointer-events: none; animation: ripple 0.7s ease-out forwards; }
 @keyframes ripple { from { opacity: 0.7; transform: scale(0.9); } to { opacity: 0; transform: scale(1.28); } }
 .quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }

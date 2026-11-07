@@ -1,6 +1,9 @@
 /* Soma Night (2026-11-02) pieces for the Journal, Food and Activity tabs. */
 
-.headPill { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--hue) 16%, transparent); color: var(--hue); font-size: 13px; font-weight: 600; flex-shrink: 0; }
+.headPill { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--hue) 16%, transparent); color: var(--hue); font-size: 13px; font-weight: 600; flex-shrink: 0; }
+/* Light: a hue is too faint on its own tint for small text, so words on a tint take the hue's ink, as a hue Tag does
+   (here and on .left, .over and the week's Today below). Night's lit hues pass as they are. */
+:global(:root[data-theme="light"]) .headPill { color: var(--hue-ink); }
 
 /* Journal: the record card. The lit corner is the record button's own glow. */
 .record { position: relative; overflow: hidden; display: flex; align-items: flex-end; gap: 14px; width: 100%; min-height: 190px; padding: 22px 20px; border-radius: 30px; text-align: left;
@@ -27,10 +30,12 @@
 .backHead :global(.eb) { color: var(--journal); }
 .backHead :global(.m) { font-size: 11px; }
 .backText { font-size: 15px; line-height: 1.5; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-.backGo { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; font-size: 13px; font-weight: 600; color: var(--journal); }
+.backGo { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--journal); }
 
 /* Food: the day's calories, split by meal, with the macros under it. */
-.kcal { display: flex; align-items: baseline; gap: 8px; }
+/* Wraps only when the pill can't fit beside the target (a day 1,000 or more over): the pill then takes its own line at
+   the right instead of running past the card. */
+.kcal { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .kcal :global(.dc) { font-size: 72px; }
 .roll { display: inline-block; animation: roll 0.6s var(--spring) both; }
 @keyframes roll { from { opacity: 0; transform: translateY(50%) scale(0.9); } }
@@ -44,19 +49,27 @@
 /* What is left of the day's calories, or how far over, at the end of the big number's line. */
 .left { margin-left: auto; align-self: center; font-size: 12px; padding: 5px 10px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--food) 14%, transparent); color: var(--food); white-space: nowrap; }
 .over { background: color-mix(in srgb, var(--activity) 16%, transparent); color: var(--activity); }
+:global(:root[data-theme="light"]) .left { color: var(--food-ink); }
+:global(:root[data-theme="light"]) .over { color: var(--activity-ink); }
 
 /* The four meals as rows: a round tick on the left, the meal and its calories, and a chevron that opens the rest. */
 .meals { display: flex; flex-direction: column; margin: 0 -6px; }
 .meal { border-radius: 18px; transition: background 0.3s ease; }
-.meal + .meal { border-top: 1px solid var(--hairline-soft); }
+/* The rule between rows is its own straight line, inset by the list's 6px outset so it spans the content width exactly,
+   as the Recipes card's do. A border-top on the rounded row would bend down at both ends and run past the edges. */
+.meal + .meal::before { content: ""; display: block; height: 1px; margin: 0 6px; background: var(--hairline-soft); }
 .mealRow { display: flex; align-items: center; gap: 4px; min-height: 64px; padding: 0 6px; }
 .mealCheck { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; color: var(--food); background: color-mix(in srgb, var(--food) 12%, transparent); border: 1.5px solid color-mix(in srgb, var(--food) 45%, transparent); transition: background 0.35s ease, color 0.35s ease, transform 0.3s var(--spring); }
 .mealCheck:active { transform: scale(0.88); transition-duration: 0.06s; }
 .mealOn .mealCheck { background: var(--food); border-color: var(--food); color: var(--on-hue); box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--food) var(--glow-pct), transparent); }
 .mealOn .mealCheck svg { animation: pop 0.45s var(--spring); }
-.mealMain { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 4px 6px 10px; text-align: left; border-radius: 14px; }
+/* 12px above and below: a one-line row stays at the row's 64px, and a name on two lines grows the row with the same
+   room around its words as the others have, instead of squeezing between the rules. */
+.mealMain { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 12px 4px 12px 10px; text-align: left; border-radius: 14px; }
 .mealText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.mealName { font-size: 15px; font-weight: 600; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A long name takes a second line rather than losing the words that say what the dish is; the row grows and the
+   tick, calories and chevron stay centred on it. */
+.mealName { font-size: 15px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; text-wrap: balance; }
 .mealKcal { font-size: 13px; color: var(--muted); flex-shrink: 0; }
 .mealOn .mealKcal { color: var(--ink); }
 .mealMore { display: grid; place-items: center; width: 20px; color: var(--faint); transform: rotate(90deg); transition: transform 0.3s var(--spring); flex-shrink: 0; }
@@ -66,7 +79,8 @@
 
 /* Activity: the push-up ring, and the day's moves as big toggles. */
 .ring { position: relative; width: 224px; height: 224px; margin: 4px auto 0; display: grid; place-items: center; border-radius: 50%; }
-.ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+/* Visible, so the arc's glow fades out past the box instead of stopping at its edges. */
+.ring svg { position: absolute; inset: 0; transform: rotate(-90deg); overflow: visible; }
 .ringTrack { fill: none; stroke: var(--well); stroke-width: 14; }
 .ringFill { fill: none; stroke: var(--activity); stroke-width: 14; stroke-linecap: round; transition: stroke-dasharray 0.9s var(--spring); filter: drop-shadow(0 0 10px color-mix(in srgb, var(--activity) var(--glow-pct), transparent)); }
 .ringCenter { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px; border-radius: 50%; transition: transform 0.3s var(--spring); }
@@ -94,10 +108,14 @@
 .weekTrack { width: 12px; height: 56px; border-radius: var(--r-pill); background: var(--well); overflow: hidden; display: flex; align-items: flex-end; }
 .weekTrack i { display: block; width: 100%; border-radius: var(--r-pill); background: color-mix(in srgb, var(--activity) 50%, transparent); transition: height 0.9s var(--spring); }
 .weekHit .weekTrack i { background: var(--activity); box-shadow: 0 0 10px color-mix(in srgb, var(--activity) var(--glow-pct), transparent); }
-.weekRest .weekTrack { background: repeating-linear-gradient(-45deg, var(--well) 0 3px, transparent 3px 6px); }
+/* The round grid's rest hatch (--hatch-rest, app.module.css .cell_rest), so a rest day is drawn one way on the whole
+   screen. */
+.weekRest .weekTrack { background: var(--hatch-rest); }
 .weekN { font-size: 11px; color: var(--muted); }
 .weekHit .weekN { color: var(--ink); }
-.weekLabel { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+/* The eyebrow's size and colour: the only way to tell which bar is which day, so it can't be the quietest text. */
+.weekLabel { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .weekOn .weekLabel { color: var(--activity); }
+:global(:root[data-theme="light"]) .weekOn .weekLabel { color: var(--activity-ink); }
 
 :global(:root[data-motion="calm"]) .recordButton::after { animation: none; }

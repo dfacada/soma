@@ -134,9 +134,10 @@ export function Today() {
   const greet = hour < 5 || hour >= 17 ? "Good evening" : hour < 12 ? "Good morning" : "Good afternoon";
   const hello = !isToday ? longDay(view) : `${st.closed ? "That's the day" : greet}${firstName ? `,\n${firstName}` : ""}.`;
   const eyebrow = isToday ? new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" }) : "Filling in";
+  // Today closed has no line: the week card right under the orb already says the streak, beside the best.
   const lede = !isToday
     ? (st.closed ? "Closed. Nothing left to fill in." : `${st.doneCount} of ${st.taskCount} done. Fill in what is missing.`)
-    : st.closed ? head.sub
+    : st.closed ? null
     : st.progress === 0 ? `${st.taskCount === 5 ? "Five" : "Four"} things close the day.`
     : head.todos.length === 1 ? `${head.todos[0].label} closes the day.`
     : `${head.todos.length} left to close the day.`;
@@ -277,16 +278,16 @@ export function Today() {
         <h1 className={`d ${t.hello}`}>{hello}</h1>
       </header>
 
-      <section className={t.hero} aria-label={isToday ? "Today's progress" : `Progress on ${longDay(view)}`}>
-        <Orb beads={beads} progress={st.progress} closed={st.closed} label={`${st.doneCount} of ${st.taskCount} done`}>
+      <section className={`${t.hero} ${lede ? "" : t.heroBare}`} aria-label={isToday ? "Today's progress" : `Progress on ${longDay(view)}`}>
+        <Orb beads={beads} closed={st.closed} label={`${st.doneCount} of ${st.taskCount} done`}>
           {st.closed
-            ? <div className={t.closedMark}><Icon name="check" size={46} strokeWidth={2.2} /><span className="eb" style={{ color: "var(--ink)" }}>Day closed</span></div>
+            ? <div className={t.closedMark}><Icon name="check" size={46} strokeWidth={2.2} /><span className={`eb ${t.orbWords}`}>Day closed</span></div>
             : <>
               <div className={`dc ${t.count}`}><span key={st.doneCount} className={t.roll}>{st.doneCount}</span><small>/{st.taskCount}</small></div>
-              <span className="eb">{isToday ? "done today" : "done that day"}</span>
+              <span className={`eb ${t.orbWords}`}>{isToday ? "done today" : "done that day"}</span>
             </>}
         </Orb>
-        <p className={t.lede}>{lede}{next && head.todos.length > 1 && <> <span className={t.ledeNext}>Up next: {NEXT_LABEL[next]}.</span></>}</p>
+        {lede && <p className={t.lede}>{lede}{next && head.todos.length > 1 && <> <span className={t.ledeNext}>Up next: {NEXT_LABEL[next]}.</span></>}</p>}
         {head.todos.length > 0 && (
           <div className={t.todos}>
             {head.todos.map((x, i) => <span key={x.label} className={`${t.todo} ${todoKeys[i] === next ? t.todoNext : ""}`} style={{ "--c": x.color, animationDelay: `${0.3 + i * 0.06}s` } as CSSProperties}><i />{x.label}</span>)}
@@ -390,7 +391,10 @@ export function Today() {
                 <span className={t.row}>
                   <span className={t.grow}>
                     <span className={t.th}><Medallion domain="food" icon={listening ? "mic" : "leaf"} state={foodState} /><span className="eb">Food</span></span>
-                    <span className={`d ${t.title} ${listening ? `m ${t.recTime}` : ""}`}>{listening ? mmss(voice.seconds) : st.meals ? `${fmt(st.kcal)} kcal` : sayFood ? "Say what you ate" : "Four meals"}</span>
+                    {/* The day's kcal is a hero number like the weight and the push-ups; words and the timer stay titles. */}
+                    {!listening && st.meals
+                      ? <span className={t.big}><span className="dc">{fmt(st.kcal)}</span><span className={t.unit}>kcal</span></span>
+                      : <span className={`d ${t.title} ${listening ? `m ${t.recTime}` : ""}`}>{listening ? mmss(voice.seconds) : sayFood ? "Say what you ate" : "Four meals"}</span>}
                     <span className={t.sub}>{sayFood ? foodLine : foodSub}</span>
                   </span>
                   {sayFood && <span className={`${t.act} ${listening ? t.actRec : ""}`}><Icon name={listening ? "pause" : "mic"} size={24} strokeWidth={2} /></span>}
@@ -449,15 +453,17 @@ export function Today() {
             </button>
           ))}
         </div>
-        <span className="eb">Habits</span>
-        <div className={t.chips} role="group" aria-label="Habits">
-          {settings.habits.map((h) => h.type === "counter" ? (
-            <Chip key={h.id} kind="habit" label={h.label} count={checkin?.counts[h.id] || 0} on={Boolean(checkin?.counts[h.id])}
-              onClick={() => change("checkins", k, (d) => { d.checkin.counts[h.id] = ((d.checkin.counts[h.id] || 0) + 1) % 10; })} />
-          ) : (
-            <Chip key={h.id} kind="habit" label={h.label} on={Boolean(checkin?.habits[h.id])}
-              onClick={() => change("checkins", k, (d) => { d.checkin.habits[h.id] = !d.checkin.habits[h.id]; })} />
-          ))}
+        <div className={t.habits}>
+          <span className="eb">Habits</span>
+          <div className={a.chips} role="group" aria-label="Habits">
+            {settings.habits.map((h) => h.type === "counter" ? (
+              <Chip key={h.id} kind="habit" label={h.label} count={checkin?.counts[h.id] || 0} on={Boolean(checkin?.counts[h.id])}
+                onClick={() => change("checkins", k, (d) => { d.checkin.counts[h.id] = ((d.checkin.counts[h.id] || 0) + 1) % 10; })} />
+            ) : (
+              <Chip key={h.id} kind="habit" label={h.label} on={Boolean(checkin?.habits[h.id])}
+                onClick={() => change("checkins", k, (d) => { d.checkin.habits[h.id] = !d.checkin.habits[h.id]; })} />
+            ))}
+          </div>
         </div>
         {!st.checkinDone && <p className="muted" style={{ fontSize: 12 }}>Pick a mood to check in. Habits are optional.</p>}
         <Button block onClick={closeCheckin}>Done</Button>

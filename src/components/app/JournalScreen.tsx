@@ -77,8 +77,11 @@ export function JournalScreen() {
     return () => window.clearTimeout(t);
   }, [flash]);
 
+  // Locked, or not made yet: the page is the one card that opens the vault, in the middle of the screen.
+  const shut = j.vault === "none" || j.vault === "locked";
+
   return (
-    <div className={a.page}>
+    <div className={shut ? `${a.page} ${a.vaultPage}` : a.page}>
       <div className={a.pageHead}>
         <div>
           <div className="eb">Sealed on this phone</div>
@@ -107,8 +110,8 @@ export function JournalScreen() {
 
       {j.vault === "checking" && <span className="eb">Checking your vault</span>}
 
-      {(j.vault === "none" || j.vault === "locked") && (
-        <Card>
+      {shut && (
+        <Card className={a.vaultCard}>
           <Medallion domain="journal" icon="lock" />
           <span className="d" style={{ fontSize: 24 }}>{j.vault === "none" ? "Make your vault first" : "Your vault is locked"}</span>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
@@ -116,7 +119,7 @@ export function JournalScreen() {
               ? "Entries are encrypted on your device with a passphrase only you know, then uploaded. Choose that passphrase once and you can start recording."
               : "Enter your passphrase to read and record entries on this device."}
           </p>
-          <div><Button variant="journal" onClick={j.openVault}>{j.vault === "none" ? "Create vault" : "Unlock"}</Button></div>
+          <Button variant="journal" block className={a.vaultGo} onClick={j.openVault}>{j.vault === "none" ? "Create vault" : "Unlock"}</Button>
         </Card>
       )}
 
@@ -216,7 +219,8 @@ function EntryCard({ item, terms, flash }: { item: Item; terms: string[]; flash:
   return (
     <Card id={"entry-" + item.id} className={flash ? a.flash : undefined}>
       <div className={a.entryHead}>
-        <span className="m muted" style={{ fontSize: 12 }}>{timeLabel(item.createdMs)}{e.audioDuration ? ` · ${clock(e.audioDuration)}` : ""}</span>
+        {/* Just the time: the player under it already says how long the recording is. */}
+        <span className="m muted" style={{ fontSize: 12 }}>{timeLabel(item.createdMs)}</span>
         <span className={a.entryTags}>
           {e.mood && <Tag tone="journal">{e.mood.toLowerCase()}</Tag>}
           {e.recovered && <Tag>recovered</Tag>}
@@ -255,9 +259,11 @@ function EntryCard({ item, terms, flash }: { item: Item; terms: string[]; flash:
                 <span key={step} className={a.txLabel}>{TX_LABEL[step]}</span>
               </span>
             ) : (
-              <span className={a.rowButtons}>
+              <span className={a.entryLinks}>
                 {!item.pending && <button type="button" className={a.lnk} onClick={() => setEditing(true)}>{e.transcript ? "Edit" : "Add a note"}</button>}
-                {!item.pending && e.hasAudio && j.cloudOn && <button type="button" className={`${a.lnk} ${a.lnkJournal}`} onClick={() => { haptic(); j.transcribeEntry(item.id); }}>{e.transcript ? "Transcribe again" : "Transcribe"}</button>}
+                {/* Transcribe takes the journal hue only while the entry has no words yet: then it is the thing to do
+                    next. Once there is a transcript, a redo is as quiet as Edit and Delete. */}
+                {!item.pending && e.hasAudio && j.cloudOn && <button type="button" className={e.transcript ? a.lnk : `${a.lnk} ${a.lnkJournal}`} onClick={() => { haptic(); j.transcribeEntry(item.id); }}>{e.transcript ? "Transcribe again" : "Transcribe"}</button>}
               </span>
             )}
             {working ? null : confirming ? (

@@ -10,9 +10,11 @@ export const THEME_MODES: ThemeMode[] = ["light", "dark", "system"];
 export type MotionMode = "lively" | "calm";
 export const MOTION_MODES: MotionMode[] = ["lively", "calm"];
 
-/** `hues` are journal, food, activity: shown as the three dots on the picker. Keep in step with globals.css. */
+/** `hues` are journal, food, activity: shown as the three dots on the picker. Keep in step with globals.css. Night
+ *  lights a palette's hues toward white there, and the picker mixes its dots the same way; Soma's own Night hues are
+ *  picked by hand instead, so `night` lists them. */
 export const PALETTES = [
-  { id: "soma", name: "Soma", note: "Indigo, green, amber", hues: ["#5F5BBF", "#2C8A5E", "#B7692A"] },
+  { id: "soma", name: "Soma", note: "Indigo, green, amber", hues: ["#5F5BBF", "#2C8A5E", "#B7692A"], night: ["#8F8AF7", "#4BCF93", "#F39A57"] },
   { id: "organic", name: "Organic", note: "Muted sage and plum", hues: ["#7D6B8A", "#6F7A52", "#A8703A"] },
   { id: "macrofactor", name: "MacroFactor", note: "Malibu blue", hues: ["#7A5FD0", "#3F7FE8", "#DD6F45"] },
   { id: "balance", name: "Balance", note: "Sea glass and teal", hues: ["#4F6FA8", "#2E9C95", "#CF7443"] },

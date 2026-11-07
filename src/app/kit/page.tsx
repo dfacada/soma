@@ -5,7 +5,7 @@
 import { useCallback, useRef, useState } from "react";
 import { meter, type Meter } from "@/lib/meter";
 import {
-  Bar, Button, Card, Chip, DayGlyph, DayRing, Field, Icon, ICON_NAMES, Input, Medallion, MicButton, Mini, Orb, Pill,
+  Bar, Button, ButtonLink, Card, Chip, DayGlyph, DayRing, Field, Icon, ICON_NAMES, Input, Medallion, MicButton, Mini, Orb, Pill,
   ProgressRing, Row, RowHead, Segmented, Select, Sheet, Sidebar, SideNote, Stat, StageBar, StatPill, Switch, TabBar, Tag, Tile, Tiles, Toast,
   type MedallionState, type Section,
 } from "@/components/ui";
@@ -15,6 +15,7 @@ import k from "./kit.module.css";
 const NEUTRALS = [
   ["Bone", "--bone", "#F4F3EF · page"], ["Surface", "--surface", "#FFFFFF · cards"], ["Surface 2", "--surface-2", "#ECEAE3 · tracks, rest"],
   ["Hairline", "--hairline", "#DCD9D0 · borders"], ["Muted", "--muted", "#6E6A62 · labels"], ["Ink", "--ink", "#1B1A17 · text, primary"],
+  ["Faint", "--faint", "#736E66 · axes, footnotes"], ["Rest hatch", "--hatch-rest", "strong hairline stripes · rest days"],
 ];
 const HUES = [
   ["Journal", "--journal", "#5F5BBF · tint #ECEBF8"], ["Food", "--food", "#2C8A5E · tint #E6F2EB"], ["Activity", "--activity", "#B7692A · tint #F6EBDF"],
@@ -112,7 +113,7 @@ export default function Kit() {
         <span className="eb">Controls</span>
         <div className={k.specimens}>
           <div className={k.specimen}>
-            <span className="eb">Buttons · 44, small 36</span>
+            <span className="eb">Buttons · 48, small 40 · a link as a button</span>
             <div className={k.wrap}>
               <Button onClick={() => say("Added")}>Add</Button>
               <Button variant="activity" onClick={() => say("Logged " + pushups)}>Did {pushups}</Button>
@@ -120,16 +121,19 @@ export default function Kit() {
               <Button variant="secondary">Other number</Button>
               <Button variant="danger" size="sm">Stop</Button>
               <Button size="sm" disabled>Disabled</Button>
+              <Button variant="food" size="sm" disabled>Disabled hue</Button>
+              <ButtonLink href="/install/" variant="secondary" size="sm">How to install</ButtonLink>
             </div>
           </div>
           <div className={k.specimen}>
-            <span className="eb">Chips · 38 mood, 30 habit, counter</span>
+            <span className="eb">Chips · 42 mood, 34 habit, counter, value</span>
             <div className={k.wrap}>
               {MOODS.map((m) => <Chip key={m} label={m} on={mood === m} onClick={() => setMood(m)} />)}
             </div>
             <div className={k.wrap}>
               {Object.keys(habits).map((h) => <Chip key={h} kind="habit" label={h} on={habits[h]} onClick={() => setHabits((v) => ({ ...v, [h]: !v[h] }))} />)}
               <Chip kind="habit" label="Drinks" count={drinks} on={drinks > 0} onClick={() => setDrinks((n) => (n + 1) % 5)} />
+              <Chip kind="habit" label="Almonds" value={160} onClick={() => say("Added Almonds")} />
             </div>
           </div>
           <div className={k.specimen}>
@@ -160,7 +164,7 @@ export default function Kit() {
               <Button size="sm" variant="secondary" onClick={listen}>Show listening (test tone)</Button>
             </div>
             <div style={{ display: "flex", justifyContent: "center", padding: "24px 0" }}>
-              <Orb progress={(progress.checkin + progress.journal + progress.food + progress.activity) / 4} closed={closed} label="Orb specimen" beads={[
+              <Orb closed={closed} label="Orb specimen" beads={[
                 { key: "checkin", domain: "journal", icon: "heart", label: "Check-in", value: progress.checkin },
                 { key: "journal", domain: "journal", icon: "mic", label: "Journal", value: progress.journal },
                 { key: "food", domain: "food", icon: "leaf", label: "Meals", value: progress.food },
@@ -217,7 +221,7 @@ export default function Kit() {
               <div style={{ flex: "1 1 0", minWidth: 0 }}><StatPill compact domain="activity" icon="walk" label="Steps" value="8,889" fill={8889 / 10000} ariaLabel="Steps: 8,889 of 10,000" /></div>
               <div style={{ flex: "1 1 0", minWidth: 0 }}><StatPill compact domain="journal" icon="moon" label="Last night" value="5h 36m" fill={336 / 480} ariaLabel="Sleep: 5h 36m of 8h" /></div>
             </div>
-            <StatPill domain="activity" icon="walk" label="Steps · goal 10,000" value="8,889" fill={8889 / 10000} ariaLabel="Steps: 8,889 of 10,000" />
+            <StatPill domain="activity" icon="walk" label={<>Steps · goal <span className="m">10,000</span></>} value="8,889" fill={8889 / 10000} ariaLabel="Steps: 8,889 of 10,000" />
             <StatPill domain="journal" icon="moon" label="Last night" value="Unlock to see" dim fill={null} ariaLabel="Sleep: unlock to see" />
             <span className="eb">Stage bar · opening a recording</span>
             <StageBar domain="journal" steps={["Downloading…", "Decrypting…", "Converting…"]} at={0} progress={0.42} detail="1.8 / 4.4 MB" />
@@ -255,7 +259,7 @@ export default function Kit() {
       <section className={k.sec}>
         <span className="eb">Navigation · tab bar on phones, sidebar on desktop</span>
         <div className={k.specimens}>
-          <div className={`${k.frame} ${k.tabFrame}`}><TabBar current={section} onSelect={setSection} /></div>
+          <div className={`${k.frame} ${k.tabFrame}`}><TabBar current={section} onSelect={setSection} todayProgress={{ done: 3, total: 5, closed: false }} /></div>
           <div className={`${k.frame} ${k.sideFrame}`}>
             <Sidebar current={section} onSelect={setSection} footer={<><Button variant={recording ? "danger" : "journal"} block onClick={() => setRecording(!recording)}><Icon name="mic" />{recording ? "Stop" : "Record an entry"}</Button><SideNote>david@example.com<br />Admin</SideNote></>} />
           </div>

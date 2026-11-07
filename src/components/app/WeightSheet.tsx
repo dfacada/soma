@@ -21,8 +21,12 @@ export function WeightSheet({ open, onClose, ...form }: { open: boolean; onClose
 const PX = 40; // per pound on the ruler
 const round = (v: number) => Math.round(v * 10) / 10;
 const clamp = (v: number) => Math.min(2000, Math.max(1, v));
-/** The big number is as wide as what is in it (condensed digits are about half an em), so the unit sits beside it. */
-export const fit = (text: string) => `${(Math.max(1, text.length) * 0.5 + 0.2).toFixed(2)}em`;
+/** The big number is as wide as what is in it, so the unit sits beside it: a condensed digit is 0.39em with its
+ *  tracking, a point about 0.13em; the rest is room for the caret. */
+export const fit = (text: string) => {
+  const digits = text.replace(/\D/g, "").length;
+  return `${(Math.max(1, digits) * 0.4 + (text.length - digits) * 0.15 + 0.05).toFixed(2)}em`;
+};
 
 function WeightForm({ current, last, onSave }: FormProps) {
   const [value, setValue] = useState(current !== null ? String(current) : last !== null ? String(last) : "");

@@ -46,8 +46,10 @@
 .lane { transition: background 0.25s ease, opacity 0.25s ease; }
 .picking .col:not(.colOn) .lane { opacity: 0.4; }
 
-.foot { display: grid; grid-template-columns: 40px repeat(var(--n), minmax(0, 1fr)); gap: 0 6px; text-align: center; min-height: 14px; }
-.foot.month { gap: 0 2px; }
+/* The labels under the bars, each on its bar's centre. The chart's axis column has no gap after it but this row's
+   spacer does, so the spacer is the axis's 40 less one gap: every label column then starts and ends with its bar's. */
+.foot { display: grid; grid-template-columns: 34px repeat(var(--n), minmax(0, 1fr)); gap: 0 6px; text-align: center; min-height: 14px; }
+.foot.month { grid-template-columns: 38px repeat(var(--n), minmax(0, 1fr)); gap: 0 2px; }
 .foot > span { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
 .foot > span.footEnd { align-items: flex-end; }
 .foot :global(.m) { font-size: 11px; color: var(--muted); }

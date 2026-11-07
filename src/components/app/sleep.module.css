@@ -1,5 +1,6 @@
 /* The sleep sheet (Sleep.tsx): last night, its stages, and seven nights as windows on an evening axis. All in the
-   journal's hue family, the colour of the night in Soma, with awake in the warm activity hue. */
+   journal's hue family, the colour of the night in Soma, with awake in a neutral (another domain's hue would say
+   it belongs there). Met and not met look as they do on the steps sheet (steps.module.css), its pair. */
 
 .sleep { display: flex; flex-direction: column; gap: 22px; padding-bottom: 6px; --hue: var(--journal); }
 
@@ -10,7 +11,8 @@
 .goal { display: flex; align-items: center; gap: 12px; }
 .goal :global(.m) { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .goalTrack { flex: 1; height: 8px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--journal) 16%, var(--well)); overflow: hidden; }
-.goalTrack i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--journal); box-shadow: 0 0 12px color-mix(in srgb, var(--journal) var(--glow-pct), transparent); animation: grow 1s var(--spring) both; transform-origin: left; }
+.goalTrack i { display: block; height: 100%; border-radius: var(--r-pill); background: color-mix(in srgb, var(--journal) 72%, var(--surface)); animation: grow 0.9s var(--spring) both; transform-origin: left; }
+.goalTrack i.met { background: var(--journal); box-shadow: 0 0 12px color-mix(in srgb, var(--journal) var(--glow-pct), transparent); }
 @keyframes grow { from { transform: scaleX(0); } }
 .when { font-size: 14px; color: var(--muted); line-height: 1.5; }
 .when b { color: var(--ink); font-weight: 600; }
@@ -23,11 +25,11 @@
 /* Stages: one bar, each stage as wide as its minutes. */
 .stages { display: flex; gap: 3px; height: 22px; border-radius: 8px; overflow: hidden; }
 .stages i { display: block; min-width: 3px; border-radius: 3px; animation: grow 0.9s var(--spring) both; transform-origin: left; }
-/* Darkest to palest as Fitbit orders them: deep, light, REM; awake in the warm activity hue. The same in both themes. */
+/* Darkest to palest as Fitbit orders them: deep, light, REM; awake in the muted neutral, outside the night's hue. */
 .deep { background: color-mix(in oklab, var(--journal) 52%, black); }
 .light { background: var(--journal); }
 .rem { background: color-mix(in oklab, var(--journal) 50%, white); }
-.awake { background: var(--activity); }
+.awake { background: var(--muted); }
 .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
 .leg { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .leg > i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
@@ -47,7 +49,9 @@
 .lane i.met { background: var(--journal); box-shadow: 0 0 12px color-mix(in srgb, var(--journal) var(--glow-pct), transparent); }
 @keyframes rise { from { transform: scaleY(0); opacity: 0; } }
 .colOn .lane { background: color-mix(in srgb, var(--journal) 18%, transparent); }
-.foot { display: grid; grid-template-columns: 40px repeat(7, minmax(0, 1fr)); gap: 0 6px; text-align: center; }
+/* Each night's numbers on its lane's centre: the spacer is the axis's 40 less the gap that follows it here and not in
+   the chart, so every label column starts and ends with its lane's (as on the steps sheet). */
+.foot { display: grid; grid-template-columns: 34px repeat(7, minmax(0, 1fr)); gap: 0 6px; text-align: center; }
 .foot > span { display: flex; flex-direction: column; gap: 2px; }
 .foot :global(.m) { font-size: 11px; color: var(--muted); }
 .footDay { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
@@ -56,4 +60,6 @@
 .line { font-size: 13px; color: var(--muted); line-height: 1.5; }
 .note { font-size: 12px; color: var(--faint); line-height: 1.5; }
 
-:global(:root[data-motion="calm"]) .lane i, :global(:root[data-motion="calm"]) .stages i { animation: none; }
+:global(:root[data-motion="calm"]) .lane i,
+:global(:root[data-motion="calm"]) .stages i,
+:global(:root[data-motion="calm"]) .goalTrack i { animation: none; }
