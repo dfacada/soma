@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "catalyst/**",
     "docs/**",
     ".claude/**",
+    // The polish loop's scratch: screenshots and the carry copy of the workflow (shots/<run>-carry.js).
+    "shots/**",
   ]),
 ]);
 

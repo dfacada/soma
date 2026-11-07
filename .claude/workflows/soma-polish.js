@@ -17,10 +17,13 @@ export const meta = {
 // rounds: fix → check → judge → critique cycles at most (1–6, default 3).
 // areas:  ids to work on (npm run shots -- --list), default all.
 // focus:  a sentence from David that every critic and maker hears ("make Today feel calmer").
+// resume: set by scripts/shots/carry.mjs for a run that stopped early (a usage limit, a crash, a stop): the baseline
+//         and every area's state as they stood, the round it stopped in and the makers still to run. Never by hand.
 const A = args || {}
 const RUN = String(A.run || 'polish').replace(/[^a-zA-Z0-9-]/g, '') || 'polish'
 const ROUNDS = Math.max(1, Math.min(6, Number(A.rounds) || 3))
 const FOCUS = A.focus ? String(A.focus).slice(0, 600) : ''
+const RESUME = A.resume && typeof A.resume === 'object' && A.resume.base ? A.resume : null
 const DIR = `shots/${RUN}`
 const BLOCKING = ['blocking', 'major']
 
@@ -139,7 +142,7 @@ async function blind(title, before, after, kind, label, phase) {
     () => role('soma-judge', judgePrompt(title, after, before, kind), { label: `${label}:2`, phase, schema: VERDICT }),
   ])
   const out = { verdict: 'unclear', afterWon: [], beforeWon: [], afterKeep: [], beforeKeep: [] }
-  if (!x || !y) return out
+  if (!x || !y) return { ...out, missing: !x && !y }
   let afterWins = 0, beforeWins = 0
   for (const [v, afterFirst] of [[x, false], [y, true]]) {
     if (v.winner === 'same') continue
@@ -230,16 +233,22 @@ function systemPrompt(round, items, prev) {
 }
 
 // ── The run ──
-phase('Baseline')
-const base = await shoot('r0', { fresh: true, phase: 'Baseline' })
-if (!base || !base.ok || !base.areas || !base.areas.length) {
-  return { error: (base && base.error) || 'the baseline capture failed: is npm run dev running on localhost:3000?', base }
+// A run that stopped early carries on from where it stood: the same baseline and state, no new capture or critique.
+let base = RESUME && RESUME.base
+if (!RESUME) {
+  phase('Baseline')
+  base = await shoot('r0', { fresh: true, phase: 'Baseline' })
+  if (!base || !base.ok || !base.areas || !base.areas.length) {
+    return { error: (base && base.error) || 'the baseline capture failed: is npm run dev running on localhost:3000?', base }
+  }
 }
 AT = AT || base.at
 const SYSTEM = base.systemFiles || []
-const AREAS = (Array.isArray(A.areas) && A.areas.length ? base.areas.filter((a) => A.areas.includes(a.id)) : base.areas)
+const AREAS = RESUME ? base.areas.filter((a) => RESUME.areas.includes(a.id))
+  : (Array.isArray(A.areas) && A.areas.length ? base.areas.filter((a) => A.areas.includes(a.id)) : base.areas)
 if (!AREAS.length) return { error: `no area called ${(A.areas || []).join(', ')}: the areas are ${base.areas.map((a) => a.id).join(', ')}` }
-log(`Baseline: ${base.count} screenshots, ${AREAS.length} area${AREAS.length === 1 ? '' : 's'} to work on, at ${AT}${base.problems.length ? `, ${base.problems.length} problems` : ''}`)
+if (RESUME) log(`Carrying on in round ${RESUME.round}${RESUME.pending.length ? `, first ${RESUME.pending.join(', ')}` : ''}`)
+else log(`Baseline: ${base.count} screenshots, ${AREAS.length} area${AREAS.length === 1 ? '' : 's'} to work on, at ${AT}${base.problems.length ? `, ${base.problems.length} problems` : ''}`)
 
 // Every area's scenes, worked on or not: a shared change can move a screen outside the areas this run works on.
 const titleOf = (id) => { for (const a of base.areas) { const s = a.scenes.find((x) => x.id === id); if (s) return s.title } return id }
@@ -250,8 +259,8 @@ const judgeAll = async (scenes, tag, phaseName) => (await parallel(Object.keys(s
     .then((v) => ({ scene: id, ...v }))))).filter(Boolean)
 
 // Per area: what is open, what to keep, what the judge and the references said, the work done.
-const state = {}
-for (const a of AREAS) state[a.id] = { open: [], keep: [], worse: [], steal: [], changes: [], files: [], scores: [], refs: [] }
+const state = RESUME ? RESUME.state : {}
+if (!RESUME) for (const a of AREAS) state[a.id] = { open: [], keep: [], worse: [], steal: [], changes: [], files: [], scores: [], refs: [] }
 const problemsFor = (id, problems) => (problems || []).filter((p) => (AREAS.find((a) => a.id === id) || { scenes: [] }).scenes.some((s) => s.id === p.scene))
 
 // The bar to beat: each reference image David left in design-ref/<area>/, blind against the area's lead screen.
@@ -260,50 +269,73 @@ const leadOf = (shot, id) => ((shot && shot.leads) || []).find((l) => l.area ===
 const against = (shot, phaseName, tag) => parallel(AREAS.filter((a) => a.refs && a.refs.length && leadOf(shot, a.id)).flatMap((a) => a.refs.map((r) => () =>
   blind(a.title, [{ label: 'the screen', blind: leadOf(shot, a.id).blind }], [{ label: 'the screen', blind: r.blind }], 'reference', `${tag}:${a.id}`, phaseName)
     .then((v) => ({ area: a.id, ref: r.file, result: v.verdict === 'better' ? 'reference wins' : v.verdict === 'worse' ? 'Soma wins' : 'split', steal: v.afterWon })))))
-for (const r of (await against(base, 'Baseline', 'ref')).filter(Boolean)) {
-  state[r.area].refs.push({ ref: r.ref, before: r.result })
-  state[r.area].steal.push(...r.steal)
-}
-
 // A critic that dies gets one more try: a missing critique must never read as a pass.
 const critiqueOnce = async (a, round, dir, prior) => (await critique(a, round, dir, prior)) || (await critique(a, round, dir, prior))
-let critiques = await parallel(AREAS.map((a) => () => critiqueOnce(a, 0, `${DIR}/r0`, { problems: problemsFor(a.id, base.problems), steal: state[a.id].steal })))
-AREAS.forEach((a, i) => {
-  const c = critiques[i]
-  if (!c) { state[a.id].open = [{ id: `${a.id}-0-critic`, severity: 'major', scope: 'area', scene: a.scenes[0].id, theme: 'both', where: '', problem: 'No critique came back for this area', fix: 'Critique it again' }]; return }
-  state[a.id].open = openIssues(c, [])
-  state[a.id].keep.push(...c.keep)
-  state[a.id].scores.push(c.score)
-})
+if (!RESUME) {
+  for (const r of (await against(base, 'Baseline', 'ref')).filter(Boolean)) {
+    state[r.area].refs.push({ ref: r.ref, before: r.result })
+    state[r.area].steal.push(...r.steal)
+  }
+  const critiques = await parallel(AREAS.map((a) => () => critiqueOnce(a, 0, `${DIR}/r0`, { problems: problemsFor(a.id, base.problems), steal: state[a.id].steal })))
+  if (critiques.every((c) => !c)) return { error: 'no critique came back for the baseline (a usage limit?): start the run again' }
+  AREAS.forEach((a, i) => {
+    const c = critiques[i]
+    if (!c) { state[a.id].open = [{ id: `${a.id}-0-critic`, severity: 'major', scope: 'area', scene: a.scenes[0].id, theme: 'both', where: '', problem: 'No critique came back for this area', fix: 'Critique it again' }]; return }
+    state[a.id].open = openIssues(c, [])
+    state[a.id].keep.push(...c.keep)
+    state[a.id].scores.push(c.score)
+  })
+}
 
-let prev = 'r0'
-let lastShot = base
-let round = 0
-const history = []
+let prev = RESUME ? RESUME.prev : 'r0'
+let lastShot = RESUME ? RESUME.lastShot : base
+let round = RESUME ? RESUME.round - 1 : 0
+const history = RESUME ? RESUME.history : []
+// Handed back when a round can't finish (a usage limit, a crash): scripts/shots/carry.mjs carries on from it, in the
+// same round, with only the makers that didn't come back.
+const carryOn = (failing, pending, made) => ({
+  base, areas: AREAS.map((a) => a.id), state, prev, lastShot: { leads: (lastShot && lastShot.leads) || [] }, history,
+  round, failing: failing.map((a) => a.id), pending, systemFixed: made.system ? made.system.fixed : null,
+})
+let carry = RESUME
 while (round < ROUNDS) {
-  const failing = AREAS.filter((a) => state[a.id].open.length)
-  if (!failing.length) { log('Every area passes: no open blocking or major issue.'); break }
-  if (budget.total && budget.remaining() < 200000) { log(`Stopping before round ${round + 1}: under 200k tokens of budget left.`); break }
+  let failing, pending
+  if (carry) {
+    failing = AREAS.filter((a) => carry.failing.includes(a.id))
+    pending = carry.pending
+  } else {
+    failing = AREAS.filter((a) => state[a.id].open.length)
+    if (!failing.length) { log('Every area passes: no open blocking or major issue.'); break }
+    if (budget.total && budget.remaining() < 200000) { log(`Stopping before round ${round + 1}: under 200k tokens of budget left.`); break }
+    pending = ['system', ...failing.map((a) => a.id)]
+  }
   round++
   log(`Round ${round}: ${failing.map((a) => `${a.id} (${state[a.id].open.length})`).join(', ')}`)
 
   // Shared problems first, fixed once at the root, so the area makers build on the fixed system.
   phase('Fix')
-  const shared = failing.flatMap((a) => state[a.id].open.filter((i) => i.scope === 'system').map((i) => ({ ...i, area: a.id })))
-  // What last round's makers needed in shared code and were not allowed to change themselves.
-  const requests = AREAS.flatMap((a) => (state[a.id].requests || []).map((r, j) => ({ id: `${a.id}-request-${j + 1}`, severity: 'major', scope: 'system', area: a.id, problem: r })))
-  for (const a of AREAS) state[a.id].requests = []
-  const made = { system: null, areas: {} }
-  if (shared.length + requests.length) {
-    made.system = await agent(systemPrompt(round, [...shared, ...requests], prev), { label: 'make:system', phase: 'Fix', schema: MADE })
-    if (made.system) for (const a of failing) state[a.id].files.push(...made.system.files.filter((f) => !state[a.id].files.includes(f)))
+  const made = { system: carry && carry.systemFixed ? { fixed: carry.systemFixed, files: [], changes: [] } : null, areas: {} }
+  carry = null
+  const unfinished = []
+  if (pending.includes('system')) {
+    const shared = failing.flatMap((a) => state[a.id].open.filter((i) => i.scope === 'system').map((i) => ({ ...i, area: a.id })))
+    // What last round's makers needed in shared code and were not allowed to change themselves.
+    const requests = AREAS.flatMap((a) => (state[a.id].requests || []).map((r, j) => ({ id: `${a.id}-request-${j + 1}`, severity: 'major', scope: 'system', area: a.id, problem: r })))
+    if (shared.length + requests.length) {
+      made.system = await agent(systemPrompt(round, [...shared, ...requests], prev), { label: 'make:system', phase: 'Fix', schema: MADE })
+      if (made.system) {
+        for (const a of AREAS) state[a.id].requests = []
+        for (const a of failing) state[a.id].files.push(...made.system.files.filter((f) => !state[a.id].files.includes(f)))
+      } else unfinished.push('system')
+    }
   }
   // One maker at a time: the areas share CSS modules, and one dev server shows every change at once.
   for (const a of failing) {
+    if (!pending.includes(a.id)) continue
     const issues = state[a.id].open.filter((i) => i.scope === 'area' || !made.system || !made.system.fixed.includes(i.id))
     if (!issues.length) continue
     const m = await agent(makerPrompt(a, round, issues, state[a.id], prev), { label: `make:${a.id}`, phase: 'Fix' , schema: MADE })
-    if (!m) continue
+    if (!m) { unfinished.push(a.id); continue }
     made.areas[a.id] = m
     state[a.id].changes.push(...m.changes)
     state[a.id].files.push(...m.files.filter((f) => !state[a.id].files.includes(f)))
@@ -321,10 +353,11 @@ while (round < ROUNDS) {
   // Blind: every changed scene, before against after, both orders. A screen the judge likes less is a regression.
   phase('Judge')
   const now = await shoot(`r${round}`, { against: prev, phase: 'Judge' })
-  if (!now || !now.ok) return { error: `round ${round} capture failed${now && now.error ? `: ${now.error}` : ''}`, round, history }
-  lastShot = now
+  if (!now || !now.ok) return { error: `round ${round} capture failed${now && now.error ? `: ${now.error}` : ''}`, round, history, resume: carryOn(failing, unfinished, made) }
   const scenes = byScene(now.changed)
   const results = (await judgeAll(scenes, 'judge', 'Judge')).map((r) => ({ ...r, area: areaOf(r.scene) }))
+  if (results.length && results.every((r) => r.missing)) return { error: `round ${round}: no judge came back`, round, history, resume: carryOn(failing, unfinished, made) }
+  lastShot = now
   for (const a of AREAS) state[a.id].worse = results.filter((r) => r.area === a.id && r.verdict === 'worse')
   const elsewhere = results.filter((r) => r.verdict === 'worse' && !state[r.area])
   if (elsewhere.length) log(`Round ${round} made screens outside this run's areas worse: ${elsewhere.map((r) => r.scene).join(', ')} (the system pass is the likely cause)`)
@@ -335,7 +368,8 @@ while (round < ROUNDS) {
   phase('Critique')
   const moved = new Set(Object.keys(scenes).map(areaOf))
   const again = AREAS.filter((a) => failing.includes(a) || moved.has(a.id))
-  critiques = await parallel(again.map((a) => () => critiqueOnce(a, round, `${DIR}/r${round}`, { open: state[a.id].open, worse: state[a.id].worse, keep: state[a.id].keep, problems: problemsFor(a.id, now.problems) })))
+  const critiques = await parallel(again.map((a) => () => critiqueOnce(a, round, `${DIR}/r${round}`, { open: state[a.id].open, worse: state[a.id].worse, keep: state[a.id].keep, problems: problemsFor(a.id, now.problems) })))
+  if (again.length && critiques.every((c) => !c)) return { error: `round ${round}: no critique came back`, round, history, resume: { ...carryOn(failing, unfinished, made), history: history.slice(0, -1) } }
   again.forEach((a, i) => {
     const c = critiques[i]
     if (!c) { log(`No critique came back for ${a.id} in round ${round}; its open issues stay open.`); return }

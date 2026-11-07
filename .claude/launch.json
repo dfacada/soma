@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "polish-status",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/shots/status.mjs", "--port", "3100"],
+      "port": 3100
     }
   ]
 }

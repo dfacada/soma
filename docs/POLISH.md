@@ -33,6 +33,14 @@ The idea comes from a prompt that went around for building a game: fan out sub-a
   - **Final:** the baseline against the last round, blind, screen by screen.
 
   It never commits or deploys; the session that ran it does that.
+- **The live page: `scripts/shots/status.mjs`.** `preview_start polish-status`, or `node scripts/shots/status.mjs`, then http://localhost:3100. It reads the run's journals and screenshots every few seconds and changes nothing. It shows:
+  - where the run is and a rough finish time;
+  - the breakthroughs: blocking issues fixed, score jumps, areas passing;
+  - each area's critic score round by round;
+  - every screen at the start against the latest, with a slider;
+  - a timeline of every step, with before and after pictures and each judge's verdict.
+
+  It listens on this machine only.
 
 ## Running it
 
@@ -62,6 +70,20 @@ Arguments, all optional:
 - Drop screenshots of apps you admire into `design-ref/<area>/`, for example `design-ref/today/google-health.png`.
 - At the start, each one is judged blind against that area's main screen, both orders. Whatever the reference does better goes to the critic as things to raise. The result is reported at the start and again at the end.
 - `design-ref/` is gitignored on purpose: the repo is public, and other companies' screenshots must not be published.
+
+## If a run stops early
+
+A usage limit, a crash or a stop can cut a run short. The fixes made so far stay in the working tree, and nothing has to be done twice:
+
+1. Find the run's journal: `journal.jsonl` in the transcript folder that the Workflow result names.
+2. Run `node scripts/shots/carry.mjs <journal.jsonl> '{"rounds": 3}'`, passing the run's own args. It replays the finished steps through the workflow itself, using their recorded results and running nothing. It prints where the run stood and each area's scores so far, and writes `shots/<run>-carry.js`.
+3. Run that file with the Workflow tool (`scriptPath`) and the same args. It carries on in the round that stopped, starting with the makers that didn't finish, and then goes on as usual.
+
+The Workflow tool's own resume often can't do this:
+- it only works in the session that started the run;
+- it replays a cached step only while every call before it repeats exactly. In a session that started before `.claude/agents/` existed, every critic and judge call fails once first, so nothing after the first one replays.
+
+`carry.mjs` needs only the journal, and works in any session.
 
 ## Working on the rig
 
