@@ -32,12 +32,11 @@ router.get('/invites/:code', wrap(async (req, res) => {
     select(app, 'profiles', `SELECT display_name FROM profiles WHERE user_id = ${needId(inv.created_by)}`).then((r) => r[0] || null),
     inv.round_id ? select(app, 'rounds', `SELECT name, start_date, length_days, archived FROM rounds WHERE ROWID = ${needId(inv.round_id)}`).then((r) => r[0] || null) : null
   ]);
-  const ended = inv.round_id && (!round || bool(round.archived));
   res.json({
-    ok: !why && !ended,
-    reason: why || (ended ? 'That round has ended.' : null),
+    ok: !why,
+    reason: why,
     from: maker ? String(maker.display_name || '').trim().split(/\s+/)[0] || null : null,
-    round: round && !ended ? { name: round.name, startDate: round.start_date, lengthDays: Number(round.length_days) } : null
+    round: round && !why ? { name: round.name, startDate: round.start_date, lengthDays: Number(round.length_days) } : null
   });
 }));
 

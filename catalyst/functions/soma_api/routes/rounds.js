@@ -75,6 +75,14 @@ const membership = (req, roundId, userId) => select(req.admin, 'round_members',
   `SELECT ${MEMBER_COLS} FROM round_members WHERE ukey = '${needId(roundId)}:${needId(userId)}'`).then((r) => r[0] || null);
 
 const isOwner = (req, round) => String(round.created_by) === req.user.id;
+
+// A member's round starts near now: a week back at most (to count days already done), three months ahead. Its board
+// shows its members' push-ups between its dates, so a member must not be able to stretch those dates back over
+// months of other people's record; an admin's rounds are not fenced.
+function needStartNearNow(startDate) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (startDate < addDays(today, -8) || startDate > addDays(today, 92)) throw new HttpError(400, 'a round starts within a week before today and three months after it');
+}
 /** Admins manage every round; a member manages the private rounds they made. */
 const canManage = (req, round) => req.profile.role === 'admin' || (bool(round.invite_only) && isOwner(req, round));
 function needManage(req, round) { if (!canManage(req, round)) throw new HttpError(403, 'only the person who made this round can change it'); }
@@ -116,9 +124,7 @@ router.post('/rounds', member, wrap(async (req, res) => {
   if (v.rest_days_json === undefined) v.rest_days_json = '[]';
   const inviteOnly = isAdmin ? b.inviteOnly === true : true;
   if (!isAdmin) {
-    // A member's round starts near now: a week back at most (to count days already done), three months ahead.
-    const today = new Date().toISOString().slice(0, 10);
-    if (v.start_date < addDays(today, -8) || v.start_date > addDays(today, 92)) throw new HttpError(400, 'a round starts within a week before today and three months after it');
+    needStartNearNow(v.start_date);
     const live = await select(req.admin, 'rounds', `SELECT ROWID FROM rounds WHERE created_by = ${needId(req.user.id)} AND invite_only = true AND (archived = false OR archived IS NULL) LIMIT ${OWN_ROUNDS_MAX + 1}`);
     if (live.length >= OWN_ROUNDS_MAX) throw new HttpError(409, `you can run ${OWN_ROUNDS_MAX} rounds at once; archive one first`);
   }
@@ -150,11 +156,21 @@ router.put('/rounds/:id', member, wrap(async (req, res) => {
   // Only an admin turns a round private or open; a member's round is private for good.
   if (b.inviteOnly !== undefined && req.profile.role === 'admin') v.invite_only = b.inviteOnly ? 'true' : 'false';
   if (!Object.keys(v).length) throw new HttpError(400, 'nothing to change');
+  // The dates a member's round was joined for are the dates its people agreed to share: once anyone else is in it,
+  // they are fixed. Before that its maker can move them, inside the same window as when it was made.
+  const datesChange = (v.start_date !== undefined && v.start_date !== current.start_date) || (v.length_days !== undefined && v.length_days !== Number(current.length_days));
+  if (datesChange && req.profile.role !== 'admin') {
+    if (v.start_date !== undefined) needStartNearNow(v.start_date);
+    const others = await select(req.admin, 'round_members', `SELECT ROWID FROM round_members WHERE round_id = ${needId(current.ROWID)} AND user_id != ${needId(req.user.id)} AND status = 'active' LIMIT 1`);
+    if (others.length) throw new HttpError(409, "a round's dates are fixed once someone else has joined it");
+  }
   // Shortening a round must not strand rest days beyond its new end.
   if (v.length_days !== undefined && v.rest_days_json === undefined) {
     v.rest_days_json = packJson('restDays', unpackJson(current.rest_days_json, []).filter((d) => d <= v.length_days));
   }
   await req.admin.datastore().table('rounds').updateRow({ ROWID: current.ROWID, ...v });
+  // An archived round lets nobody in any more: its links are turned off with it.
+  if (v.archived === 'true') await invites.revokeRound(req.admin, String(current.ROWID));
   res.json(shapeRound(await findRound(req, req.params.id)));
 }));
 
@@ -246,8 +262,9 @@ router.post('/rounds/:id/invite', member, wrap(async (req, res) => {
 router.get('/rounds/:id/board', member, wrap(async (req, res) => {
   const round = await findRound(req, req.params.id);
   const roundId = String(round.ROWID);
-  const members = await select(req.admin, 'round_members', `SELECT ${MEMBER_COLS} FROM round_members WHERE round_id = ${roundId} ORDER BY join_seq ASC LIMIT 300`);
-  const inIt = members.some((m) => String(m.user_id) === req.user.id && m.status === 'active');
+  // Only the people in it now: someone who left, or was taken out, stops sharing their name and counts.
+  const members = (await select(req.admin, 'round_members', `SELECT ${MEMBER_COLS} FROM round_members WHERE round_id = ${roundId} ORDER BY join_seq ASC LIMIT 300`)).filter((m) => m.status === 'active');
+  const inIt = members.some((m) => String(m.user_id) === req.user.id);
   if (!inIt && !canManage(req, round)) throw new HttpError(403, 'join the round to see its board');
 
   const ids = members.map((m) => needId(m.user_id));

@@ -44,7 +44,22 @@ async function whyNot(admin, inv) {
   if (inv.max_uses !== null && inv.max_uses !== undefined && inv.max_uses !== '' && Number(inv.uses || 0) >= Number(inv.max_uses)) return 'That invite has been used up. Ask for a new one.';
   const maker = (await select(admin, 'profiles', `SELECT status FROM profiles WHERE user_id = ${needId(inv.created_by)}`))[0];
   if (!maker || maker.status !== 'active') return 'That invite no longer works.';
+  // A round's link lives as long as its round: gone, archived, or past its last day (a day's grace for time zones),
+  // it lets nobody in. That is a round link's expiry, and it follows the round if its dates change.
+  if (inv.round_id) {
+    const round = (await select(admin, 'rounds', `SELECT start_date, length_days, archived FROM rounds WHERE ROWID = ${needId(inv.round_id)}`))[0];
+    if (!round || bool(round.archived)) return 'That round has ended.';
+    const [y, m, d] = String(round.start_date).split('-').map(Number);
+    const lastDayEnds = Date.UTC(y, m - 1, d) + (Number(round.length_days) + 1) * 86400000;
+    if (Date.now() > lastDayEnds) return 'That round has ended.';
+  }
   return null;
+}
+
+/** Every link of a round, turned off (the round was archived). */
+async function revokeRound(admin, roundId) {
+  const live = await select(admin, 'invites', `SELECT ROWID FROM invites WHERE round_id = ${needId(roundId)} AND (revoked = false OR revoked IS NULL) LIMIT 50`);
+  for (const o of live) await admin.datastore().table('invites').updateRow({ ROWID: o.ROWID, revoked: 'true' });
 }
 
 /** One more person let in. Read then write: two sign-ups on the last place at the same moment can both get in,
@@ -56,10 +71,7 @@ async function countUse(admin, inv) {
 /** A new code for a round (the round's maker is its inviter) or for the admin's sign-ups. Turns off the round's
  *  older links, so "a new link" really replaces the old one. */
 async function makeInvite(admin, { createdBy, roundId = null, maxUses, expiresMs = null }) {
-  if (roundId) {
-    const old = await select(admin, 'invites', `SELECT ROWID FROM invites WHERE round_id = ${needId(roundId)} AND (revoked = false OR revoked IS NULL) LIMIT 50`);
-    for (const o of old) await admin.datastore().table('invites').updateRow({ ROWID: o.ROWID, revoked: 'true' });
-  }
+  if (roundId) await revokeRound(admin, roundId);
   for (let attempt = 0; ; attempt++) {
     try {
       return await admin.datastore().table('invites').insertRow({
@@ -83,4 +95,4 @@ const shapeInvite = (r) => ({
   uses: Number(r.uses || 0), expiresMs: r.expires_ms ? Number(r.expires_ms) : null, revoked: bool(r.revoked), createdAt: r.CREATEDTIME
 });
 
-module.exports = { cleanCode, findInvite, whyNot, countUse, makeInvite, roundInvite, shapeInvite, COLS };
+module.exports = { cleanCode, findInvite, whyNot, countUse, makeInvite, revokeRound, roundInvite, shapeInvite, COLS };

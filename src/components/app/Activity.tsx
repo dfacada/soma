@@ -352,13 +352,15 @@ function ManageRound({ round, board, todayKey, say, onDone, onCreated, onShare }
     }, (x) => fail(x, "round_create_failed")).finally(() => setBusy(false));
   };
   const others = editing?.inviteOnly && board ? board.members.filter((m) => m.status === "active" && m.userId !== me.id) : [];
+  // The dates people joined for are the dates they agreed to share: the server fixes them once anyone else is in.
+  const fixedDates = Boolean(editing && !isAdmin && others.length > 0);
 
   return (
     <form className={a.vaultForm} onSubmit={submit}>
       {!editing && !isAdmin && <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>Your round is private: only the people you invite with its link see it. Everyone sets their own daily target.</p>}
       <Field name="Name"><Input compact value={name} maxLength={100} aria-label="Round name" placeholder="Morning crew" onChange={(e) => setName(e.target.value)} /></Field>
-      <Field name="Start date" help="Day 1."><Input compact type="date" value={startDate} aria-label="Start date" onChange={(e) => setStartDate(e.target.value)} /></Field>
-      <Field name="Length" help="Days, 1 to 366."><Input compact inputMode="numeric" pattern="[0-9]*" value={length} aria-label="Length in days" onChange={(e) => setLength(digits(e.target.value, 3))} /></Field>
+      <Field name="Start date" help={fixedDates ? "Fixed once someone else has joined." : "Day 1."}><Input compact type="date" value={startDate} aria-label="Start date" disabled={fixedDates} onChange={(e) => setStartDate(e.target.value)} /></Field>
+      <Field name="Length" help={fixedDates ? "Fixed once someone else has joined." : "Days, 1 to 366."}><Input compact inputMode="numeric" pattern="[0-9]*" value={length} aria-label="Length in days" disabled={fixedDates} onChange={(e) => setLength(digits(e.target.value, 3))} /></Field>
       {!editing && (isPrivate || !isAdmin) && <Field name="Your daily target" help="Push-ups a day for you. Everyone picks their own."><Input compact inputMode="numeric" pattern="[0-9]*" value={mine} aria-label="Your daily target" onChange={(e) => setMine(digits(e.target.value))} /></Field>}
       {!editing && isAdmin && <Field name="Private" help="Only people with its invite link see it. Off: every member sees it and can join."><Switch checked={isPrivate} label="Private round" onChange={setPrivate} /></Field>}
       <div className={a.entryHead}>
