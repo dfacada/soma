@@ -12,7 +12,8 @@ import { hm } from "@/lib/sleep";
 import { report } from "@/lib/log";
 import { prepareChallenge } from "@/lib/vault-passkey";
 import { PALETTES, type MotionMode, type ThemeMode } from "@/lib/look";
-import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX } from "@/lib/opening";
+import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX, type OpeningSource } from "@/lib/opening";
+import { SOMA_PHRASES } from "@/lib/opening-words";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
 import { planMeals, type Habit, type Settings } from "@/lib/settings";
 import { Button, ButtonLink, Chip, Field, Icon, Input, Pill, Segmented, Select, Sheet, Switch, Toast, useTabVisible } from "@/components/ui";
@@ -38,6 +39,14 @@ const SLEEP_GOALS = [360, 390, 420, 450, 480, 510, 540, 570, 600];
 const HEALTH_SHORT = { loading: "Checking…", unconfigured: "Not available yet", off: "Not connected", connected: "Connected", reconnect: "Needs reconnecting" } as const;
 /** The sections a link can open as /settings/#id: Activity's Fitbit link, Tomorrow's Open Settings, the return from Google. */
 const SECTIONS = ["account", "appearance", "opening", "checkin", "food", "weight", "activity", "nudge", "brief", "fitbit", "journal", "review", "data", "whats-new", "feedback", "admin"];
+/** What the Opening words row says it is set to. */
+const openingSummary = (source: OpeningSource, mine: number) =>
+  source === "soma" || mine === 0 ? "Soma's words" : source === "mine" ? `${mine} of yours` : `Soma's and ${mine} of yours`;
+const OPENING_HELP: Record<OpeningSource, string> = {
+  soma: `A different line each day from Soma's own ${SOMA_PHRASES.length}. Your own phrases are kept for when you choose Mine or Both.`,
+  mine: "Only the phrases you add below, taking turns.",
+  both: "Yours and Soma's take turns, a day each.",
+};
 const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "calm";
 /** "20:30" as "8:30 pm". */
 const clockOf = (hm: string) => { const [h, m] = hm.split(":").map(Number); return new Date(2000, 0, 1, h || 0, m || 0).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase(); };
@@ -112,11 +121,20 @@ export function SettingsScreen() {
           <p className="muted" style={{ fontSize: 12 }}>A palette changes the three colours for journal, food and activity. The page, the cards and the type stay as they are.</p>
         </Section>
 
-        <Section {...sec("opening")} title="Opening words" summary={settings.opening.on ? `On · ${settings.opening.phrases.length} ${settings.opening.phrases.length === 1 ? "phrase" : "phrases"}` : "Off"}>
-          <Field name="Show when Soma opens" help="The first time you open Soma each day, one of these fills the screen before anything else. They take turns. A tap goes on.">
+        <Section {...sec("opening")} title="Opening words" summary={settings.opening.on ? `On · ${openingSummary(settings.opening.source, settings.opening.phrases.length)}` : "Off"}>
+          <Field name="Show when Soma opens" help="The first time you open Soma each day, one line fills the screen before anything else, a different one each day. A tap goes on.">
             <Switch checked={settings.opening.on} label="Show opening words" onChange={(v) => void save({ opening: { ...settings.opening, on: v } }, v ? "Opening words on" : "Opening words off")} />
           </Field>
-          {settings.opening.phrases.map((p, i) => (
+          <Field name="Words from" help={OPENING_HELP[settings.opening.source]}>
+            <Segmented label="Where the opening words come from" value={settings.opening.source}
+              onChange={(v) => void save({ opening: { ...settings.opening, source: v as OpeningSource } }, v === "soma" ? "Soma's words" : v === "mine" ? "Only your phrases" : "Yours and Soma's, taking turns")}
+              options={[{ value: "soma", label: "Soma's" }, { value: "mine", label: "Mine" }, { value: "both", label: "Both" }]} />
+          </Field>
+          {settings.opening.source !== "soma" && <span className="eb" style={{ paddingTop: 6 }}>Your phrases</span>}
+          {settings.opening.source !== "soma" && settings.opening.phrases.length === 0 && (
+            <p className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>None yet. Add one below{settings.opening.source === "mine" ? "; until then Soma's own words show." : "."}</p>
+          )}
+          {settings.opening.source !== "soma" && settings.opening.phrases.map((p, i) => (
             <div key={p.text + i} className={a.habitRow}>
               <div className={a.habitTop}>
                 <span style={{ fontWeight: 500 }}>{p.text}</span>
@@ -125,9 +143,9 @@ export function SettingsScreen() {
               {p.note && <span className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>{p.note}</span>}
             </div>
           ))}
-          {settings.opening.phrases.length < PHRASES_MAX
+          {settings.opening.source !== "soma" && (settings.opening.phrases.length < PHRASES_MAX
             ? <PhraseForm onAdd={(text, note) => void save({ opening: { ...settings.opening, phrases: [...settings.opening.phrases, note ? { text, note } : { text }] } }, "Added")} />
-            : <p className="muted" style={{ fontSize: 12 }}>Twelve is the limit. Keep the ones that still land.</p>}
+            : <p className="muted" style={{ fontSize: 12 }}>Twelve is the limit. Keep the ones that still land.</p>)}
         </Section>
       </Group>
 

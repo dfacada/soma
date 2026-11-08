@@ -3,7 +3,7 @@
 
 import { BOWL_VARIANTS, MEAL_PLANS, SNACK_PRESETS, type BowlId, type MealPlanId } from "./food-data";
 import { isPalette, MOTION_MODES, THEME_MODES, type MotionMode, type PaletteId, type ThemeMode } from "./look";
-import { DEFAULT_PHRASES, NOTE_MAX, PHRASE_MAX, PHRASES_MAX, type Phrase } from "./opening";
+import { NOTE_MAX, OPENING_SOURCES, PHRASE_MAX, PHRASES_MAX, type OpeningSource, type Phrase } from "./opening";
 
 export type Mood = { id: string; label: string; on: boolean };
 export type Habit = { id: string; label: string; type: "daily" | "counter"; goal?: number; dir?: "at_least" | "at_most" };
@@ -55,7 +55,8 @@ export type Settings = {
   palette: PaletteId;
   motion: MotionMode;
   /** The words shown full screen when the app opens. An empty list is a choice and stays empty. */
-  opening: { on: boolean; phrases: Phrase[] };
+  /** `source`: Soma's own words, the person's own phrases, or both taking turns (opening.ts). */
+  opening: { on: boolean; source: OpeningSource; phrases: Phrase[] };
   /** One notification at `time` (local, HH:MM) when the day is still open. The server reads this: soma_jobs/nudge.js. */
   nudge: { on: boolean; time: string };
   /** Tomorrow's brief: a notification at `time` (local, HH:MM) that it is ready (the server reads on and time:
@@ -105,7 +106,8 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "dark",
   palette: "soma",
   motion: "lively",
-  opening: { on: true, phrases: DEFAULT_PHRASES },
+  // Nobody starts with anyone else's phrases: David's first two are in Soma's own set (opening-words.ts).
+  opening: { on: true, source: "both", phrases: [] },
   nudge: { on: false, time: "20:30" },
   brief: { on: false, time: "21:00", telegram: false, sent: "" },
 };
@@ -170,6 +172,7 @@ export function mergeSettings(stored: unknown): Settings {
     },
     opening: {
       on: s.opening?.on !== false,
+      source: OPENING_SOURCES.includes(s.opening?.source as OpeningSource) ? (s.opening!.source as OpeningSource) : d.opening.source,
       phrases: Array.isArray(s.opening?.phrases)
         ? s.opening.phrases.filter((p) => p && typeof p.text === "string" && p.text.trim()).slice(0, PHRASES_MAX)
           .map((p) => ({ text: p.text.trim().slice(0, PHRASE_MAX), ...(typeof p.note === "string" && p.note.trim() ? { note: p.note.trim().slice(0, NOTE_MAX) } : {}) }))

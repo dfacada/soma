@@ -218,7 +218,7 @@ export async function buildWorld({ now, theme, day, who = "settled" }: { now: Da
       // Settled in: What's new seen, the install tip shown, a long best streak, transcription on.
       seenChanges: seenMark(), seenInstall: true, bestStreak: 21, cloudTranscription: true,
       // The opening words and the unlock prompt are once-a-day moments with their own scenes; off for the rest.
-      opening: { on: false, phrases: [] }, unlockOnOpen: false,
+      opening: { on: false, source: "both", phrases: [] }, unlockOnOpen: false,
     },
     days: { checkins, dayLogs, activity, weight },
     entries,

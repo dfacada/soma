@@ -12,8 +12,7 @@ export function Opening() {
   const { settings } = useSession();
   // Decided once, on the first render after sign-in resolves. This subtree never renders on the server.
   const [phrase, setPhrase] = useState<Phrase | null>(() => {
-    const { on, phrases } = settings.opening;
-    return on && phrases.length && !alreadyShown() ? peekPhrase(phrases) : null;
+    return settings.opening.on && !alreadyShown() ? peekPhrase(settings.opening) : null;
   });
   const button = useRef<HTMLButtonElement>(null);
 

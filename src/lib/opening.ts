@@ -2,15 +2,33 @@
 // anything"). One phrase, full screen, once a day on each device (David, same day: "should happen once a day
 // only"): the first open of the day gets the words, every later one goes straight in. They take turns by day. Anything else that wants attention on
 // opening (the vault prompt) waits for `opened`, so two things never land on the screen at once.
+//
+// Where the words come from is the person's choice (David, 2026-11-08: "inspirational or ... your own or combo of
+// both"): Soma's own set (opening-words.ts), their own phrases, or both, taking turns a day each.
+
+import { SOMA_PHRASES } from "./opening-words";
 
 export type Phrase = { text: string; note?: string };
-
-/** David's two, and the defaults for everyone until they write their own. */
-export const DEFAULT_PHRASES: Phrase[] = [
-  { text: "I can do hard things.", note: "It is true every time. Hold on to it and new energy comes." },
-  { text: "What is the story I’m telling myself?", note: "Most of it is fear of what might happen, not fact. Notice the story. Don’t take it for the truth." },
-];
+export type OpeningSource = "soma" | "mine" | "both";
+export const OPENING_SOURCES: OpeningSource[] = ["soma", "mine", "both"];
 export const PHRASE_MAX = 140, NOTE_MAX = 240, PHRASES_MAX = 12;
+
+const same = (a: Phrase, b: Phrase) => a.text.trim().toLowerCase() === b.text.trim().toLowerCase();
+
+/**
+ * The phrase for one turn. "soma": Soma's set in order. "mine": the person's own. "both": theirs on even turns and
+ * Soma's on odd ones, each list keeping its own order, with any of Soma's that they also keep left out so no day
+ * repeats the one before. With none of their own, Soma's alone: words that are switched on always have something to
+ * say. Pure, for scripts/test-opening.mjs.
+ */
+export function phraseFor(turn: number, source: OpeningSource, mine: Phrase[], soma: Phrase[] = SOMA_PHRASES): Phrase {
+  const t = Math.max(0, Math.floor(Number(turn) || 0));
+  if (source === "soma" || !mine.length) return soma[t % soma.length];
+  if (source === "mine") return mine[t % mine.length];
+  const theirs = soma.filter((p) => !mine.some((m) => same(m, p)));
+  const pool = theirs.length ? theirs : soma;
+  return t % 2 === 0 ? mine[(t / 2) % mine.length] : pool[((t - 1) / 2) % pool.length];
+}
 
 let release: () => void = () => undefined;
 /** Resolves once the opening words are out of the way, or straight away when there are none to show. */
@@ -37,12 +55,12 @@ const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.g
 /** Whether today has had its words yet on this device. Without storage (a private window) they are simply skipped. */
 export function alreadyShown(): boolean { try { return localStorage.getItem(SHOWN) === today(); } catch { return true; } }
 
-/** The phrases take turns from one day to the next rather than coming up at random, so neither goes missing for a week.
+/** The phrases take turns from one day to the next rather than coming up at random, so none goes missing for a week.
  *  Reading whose turn it is changes nothing; `noteShown` is what moves it on. */
-export function peekPhrase(phrases: Phrase[]): Phrase {
+export function peekPhrase(opening: { source: OpeningSource; phrases: Phrase[] }): Phrase {
   let turn = 0;
   try { turn = Number(localStorage.getItem(TURN)) || 0; } catch { /* private window */ }
-  return phrases[turn % phrases.length];
+  return phraseFor(turn, opening.source, opening.phrases);
 }
 
 let noted = false;

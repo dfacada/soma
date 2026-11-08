@@ -16,6 +16,7 @@ export const CHANGES: Release[] = [
     date: "2026-11-08",
     title: "Getting ready for more people",
     items: [
+      "Opening words: choose where they come from. Settings → Opening words → Words from: Soma's own set of 40 lines, only your own phrases, or Both, where yours and Soma's take turns a day each. Both is the new default, so the first screen of the day says something different more often. Your own phrases are all kept.",
       "A private round keeps to what people joined for. Once someone else is in it, its dates are fixed; its maker can still rename it and change rest days. Someone who leaves or is taken out drops off its board entirely, name and counts, and an archived round's link lets nobody in.",
       "Start your own push-up round. On Activity, Start a round with friends makes a private round: only the people you invite see it, everyone sets their own daily target, and the board works as it always has. You can run up to three at once.",
       "Invite friends with a link. A private round has an invite link to share or copy. Anyone with it can join, and someone new to Soma signs up through it and is in straight away, without waiting for approval. Whoever started the round can make a new link (the old one stops working) and take people out.",
