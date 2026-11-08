@@ -8,12 +8,12 @@ export const metadata: Metadata = { title: "Terms · Soma", description: "The te
 
 export default function Terms() {
   return (
-    <LegalPage title="Terms of service" updated="17 September 2026">
+    <LegalPage title="Terms of service" updated="8 November 2026">
       <p>Soma is a small, invitation-only app run by David as a personal project. It is free. Using it means you agree to what is on this page and to the <Link href="/privacy/">privacy policy</Link>.</p>
 
       <h2>Your account</h2>
       <ul>
-        <li>Accounts are approved by hand, are for adults, and are for one person each. Keep your sign-in to yourself.</li>
+        <li>Accounts are let in by an invite link or approved by hand, are for adults, and are for one person each. Keep your sign-in to yourself, and share an invite link only with people you mean to invite.</li>
         <li>David can decline, suspend or close an account, for example one that is abusing the app or other members.</li>
         <li>You can stop at any time and delete your account and data yourself, in Settings; the privacy policy says how.</li>
       </ul>

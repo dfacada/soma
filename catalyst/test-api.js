@@ -118,7 +118,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     await call('DELETE', `/rounds/${rid}/me`);
     check('rounds list carries the round', testRound.lengthDays === 28 && same(testRound.restDays, [7, 14, 21, 28]) && testRound.joinOpen === true, testRound);
     r = await call('POST', '/rounds', { name: 'nope', startDate: '2001-02-01', lengthDays: 10 });
-    check('a member cannot create a round', r.status === 403, r.text);
+    check("a member's round cannot start years ago", r.status === 400, r.text);
     r = await call('PUT', `/rounds/${rid}`, { name: 'hijack' });
     check('a member cannot edit a round', r.status === 403, r.text);
     r = await call('POST', `/rounds/${rid}/join`, { dailyTarget: 0, today: '2001-02-03' });
@@ -145,6 +145,92 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   }
   r = await call('GET', '/rounds/999/board');
   check('an unknown round is 404', r.status === 404, r.text);
+
+  // Private rounds (routes/rounds.js) and their invite links (routes/invites.js). Member one makes a round, member
+  // two joins with the link, and member four, who starts out waiting for approval like a real sign-up, is let in by it.
+  console.log('private rounds and invite links');
+  {
+    const as2 = (method, route, body) => call(method, route, body, { 'x-test-member': '2' });
+    const as4 = (method, route, body) => call(method, route, body, { 'x-test-member': '4' });
+    const today = new Date().toISOString().slice(0, 10);
+    r = await call('POST', '/rounds', { name: '__test_private__', startDate: today, lengthDays: 7, restDays: [7], dailyTarget: 50, today });
+    check('a member makes a private round, is in it, and gets its invite link', r.status === 201 && r.json.inviteOnly === true && /^[0-9A-HJKMNP-TV-Z]{10}$/.test(r.json.invite && r.json.invite.code), r.json);
+    const pid = r.json && r.json.id, code = r.json && r.json.invite && r.json.invite.code;
+    r = await call('GET', '/rounds');
+    const made = r.json.rounds.find((x) => x.id === pid);
+    check("…it is in the maker's list, with their target", made && made.me && made.me.status === 'active' && made.me.dailyTarget === 50 && made.ownerId === '999000000000000001', made);
+    r = await as2('GET', '/rounds');
+    check('someone else does not see a private round', r.status === 200 && !r.json.rounds.some((x) => x.id === pid), r.json && r.json.rounds.map((x) => x.name));
+    r = await as2('GET', `/rounds/${pid}/board`);
+    check('…nor its board', r.status === 403, r.text);
+    r = await as2('POST', `/rounds/${pid}/join`, { dailyTarget: 40, today });
+    check('…nor joins it without the link', r.status === 403, r.text);
+    r = await as2('GET', `/rounds/${pid}/invite`);
+    check('…nor can ask for the link', r.status === 403, r.text);
+    const pub = await fetch(BASE + '/invites/' + code.toLowerCase());
+    const preview = await pub.json();
+    check('the link says what it is for to someone not signed in, typed in any case', pub.status === 200 && preview.ok === true && preview.round && preview.round.name === '__test_private__' && preview.from === 'Test', preview);
+    const unknown = await fetch(BASE + '/invites/ZZZZZZZZZZ');
+    check('a code that does not exist is a plain 404', unknown.status === 404);
+    r = await as2('POST', `/invites/${code}/accept`, { today });
+    check('with the link, a member joins the round, with their own push-up target', r.status === 200 && r.json.approved === false && r.json.round && r.json.round.id === pid, r.json);
+    r = await as2('GET', `/rounds/${pid}/board`);
+    check('…and both are on the board', r.status === 200 && r.json.members.filter((m) => m.status === 'active').length === 2, r.json && r.json.members);
+    r = await as2('PUT', `/rounds/${pid}`, { name: 'hijack' });
+    check('only its maker can change it', r.status === 403, r.text);
+    r = await as2('POST', `/rounds/${pid}/invite`);
+    check('…or replace its link', r.status === 403, r.text);
+    r = await as2('GET', `/rounds/${pid}/invite`);
+    check('a member can pass the link on', r.status === 200 && r.json.code === code, r.json);
+    r = await call('POST', `/rounds/${pid}/invite`);
+    const code2 = r.json && r.json.code;
+    check('the maker replaces the link', r.status === 201 && code2 && code2 !== code, r.json);
+    r = await call('DELETE', `/rounds/${pid}/members/999000000000000002`);
+    check('…and can take someone out', r.status === 200 && r.json.status === 'banned', r.json);
+    r = await as2('POST', `/invites/${code}/accept`, { today });
+    check('the replaced link opens nothing', r.status === 410, r.text);
+    r = await as2('POST', `/invites/${code2}/accept`, { today });
+    check('someone taken out cannot come back with the new one', r.status === 403, r.text);
+    r = await as2('GET', '/rounds');
+    check('…and the round is gone from their list', r.status === 200 && !r.json.rounds.some((x) => x.id === pid), r.json && r.json.rounds.map((x) => x.name));
+    r = await call('POST', '/admin/invites', { maxUses: 5 });
+    check('a member cannot make sign-up codes', r.status === 403, r.text);
+
+    // Member four as a brand-new sign-up. A previous run let it in, so its account is deleted first; the profile
+    // that comes back is a new one, waiting, as a stranger's would be.
+    const fresh = async (query) => {
+      r = await as4('GET', '/me');
+      if (r.json && r.json.profile && r.json.profile.status !== 'pending') await as4('DELETE', '/account', { confirm: 'DELETE' });
+      for (let i = 0; i < 40; i++) {
+        r = await as4('GET', '/me' + query);
+        if (r.status === 200 && r.json.profile.status !== 'deleting') return r;
+        await new Promise((res) => setTimeout(res, 3000));
+      }
+      return r;
+    };
+    r = await fresh('');
+    check('a new sign-up waits for approval', r.status === 200 && r.json.profile.status === 'pending', r.json);
+    r = await as4('GET', '/rounds');
+    check('…and can do nothing yet', r.status === 403, r.text);
+    r = await as4('POST', `/invites/${code}/accept`, { today });
+    check('…a replaced link does not let them in', r.status === 410, r.text);
+    r = await as4('POST', `/invites/${code2}/accept`, { today });
+    check('…the round link lets them in, and into the round, in one go', r.status === 200 && r.json.approved === true && r.json.round && r.json.round.id === pid, r.json);
+    r = await as4('GET', '/me');
+    check('…approved, with a note of whose invite it was', r.status === 200 && r.json.profile.status === 'active' && r.json.profile.invitedBy === '999000000000000001', r.json);
+    r = await fresh('?invite=' + code2);
+    check('arriving through the link, a new sign-up is let in on its very first visit', r.status === 200 && r.json.profile.status === 'active' && r.json.profile.invitedBy === '999000000000000001', r.json);
+    r = await as4('POST', `/invites/${code2}/accept`, { today });
+    check('…and then joins the round without counting twice', r.status === 200 && r.json.approved === false && r.json.round && r.json.round.id === pid, r.json);
+    r = await call('GET', `/rounds/${pid}/invite`);
+    check('the link counts the two people it let in, not the members who joined with it', r.status === 200 && r.json.uses === 2, r.json);
+
+    // Tidy: the maker leaves and archives it, so it drops out of every list and never counts against the cap.
+    await call('PUT', `/rounds/${pid}`, { archived: true });
+    await call('DELETE', `/rounds/${pid}/me`);
+    r = await call('GET', '/rounds');
+    check('an archived private round its maker has left is out of their list', r.status === 200 && !r.json.rounds.some((x) => x.id === pid), r.json && r.json.rounds.map((x) => x.name));
+  }
 
   console.log('vault and entries');
   const vault = { salt: 'c2FsdHNhbHRzYWx0c2FsdA==', verifierIv: 'aXZpdml2aXZpdml2', verifierCt: 'Y2lwaGVydGV4dA==' };
@@ -467,8 +553,8 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
     r = await as2('GET', '/me');
     check('the second test member is someone else', r.status === 200 && r.json.id === '999000000000000002' && r.json.profile.role === 'member' && r.json.profile.status === 'active', r.json);
-    r = await call('GET', '/me', undefined, { 'x-test-member': '4' });
-    check('there is no fourth test member', r.status === 401, r.text);
+    r = await call('GET', '/me', undefined, { 'x-test-member': '5' });
+    check('there is no fifth test member', r.status === 401, r.text);
     r = await as2('GET', '/checkins/' + day);
     check("member two cannot read member one's day", r.status === 404, r.text);
     r = await as2('GET', '/days?from=2001-02-01&to=2001-02-28&fromMs=981000000000&toMs=983000000000');

@@ -19,6 +19,8 @@ export type Round = {
   restDays: number[];
   bonusHit: number; bonusStreak: number; badgeStreak: number; badgeHits: number;
   joinOpen: boolean; archived: boolean;
+  /** A private round: only its members see it, and joining takes its invite link. `ownerId` made it and runs it. */
+  inviteOnly?: boolean; ownerId?: string;
 };
 export type Member = { userId: string; displayName: string; dailyTarget: number; startDay: number; joinSeq: number; status: "active" | "removed" | "banned" };
 /** dayIndex → reps. An absent key means nothing was logged that day. */

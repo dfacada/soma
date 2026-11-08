@@ -16,7 +16,7 @@ const router = express.Router();
 
 const shapeProfile = (r) => ({
   userId: String(r.user_id), email: r.email, displayName: r.display_name || '', role: r.role, status: r.status,
-  createdAt: r.CREATEDTIME, lastSeenMs: Number(r.last_seen_ms || 0) || null
+  createdAt: r.CREATEDTIME, lastSeenMs: Number(r.last_seen_ms || 0) || null, invitedBy: r.invited_by ? String(r.invited_by) : null
 });
 
 router.get('/admin/profiles', admin, wrap(async (req, res) => {

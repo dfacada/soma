@@ -16,6 +16,11 @@ export const CHANGES: Release[] = [
     date: "2026-11-08",
     title: "Getting ready for more people",
     items: [
+      "Start your own push-up round. On Activity, Start a round with friends makes a private round: only the people you invite see it, everyone sets their own daily target, and the board works as it always has. You can run up to three at once.",
+      "Invite friends with a link. A private round has an invite link to share or copy. Anyone with it can join, and someone new to Soma signs up through it and is in straight away, without waiting for approval. Whoever started the round can make a new link (the old one stops working) and take people out.",
+      "In more than one round? Activity shows a row of your rounds at the top; tap one to see its chain and board. Today's push-up target still comes from the round you were already in.",
+      "Waiting for approval? Paste an invite link on the waiting screen and you're in.",
+      "Admin: Sign-up invite links. Settings → Admin → Sign-up invites makes a link that lets 10 new people in within 30 days, for testers who aren't joining a round. People let in by a link show whose it was.",
       "A recovery code for your vault. If you ever forget your passphrase, the code opens your journal and lets you choose a new one; nothing you wrote changes. Make yours in Settings → Journal and vault → Recovery code, and save it in your password manager, because Soma shows it only once. A new vault gets one straight away.",
       "Forgot your passphrase? The unlock sheet now has a link for it. With your recovery code you're back in a minute. Without one, the vault still can't be opened by anyone, David included.",
       "Download all your data. Settings → Your data saves everything Soma keeps for you in one file: your days, meals, weight, activity, check-ins, recipes and settings, and with your vault unlocked, your journal, weekly reviews and sleep. Turn on Include recordings to get every voice recording too, in a .zip.",

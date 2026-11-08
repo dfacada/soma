@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { report } from "@/lib/log";
+import { inviteUrl } from "@/lib/invite";
 import { since } from "@/lib/today";
 import { Bar, Button, Card, Row, Tag, useTabVisible } from "@/components/ui";
 import { needsTranscript, useJournal, type BatchResult } from "./Journal";
@@ -13,7 +14,8 @@ import { LogView } from "./LogView";
 import { useSession } from "./Session";
 import a from "./app.module.css";
 
-type AdminProfile = { userId: string; email: string; displayName: string; role: "admin" | "member"; status: "pending" | "active" | "disabled"; createdAt: string; lastSeenMs: number | null };
+type AdminProfile = { userId: string; email: string; displayName: string; role: "admin" | "member"; status: "pending" | "active" | "disabled" | "deleting"; createdAt: string; lastSeenMs: number | null; invitedBy: string | null };
+type SignupInvite = { code: string; maxUses: number | null; uses: number; expiresMs: number | null; revoked: boolean; createdAt: string };
 /** One member's last fortnight, loaded only when an admin asks for it. */
 type UserActivity = {
   userId: string; days: number; lastSeenMs: number | null; lastLoggedDay: string | null;
@@ -21,15 +23,16 @@ type UserActivity = {
   recent: { day: string; weight: boolean; checkin: boolean; meals: number; activity: boolean; entries: number }[];
 };
 type FeedbackItem = { id: string; userId: string; body: string; createdAt: string };
-type Data = { profiles: AdminProfile[]; feedback: FeedbackItem[]; at: number };
+type Data = { profiles: AdminProfile[]; feedback: FeedbackItem[]; invites: SignupInvite[]; at: number };
 
 async function fetchAll(): Promise<Data> {
-  const [p, f] = await Promise.all([
+  const [p, f, i] = await Promise.all([
     api<{ profiles: AdminProfile[] }>("GET", "/admin/profiles"),
     api<{ items: FeedbackItem[] }>("GET", "/admin/feedback"),
+    api<{ invites: SignupInvite[] }>("GET", "/admin/invites"),
   ]);
   // The clock reading that goes with this data, so "last seen" and "this week" are steady across renders.
-  return { profiles: p.profiles, feedback: f.items, at: Date.now() };
+  return { profiles: p.profiles, feedback: f.items, invites: i.invites, at: Date.now() };
 }
 
 // Data Store timestamps are project-local with no offset; show the date part as written rather than guess a zone.
@@ -54,7 +57,7 @@ export function Admin({ say }: { say: (m: string) => void }) {
   const act = useCallback(async (key: string, work: () => Promise<unknown>, done: string) => {
     setBusy(key);
     try { await work(); setData(await fetchAll()); say(done); }
-    catch (e) { say(e instanceof Error ? e.message : "That didn't work"); }
+    catch (e) { report("admin", "action_failed", e, { key }, "warn"); say(e instanceof Error ? e.message : "That didn't work"); }
     finally { setBusy(null); }
   }, [say]);
 
@@ -66,13 +69,15 @@ export function Admin({ say }: { say: (m: string) => void }) {
   const users = data.profiles.filter((p) => p.status !== "pending").sort((x, y) => (y.lastSeenMs || 0) - (x.lastSeenMs || 0));
   const activeWeek = users.filter((p) => p.lastSeenMs && p.lastSeenMs > data.at - 7 * 86400000).length;
   const who = (id: string) => data.profiles.find((p) => p.userId === id)?.email || id;
+  const nameOf = (id: string) => { const p = data.profiles.find((x) => x.userId === id); return p ? p.displayName || p.email : "someone since deleted"; };
+  const liveInvites = data.invites.filter((v) => !v.revoked && (!v.expiresMs || v.expiresMs > data.at) && (v.maxUses === null || v.uses < v.maxUses));
   const setStatus = (p: AdminProfile, status: "active" | "disabled", done: string) => act(p.userId, () => api("POST", `/admin/profiles/${p.userId}/status`, { status }), done);
 
   return (
     <>
       <Card>
         <div className={a.entryHead}><span className="eb">Approvals</span>{pending.length > 0 && <Tag tone="warning">{pending.length} waiting</Tag>}</div>
-        {pending.length === 0 && <p className="muted" style={{ fontSize: 13 }}>Nobody is waiting. New sign-ups show up here after their first sign-in.</p>}
+        {pending.length === 0 && <p className="muted" style={{ fontSize: 13 }}>Nobody is waiting. New sign-ups show up here after their first sign-in; anyone who signs up through an invite link is let in without waiting.</p>}
         {pending.map((p) => (
           <Row key={p.userId} name={p.displayName || p.email} sub={`${p.email} · since ${when(p.createdAt)}`}
             trail={<Button size="sm" variant="food" disabled={busy === p.userId} onClick={() => setStatus(p, "active", `Approved ${p.email}`)}>Approve</Button>} />
@@ -88,7 +93,7 @@ export function Admin({ say }: { say: (m: string) => void }) {
           const self = p.userId === me.id;
           return (
             <div key={p.userId} className={a.adminUser}>
-              <Row name={p.displayName || p.email} sub={`${p.email} · last seen ${since(p.lastSeenMs, data.at)}`}
+              <Row name={p.displayName || p.email} sub={`${p.email} · last seen ${since(p.lastSeenMs, data.at)}${p.invitedBy ? ` · invited by ${nameOf(p.invitedBy)}` : ""}`}
                 trail={<span className={a.entryTags}>{p.role === "admin" && <Tag tone="journal">admin</Tag>}{p.status === "disabled" && <Tag tone="critical">disabled</Tag>}{self && <Tag>you</Tag>}</span>} />
               <UserActivityView userId={p.userId} />
               {!self && (
@@ -101,6 +106,19 @@ export function Admin({ say }: { say: (m: string) => void }) {
             </div>
           );
         })}
+      </Card>
+
+      <Card>
+        <div className={a.entryHead}><span className="eb">Sign-up invites</span><span className="m muted" style={{ fontSize: 12 }}>{liveInvites.length} working</span></div>
+        <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>A link that lets new people in without waiting for you, for anyone not joining a round. Each lets in 10 people within 30 days. Round links are made in Activity by whoever starts the round.</p>
+        {liveInvites.map((v) => (
+          <Row key={v.code} name={v.code} sub={`${v.uses} of ${v.maxUses ?? "any"} used${v.expiresMs ? ` · until ${new Date(v.expiresMs).toLocaleDateString("en-US", { day: "numeric", month: "short" })}` : ""}`}
+            trail={<span className={a.rowButtons}>
+              <Button size="sm" variant="secondary" onClick={() => { void navigator.clipboard?.writeText(inviteUrl(v.code)).then(() => say("Link copied"), () => say("Couldn't copy")); }}>Copy link</Button>
+              <Button size="sm" variant="secondary" disabled={busy === v.code} onClick={() => act(v.code, () => api("DELETE", `/admin/invites/${v.code}`), "Invite turned off")}>Turn off</Button>
+            </span>} />
+        ))}
+        <div><Button size="sm" variant="food" disabled={busy === "new-invite"} onClick={() => act("new-invite", () => api("POST", "/admin/invites", { maxUses: 10, days: 30 }), "Invite made: copy its link below")}>Make an invite link</Button></div>
       </Card>
 
       <TranscribeMissing say={say} />

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Privacy · Soma", description: "What
 
 export default function Privacy() {
   return (
-    <LegalPage title="Privacy policy" updated="3 November 2026">
+    <LegalPage title="Privacy policy" updated="8 November 2026">
       <p>Soma is a small, invitation-only app for keeping a voice journal and tracking food, weight and activity. It is a personal project run by David, not a company. There are no ads, no analytics trackers, and nothing here is sold or used to build a profile of you for anyone else.</p>
 
       <h2>What Soma stores</h2>
@@ -25,7 +25,8 @@ export default function Privacy() {
       <p>Everything else in the list above (check-ins, food, weight, activity, steps, rounds, settings) is stored readable by the server, so that leaderboards work and David, as the administrator, can fix a broken record. He does not look at it otherwise.</p>
 
       <h2>What other members see</h2>
-      <p>If you join a push-up round, the other members of that round see your display name, your daily target and how many days you hit it. Nothing else you log is visible to other members.</p>
+      <p>If you join a push-up round, the other members of that round see your display name, your daily target and how many days you hit it. A private round, started by a member, is seen only by the people in it. Nothing else you log is visible to other members.</p>
+      <p>If you join Soma or a round through someone&rsquo;s invite link, Soma notes whose link it was, and the administrator can see that. The person who invited you sees only what any member of the round sees.</p>
 
       <h2>Google Health and Fitbit</h2>
       <p>Connecting is optional and read-only. Soma asks Google for permission to read two things: activity (used for steps) and sleep. It never writes to your Google account.</p>
@@ -78,7 +79,7 @@ export default function Privacy() {
       <p>If you can&rsquo;t get into Soma, ask David: <Contact />. It will be done within 30 days. The encrypted parts can only ever be read by you, because only you can decrypt them.</p>
 
       <h2>Children</h2>
-      <p>Soma is for adults. Accounts are approved by hand and are not given to anyone under 18.</p>
+      <p>Soma is for adults. It is not for anyone under 18, and an account that turns out to belong to someone under 18 is closed.</p>
 
       <h2>Changes and contact</h2>
       <p>If this policy changes in a way that matters, members are told, and the date at the top changes. For any question about your data, <Contact />.</p>

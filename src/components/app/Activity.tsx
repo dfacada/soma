@@ -3,18 +3,20 @@
 // Activity: today's list, the round (chain grid, progress) and the leaderboard. Follows the prototype's
 // viewActivity. Steps come from Google Health (Fitbit) once connected in Settings; they inform, they do not close the day.
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { chain, dayIndexOf, defaultRestDays, isRestDay, leaderboard, phaseOf, setBreakdown, type Log, type Member } from "@/lib/round";
 import { addDays, dayKey, dayStatus, streak, WEEKDAYS } from "@/lib/today";
 import Link from "next/link";
-import { Button, Card, Field, Icon, Input, Sheet, StatPill, Switch, Tag, Toast, type IconName } from "@/components/ui";
+import { Button, Card, Chip, Field, Icon, Input, Sheet, StatPill, Switch, Tag, Toast, type IconName } from "@/components/ui";
 import { haptic } from "@/lib/haptics";
+import { inviteUrl } from "@/lib/invite";
+import { report } from "@/lib/log";
 import { DayBanner, longDay } from "./DayBanner";
 import { useDays } from "./Days";
 import { useHealth } from "./Health";
 import { PushSheet } from "./PushSheet";
 import { StepsSheet } from "./Steps";
-import { useRounds, type RoundRow } from "./Rounds";
+import { useRounds, type Board, type RoundInvite, type RoundRow } from "./Rounds";
 import { useSession } from "./Session";
 import a from "./app.module.css";
 import sc from "./screens.module.css";
@@ -31,11 +33,14 @@ export function Activity() {
   const rounds = useRounds();
   const health = useHealth();
   const [pushSheet, setPushSheet] = useState(false);
-  const [manage, setManage] = useState(false);
+  const [manage, setManage] = useState<"edit" | "new" | null>(null);
+  // The round whose invite link is on screen, and the code if it was just made (a new round brings its own).
+  const [sharing, setSharing] = useState<{ round: RoundRow; code?: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const say = useCallback((m: string) => { setToast(m); window.setTimeout(() => setToast(null), 2000); }, []);
   const closePush = useCallback(() => setPushSheet(false), []);
-  const closeManage = useCallback(() => setManage(false), []);
+  const closeManage = useCallback(() => setManage(null), []);
+  const closeShare = useCallback(() => setSharing(null), []);
   const [stepsSheet, setStepsSheet] = useState(false);
   const closeSteps = useCallback(() => setStepsSheet(false), []);
 
@@ -46,10 +51,12 @@ export function Activity() {
   const types = map[k]?.activity?.types || {};
   const steps = map[k]?.activity?.steps ?? null;
   const run = streak(map, settings, today, windowDays).now;
-  const { current } = rounds;
+  const { shown } = rounds;
   const { target, rest } = rounds.forDay(k);
+  // Someone in more than one live round picks which one this screen shows; Today follows the one it always did.
+  const mineLive = rounds.rounds.filter((r) => !r.archived && r.me?.status === "active");
+  const owns = (r: RoundRow | null) => Boolean(r && (me.profile.role === "admin" || (r.inviteOnly && r.ownerId === me.id)));
   const lateForRound = k < dayKey(addDays(today, -2));
-  const isAdmin = me.profile.role === "admin";
 
   const savePushups = (n: number) => {
     change("activity", k, (d) => { d.activity.pushups = n; });
@@ -148,21 +155,34 @@ export function Activity() {
         })}
       </div>
 
-      {rounds.loading ? <span className="eb">Loading the round</span> : current ? (
-        <RoundCards round={current} myLog={myLogFrom(map, current)} say={say} onManage={isAdmin ? () => setManage(true) : undefined} />
+      {mineLive.length > 1 && (
+        <div className={a.roundPicker} role="group" aria-label="Your rounds">
+          {mineLive.map((r) => <Chip key={r.id} label={r.name} on={shown?.id === r.id} onClick={() => { haptic(); rounds.select(r.id); }} />)}
+        </div>
+      )}
+      {rounds.loading ? <span className="eb">Loading the round</span> : shown ? (
+        <RoundCards round={shown} board={rounds.boards[shown.id] || null} myLog={myLogFrom(map, shown)} say={say}
+          onManage={owns(shown) ? () => setManage("edit") : undefined} onShare={shown.inviteOnly ? () => setSharing({ round: shown }) : undefined} />
       ) : (
         <Card>
           <span className="d" style={{ fontSize: 22 }}>No round yet</span>
-          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>A round is a stretch of days where everyone aims at their own daily push-up target and the board shows who is keeping to theirs. {isAdmin ? "Start one and the others can join." : "David starts them; you will see it here when one opens."}</p>
-          {isAdmin && <div><Button variant="activity" onClick={() => setManage(true)}>Start a round</Button></div>}
+          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>A round is a stretch of days where everyone aims at their own daily push-up target and the board shows who is keeping to theirs. Start one and invite your friends with a link: only the people you invite see it.</p>
+          <div><Button variant="activity" onClick={() => setManage("new")}>Start a round</Button></div>
         </Card>
+      )}
+      {shown && !rounds.loading && (
+        <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={() => { haptic(); setManage("new"); }}>Start a round with friends</button>
       )}
 
       <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={rounds.forDay(k).dayNumber} onSave={savePushups}
         day={isToday ? undefined : longDay(view)} late={lateForRound} />
       <StepsSheet open={stepsSheet} onClose={closeSteps} day={k} />
-      <Sheet open={manage} title={current && !current.archived ? "Manage round" : "Start a round"} onClose={closeManage}>
-        <ManageRound round={current} todayKey={todayKey} say={say} onDone={closeManage} />
+      <Sheet open={manage !== null} title={manage === "edit" ? "Manage round" : "Start a round"} onClose={closeManage}>
+        {manage && <ManageRound round={manage === "edit" ? shown : null} board={manage === "edit" && shown ? rounds.boards[shown.id] || null : null} todayKey={todayKey} say={say}
+          onDone={closeManage} onCreated={(round, code) => { setManage(null); if (code) setSharing({ round, code }); }} onShare={(round) => { setManage(null); setSharing({ round }); }} />}
+      </Sheet>
+      <Sheet open={sharing !== null} title="Invite friends" onClose={closeShare}>
+        {sharing && <InviteSheet round={sharing.round} code={sharing.code} owner={owns(sharing.round)} say={say} />}
       </Sheet>
       <Toast message={toast} />
     </div>
@@ -180,7 +200,7 @@ function myLogFrom(map: Record<string, { activity?: { pushups: number | null } }
   return log;
 }
 
-function RoundCards({ round, myLog, say, onManage }: { round: RoundRow; myLog: Log; say: (m: string) => void; onManage?: () => void }) {
+function RoundCards({ round, board, myLog, say, onManage, onShare }: { round: RoundRow; board: Board | null; myLog: Log; say: (m: string) => void; onManage?: () => void; onShare?: () => void }) {
   const { me, settings } = useSession();
   const { todayKey } = useDays();
   const rounds = useRounds();
@@ -223,7 +243,6 @@ function RoundCards({ round, myLog, say, onManage }: { round: RoundRow; myLog: L
   const scored = hits + cells.filter((c) => c === "miss").length;
   const nextRest = round.restDays.find((d) => d > day);
 
-  const board = rounds.board;
   // My row comes from the live log, so the board agrees with the grid the moment a count is saved.
   const rows = board ? leaderboard(round, board.members, { ...board.logs, [me.id]: myLog }, todayKey) : [];
 
@@ -254,6 +273,7 @@ function RoundCards({ round, myLog, say, onManage }: { round: RoundRow; myLog: L
           <span className={a.legend}><span><i className={`${a.cell} ${a.cell_hit}`} />Hit</span><span><i className={`${a.cell} ${a.cell_miss}`} />Missed</span><span><i className={`${a.cell} ${a.cell_rest}`} />Rest</span></span>
         </div>
         <div className={a.rowButtons}>
+          {onShare && <Button size="sm" variant="activity" onClick={() => { haptic(); onShare(); }}>Invite friends</Button>}
           {onManage && <Button size="sm" variant="secondary" onClick={onManage}>Manage round</Button>}
           <TargetEditor round={round} say={say} />
         </div>
@@ -293,32 +313,54 @@ function TargetEditor({ round, say }: { round: RoundRow; say: (m: string) => voi
   );
 }
 
-/** Admin: start a round, or edit the current one's name, join setting, rest days and archive state. */
-function ManageRound({ round, todayKey, say, onDone }: { round: RoundRow | null; todayKey: string; say: (m: string) => void; onDone: () => void }) {
+/** Start a round, or change one you run: name, dates, rest days, archive. A member's round is private, with them in
+ *  it and its invite link to share; an admin's is open to everyone unless made private. The maker of a private round
+ *  can also take people out of it here. */
+function ManageRound({ round, board, todayKey, say, onDone, onCreated, onShare }: {
+  round: RoundRow | null; board: Board | null; todayKey: string; say: (m: string) => void; onDone: () => void;
+  onCreated: (round: RoundRow, code?: string) => void; onShare: (round: RoundRow) => void;
+}) {
+  const { me, settings } = useSession();
   const rounds = useRounds();
+  const isAdmin = me.profile.role === "admin";
   const editing = round && !round.archived ? round : null;
-  const [name, setName] = useState(editing?.name || "Round 1");
+  const [name, setName] = useState(editing?.name || (isAdmin ? "Round 1" : ""));
   const [startDate, setStartDate] = useState(editing?.startDate || todayKey);
-  const [length, setLength] = useState(String(editing?.lengthDays || 90));
+  const [length, setLength] = useState(String(editing?.lengthDays || (isAdmin ? 90 : 30)));
   const [rest, setRest] = useState<number[] | null>(editing ? editing.restDays : null);
+  const [mine, setMine] = useState(String(settings.pushupTarget));
+  const [isPrivate, setPrivate] = useState(!isAdmin);
   const [busy, setBusy] = useState(false);
   const len = Math.min(Math.max(Number(length) || 1, 1), 366);
   const restDays = (rest ?? defaultRestDays(len)).filter((d) => d <= len);
-  const valid = name.trim() && /^\d{4}-\d{2}-\d{2}$/.test(startDate) && Number(length) >= 1 && Number(length) <= 366;
+  const target = Number(mine);
+  const valid = name.trim() && /^\d{4}-\d{2}-\d{2}$/.test(startDate) && Number(length) >= 1 && Number(length) <= 366 && (editing || isAdmin || (target >= 1 && target <= 10000));
 
-  const run = (work: Promise<void>, done: string) => { setBusy(true); void work.then(() => { say(done); onDone(); }, (e) => say(e instanceof Error ? e.message : "That didn't work")).finally(() => setBusy(false)); };
+  const fail = (e: unknown, event: string) => { report("rounds", event, e, undefined, "warn"); say(e instanceof Error ? e.message : "That didn't work"); };
+  const run = (work: Promise<void>, done: string) => { setBusy(true); void work.then(() => { say(done); onDone(); }, (e) => fail(e, "round_save_failed")).finally(() => setBusy(false)); };
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid) return;
+    haptic();
     const body = { name: name.trim(), startDate, lengthDays: len, restDays };
-    run(editing ? rounds.update(editing.id, body) : rounds.create(body), editing ? "Round saved" : `${name.trim()} created`);
+    if (editing) return run(rounds.update(editing.id, body), "Round saved");
+    setBusy(true);
+    const made = isAdmin && !isPrivate ? rounds.create(body) : rounds.create({ ...body, inviteOnly: true, dailyTarget: isAdmin && !(target >= 1) ? undefined : target });
+    void made.then((r) => {
+      say(`${name.trim()} is ready`);
+      onCreated({ ...body, id: r.id, inviteOnly: Boolean(r.invite), ownerId: me.id, joinOpen: true, archived: false, bonusHit: 30, bonusStreak: 10, badgeStreak: 7, badgeHits: 30, me: null }, r.invite?.code);
+    }, (x) => fail(x, "round_create_failed")).finally(() => setBusy(false));
   };
+  const others = editing?.inviteOnly && board ? board.members.filter((m) => m.status === "active" && m.userId !== me.id) : [];
 
   return (
     <form className={a.vaultForm} onSubmit={submit}>
-      <Field name="Name"><Input compact value={name} maxLength={100} aria-label="Round name" onChange={(e) => setName(e.target.value)} /></Field>
+      {!editing && !isAdmin && <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>Your round is private: only the people you invite with its link see it. Everyone sets their own daily target.</p>}
+      <Field name="Name"><Input compact value={name} maxLength={100} aria-label="Round name" placeholder="Morning crew" onChange={(e) => setName(e.target.value)} /></Field>
       <Field name="Start date" help="Day 1."><Input compact type="date" value={startDate} aria-label="Start date" onChange={(e) => setStartDate(e.target.value)} /></Field>
       <Field name="Length" help="Days, 1 to 366."><Input compact inputMode="numeric" pattern="[0-9]*" value={length} aria-label="Length in days" onChange={(e) => setLength(digits(e.target.value, 3))} /></Field>
+      {!editing && (isPrivate || !isAdmin) && <Field name="Your daily target" help="Push-ups a day for you. Everyone picks their own."><Input compact inputMode="numeric" pattern="[0-9]*" value={mine} aria-label="Your daily target" onChange={(e) => setMine(digits(e.target.value))} /></Field>}
+      {!editing && isAdmin && <Field name="Private" help="Only people with its invite link see it. Off: every member sees it and can join."><Switch checked={isPrivate} label="Private round" onChange={setPrivate} /></Field>}
       <div className={a.entryHead}>
         <span className="eb">Rest days · tap to toggle</span>
         <button type="button" className={a.lnk} onClick={() => setRest(null)}>Default pattern</button>
@@ -329,9 +371,66 @@ function ManageRound({ round, todayKey, say, onDone }: { round: RoundRow | null;
           return <button key={d} type="button" aria-pressed={on} aria-label={`Day ${d}${on ? ", rest day" : ""}`} className={`${a.restCell} ${on ? a.restOn : ""}`} onClick={() => setRest(on ? restDays.filter((x) => x !== d) : [...restDays, d].sort((x, y) => x - y))}>{d}</button>;
         })}
       </div>
-      {editing && <Field name="Open to join" help="Members can join themselves while this is on."><Switch checked={editing.joinOpen} label="Open to join" onChange={(v) => run(rounds.update(editing.id, { joinOpen: v }), v ? "Open to join" : "Closed to new members")} /></Field>}
+      {editing && isAdmin && <Field name="Private" help="On: only the people in it see it, and new people join with its invite link. Off: every member sees it."><Switch checked={Boolean(editing.inviteOnly)} label="Private round" onChange={(v) => run(rounds.update(editing.id, { inviteOnly: v }), v ? "The round is private now" : "Every member sees the round now")} /></Field>}
+      {editing && !editing.inviteOnly && <Field name="Open to join" help="Members can join themselves while this is on."><Switch checked={editing.joinOpen} label="Open to join" onChange={(v) => run(rounds.update(editing.id, { joinOpen: v }), v ? "Open to join" : "Closed to new members")} /></Field>}
       <Button type="submit" variant="activity" block disabled={busy || !valid}>{busy ? "Saving…" : editing ? "Save round" : "Create round"}</Button>
+      {editing?.inviteOnly && <Button variant="secondary" block disabled={busy} onClick={() => onShare(editing)}>Invite link</Button>}
+      {others.length > 0 && <>
+        <span className="eb" style={{ paddingTop: 8 }}>People in it</span>
+        {others.map((m) => (
+          <div key={m.userId} className={a.entryHead}>
+            <span>{m.displayName}</span>
+            <button type="button" className={a.lnk} style={{ minHeight: 44 }} disabled={busy}
+              onClick={() => { if (window.confirm(`Take ${m.displayName} out of ${editing!.name}? Only you can let them back.`)) run(rounds.removeMember(editing!.id, m.userId), `${m.displayName} is out`); }}>Take out</button>
+          </div>
+        ))}
+      </>}
       {editing && <Button variant="secondary" block disabled={busy} onClick={() => run(rounds.update(editing.id, { archived: true }), "Round archived")}>Archive this round</Button>}
     </form>
+  );
+}
+
+/** A private round's invite link: share it, or copy it. Its maker can replace it, which turns the old one off. */
+function InviteSheet({ round, code: given, owner, say }: { round: RoundRow; code?: string; owner: boolean; say: (m: string) => void }) {
+  const rounds = useRounds();
+  const [invite, setInvite] = useState<RoundInvite | null>(given ? { code: given, uses: 0, maxUses: 25 } : null);
+  const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (given) return;
+    let alive = true;
+    rounds.inviteFor(round.id).then((v) => { if (alive) setInvite(v); }, (e) => { report("rounds", "invite_load_failed", e, undefined, "warn"); if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [round.id, given, rounds]);
+
+  const url = invite ? inviteUrl(invite.code) : "";
+  const text = `Join my push-up round on Soma: ${round.name}`;
+  const share = async () => {
+    haptic();
+    if (navigator.share) {
+      try { await navigator.share({ title: round.name, text, url }); return; }
+      catch (e) { if ((e as { name?: string })?.name === "AbortError") return; }
+    }
+    try { await navigator.clipboard.writeText(url); say("Link copied"); } catch { say("Couldn't copy the link"); }
+  };
+  const replace = () => {
+    if (!window.confirm("Make a new link? The old one stops working, for anyone who hasn't used it yet.")) return;
+    haptic(); setBusy(true);
+    rounds.newInvite(round.id).then((v) => { setInvite(v); say("New link made"); }, (e) => { report("rounds", "invite_replace_failed", e, undefined, "warn"); say("Couldn't make a new link"); }).finally(() => setBusy(false));
+  };
+
+  return (
+    <div className={a.vaultForm}>
+      <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
+        Anyone with this link can join {round.name}. Someone new to Soma signs up through it and is in straight away, without waiting for approval.
+      </p>
+      {failed && <p role="status" className={a.noteBad}>The link couldn&apos;t be loaded. Close this and try again.</p>}
+      {invite && <p className={`m ${a.inviteLink}`} aria-label="Invite link">{url}</p>}
+      <div className={a.rowButtons}>
+        <Button variant="activity" disabled={!invite} onClick={() => void share()}>{typeof navigator !== "undefined" && "share" in navigator ? "Share the link" : "Copy the link"}</Button>
+        {owner && <Button variant="secondary" disabled={!invite || busy} onClick={replace}>New link</Button>}
+      </div>
+      {invite && invite.maxUses !== null && <p className="muted" style={{ fontSize: 12 }}>It has let in {invite.uses} new {invite.uses === 1 ? "person" : "people"} of {invite.maxUses}. People already on Soma join with it any number of times.</p>}
+    </div>
   );
 }

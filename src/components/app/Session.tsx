@@ -11,7 +11,8 @@ import { applyLook } from "@/lib/look";
 import { report } from "@/lib/log";
 import { mergeSettings, type Settings } from "@/lib/settings";
 import { dayKey } from "@/lib/today";
-import { Button, Input, type StepProgress } from "@/components/ui";
+import { acceptInvite, cleanCode, forgetInvite, keptInvite } from "@/lib/invite";
+import { Button, Input, Toast, type StepProgress } from "@/components/ui";
 import { Splash, type OpenStep } from "./Splash";
 import a from "./app.module.css";
 
@@ -43,7 +44,28 @@ type State =
   | { kind: "error"; message: string }
   | { kind: "ready"; me: Me };
 
-type Resolved = Exclude<State, { kind: "loading" | "ready" }> | { kind: "ready"; me: Me; displayName: string; stored: Record<string, unknown> };
+type Resolved = Exclude<State, { kind: "loading" | "ready" }> | { kind: "ready"; me: Me; displayName: string; stored: Record<string, unknown>; notice: string | null };
+
+/** An invite link's code from whatever was pasted: the code itself, or the whole link with ?c= in it. */
+function codeFrom(text: string): string | null {
+  const m = /[?&]c=([^&#\s]+)/.exec(text);
+  return cleanCode(m ? decodeURIComponent(m[1]) : text);
+}
+
+/** Use the invite link this device kept (src/lib/invite.ts): join its round, and say how it went. */
+async function applyKeptInvite(code: string): Promise<string | null> {
+  try {
+    const r = await acceptInvite(code, dayKey(new Date()));
+    forgetInvite();
+    if (!r.round) return r.approved ? "Welcome to Soma" : null;
+    return r.already ? `You're already in ${r.round.name}` : `You're in ${r.round.name}`;
+  } catch (e) {
+    // A link that no longer works is forgotten; one that failed for another reason is tried on the next open.
+    if (e instanceof ApiError && (e.status === 410 || e.status === 403)) { forgetInvite(); return e.message; }
+    report("invite", "accept_failed", e, undefined, "warn");
+    return null;
+  }
+}
 
 /** Catalyst session → profile (approval) → settings. Plain async: no React state in here. */
 /** `step` hears each step of opening as it starts (the splash shows it): the sign-in SDK, then the account. */
@@ -51,12 +73,21 @@ async function resolveSession(step: (at: OpenStep, progress: StepProgress) => vo
   try {
     if (!isDevIdentity && !(await currentUser())) return { kind: "signedOut" };
     step("Checking your account", 0);
-    const me = await api<Me>("GET", "/me");
+    // An invite link opened on this device goes with the first call: a brand-new account it can let in starts active.
+    const invite = keptInvite();
+    let me = await api<Me>("GET", "/me" + (invite ? `?invite=${invite}` : ""));
+    let notice: string | null = null;
+    // An account that was already waiting (made before the link was opened, or elsewhere): the link lets it in now.
+    if (me.profile.status === "pending" && invite) {
+      notice = await applyKeptInvite(invite);
+      me = await api<Me>("GET", "/me");
+    }
     if (me.profile.status !== "active") return { kind: "blocked", me };
+    if (invite && keptInvite()) notice = await applyKeptInvite(invite);
     step("Checking your account", 0.5);
     const s = await api<{ displayName: string; settings: Record<string, unknown> }>("GET", "/settings");
     step("Loading your days", "unknown");
-    return { kind: "ready", me, displayName: s.displayName || me.name || "", stored: s.settings || {} };
+    return { kind: "ready", me, displayName: s.displayName || me.name || "", stored: s.settings || {}, notice };
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) return { kind: "signedOut" };
     return { kind: "error", message: e instanceof Error ? e.message : "Something went wrong" };
@@ -68,6 +99,9 @@ export function SessionGate({ children }: { children: ReactNode }) {
   const [opening, setOpening] = useState<{ at: OpenStep; progress: StepProgress }>({ at: "Starting", progress: "unknown" });
   const [settings, setSettings] = useState<Settings | null>(null);
   const [displayName, setDisplayName] = useState("");
+  // A line about an invite link that was just used ("You're in Morning crew"), shown once as Soma opens.
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => { if (!notice) return; const t = window.setTimeout(() => setNotice(null), 4000); return () => window.clearTimeout(t); }, [notice]);
 
   const apply = useCallback((r: Resolved) => {
     if (r.kind === "ready") {
@@ -78,6 +112,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
       if (fresh) void api("PUT", "/settings", { settings: stored }).catch((e) => report("app", "joined_save_failed", e, undefined, "warn"));
       setSettings(mergeSettings(stored));
       setDisplayName(r.displayName);
+      setNotice(r.notice);
       setState({ kind: "ready", me: r.me });
     } else setState(r);
   }, []);
@@ -135,7 +170,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
     [state, settings, displayName, saveSettings, saveDisplayName, signOut],
   );
 
-  if (value) return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  if (value) return <Ctx.Provider value={value}>{children}<Toast message={notice} /></Ctx.Provider>;
   if (state.kind === "signedOut") return <SignIn />;
   if (state.kind === "blocked") return <Blocked me={state.me} onRetry={load} onSignOut={signOut} />;
   if (state.kind === "error") {
@@ -156,6 +191,25 @@ function Centered({ children }: { children: ReactNode }) {
 
 function Blocked({ me, onRetry, onSignOut }: { me: Me; onRetry: () => void; onSignOut: () => void }) {
   const disabled = me.profile.status === "disabled";
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    const c = codeFrom(code);
+    if (!c) return setError("That isn't an invite. Paste the whole link, or its code of 10 letters and numbers.");
+    setBusy(true); setError(null);
+    try {
+      await acceptInvite(c, dayKey(new Date()));
+      forgetInvite();
+      onRetry();
+    } catch (x) {
+      if (!(x instanceof ApiError && x.status < 500)) report("invite", "code_failed", x, undefined, "warn");
+      setError(x instanceof ApiError && x.status < 500 ? x.message : "Couldn't check the invite. Try again in a moment.");
+    } finally { setBusy(false); }
+  }
+
   if (me.profile.status === "deleting") {
     return (
       <Centered>
@@ -176,10 +230,17 @@ function Blocked({ me, onRetry, onSignOut }: { me: Me; onRetry: () => void; onSi
       <p className="muted" style={{ maxWidth: 320, textWrap: "balance" }}>
         {disabled
           ? "This account has been turned off. Ask David if that is a mistake."
-          : "You're signed up. David lets each new member in by hand. Open Soma again later, or tap Check again."}
+          : "You're signed up. If someone sent you an invite link, paste it below and you're in. Otherwise David lets each new member in by hand: open Soma again later, or tap Check again."}
       </p>
+      {!disabled && (
+        <form className={a.vaultRow} style={{ width: "100%", maxWidth: 360 }} onSubmit={submitCode}>
+          <Input placeholder="Invite link or code" aria-label="Invite link or code" autoComplete="off" autoCapitalize="characters" spellCheck={false} value={code} onChange={(e) => setCode(e.target.value)} />
+          <Button type="submit" disabled={busy || !code.trim()}>{busy ? "Checking…" : "Use it"}</Button>
+        </form>
+      )}
+      {error && <p role="alert" className={a.noteBad}>{error}</p>}
       <div className={a.rowButtons}>
-        {!disabled && <Button onClick={onRetry}>Check again</Button>}
+        {!disabled && <Button variant="secondary" onClick={onRetry}>Check again</Button>}
         <Button variant="secondary" onClick={onSignOut}>Sign out</Button>
       </div>
     </Centered>
@@ -188,6 +249,8 @@ function Blocked({ me, onRetry, onSignOut }: { me: Me; onRetry: () => void; onSi
 
 function SignIn() {
   const [mode, setMode] = useState<"in" | "up">("in");
+  // An invite link opened on this device: say so, so a newcomer knows to sign up and that they won't wait.
+  const [invited] = useState(() => (typeof window === "undefined" ? false : Boolean(keptInvite())));
   const [form, setForm] = useState({ first: "", last: "", email: "" });
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
@@ -222,6 +285,7 @@ function SignIn() {
         <span className="eb">Journal · Food · Activity</span>
         <span className={`d ${a.wordmark}`}>Soma</span>
       </div>
+      {invited && <p className={a.noteOk}>Your invite is saved on this device. Sign in, or sign up if you&apos;re new, and you&apos;re in.</p>}
       {mode === "in" ? (
         <>
           <div id="soma-login" className={a.login} />
@@ -232,8 +296,8 @@ function SignIn() {
           <Input required placeholder="First name" autoComplete="given-name" value={form.first} onChange={(e) => setForm({ ...form, first: e.target.value })} />
           <Input required placeholder="Last name" autoComplete="family-name" value={form.last} onChange={(e) => setForm({ ...form, last: e.target.value })} />
           <Input required type="email" placeholder="Email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <Button type="submit" block disabled={busy}>{busy ? "Sending…" : "Request access"}</Button>
-          <p className="muted" style={{ fontSize: 12 }}>New accounts wait for David&apos;s approval before anything opens.</p>
+          <Button type="submit" block disabled={busy}>{busy ? "Sending…" : invited ? "Sign up" : "Request access"}</Button>
+          <p className="muted" style={{ fontSize: 12 }}>{invited ? "Your invite lets you in as soon as you sign in." : "With an invite link you're in at once; without one, David lets new accounts in by hand."}</p>
           <button type="button" className={a.link} onClick={() => { setMode("in"); setNote(null); }}>Have an account? Sign in</button>
         </form>
       )}

@@ -250,6 +250,12 @@ button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0
 .lbStats { display: flex; flex-direction: column; align-items: flex-end; min-width: 56px; flex-shrink: 0; font-size: 11px; line-height: 1.25; color: var(--muted); white-space: nowrap; }
 .lbPts { font-size: 13px; width: 40px; text-align: right; }
 .lbYou .lbRank, .lbYou .lbStats { color: var(--activity-ink); }
+/* Which round Activity shows, for someone in more than one. Scrolls sideways rather than wrapping. */
+.roundPicker { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.roundPicker::-webkit-scrollbar { display: none; }
+.roundPicker > button { flex: none; }
+/* A private round's invite link, readable in full and selectable in one go. */
+.inviteLink { padding: 12px 14px; border-radius: var(--r-ctl); background: var(--well); border: 1px solid var(--hairline); font-size: 13px; word-break: break-all; color: var(--ink); user-select: all; -webkit-user-select: all; }
 .restGrid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; max-height: 36dvh; overflow: auto; }
 .restCell { aspect-ratio: 1; min-height: 30px; border-radius: 6px; border: 1px solid var(--hairline); background: var(--surface); font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
 .restOn { background: var(--ink); border-color: var(--ink); color: var(--bone); }

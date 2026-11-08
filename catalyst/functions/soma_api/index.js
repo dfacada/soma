@@ -53,6 +53,7 @@ app.use(require('./routes/links'));
 app.use(require('./routes/morgen'));
 app.use(require('./routes/misc'));
 app.use(require('./routes/rounds'));
+app.use(require('./routes/invites'));
 app.use(require('./routes/jobs'));
 app.use(require('./routes/health'));
 app.use(require('./routes/push'));
