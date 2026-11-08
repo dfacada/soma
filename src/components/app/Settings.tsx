@@ -220,6 +220,16 @@ export function SettingsScreen() {
             {journal.vault === "open" ? <Button size="sm" variant="secondary" onClick={() => { journal.lock(); say("Vault locked"); }}>Lock</Button> : <Button size="sm" variant="journal" onClick={journal.openVault}>{journal.vault === "none" ? "Create" : "Unlock"}</Button>}
           </Field>
           <PasskeyField say={say} />
+          {journal.vault !== "none" && journal.vault !== "checking" && (
+            <Field name="Recovery code"
+              help={journal.recovery.made
+                ? `Made ${journal.recovery.madeMs ? new Date(journal.recovery.madeMs).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "earlier"}. If you forget your passphrase, it opens your journal and lets you choose a new one. Making a new code replaces this one.`
+                : "Not made yet. Without one, nobody can open your journal if you forget your passphrase, David included."}>
+              <Button size="sm" variant={journal.recovery.made ? "secondary" : "journal"} onClick={() => { haptic(); if (journal.vault !== "open") journal.openVault(); else void journal.makeRecoveryCode(); }}>
+                {journal.vault !== "open" ? "Unlock" : journal.recovery.made ? "New code" : "Make one"}
+              </Button>
+            </Field>
+          )}
           <Field name="Ask when Soma opens" help="On: Soma asks for your passphrase once each time you open it, so your journal, sleep and Fitbit sync are ready. You can always tap Not now.">
             <Switch checked={settings.unlockOnOpen} label="Ask for the vault when Soma opens" onChange={(v) => void save({ unlockOnOpen: v }, v ? "Soma will ask when it opens" : "Soma will not ask on opening")} />
           </Field>

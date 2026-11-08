@@ -21,7 +21,7 @@ export default function Privacy() {
       </ul>
 
       <h2>What Soma cannot read</h2>
-      <p>Your journal, your sleep data, and your Google Health, Morgen and Todoist connections are encrypted in your browser with a key made from your vault passphrase, before they are uploaded. The passphrase and the key never leave your device. The server holds only ciphertext, so nobody can read these, David included. The cost of that is real: a forgotten passphrase cannot be reset, and what it protected is gone.</p>
+      <p>Your journal, your sleep data, and your Google Health, Morgen and Todoist connections are encrypted in your browser with a key made from your vault passphrase, before they are uploaded. The passphrase and the key never leave your device. The server holds only ciphertext, so nobody can read these, David included. The cost of that is real: nobody can reset a forgotten passphrase for you. Soma gives you a recovery code for that: it is made on your device, shown to you once and never stored, and the server keeps only a copy of your key locked with it, which the code alone can open. With the code you can choose a new passphrase; without the passphrase or the code, what it protected is gone.</p>
       <p>Everything else in the list above (check-ins, food, weight, activity, steps, rounds, settings) is stored readable by the server, so that leaderboards work and David, as the administrator, can fix a broken record. He does not look at it otherwise.</p>
 
       <h2>What other members see</h2>

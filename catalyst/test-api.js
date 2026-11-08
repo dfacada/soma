@@ -156,6 +156,31 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('PUT', '/vault-meta', Object.assign({}, vault, { salt: 'not base64!' }));
   check('non-base64 salt is 400', r.status === 400, r.text);
 
+  console.log('vault recovery code');
+  {
+    // Stand-ins for what the browser seals (scripts/test-recovery.mjs checks the real crypto): 61 bytes, as a key is.
+    const sealedCopy = Buffer.from('a sealed vault key stands in here, sixty-one bytes long......').toString('base64');
+    r = await call('PUT', '/vault-meta/recovery', { recoveryKey: 'not base64!' });
+    check('a recovery copy must be base64', r.status === 400, r.text);
+    r = await call('PUT', '/vault-meta/recovery', { recoveryKey: 'A'.repeat(200) });
+    check('…and the size of one sealed key, not more', r.status === 413, r.text);
+    r = await call('PUT', '/vault-meta/recovery', { recoveryKey: sealedCopy });
+    check("the recovery code's sealed copy of the key saves", r.status === 200, r.text);
+    r = await call('GET', '/vault-meta');
+    check('…and comes back with the time it was made', r.status === 200 && r.json.recoveryKey === sealedCopy && r.json.recoveryMs > Date.now() - 600000 && r.json.salt === vault.salt, r.json);
+    r = await call('PUT', '/vault-meta/passphrase', { wrapSalt: 'c2FsdHNhbHQ=', wrappedKey: sealedCopy });
+    check('a passphrase chosen with the recovery code saves', r.status === 200, r.text);
+    r = await call('GET', '/vault-meta');
+    check('…and comes back beside the first salt, which stays', r.status === 200 && r.json.wrapSalt === 'c2FsdHNhbHQ=' && r.json.wrappedKey === sealedCopy && r.json.salt === vault.salt, r.json);
+    r = await call('PUT', '/vault-meta/passphrase', { wrapSalt: 'c2FsdHNhbHQ=' });
+    check('a seal with no key is 400', r.status === 400, r.text);
+    r = await call('PUT', '/vault-meta/recovery', { recoveryKey: sealedCopy }, { 'x-test-member': '2' });
+    check('no vault yet: there is nothing to make a code for (404)', r.status === 404, r.text);
+    await call('PUT', '/vault-meta', Object.assign({ replace: true }, vault));
+    r = await call('GET', '/vault-meta');
+    check('a replaced vault forgets the old recovery copy and passphrase seal', r.status === 200 && r.json.recoveryKey === null && r.json.wrappedKey === null && r.json.wrapSalt === null && r.json.recoveryMs === null, r.json);
+  }
+
   console.log('vault passkeys (a simulated passkey, real P-256 signatures)');
   {
     const nodeCrypto = require('crypto');

@@ -16,6 +16,8 @@ export const CHANGES: Release[] = [
     date: "2026-11-08",
     title: "Getting ready for more people",
     items: [
+      "A recovery code for your vault. If you ever forget your passphrase, the code opens your journal and lets you choose a new one; nothing you wrote changes. Make yours in Settings → Journal and vault → Recovery code, and save it in your password manager, because Soma shows it only once. A new vault gets one straight away.",
+      "Forgot your passphrase? The unlock sheet now has a link for it. With your recovery code you're back in a minute. Without one, the vault still can't be opened by anyone, David included.",
       "Download all your data. Settings → Your data saves everything Soma keeps for you in one file: your days, meals, weight, activity, check-ins, recipes and settings, and with your vault unlocked, your journal, weekly reviews and sleep. Turn on Include recordings to get every voice recording too, in a .zip.",
       "Delete your account yourself. Settings → Your data → Delete my account removes all of it, for good: your journal and recordings, every day you logged, and your sign-in. It also clears what Soma kept on that phone. You type DELETE first, so it can't happen by accident.",
       "Food estimates, journal readings and the week in review run on Claude's newest models. Food and journal readings use Claude Haiku 5.5 and the week in review uses Claude Opus 5.5. They're newer, and they cost Soma less to run.",

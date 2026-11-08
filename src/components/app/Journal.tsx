@@ -16,7 +16,8 @@ import { newsDone } from "@/lib/opening";
 import { dayKey } from "@/lib/today";
 import { within } from "@/lib/playable";
 import { transcribeAudio, TranscribeError } from "@/lib/transcribe";
-import { createVault, decryptJson, encryptJson, exportKey, fromB64, importKey, toB64, unlockVault, type VaultMeta } from "@/lib/vault-crypto";
+import { createVault, decryptJson, encryptJson, exportKey, fromB64, importKey, newRecoveryCode, openWithRecovery, parseRecoveryCode, sealForRecovery, toB64, unlockVault, wrapForPassphrase, type VaultMeta } from "@/lib/vault-crypto";
+import { haptic } from "@/lib/haptics";
 import { enrolledHere, enrolPasskey, forgetThisDevice, passkeyName, passkeySupported, PasskeyError, prepareChallenge, unlockWithPasskey } from "@/lib/vault-passkey";
 import { Button, Input, Sheet, Toast } from "@/components/ui";
 import { useSession } from "./Session";
@@ -87,6 +88,10 @@ type Journal = {
   addPasskey: () => Promise<{ ok: boolean; message: string }>;
   /** Turn Face ID off on this device; the passphrase is then the only way in here. */
   removePasskeys: () => Promise<void>;
+  /** The recovery code (vault-crypto.ts): whether this vault has one, and when it was made. */
+  recovery: { made: boolean; madeMs: number | null };
+  /** Make a recovery code (the vault must be open) and show it, once. A new one replaces the old. */
+  makeRecoveryCode: () => Promise<boolean>;
 };
 
 const Ctx = createContext<Journal | null>(null);
@@ -107,7 +112,9 @@ function askOnce(userId: string): boolean {
 /** Vault metadata, or null when this user has not made a vault yet. */
 async function fetchMeta(): Promise<VaultMeta | null> {
   const res = await api<({ exists: true } & VaultMeta) | { exists: false }>("GET", "/vault-meta");
-  return res.exists ? { salt: res.salt, verifierIv: res.verifierIv, verifierCt: res.verifierCt } : null;
+  if (!res.exists) return null;
+  const { salt, verifierIv, verifierCt, wrapSalt, wrappedKey, recoveryKey, recoveryMs } = res;
+  return { salt, verifierIv, verifierCt, wrapSalt, wrappedKey, recoveryKey, recoveryMs };
 }
 
 /** The key survives reloads for the life of the tab (sessionStorage is per tab and dies with it), as in Glimpse. */
@@ -149,6 +156,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   }, []);
   const [pkSupported, setPkSupported] = useState(false);
   const [pkHere, setPkHere] = useState(false);
+  const [recovery, setRecovery] = useState<{ made: boolean; madeMs: number | null }>({ made: false, madeMs: null });
+  // A recovery code just made, on screen until it is saved. It is never kept anywhere else.
+  const [shownCode, setShownCode] = useState<string | null>(null);
 
   const key = useRef<CryptoKey | null>(null);
   const meta = useRef<VaultMeta | null>(null);
@@ -312,6 +322,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     void Promise.all([fetchMeta(), restoreKey(userId)]).then(([m, k]) => {
       if (!alive) return;
       meta.current = m;
+      setRecovery({ made: Boolean(m?.recoveryKey), madeMs: m?.recoveryMs ?? null });
       if (m && k) { void opened(k); return; }
       setVault(m ? "locked" : "none");
       // Opening the app is the moment to unlock: the vault now gates the health sync and sleep as well as the journal.
@@ -467,6 +478,46 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   }, [flushPending, say]);
 
   // ── Vault ──
+  const makeRecoveryCode = useCallback(async (): Promise<boolean> => {
+    const k = key.current;
+    if (!k || !meta.current) { setSheet(true); return false; }
+    try {
+      const code = newRecoveryCode();
+      const recoveryKey = await sealForRecovery(k, code);
+      await api("PUT", "/vault-meta/recovery", { recoveryKey });
+      const madeMs = Date.now();
+      meta.current = { ...meta.current, recoveryKey, recoveryMs: madeMs };
+      setRecovery({ made: true, madeMs });
+      setShownCode(code);
+      return true;
+    } catch (e) {
+      report("vault", "recovery_code_failed", e);
+      say("Couldn't make a recovery code. Try again.");
+      return false;
+    }
+  }, [say]);
+
+  // Forgot the passphrase: the recovery code opens the vault, and a new passphrase seals the same key for next time.
+  const submitRecovery = useCallback(async (code: string, pass: string): Promise<string | null> => {
+    if (!meta.current) return null;
+    setBusy(true);
+    try {
+      const k = await openWithRecovery(code, meta.current);
+      if (!k) { report("vault", "wrong_recovery_code", undefined, undefined, "warn"); return "That recovery code isn't right. Check it and try again."; }
+      const wrap = await wrapForPassphrase(k, pass);
+      await api("PUT", "/vault-meta/passphrase", wrap);
+      meta.current = { ...meta.current, ...wrap };
+      sessionStorage.setItem(SESSION_KEY + userId, await exportKey(k));
+      setSheet(false);
+      await opened(k);
+      say("Your new passphrase is set");
+      return null;
+    } catch (e) {
+      report("vault", "recovery_failed", e);
+      return "Could not reach the server. Try again.";
+    } finally { setBusy(false); }
+  }, [userId, opened, say]);
+
   const submitPassphrase = useCallback(async (pass: string): Promise<string | null> => {
     setBusy(true);
     try {
@@ -491,12 +542,14 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       sessionStorage.setItem(SESSION_KEY + userId, await exportKey(made.key));
       setSheet(false);
       await opened(made.key);
+      // A new vault gets its recovery code straight away, while the person is here and paying attention.
+      void makeRecoveryCode();
       return null;
     } catch (e) {
       report("vault", meta.current ? "unlock_failed" : "create_failed", e);
       return "Could not reach the server. Try again.";
     } finally { setBusy(false); }
-  }, [userId, opened]);
+  }, [userId, opened, makeRecoveryCode]);
 
   const submitPasskey = useCallback(async (): Promise<string | null> => {
     if (!meta.current) return null;
@@ -652,8 +705,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), here: pkHere }), [pkSupported, pkHere]);
 
   const value = useMemo<Journal>(
-    () => ({ vault, items, loadFailed, entriesProgress, reload, recording, seconds, levels, sealing, lastSaved, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys }),
-    [vault, items, loadFailed, entriesProgress, reload, recording, seconds, levels, sealing, lastSaved, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys],
+    () => ({ vault, items, loadFailed, entriesProgress, reload, recording, seconds, levels, sealing, lastSaved, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys, recovery, makeRecoveryCode }),
+    [vault, items, loadFailed, entriesProgress, reload, recording, seconds, levels, sealing, lastSaved, busy, countOn, toggleRecording, writeEntry, openVault, lock, saveText, remove, audioFor, transcribing, cloudOn, transcribeEntry, transcribeMissing, say, seal, unseal, passkey, addPasskey, removePasskeys, recovery, makeRecoveryCode],
   );
 
   return (
@@ -661,23 +714,62 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       {children}
       <Sheet open={sheet} title={vault === "none" ? "Create your vault" : "Unlock your vault"} onClose={closeSheet}>
         <VaultForm creating={vault === "none"} busy={busy} onSubmit={submitPassphrase} onSkip={closeSheet}
-          passkeyName={vault === "locked" && pkSupported && pkHere ? passkey.name : null} onPasskey={submitPasskey} />
+          passkeyName={vault === "locked" && pkSupported && pkHere ? passkey.name : null} onPasskey={submitPasskey}
+          canRecover={recovery.made} onRecover={submitRecovery} />
+      </Sheet>
+      <Sheet open={shownCode !== null} title="Your recovery code" onClose={() => setShownCode(null)}>
+        {shownCode && <RecoveryCode code={shownCode} onDone={() => setShownCode(null)} />}
       </Sheet>
       <Toast message={toast} />
     </Ctx.Provider>
   );
 }
 
-function VaultForm({ creating, busy, onSubmit, onSkip, passkeyName, onPasskey }: {
+function VaultForm({ creating, busy, onSubmit, onSkip, passkeyName, onPasskey, canRecover, onRecover }: {
   creating: boolean; busy: boolean; onSubmit: (pass: string) => Promise<string | null>; onSkip: () => void;
   /** Set when a passkey can open this vault here: its button is all the sheet shows, the passphrase one tap away. */
   passkeyName: string | null; onPasskey: () => Promise<string | null>;
+  /** This vault has a recovery code: "Forgot your passphrase?" can open it and set a new passphrase. */
+  canRecover: boolean; onRecover: (code: string, pass: string) => Promise<string | null>;
 }) {
   const [pass, setPass] = useState("");
   const [again, setAgain] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const [code, setCode] = useState("");
   const withPass = creating || !passkeyName || typing;
+
+  async function recover(e: React.FormEvent) {
+    e.preventDefault();
+    if (!parseRecoveryCode(code)) return setError("That isn't a whole recovery code. It has 32 letters and numbers.");
+    if (pass.length < 8) return setError("Use at least 8 characters for the new passphrase.");
+    if (pass !== again) return setError("The two passphrases do not match.");
+    setError(await onRecover(code, pass));
+  }
+
+  if (recovering) {
+    return (
+      <form className={a.vaultForm} onSubmit={recover}>
+        {canRecover ? <>
+          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
+            Enter the recovery code you saved, then choose a new passphrase. Your journal stays exactly as it is.
+          </p>
+          <Input placeholder="Recovery code" aria-label="Recovery code" autoComplete="off" autoCapitalize="characters" spellCheck={false} value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
+          <Input type="password" autoComplete="new-password" placeholder="New passphrase" aria-label="New passphrase" value={pass} onChange={(e) => setPass(e.target.value)} />
+          <Input type="password" autoComplete="new-password" placeholder="Repeat the new passphrase" aria-label="Repeat the new passphrase" value={again} onChange={(e) => setAgain(e.target.value)} />
+          {error && <p role="alert" className={a.noteBad}>{error}</p>}
+          <Button type="submit" variant="journal" block disabled={busy}>{busy ? "Unlocking…" : "Unlock and keep the new passphrase"}</Button>
+        </> : (
+          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
+            This vault has no recovery code, so nobody can open it without your passphrase, David included. If it comes
+            back to you, it still works.
+          </p>
+        )}
+        <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={() => { setRecovering(false); setError(null); }}>Back</button>
+      </form>
+    );
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -696,7 +788,7 @@ function VaultForm({ creating, busy, onSubmit, onSkip, passkeyName, onPasskey }:
     <form className={a.vaultForm} onSubmit={submit}>
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
         {creating
-          ? "Your journal is encrypted on this device before it is uploaded. The passphrase never leaves it, so nobody can read your entries, David included. It also cannot be reset: if you forget it, the entries are gone."
+          ? "Your journal is encrypted on this device before it is uploaded. The passphrase never leaves it, so nobody can read your entries, David included. Next, Soma gives you a recovery code: if you forget the passphrase, that code is the only way back in."
           : "Your journal, sleep and Fitbit are encrypted. Food, weight, check-in and activity work without unlocking."}
       </p>
       {/* The one secret Soma cannot reset, chosen once, usually on day one: worth a sentence of advice. */}
@@ -725,7 +817,36 @@ function VaultForm({ creating, busy, onSubmit, onSkip, passkeyName, onPasskey }:
       )}
       {error && <p role="alert" className={a.noteBad}>{error}</p>}
       {creating && <Button type="submit" variant="journal" block disabled={busy}>{busy ? "Creating…" : "Create vault"}</Button>}
-      {!creating && (!passkeyName || typing) && <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={onSkip}>Not now</button>}
+      {!creating && (!passkeyName || typing) && (
+        <div className={a.vaultLinks}>
+          <button type="button" className={a.lnk} onClick={() => { setRecovering(true); setError(null); setPass(""); setAgain(""); }}>Forgot your passphrase?</button>
+          <button type="button" className={a.lnk} onClick={onSkip}>Not now</button>
+        </div>
+      )}
     </form>
+  );
+}
+
+/** A recovery code, shown once: big enough to copy by hand, and a button to copy it to the password manager. */
+function RecoveryCode({ code, onDone }: { code: string; onDone: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const groups = code.split("-");
+  return (
+    <div className={a.vaultForm}>
+      <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
+        If you ever forget your passphrase, this code opens your journal and lets you choose a new one. Save it
+        somewhere safe, like your password manager. Soma can&apos;t show it to you again.
+      </p>
+      <p className={`m ${a.recoveryCode}`} aria-label={"Recovery code " + code}>
+        <span>{groups.slice(0, 4).join("-")}</span><span>{groups.slice(4).join("-")}</span>
+      </p>
+      <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>
+        Keep it as private as your passphrase: with it and your Soma sign-in, anyone could open your journal.
+      </p>
+      <div className={a.rowButtons}>
+        <Button variant="secondary" onClick={() => { haptic(); void navigator.clipboard?.writeText(code).then(() => setCopied(true), () => setCopied(false)); }}>{copied ? "Copied" : "Copy"}</Button>
+        <Button variant="journal" onClick={() => { haptic("done"); onDone(); }}>I&apos;ve saved it</Button>
+      </div>
+    </div>
   );
 }

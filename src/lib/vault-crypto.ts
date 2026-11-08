@@ -9,7 +9,12 @@ const VERSION = 0x01;
 const ITERATIONS = 310000;
 const VERIFIER = "soma-vault-v1";
 
-export type VaultMeta = { salt: string; verifierIv: string; verifierCt: string };
+/** The vault as the server describes it. `wrapSalt`/`wrappedKey` exist once a passphrase was reset with the
+ *  recovery code; `recoveryKey` once a recovery code was made (see the end of this file). */
+export type VaultMeta = {
+  salt: string; verifierIv: string; verifierCt: string;
+  wrapSalt?: string | null; wrappedKey?: string | null; recoveryKey?: string | null; recoveryMs?: number | null;
+};
 
 export const toB64 = (bytes: Uint8Array) => { let s = ""; for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return btoa(s); };
 export const fromB64 = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -61,8 +66,16 @@ export async function checkKey(key: CryptoKey, meta: VaultMeta): Promise<boolean
   }
 }
 
-/** Returns the key, or null when the passphrase is wrong. */
+/** Returns the key, or null when the passphrase is wrong. After a reset with the recovery code the passphrase opens
+ *  the wrapped copy of the key instead (see the end of this file); the first passphrase then no longer works here. */
 export async function unlockVault(passphrase: string, meta: VaultMeta): Promise<CryptoKey | null> {
+  if (meta.wrapSalt && meta.wrappedKey) {
+    const kek = await wrappingKey(passphrase, fromB64(meta.wrapSalt));
+    try {
+      const key = await importKey(toB64(new Uint8Array(await decryptBytes(kek, fromB64(meta.wrappedKey)))));
+      return (await checkKey(key, meta)) ? key : null;
+    } catch { return null; }
+  }
   const key = await deriveKey(passphrase, fromB64(meta.salt));
   return (await checkKey(key, meta)) ? key : null;
 }
@@ -97,4 +110,85 @@ export async function openOnDevice(sealed: string, deviceKey: CryptoKey, share: 
   const inner = await decryptBytes(await shareKey(share), fromB64(sealed));
   const raw = await decryptBytes(deviceKey, inner);
   return crypto.subtle.importKey("raw", raw, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+}
+
+// ── The recovery code (2026-11-08, before Soma opens to people David doesn't know: a stranger who forgets their
+// passphrase would otherwise lose their journal for good).
+//
+// The vault key comes straight from the first passphrase, and everything is encrypted with it, so a forgotten
+// passphrase cannot be "reset" by making a new key without re-encrypting the whole journal. Instead:
+//   - The recovery code is 20 random bytes (160 bits), shown once as 32 letters and digits. A key made from it with
+//     HKDF seals a copy of the vault key, which the server keeps (vault_meta.recovery_key). The code itself is never
+//     stored anywhere; Soma cannot show it again.
+//   - Forgot the passphrase: the code opens that copy, and the person chooses a new passphrase, which seals the same
+//     vault key again (wrap_salt, wrapped_key: PBKDF2 like the first). From then on unlockVault uses the new one.
+// Nothing is re-encrypted, so the old passphrase still derives the key mathematically. That is fine for someone who
+// forgot it; it is not a way to lock out someone who learned it, and the app never offers it as one.
+
+/** Crockford's base32: no I, L, O or U, so the code reads aloud and copies by hand without confusion. */
+const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const RECOVERY_BYTES = 20;
+const RECOVERY_INFO = "soma-vault-recovery-v1";
+
+/** A new code: 20 random bytes as 32 characters in eight groups of four, like 7K2M-QX4P-…. */
+export function newRecoveryCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(RECOVERY_BYTES));
+  let bits = 0, value = 0, out = "";
+  for (const b of bytes) {
+    value = ((value << 8) | b) & 0xfff; bits += 8;
+    while (bits >= 5) { out += CROCKFORD[(value >>> (bits - 5)) & 31]; bits -= 5; }
+  }
+  return out.match(/.{4}/g)!.join("-");
+}
+
+/** The code's bytes, or null when it is not a whole code. Forgiving the way Crockford intends: any case, spaces and
+ *  dashes ignored, O read as 0 and I or L as 1. */
+export function parseRecoveryCode(text: string): Uint8Array | null {
+  const clean = text.toUpperCase().replace(/[\s-]/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
+  if (clean.length !== (RECOVERY_BYTES * 8) / 5) return null;
+  const out = new Uint8Array(RECOVERY_BYTES);
+  let bits = 0, value = 0, at = 0;
+  for (const ch of clean) {
+    const v = CROCKFORD.indexOf(ch);
+    if (v < 0) return null;
+    value = ((value << 5) | v) & 0xffff; bits += 5;
+    if (bits >= 8) { out[at++] = (value >>> (bits - 8)) & 0xff; bits -= 8; }
+  }
+  return out;
+}
+
+async function recoveryKek(code: Uint8Array): Promise<CryptoKey> {
+  const base = await crypto.subtle.importKey("raw", code as BufferSource, "HKDF", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new Uint8Array(32), info: new TextEncoder().encode(RECOVERY_INFO) }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+
+/** The vault key sealed under a recovery code, base64, for the server to keep. */
+export async function sealForRecovery(key: CryptoKey, code: string): Promise<string> {
+  const bytes = parseRecoveryCode(code);
+  if (!bytes) throw new Error("not a recovery code");
+  return toB64(await encryptBytes(await recoveryKek(bytes), new Uint8Array(await crypto.subtle.exportKey("raw", key))));
+}
+
+/** The vault key from a recovery code, checked against the verifier; null for a wrong or mistyped code. */
+export async function openWithRecovery(code: string, meta: VaultMeta): Promise<CryptoKey | null> {
+  const bytes = parseRecoveryCode(code);
+  if (!bytes || !meta.recoveryKey) return null;
+  try {
+    const raw = await decryptBytes(await recoveryKek(bytes), fromB64(meta.recoveryKey));
+    const key = await importKey(toB64(new Uint8Array(raw)));
+    return (await checkKey(key, meta)) ? key : null;
+  } catch { return null; }
+}
+
+/** A key to seal with, from a new passphrase: PBKDF2 as for the first, but it never leaves this function's caller. */
+function wrappingKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
+  return crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]).then((raw) =>
+    crypto.subtle.deriveKey({ name: "PBKDF2", salt: salt as BufferSource, iterations: ITERATIONS, hash: "SHA-256" }, raw, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]));
+}
+
+/** The vault key sealed under a new passphrase, for the server to keep in place of the first passphrase. */
+export async function wrapForPassphrase(key: CryptoKey, passphrase: string): Promise<{ wrapSalt: string; wrappedKey: string }> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const kek = await wrappingKey(passphrase, salt);
+  return { wrapSalt: toB64(salt), wrappedKey: toB64(await encryptBytes(kek, new Uint8Array(await crypto.subtle.exportKey("raw", key)))) };
 }

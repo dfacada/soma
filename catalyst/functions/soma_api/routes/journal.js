@@ -25,12 +25,45 @@ const B64 = /^[A-Za-z0-9+/_-]+={0,2}$/;
 const router = express.Router();
 
 // ── Vault metadata: salt + verifier so any device can derive and check the key ──
-const VAULT_COLS = 'ROWID, salt, verifier_iv, verifier_ct, MODIFIEDTIME';
+// Plus the recovery code's sealed copy of the key and, after a reset, the new passphrase's (src/lib/vault-crypto.ts,
+// "The recovery code"). All of it is ciphertext or salt: none of it opens anything without the passphrase or the code.
+const VAULT_COLS = 'ROWID, salt, verifier_iv, verifier_ct, wrap_salt, wrapped_key, recovery_key, recovery_ms, MODIFIEDTIME';
+const SEALED_KEY_MAX = 120; // a sealed 32-byte key: 61 bytes, 84 characters of base64
 router.get('/vault-meta', member, wrap(async (req, res) => {
   const rows = await select(req.admin, 'vault_meta', `SELECT ${VAULT_COLS} FROM vault_meta WHERE user_id = ${needId(req.user.id)}`);
   // Not having a vault yet is a normal state for a new user, not an error: answer 200 so it never shows as one.
   if (!rows[0]) return res.json({ exists: false });
-  res.json({ exists: true, salt: rows[0].salt, verifierIv: rows[0].verifier_iv, verifierCt: rows[0].verifier_ct, updatedAt: rows[0].MODIFIEDTIME });
+  const r = rows[0];
+  res.json({
+    exists: true, salt: r.salt, verifierIv: r.verifier_iv, verifierCt: r.verifier_ct, updatedAt: r.MODIFIEDTIME,
+    wrapSalt: r.wrap_salt || null, wrappedKey: r.wrapped_key || null,
+    recoveryKey: r.recovery_key || null, recoveryMs: r.recovery_ms ? Number(r.recovery_ms) : null
+  });
+}));
+
+const sealed = (name, v, max) => {
+  const text = fitText(name, v, max);
+  if (!text || !B64.test(text)) throw new HttpError(400, name + ' must be base64');
+  return text;
+};
+async function ownVault(req) {
+  const row = (await select(req.admin, 'vault_meta', `SELECT ROWID FROM vault_meta WHERE user_id = ${needId(req.user.id)}`))[0];
+  if (!row) throw new HttpError(404, 'there is no vault yet');
+  return row;
+}
+// A new recovery code replaces the old one: the old code's copy is overwritten, so it opens nothing any more.
+router.put('/vault-meta/recovery', member, wrap(async (req, res) => {
+  const row = await ownVault(req);
+  const recoveryKey = sealed('recoveryKey', (req.body || {}).recoveryKey, SEALED_KEY_MAX);
+  await req.admin.datastore().table('vault_meta').updateRow({ ROWID: row.ROWID, recovery_key: recoveryKey, recovery_ms: Date.now() });
+  res.json({ ok: true });
+}));
+// A passphrase chosen after opening the vault with the recovery code: it seals the same key, nothing is re-encrypted.
+router.put('/vault-meta/passphrase', member, wrap(async (req, res) => {
+  const row = await ownVault(req);
+  const b = req.body || {};
+  await req.admin.datastore().table('vault_meta').updateRow({ ROWID: row.ROWID, wrap_salt: sealed('wrapSalt', b.wrapSalt, 64), wrapped_key: sealed('wrappedKey', b.wrappedKey, SEALED_KEY_MAX) });
+  res.json({ ok: true });
 }));
 // Creating is free; overwriting orphans every existing entry unless the client re-encrypted them,
 // so it has to be asked for explicitly with { replace: true } (the change-passphrase flow).
@@ -48,6 +81,8 @@ router.put('/vault-meta', member, wrap(async (req, res) => {
   const find = `SELECT ROWID FROM vault_meta WHERE user_id = ${needId(req.user.id)}`;
   const existing = (await select(req.admin, 'vault_meta', find))[0];
   if (existing && b.replace !== true) throw new HttpError(409, 'vault already exists');
+  // A replaced vault has a new key: the old recovery code and passphrase seals belong to the old one.
+  if (existing) Object.assign(values, { wrap_salt: null, wrapped_key: null, recovery_key: null, recovery_ms: null });
   await upsert(req.admin, 'vault_meta', find, values);
   res.json({ ok: true, replaced: Boolean(existing) });
 }));
