@@ -73,7 +73,9 @@ export default function Privacy() {
       <p>Soma keeps a few things in your browser so it works properly: your sign-in session, your vault key for as long as the tab stays open, recordings that have not finished uploading (so a crash or a dead connection does not lose them), tomorrow&rsquo;s brief for the evening (encrypted with your vault key), and a cache of the app&rsquo;s own files. It sets no advertising or tracking cookies.</p>
 
       <h2>Keeping and deleting</h2>
-      <p>Your data is kept for as long as you have an account. You can delete journal entries and recipes yourself, and clear or change anything you have logged. To have your whole account and everything in it deleted, ask David: <Contact />. It will be done within 30 days. You can ask the same way for a copy of what Soma holds about you. The encrypted parts can only ever be read by you, inside the app, because only you can decrypt them.</p>
+      <p>Your data is kept for as long as you have an account. You can delete journal entries and recipes yourself, and clear or change anything you have logged.</p>
+      <p>To delete your whole account and everything in it, use Settings → Your data → Delete my account. Your sign-in is removed at once and everything else within minutes: your journal and recordings, every day you logged, your weekly reviews, sleep and steps, and your place in any rounds. What Soma kept on that device goes too. It can&rsquo;t be undone. In the same place you can download a copy of everything Soma holds about you; with your vault unlocked, the copy includes your journal, weekly reviews and sleep, opened on your device.</p>
+      <p>If you can&rsquo;t get into Soma, ask David: <Contact />. It will be done within 30 days. The encrypted parts can only ever be read by you, because only you can decrypt them.</p>
 
       <h2>Children</h2>
       <p>Soma is for adults. Accounts are approved by hand and are not given to anyone under 18.</p>

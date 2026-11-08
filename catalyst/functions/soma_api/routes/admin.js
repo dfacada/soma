@@ -87,6 +87,7 @@ async function target(req) {
   if (userId === req.user.id) throw new HttpError(409, 'you cannot change your own account here');
   const row = await findProfile(req.admin, userId);
   if (!row) throw new HttpError(404, 'no such user');
+  if (row.status === 'deleting') throw new HttpError(409, 'this account is being deleted');
   return row;
 }
 

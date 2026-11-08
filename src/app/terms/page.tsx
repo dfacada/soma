@@ -15,7 +15,7 @@ export default function Terms() {
       <ul>
         <li>Accounts are approved by hand, are for adults, and are for one person each. Keep your sign-in to yourself.</li>
         <li>David can decline, suspend or close an account, for example one that is abusing the app or other members.</li>
-        <li>You can stop at any time and ask for your account and data to be deleted; the privacy policy says how.</li>
+        <li>You can stop at any time and delete your account and data yourself, in Settings; the privacy policy says how.</li>
       </ul>
 
       <h2>Your vault passphrase</h2>

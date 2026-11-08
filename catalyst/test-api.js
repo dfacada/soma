@@ -442,8 +442,8 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
     r = await as2('GET', '/me');
     check('the second test member is someone else', r.status === 200 && r.json.id === '999000000000000002' && r.json.profile.role === 'member' && r.json.profile.status === 'active', r.json);
-    r = await call('GET', '/me', undefined, { 'x-test-member': '3' });
-    check('there is no third test member', r.status === 401, r.text);
+    r = await call('GET', '/me', undefined, { 'x-test-member': '4' });
+    check('there is no fourth test member', r.status === 401, r.text);
     r = await as2('GET', '/checkins/' + day);
     check("member two cannot read member one's day", r.status === 404, r.text);
     r = await as2('GET', '/days?from=2001-02-01&to=2001-02-28&fromMs=981000000000&toMs=983000000000');
@@ -486,9 +486,60 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     r = await as2('GET', '/admin/profiles');
     check('member two is not an admin either', r.status === 403, r.text);
 
+    r = await call('GET', '/account/export');
+    check("member one's export carries their own days, recipe, settings and journal index", r.status === 200 && r.json.checkins.some((c) => c.day === day && c.mood === 'tired') && r.json.recipes.some((x) => x.name === 'Bowl') && r.json.journal.some((j) => j.id === entryId) && r.json.account.email === 'test@soma.invalid', r.json && Object.keys(r.json));
+    check('…and what the vault sealed, as the ciphertext it is, with linked services named but no token', r.status === 200 && r.json.reviews.some((x) => x.ciphertext === sealed2) && r.json.linked.some((l) => l.service === 'todoist') && r.json.linked.every((l) => Object.keys(l).join() === 'service,since'), r.json && r.json.linked);
+    r = await as2('GET', '/account/export');
+    check("member two's export has none of member one's rows", r.status === 200 && !r.json.checkins.some((c) => c.mood === 'tired') && !r.json.recipes.some((x) => x.name === 'Bowl') && !r.json.journal.some((j) => j.id === entryId) && r.json.reviews.length === 0 && r.json.account.email === 'test2@soma.invalid', r.json);
+
     await call('DELETE', '/reviews/2001-02-05');
     await call('DELETE', '/health-months/2001-03');
     await call('DELETE', '/links/todoist');
+  }
+
+  // A third test member is filled with data, then deletes its account. soma_jobs does the deleting in the
+  // background and removes the profile last, so a fresh profile on /me means everything else has gone.
+  console.log('deleting an account');
+  {
+    const as3 = (method, route, body) => call(method, route, body, { 'x-test-member': '3' });
+    r = await as3('GET', '/me');
+    check('the third test member is someone else again', r.status === 200 && r.json.id === '999000000000000003' && r.json.profile.status === 'active', r.json);
+    await as3('PUT', '/checkins/' + day, { mood: 'calm' });
+    await as3('PUT', '/weight/' + day, { value: 170 });
+    await as3('POST', '/recipes', { recipe: { name: 'Gone soon', kcal: 100 } });
+    await as3('PUT', '/vault-meta', vault);
+    const s3 = await as3('POST', '/sign', { kind: 'entries', method: 'PUT', names: ['doomed-entry-0001.enc'] });
+    await fetch(s3.json.urls[0].url, { method: 'PUT', body: new Uint8Array([9, 9, 9, 9]), headers: { 'Content-Type': 'application/octet-stream', overwrite: 'true' } });
+    await as3('PUT', '/entries/doomed-entry-0001', { createdMs: 981158400000, hasAudio: false });
+    r = await as3('GET', '/account/export');
+    check('before: their export has their day, weight, recipe and entry', r.status === 200 && r.json.checkins.length === 1 && r.json.weight[0].value === 170 && r.json.recipes[0].name === 'Gone soon' && r.json.journal[0].id === 'doomed-entry-0001', r.json);
+
+    r = await as3('DELETE', '/account', {});
+    check('deleting needs the word DELETE', r.status === 400, r.text);
+    r = await as3('DELETE', '/account', { confirm: 'DELETE' });
+    check('a deletion is accepted and goes to the background', r.status === 202 && r.json.deleting === true && r.json.queued === true, r.json);
+    r = await as3('GET', '/checkins/' + day);
+    check('…and from that moment the account can do nothing', r.status === 403 || r.status === 404, r.text);
+    let fresh = false;
+    for (let i = 0; i < 40 && !fresh; i++) {
+      await new Promise((res) => setTimeout(res, 3000));
+      r = await as3('GET', '/me');
+      fresh = r.status === 200 && r.json.profile.status === 'active';
+    }
+    check('the deletion finishes within two minutes', fresh, r.json);
+    r = await as3('GET', '/account/export');
+    check('after: nothing of theirs is left in any table', r.status === 200 && r.json.checkins.length === 0 && r.json.weight.length === 0 && r.json.recipes.length === 0 && r.json.journal.length === 0 && Object.keys(r.json.settings).length === 0, r.json);
+    r = await as3('GET', '/vault-meta');
+    check('…the vault is gone too', r.status === 200 && r.json.exists === false, r.json);
+    // Stratus deletes land a little after they are asked for: give the file a minute and a half to disappear.
+    let fileGone = false;
+    for (let i = 0; i < 18 && !fileGone; i++) {
+      const g3 = await as3('POST', '/sign', { kind: 'entries', method: 'GET', names: ['doomed-entry-0001.enc'] });
+      const got3 = await fetch(g3.json.urls[0].url);
+      fileGone = got3.status === 404;
+      if (!fileGone) await new Promise((res) => setTimeout(res, 5000));
+    }
+    check('…and so are their files', fileGone);
   }
 
   console.log('cleanup');

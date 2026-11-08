@@ -16,6 +16,8 @@ export const CHANGES: Release[] = [
     date: "2026-11-08",
     title: "Getting ready for more people",
     items: [
+      "Download all your data. Settings → Your data saves everything Soma keeps for you in one file: your days, meals, weight, activity, check-ins, recipes and settings, and with your vault unlocked, your journal, weekly reviews and sleep. Turn on Include recordings to get every voice recording too, in a .zip.",
+      "Delete your account yourself. Settings → Your data → Delete my account removes all of it, for good: your journal and recordings, every day you logged, and your sign-in. It also clears what Soma kept on that phone. You type DELETE first, so it can't happen by accident.",
       "Food estimates, journal readings and the week in review run on Claude's newest models. Food and journal readings use Claude Haiku 5.5 and the week in review uses Claude Opus 5.5. They're newer, and they cost Soma less to run.",
       "A fair-use limit on the AI features. Each day you can ask for up to 60 food estimates, 20 journal readings, 6 weekly reviews and 40 transcriptions, and have about 15,000 characters read aloud. You will most likely never reach it; if you do, Soma says so, and you can carry on the next day.",
     ],

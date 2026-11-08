@@ -125,6 +125,18 @@ export async function clearDraft(draftId: string) {
   await withDb((db) => tx(db, CHUNKS, "readwrite", (s) => { s.delete(IDBKeyRange.bound(draftId + ":", draftId + ";", false, true)); }));
 }
 
+/** Everything this device holds for one person, gone: their unsent recordings and their recording slices. For a
+ *  deleted account (account.ts). Other people's rows on a shared device are left alone. */
+export async function forgetUser(userId: string) {
+  await withDb(async (db) => {
+    for (const store of [PENDING, CHUNKS]) {
+      const { rows } = await readAll<{ id: string; userId: string }>(db, store);
+      const mine = rows.filter((r) => r.userId === userId).map((r) => r.id);
+      if (mine.length) await tx(db, store, "readwrite", (s) => { for (const id of mine) s.delete(id); });
+    }
+  });
+}
+
 export type OrphanDraft = { draftId: string; startedAt: number; audio: Blob; chunks: number };
 /** Drafts whose recording never reached stop(): reassembled in order, ready to become an entry. */
 export async function listOrphanDrafts(userId: string, activeDraftId: string | null): Promise<OrphanDraft[]> {

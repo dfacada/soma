@@ -156,6 +156,16 @@ function Centered({ children }: { children: ReactNode }) {
 
 function Blocked({ me, onRetry, onSignOut }: { me: Me; onRetry: () => void; onSignOut: () => void }) {
   const disabled = me.profile.status === "disabled";
+  if (me.profile.status === "deleting") {
+    return (
+      <Centered>
+        <span className={a.splashOrb} aria-hidden><i /><i /><i /></span>
+        <span className="d" style={{ fontSize: 30 }}>Deleting your account</span>
+        <p className="muted" style={{ maxWidth: 320, textWrap: "balance" }}>Everything Soma kept for you is being deleted. It takes a few minutes and can&apos;t be undone.</p>
+        <div className={a.rowButtons}><Button variant="secondary" onClick={onSignOut}>Sign out</Button></div>
+      </Centered>
+    );
+  }
   return (
     <Centered>
       {/* Soma's own face on the first screen a new member sees, so the wait reads as the app's, not an error's. */}

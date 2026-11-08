@@ -176,6 +176,11 @@ export async function unlockWithPasskey(userId: string, meta: VaultMeta): Promis
   } catch (e) { throw asPasskeyError(e); }
 }
 
+/** The device's half only, for a deleted account: the server's half went with the account. Never throws. */
+export async function forgetDeviceRecord(userId: string): Promise<void> {
+  await dropRecord(userId).catch(() => undefined);
+}
+
 /** Turn Face ID off on this device: the server forgets its share, the device its sealed key. */
 export async function forgetThisDevice(userId: string): Promise<void> {
   const rec = await readRecord(userId);

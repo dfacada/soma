@@ -48,7 +48,7 @@ export async function api<T>(method: "GET" | "PUT" | "POST" | "DELETE", path: st
 }
 
 // ── Shapes returned by the API (catalyst/functions/soma_api/routes) ──
-export type Profile = { rowId: string; displayName: string; role: "admin" | "member"; status: "pending" | "active" | "disabled" };
+export type Profile = { rowId: string; displayName: string; role: "admin" | "member"; status: "pending" | "active" | "disabled" | "deleting" };
 export type Me = { id: string; email: string; name: string; profile: Profile };
 
 export type Checkin = { day: string; mood: string | null; habits: Record<string, boolean>; counts: Record<string, number> };

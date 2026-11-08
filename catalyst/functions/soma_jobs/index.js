@@ -4,9 +4,10 @@
 //                The audio is deleted as soon as Groq has answered, whatever the answer was. The transcript is
 //                written next to it for the browser to collect, encrypt into the entry and delete.
 //   nudge        the evening nudge, from a 15-minute cron (nudge.js); with test=1, a test notification for one user.
+//   delete_account  every row and file of an account (account.js), queued by soma_api's DELETE /account.
 //                The same cron prunes the log and the AI usage counts once a day and sweeps stale transcription
 //                jobs once an hour.
-//   anything else is logged and dropped: only soma_api submits jobs, and it only submits these two.
+//   anything else is logged and dropped: only soma_api submits jobs, and it only submits these.
 //
 // The jobs row is the contract with soma_api/routes/jobs.js:
 //   status      queued → running → done | failed
@@ -16,6 +17,7 @@
 
 const catalyst = require('zcatalyst-sdk-node');
 const nudge = require('./nudge');
+const account = require('./account');
 const { writeLog } = require('./log');
 
 const RETAIN_DAYS = 30;
@@ -120,7 +122,7 @@ async function transcribe(app, params) {
     const code = e instanceof JobError ? e.code : 'internal';
     await table.updateRow({ ROWID: rowId, status: 'failed', result_ref: 'error:' + code }).catch(() => undefined);
     console.error(JSON.stringify({ action: 'transcribe_failed', row: rowId, code, error: e.message, ms: Date.now() - started }));
-    await writeLog(app, { level: code === 'row_gone' ? 'warn' : 'error', source: 'job', area: 'transcribe', event: code, message: e.message, detail: { row: rowId, ms: Date.now() - started }, userId: params.user_id, test: /^99900000000000000[12]$/.test(String(params.user_id)) });
+    await writeLog(app, { level: code === 'row_gone' ? 'warn' : 'error', source: 'job', area: 'transcribe', event: code, message: e.message, detail: { row: rowId, ms: Date.now() - started }, userId: params.user_id, test: /^99900000000000000[123]$/.test(String(params.user_id)) });
   } finally {
     // The plaintext audio never outlives the attempt.
     await shred(bucket, prefix + params.source);
@@ -159,12 +161,15 @@ module.exports = async (jobRequest, context) => {
   try {
     const params = jobRequest.getAllJobParams() || {};
     if (params.type === 'transcribe') await transcribe(app, params);
+    else if (params.type === 'delete_account') await account.deleteAccount(app, params);
     else if (params.type === 'nudge') {
       await nudge.run(app, params);
       if (params.test !== '1') {
         await sweepJobs(app).catch((e) => writeLog(app, { source: 'job', area: 'transcribe', event: 'sweep_failed', message: e.message }));
         await pruneLogs(app).catch(() => undefined);
         await pruneUsage(app).catch((e) => writeLog(app, { level: 'warn', source: 'job', area: 'quota', event: 'prune_failed', message: e.message }));
+        // Hourly, like the job sweep: finish any account deletion a job left half done (or never started).
+        if (new Date().getUTCMinutes() < 15) await account.finishDeletions(app).catch((e) => writeLog(app, { source: 'job', area: 'account', event: 'finish_failed', message: e.message }));
       }
     } else {
       await writeLog(app, { level: 'warn', source: 'job', area: 'jobs', event: 'unknown_type', message: 'a job with no known type was dropped', detail: { type: String(params.type || '').slice(0, 40) } });

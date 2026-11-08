@@ -9,18 +9,21 @@ const { select, needId } = require('./db');
 // Approval lives in our own profiles table: Catalyst sign-up has no "pending" state.
 // A user's first authenticated call creates their profile as pending; ADMIN_EMAILS start as active admins.
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean);
-const STATUSES = ['pending', 'active', 'disabled'];
+// 'deleting' is set by DELETE /account while soma_jobs removes everything; every member route refuses it.
+const STATUSES = ['pending', 'active', 'disabled', 'deleting'];
 
-// Development-only test identities. When TEST_KEY is set (secrets.json) a request carrying it runs as one of two
+// Development-only test identities. When TEST_KEY is set (secrets.json) a request carrying it runs as one of three
 // fixed synthetic members that own no real data and can never be admins: the first by default, the second with
-// `x-test-member: 2` (catalyst/test-api.js uses it to prove one member cannot reach another's rows). The key cannot
+// `x-test-member: 2` (catalyst/test-api.js uses it to prove one member cannot reach another's rows), and a third,
+// `x-test-member: 3`, that the tests fill with data and then delete, account and all. The key cannot
 // name a user id, so it cannot impersonate anyone. It only works where the gateway says the environment is
 // Development (x-zc-environment, the header the SDK itself reads), so a TEST_KEY deployed to Production by mistake
 // opens nothing.
 const TEST_KEY = process.env.TEST_KEY || '';
 const TEST_USERS = {
   1: { id: '999000000000000001', email: 'test@soma.invalid', name: 'Test User' },
-  2: { id: '999000000000000002', email: 'test2@soma.invalid', name: 'Test User Two' }
+  2: { id: '999000000000000002', email: 'test2@soma.invalid', name: 'Test User Two' },
+  3: { id: '999000000000000003', email: 'test3@soma.invalid', name: 'Test User Three' }
 };
 const TEST_IDS = new Set(Object.values(TEST_USERS).map((u) => u.id));
 function isTestCall(req) {

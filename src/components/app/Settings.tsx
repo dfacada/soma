@@ -1,7 +1,7 @@
 "use client";
 
 // Settings (docs/HANDOFF.md §6). Every control saves on change; nothing has a Save button.
-// Sections still to come with their features: exports and import, rounds, passphrase change.
+// Sections still to come with their features: import, rounds.
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
@@ -17,6 +17,7 @@ import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/f
 import { planMeals, type Habit, type Settings } from "@/lib/settings";
 import { Button, ButtonLink, Chip, Field, Icon, Input, Pill, Segmented, Select, Sheet, Switch, Toast, useTabVisible } from "@/components/ui";
 import { Admin } from "./Admin";
+import { DataSettings } from "./AccountData";
 import { useHealth } from "./Health";
 import { NudgeSettings } from "./Nudge";
 import { useJournal } from "./Journal";
@@ -36,7 +37,7 @@ const THEME_NAME: Record<ThemeMode, string> = { dark: "Night", light: "Light", s
 const SLEEP_GOALS = [360, 390, 420, 450, 480, 510, 540, 570, 600];
 const HEALTH_SHORT = { loading: "Checking…", unconfigured: "Not available yet", off: "Not connected", connected: "Connected", reconnect: "Needs reconnecting" } as const;
 /** The sections a link can open as /settings/#id: Activity's Fitbit link, Tomorrow's Open Settings, the return from Google. */
-const SECTIONS = ["account", "appearance", "opening", "checkin", "food", "weight", "activity", "nudge", "brief", "fitbit", "journal", "review", "whats-new", "feedback", "admin"];
+const SECTIONS = ["account", "appearance", "opening", "checkin", "food", "weight", "activity", "nudge", "brief", "fitbit", "journal", "review", "data", "whats-new", "feedback", "admin"];
 const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "calm";
 /** "20:30" as "8:30 pm". */
 const clockOf = (hm: string) => { const [h, m] = hm.split(":").map(Number); return new Date(2000, 0, 1, h || 0, m || 0).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase(); };
@@ -237,6 +238,9 @@ export function SettingsScreen() {
         </Section>
         <Section {...sec("review")} title="Week in review" summary={settings.weeklyReview.on ? `${WEEKDAY_NAMES[settings.weeklyReview.dayOfWeek]}s at ${clockOf(settings.weeklyReview.time)}${settings.weeklyReview.telegram ? " · Telegram" : ""}` : "Off"}>
           <ReviewSettings say={say} />
+        </Section>
+        <Section {...sec("data")} title="Your data" summary="Download all of it, or delete your account">
+          <DataSettings say={say} />
         </Section>
       </Group>
 
