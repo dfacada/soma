@@ -23,6 +23,7 @@ const express = require('express');
 const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, needId } = require('../lib/db');
 const { writeLog } = require('../lib/log');
+const { spend } = require('../lib/quota');
 const { join, seconds } = require('../lib/wav');
 
 const router = express.Router();
@@ -150,7 +151,10 @@ router.post('/telegram/send', member, wrap(async (req, res) => {
   // is made in small pieces inside a time budget, joined into one file, and whatever was finished is sent.
   let spoke = false, said = 0;
   const speakable = String(b.speak_text || text).trim();
-  if (b.speak === true && process.env.GROQ_API_KEY && speakable) {
+  // Past the day's cap for reading aloud the words still go; only the voice is left out (quota.js logs the cap).
+  const maySpeak = b.speak === true && Boolean(process.env.GROQ_API_KEY) && Boolean(speakable) &&
+    await spend(req, 'speech', speakable.length).then(() => true, () => false);
+  if (maySpeak) {
     const until = Date.now() + SPEAK_BUDGET_MS;
     const pieces = [];
     try {

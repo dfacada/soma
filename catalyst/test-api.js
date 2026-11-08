@@ -280,6 +280,10 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   check("someone else's job is 404", r.status === 404, r.text);
   r = await call('DELETE', '/jobs/' + jobId);
   check('job deletes', r.status === 200, r.text);
+  await upload();
+  r = await call('POST', '/jobs', { type: 'transcribe', entryId: 'test-entry-0001', source: 'tx-test-entry-0001.webm' }, { 'x-test-cap': '0' });
+  check("past the day's cap a transcription is a 429 that names the cap (not the queue's 429, which the app retries)", r.status === 429 && r.json && r.json.limit === 'transcribe', r.json);
+  check('…and the audio it refused is shredded at once', (await leftOf('tx-test-entry-0001.webm')) <= 1);
 
   console.log('recipes, errors, feedback');
   r = await call('POST', '/recipes', { recipe: { name: 'Bowl', kcal: 640 } });
@@ -407,6 +411,16 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   check('the test member has no Telegram chat', r.status === 200 && r.json.connected === false, r.json);
   r = await call('POST', '/telegram/send', { text: 'Tomorrow · Tuesday 3 November\n\nSoma\nWeigh in · 100 push-ups', speak: false, title: "Tomorrow's brief" });
   check('the brief cannot go to Telegram before a chat is paired (409, which the brief explains)', r.status === 409, r.text);
+
+  console.log('daily caps on the paid AI features');
+  r = await call('POST', '/food/estimate', { text: 'an apple' }, { 'x-test-cap': '0' });
+  check("past the day's cap a food estimate is a 429 that says so, and no model is called", r.status === 429 && r.json && r.json.limit === 'food' && /daily limit/.test(r.json.error), r.json);
+  r = await call('POST', '/food/describe', { text: 'an apple for breakfast' }, { 'x-test-cap': '0' });
+  check('…the same for a whole day said at once', r.status === 429 && r.json && r.json.limit === 'food', r.json);
+  r = await call('POST', '/review/speak', { text: 'A short line to read.' }, { 'x-test-cap': '0' });
+  check('…and for reading aloud', r.status === 429 && r.json && r.json.limit === 'speech', r.json);
+  r = await call('POST', '/food/estimate', { text: 'a medium apple' }, { 'x-test-cap': '1000' });
+  check('under the cap, Claude Haiku 5.5 estimates a food', r.status === 200 && r.json.kcal > 30 && r.json.kcal < 300, r.json);
 
   console.log('consent is kept on the server too');
   await call('PUT', '/settings', { settings: { weeklyReview: { consent: false } } });

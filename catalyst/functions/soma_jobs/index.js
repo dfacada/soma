@@ -4,7 +4,8 @@
 //                The audio is deleted as soon as Groq has answered, whatever the answer was. The transcript is
 //                written next to it for the browser to collect, encrypt into the entry and delete.
 //   nudge        the evening nudge, from a 15-minute cron (nudge.js); with test=1, a test notification for one user.
-//                The same cron prunes the log once a day and sweeps stale transcription jobs once an hour.
+//                The same cron prunes the log and the AI usage counts once a day and sweeps stale transcription
+//                jobs once an hour.
 //   anything else is logged and dropped: only soma_api submits jobs, and it only submits these two.
 //
 // The jobs row is the contract with soma_api/routes/jobs.js:
@@ -28,6 +29,24 @@ async function pruneLogs(app) {
     if (old.length) await app.datastore().table('logs').deleteRows(old);
     if (old.length < 100) break;
   }
+}
+
+// soma_api/lib/quota.js counts every paid AI call as a row of ai_usage and only ever reads today's. Rows from before
+// yesterday are kept three days, for a look at the admin log if a cap ever trips, then deleted here in the same
+// daily window as the log. Bounded per run; a backlog is finished over the following days.
+const USAGE_KEEP_DAYS = 3;
+async function pruneUsage(app) {
+  const now = new Date();
+  if (now.getUTCHours() !== 3 || now.getUTCMinutes() >= 15) return;
+  const before = new Date(now.getTime() - USAGE_KEEP_DAYS * 86400000).toISOString().slice(0, 10);
+  let removed = 0;
+  for (let i = 0; i < 20; i++) {
+    const old = (await app.zcql().executeZCQLQuery(`SELECT ROWID FROM ai_usage WHERE day < '${before}' LIMIT 100`)).map((r) => r.ai_usage.ROWID);
+    if (old.length) await app.datastore().table('ai_usage').deleteRows(old);
+    removed += old.length;
+    if (old.length < 100) break;
+  }
+  if (removed) console.log(JSON.stringify({ action: 'usage_pruned', rows: removed }));
 }
 
 const BUCKET = 'soma-drafts';
@@ -145,6 +164,7 @@ module.exports = async (jobRequest, context) => {
       if (params.test !== '1') {
         await sweepJobs(app).catch((e) => writeLog(app, { source: 'job', area: 'transcribe', event: 'sweep_failed', message: e.message }));
         await pruneLogs(app).catch(() => undefined);
+        await pruneUsage(app).catch((e) => writeLog(app, { level: 'warn', source: 'job', area: 'quota', event: 'prune_failed', message: e.message }));
       }
     } else {
       await writeLog(app, { level: 'warn', source: 'job', area: 'jobs', event: 'unknown_type', message: 'a job with no known type was dropped', detail: { type: String(params.type || '').slice(0, 40) } });

@@ -10,8 +10,10 @@
 
 const TEXT_MAX = 10000; // Data Store truncates Text silently past this; we refuse instead.
 
+// `extra` rides along in the JSON answer next to `error`, for a caller that has to tell two refusals apart
+// (a daily cap's 429 carries { limit: kind }; the jobs queue's own 429 does not).
 class HttpError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, extra) { super(message); this.status = status; if (extra) this.extra = extra; }
 }
 
 const isId = (v) => /^\d{1,19}$/.test(String(v));

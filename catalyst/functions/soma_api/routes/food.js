@@ -20,11 +20,15 @@ const express = require('express');
 const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError } = require('../lib/db');
 const { writeLog } = require('../lib/log');
+const { spend } = require('../lib/quota');
 
 const router = express.Router();
-const MODEL = 'claude-haiku-4-5';
+// Haiku 5.5 thinks before it answers unless told otherwise, and the thinking counts toward max_tokens: effort low
+// keeps a food lookup quick, and the caps leave room for the thinking as well as the answer.
+const MODEL = 'claude-haiku-5-5';
+const EFFORT = 'low';
 const TEXT_MAX = 200;
-const MAX_TOKENS = 400;
+const MAX_TOKENS = 1500;
 
 const SYSTEM = [
   'You estimate the nutrition of food a person says they ate. Answer with your best single estimate, never a range.',
@@ -84,7 +88,7 @@ async function ask(req, { system, content, schema, maxTokens, plainShape, event 
   // Required only here, so no other route pays for loading it on a cold start.
   const Anthropic = require('@anthropic-ai/sdk');
   const client = new (Anthropic.default || Anthropic)({ apiKey: key, maxRetries: 1, timeout: 20000 });
-  const request = { model: MODEL, max_tokens: maxTokens, system, messages: [{ role: 'user', content }], output_config: { format: { type: 'json_schema', schema } } };
+  const request = { model: MODEL, max_tokens: maxTokens, system, messages: [{ role: 'user', content }], output_config: { format: { type: 'json_schema', schema }, effort: EFFORT } };
 
   let message;
   try {
@@ -114,6 +118,7 @@ const cleanText = (body, max) => {
 
 router.post('/food/estimate', member, wrap(async (req, res) => {
   const text = cleanText(req.body, TEXT_MAX);
+  await spend(req, 'food');
   const started = Date.now();
   const message = await ask(req, { system: SYSTEM, content: text, schema: SCHEMA, maxTokens: MAX_TOKENS, plainShape: '{"name","kcal","protein","carbs","fat","note"}', event: 'estimate_busy' });
   const out = clean(readJson(message), text);
@@ -187,12 +192,13 @@ function knownLines(known) {
 router.post('/food/describe', member, wrap(async (req, res) => {
   const text = cleanText(req.body, DAY_TEXT_MAX);
   const known = knownLines((req.body || {}).known);
+  await spend(req, 'food');
   const started = Date.now();
   const message = await ask(req, {
     system: DAY_SYSTEM,
     content: known ? `${text}\n\nKNOWN\n${known}` : text,
     schema: DAY_SCHEMA,
-    maxTokens: 2000,
+    maxTokens: 4000,
     plainShape: '{"items":[{"meal","name","kcal","protein","carbs","fat","note"}]}',
     event: 'describe_busy'
   });

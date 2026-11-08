@@ -56,6 +56,9 @@ export async function transcribe(entryId: string, audio: Blob): Promise<string> 
   try { job = await api<Job>("POST", "/jobs", { type: "transcribe", entryId, source }); }
   catch (e) {
     if (!(e instanceof ApiError)) await blank(source);
+    // Two different 429s: the day's cap (the answer carries `limit`; waiting a minute won't help, so no retry) and
+    // the queue being full (Journal waits and tries again).
+    if (e instanceof ApiError && e.status === 429 && (e.body as { limit?: string } | null)?.limit) throw new TranscribeError("daily_limit", e.message);
     if (e instanceof ApiError && e.status === 429) throw new TranscribeError("queue_busy", "Several transcriptions are already running. Try again shortly.");
     if (e instanceof ApiError && e.status === 403) throw new TranscribeError("switched_off", "Cloud transcription is off. Turn it on in Settings → Journal & vault.");
     throw new TranscribeError("queue_failed", "The transcription could not be started.");

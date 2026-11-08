@@ -78,7 +78,7 @@ app.use((err, req, res, _next) => {
   // An HttpError is a message written for the caller, whatever its status (502 and 503 included).
   if (err instanceof HttpError || (err && err.status && err.status < 500)) {
     if (err.status >= 500) logFailure(req, err, err.status);
-    return res.status(err.status).json({ error: err.message });
+    return res.status(err.status).json(Object.assign({}, err.extra, { error: err.message }));
   }
   logFailure(req, err, 500);
   console.error(JSON.stringify({ action: 'unhandled', error: err.message, stack: err.stack }));

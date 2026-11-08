@@ -15,6 +15,7 @@ const express = require('express');
 const { member, wrap } = require('../lib/auth');
 const { HttpError, select, needId, needToken, unpackJson } = require('../lib/db');
 const { writeLog } = require('../lib/log');
+const { spend } = require('../lib/quota');
 
 const router = express.Router();
 const BUCKET = 'soma-drafts';
@@ -64,6 +65,10 @@ router.post('/jobs', member, wrap(async (req, res) => {
     await shred(bucket, source);
     throw new HttpError(429, 'too many jobs in progress; wait for one to finish');
   }
+
+  // Past the day's cap for transcriptions the upload is refused like any other: shredded here, nothing left behind.
+  try { await spend(req, 'transcribe'); }
+  catch (e) { await shred(bucket, source); throw e; }
 
   // The source name rides in result_ref until the job replaces it, so a DELETE can always find what to clean up;
   // created_ms is what the hourly sweep in soma_jobs reads to find a job nobody came back for.

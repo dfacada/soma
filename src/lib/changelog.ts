@@ -12,6 +12,15 @@ export type Release = { id: string; date: string; title: string; items: string[]
 
 export const CHANGES: Release[] = [
   {
+    id: "2026-11-08",
+    date: "2026-11-08",
+    title: "Getting ready for more people",
+    items: [
+      "Food estimates, journal readings and the week in review run on Claude's newest models. Food and journal readings use Claude Haiku 5.5 and the week in review uses Claude Opus 5.5. They're newer, and they cost Soma less to run.",
+      "A fair-use limit on the AI features. Each day you can ask for up to 60 food estimates, 20 journal readings, 6 weekly reviews and 40 transcriptions, and have about 15,000 characters read aloud. You will most likely never reach it; if you do, Soma says so, and you can carry on the next day.",
+    ],
+  },
+  {
     id: "2026-11-07",
     date: "2026-11-07",
     title: "Every screen, polished",

@@ -19,9 +19,11 @@ const express = require('express');
 const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, upsert, needId, needDay, fitText, unpackJson } = require('../lib/db');
 const { writeLog } = require('../lib/log');
+const { spend } = require('../lib/quota');
 
 const router = express.Router();
-const MODEL = 'claude-opus-5';
+// Opus 5.5 always thinks, and the thinking counts toward max_tokens, so the cap leaves room for it and the review.
+const MODEL = 'claude-opus-5-5';
 const MAX_CHARS = 60000;      // a week of talking, with room to spare
 const MAX_ENTRIES = 60;
 // 700 characters is read without complaint; 1,000 comes back as "request too large" (measured 2026-10-07).
@@ -105,6 +107,7 @@ router.post('/review/write', member, wrap(async (req, res) => {
     written.push({ day, text, mood: typeof e.mood === 'string' ? e.mood.slice(0, 20) : null });
   }
   if (!written.length) throw new HttpError(400, 'those entries have nothing written in them yet');
+  await spend(req, 'review');
 
   const numbers = body.numbers && typeof body.numbers === 'object' ? JSON.stringify(body.numbers).slice(0, 2000) : '{}';
   const diary = written.map((e) => `[${e.day}${e.mood ? ' · felt ' + e.mood : ''}]\n${e.text}`).join('\n\n');
@@ -116,7 +119,7 @@ router.post('/review/write', member, wrap(async (req, res) => {
   try {
     message = await client.messages.create({
       model: MODEL,
-      max_tokens: 4000,
+      max_tokens: 10000,
       system: SYSTEM,
       messages: [{ role: 'user', content: `Here is my week. The numbers are from the app, the entries are mine.\n\nNumbers: ${numbers}\n\nEntries:\n\n${diary}` }],
       output_config: { format: { type: 'json_schema', schema: SCHEMA }, effort: 'medium' }
@@ -146,6 +149,7 @@ router.post('/review/speak', member, wrap(async (req, res) => {
   const text = String((req.body || {}).text || '').trim();
   if (!text) throw new HttpError(400, 'nothing to read');
   if (text.length > SPEAK_MAX) throw new HttpError(413, `send at most ${SPEAK_MAX} characters at a time`);
+  await spend(req, 'speech', text.length);
 
   let answer;
   try {

@@ -17,9 +17,10 @@ const express = require('express');
 const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, needId, unpackJson } = require('../lib/db');
 const { writeLog } = require('../lib/log');
+const { spend } = require('../lib/quota');
 
 const router = express.Router();
-const MODEL = 'claude-haiku-4-5';
+const MODEL = 'claude-haiku-5-5'; // thinks first unless told otherwise: effort low, and max_tokens with room for it
 const MAX_ITEMS = 30;
 const MAX_TEXT = 3000;
 const MAX_CHARS = 60000;
@@ -97,6 +98,7 @@ router.post('/insights/journal-tone', member, wrap(async (req, res) => {
     items.push({ id, text });
   }
   if (!items.length) throw new HttpError(400, 'nothing to read');
+  await spend(req, 'tone');
 
   const Anthropic = require('@anthropic-ai/sdk');
   const client = new (Anthropic.default || Anthropic)({ apiKey: key, maxRetries: 1, timeout: 60000 });
@@ -104,10 +106,10 @@ router.post('/insights/journal-tone', member, wrap(async (req, res) => {
   try {
     message = await client.messages.create({
       model: MODEL,
-      max_tokens: 2000,
+      max_tokens: 4000,
       system: SYSTEM,
       messages: [{ role: 'user', content: items.map((x) => `[${x.id}]\n${x.text}`).join('\n\n') }],
-      output_config: { format: { type: 'json_schema', schema: SCHEMA } }
+      output_config: { format: { type: 'json_schema', schema: SCHEMA }, effort: 'low' }
     });
   } catch (e) {
     const status = e && e.status;
