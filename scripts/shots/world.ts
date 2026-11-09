@@ -8,6 +8,7 @@
 // The same date gives the same world: every number comes from a generator seeded by the day, so two captures in one
 // run differ only where the code changed.
 
+import { opsAnswer } from "./ops-world";
 import type { ActivityDay, Checkin, DayLog, Days, EntryMeta, Me } from "../../src/lib/api";
 import type { HealthLink, Night, Nights } from "../../src/lib/health";
 import type { JournalEntry } from "../../src/lib/recovery";
@@ -264,7 +265,11 @@ export function answer(w: World, method: string, path: string, body: unknown): {
       case "/vault-passkeys": return ok({ passkeys: [] });
       case "/admin/profiles": return ok({ profiles: [] });
       case "/admin/feedback": return ok({ items: [] });
+      case "/messages": return ok({ messages: [], unread: 0 });
     }
+    // Soma Ops, on its own invented people (ops-world.ts).
+    const ops = opsAnswer(w.now, route, q);
+    if (ops) return ok(ops);
     if (route === `/rounds/${w.board.round.id}/board`) {
       return w.board.members.some((m) => m.userId === USER_ID) ? ok(w.board) : { status: 403, json: { error: "join the round to see its board" } };
     }

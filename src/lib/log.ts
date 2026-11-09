@@ -9,6 +9,10 @@ import { API_BASE } from "./api";
 import { authToken, DEV_TEST_KEY, isDevIdentity } from "./catalyst";
 
 export type Level = "error" | "warn" | "info";
+/** This build's name (next.config.ts): which release a problem came with, in Soma Ops. */
+export const BUILD = process.env.NEXT_PUBLIC_BUILD || "dev";
+/** Is this the home-screen app rather than a browser tab. */
+export const isInstalled = () => typeof window !== "undefined" && (window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
 type Extra = Record<string, string | number | boolean | null | undefined>;
 
 const recent = new Map<string, number>();
@@ -36,6 +40,7 @@ export function report(area: string, event: string, error?: unknown, extra?: Ext
     const detail = {
       ...extra, error: err?.name, stack: err?.stack, screen: window.location.pathname, online: navigator.onLine,
       installed: window.matchMedia("(display-mode: standalone)").matches || nav.standalone === true, ua: navigator.userAgent.slice(0, 160),
+      build: BUILD,
     };
     const body = JSON.stringify({ level, area, event, message: err?.message, detail: JSON.stringify(detail), status: typeof extra?.status === "number" ? extra.status : undefined });
     // Straight to fetch, not through api(): api() reports its own failures here, and that must not loop.

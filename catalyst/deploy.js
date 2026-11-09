@@ -31,6 +31,9 @@ if (!fs.existsSync(secretsPath)) {
 }
 
 const secrets = JSON.parse(fs.readFileSync(secretsPath, 'utf8'));
+// Which release wrote a log row or sent an alert: the deploy's UTC month-day.hourminute, like the app's own build
+// (next.config.ts). The functions read it as SOMA_RELEASE; Soma Ops shows it under Live now and per problem.
+const RELEASE = new Date().toISOString().slice(5, 16).replace('T', '.').replace(':', '');
 const names = only ? [only] : targets;
 const originals = new Map();
 
@@ -47,7 +50,7 @@ try {
     const text = fs.readFileSync(file, 'utf8');
     originals.set(file, text);
     const config = JSON.parse(text);
-    const merged = Object.assign({}, config.deployment.env_variables, secrets[name]);
+    const merged = Object.assign({}, config.deployment.env_variables, secrets[name], { SOMA_RELEASE: RELEASE });
     const empty = Object.keys(merged).filter((k) => merged[k] === '');
     if (empty.length) throw new Error(`${name}: empty values for ${empty.join(', ')}`);
     config.deployment.env_variables = merged;

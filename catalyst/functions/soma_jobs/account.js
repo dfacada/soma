@@ -12,7 +12,7 @@ const { writeLog } = require('./log');
 const BUCKET = 'soma-drafts';
 // Every table with a user_id column. ai_usage and logs included: nothing that names the person stays behind.
 const BY_USER = ['checkins', 'day_logs', 'activity', 'weight', 'entries', 'recipes', 'reviews', 'health_months',
-  'vault_tokens', 'vault_meta', 'push_subs', 'jobs', 'round_members', 'feedback', 'errors', 'ai_usage', 'logs'];
+  'vault_tokens', 'vault_meta', 'push_subs', 'jobs', 'round_members', 'feedback', 'errors', 'ai_usage', 'logs', 'messages'];
 const isId = (v) => /^\d{1,19}$/.test(String(v));
 
 async function ids(app, table, where) {

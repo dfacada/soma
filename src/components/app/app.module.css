@@ -377,3 +377,13 @@ button.changeHit:active { transform: scale(0.98); transition-duration: 0.06s; }
   .splashOverlay { transition: opacity 0.2s ease !important; }
   .splashLeaving { transform: none; }
 }
+
+/* Messages with the admin (2026-11-08): the card on Today while one is unread, and the thread in Settings. */
+.msgCard { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: var(--r-card); background: var(--journal-tint); color: var(--ink); border: 1px solid color-mix(in oklab, var(--journal) 25%, transparent); }
+.msgBody { margin: 0; font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.msgActions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.thread { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; }
+.bubble { display: flex; flex-direction: column; gap: 3px; max-width: 85%; padding: 10px 12px; border-radius: 16px; background: var(--surface-2); align-self: flex-start; }
+.bubbleMine { align-self: flex-end; background: var(--journal-tint); }
+.bubbleWho { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.bubbleBody { font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }

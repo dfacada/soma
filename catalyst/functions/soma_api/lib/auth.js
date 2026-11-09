@@ -37,7 +37,7 @@ function isTestCall(req) {
   return keyOk && String(req.get('x-zc-environment') || '').toLowerCase() === 'development';
 }
 
-const PROFILE_COLS = 'ROWID, user_id, email, display_name, role, status, last_seen_ms, invited_by, CREATEDTIME';
+const PROFILE_COLS = 'ROWID, user_id, email, display_name, role, status, last_seen_ms, invited_by, last_device, CREATEDTIME';
 
 // "Last seen" is the last authenticated call, which is what an admin actually wants: sessions last for weeks, so a
 // real sign-in almost never happens. Written at most once an hour per user, because Data Store bills every update
@@ -97,7 +97,8 @@ async function loadProfile(admin, user, startActive, seen, inviteCode) {
         role: isAdmin ? 'admin' : 'member',
         status: isAdmin || startActive || invite ? 'active' : 'pending',
         invited_by: invite ? String(invite.created_by) : null,
-        last_seen_ms: Date.now()
+        last_seen_ms: Date.now(),
+        created_ms: Date.now()
       });
       console.log(JSON.stringify({ action: 'profile_created', user: user.id, status: row.status, invited: Boolean(invite) }));
       if (invite) {
@@ -111,7 +112,7 @@ async function loadProfile(admin, user, startActive, seen, inviteCode) {
     }
   }
   else if (seen) touchSeen(admin, row);
-  return { rowId: String(row.ROWID), displayName: row.display_name || '', role: row.role, status: row.status, lastSeenMs: Number(row.last_seen_ms || 0) || null, invitedBy: row.invited_by ? String(row.invited_by) : null };
+  return { rowId: String(row.ROWID), displayName: row.display_name || '', role: row.role, status: row.status, lastSeenMs: Number(row.last_seen_ms || 0) || null, invitedBy: row.invited_by ? String(row.invited_by) : null, device: row.last_device || null };
 }
 
 // Resolve the signed-in app user for this request.

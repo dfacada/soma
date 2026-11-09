@@ -251,7 +251,7 @@ async function main() {
         const note = (kind: string, detail: string) => { if (!problems.some((p) => p.scene === scene.id && p.theme === theme && p.detail === detail)) problems.push({ scene: scene.id, theme, kind, detail }); };
         const w = await world(theme, scene.day || "open", scene.who || "settled");
         const ctx = await browser.newContext({
-          viewport: VIEW, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: "en-US",
+          viewport: scene.view || VIEW, deviceScaleFactor: scene.view ? 1 : 2, isMobile: !scene.view, hasTouch: !scene.view, locale: "en-US",
           colorScheme: theme === "night" ? "dark" : "light", reducedMotion: scene.reduced ? "reduce" : "no-preference",
           serviceWorkers: "block", permissions: ["microphone"],
         });
@@ -278,7 +278,7 @@ async function main() {
           await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
           if (o.dump) console.log(`\n── ${scene.id} · ${theme}\n` + await page.locator("body").ariaSnapshot());
           for (let frame = 0; frame <= (scene.frames || 0); frame++) {
-            if (frame > 0 && !(await scrollBy(page, VIEW.height - 120))) break;
+            if (frame > 0 && !(await scrollBy(page, (scene.view || VIEW).height - 120))) break;
             if (frame > 0) await page.waitForTimeout(300);
             const file = path.join(o.out, `${scene.id}.${theme}${frame ? "." + (frame + 1) : ""}.png`);
             // "disabled" plays every finite animation to its end and stops the endless ones at their start, so the

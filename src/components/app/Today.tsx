@@ -19,6 +19,7 @@ import { haptic } from "@/lib/haptics";
 import { report } from "@/lib/log";
 import { longDay } from "./DayBanner";
 import { FitbitBanner } from "./FitbitBanner";
+import { MessageCard } from "./Messages";
 import { useHealth } from "./Health";
 import { SleepSheet } from "./Sleep";
 import { StepsSheet } from "./Steps";
@@ -295,6 +296,7 @@ export function Today() {
   return (
     <div className={a.page}>
       <FitbitBanner />
+      <MessageCard />
       {/* The date, the streak and Settings along the top; the greeting gets the full width under them. On an earlier
           day the streak gives way to the way back. */}
       <header className={t.top}>

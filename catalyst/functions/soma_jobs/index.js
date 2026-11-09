@@ -5,6 +5,7 @@
 //                written next to it for the browser to collect, encrypt into the entry and delete.
 //   nudge        the evening nudge, from a 15-minute cron (nudge.js); with test=1, a test notification for one user.
 //   delete_account  every row and file of an account (account.js), queued by soma_api's DELETE /account.
+//                The nudge cron also runs Soma Ops' counting and alerts (ops.js).
 //                The same cron prunes the log and the AI usage counts once a day and sweeps stale transcription
 //                jobs once an hour.
 //   anything else is logged and dropped: only soma_api submits jobs, and it only submits these.
@@ -18,6 +19,7 @@
 const catalyst = require('zcatalyst-sdk-node');
 const nudge = require('./nudge');
 const account = require('./account');
+const ops = require('./ops');
 const { writeLog } = require('./log');
 
 const RETAIN_DAYS = 30;
@@ -170,6 +172,8 @@ module.exports = async (jobRequest, context) => {
         await pruneUsage(app).catch((e) => writeLog(app, { level: 'warn', source: 'job', area: 'quota', event: 'prune_failed', message: e.message }));
         // Hourly, like the job sweep: finish any account deletion a job left half done (or never started).
         if (new Date().getUTCMinutes() < 15) await account.finishDeletions(app).catch((e) => writeLog(app, { source: 'job', area: 'account', event: 'finish_failed', message: e.message }));
+        // Soma Ops: the hourly counts, the daily closed days and cohorts, and the Telegram alerts (ops.js).
+        await ops.run(app).catch((e) => writeLog(app, { level: 'warn', source: 'job', area: 'ops', event: 'run_failed', message: e.message }));
       }
     } else {
       await writeLog(app, { level: 'warn', source: 'job', area: 'jobs', event: 'unknown_type', message: 'a job with no known type was dropped', detail: { type: String(params.type || '').slice(0, 40) } });

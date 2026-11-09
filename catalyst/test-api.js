@@ -693,6 +693,49 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     await call('DELETE', '/links/todoist');
   }
 
+  // Soma Ops is admin only, route by route, and the synthetic members can never be admins. Messages: a member writes
+  // to the admin and reads their own thread, never another member's.
+  console.log('Soma Ops and messages');
+  {
+    const as2 = (method, route, body) => call(method, route, body, { 'x-test-member': '2' });
+    const other = '999000000000000002';
+    const routes = [
+      ['GET', '/ops/badges'], ['GET', '/ops/overview'], ['GET', '/ops/issues'], ['POST', '/ops/issues/fitbit:' + other + '/handled', { handled: true }],
+      ['GET', '/ops/people'], ['GET', '/ops/people?q=test'], ['GET', '/ops/people/' + other], ['POST', '/ops/people/' + other + '/reveal', { reason: 'testing the door' }],
+      ['POST', '/ops/people/' + other + '/messages', { body: 'hello' }], ['POST', '/ops/people/' + other + '/delete', { confirm: 'test2@soma.invalid', reason: 'testing the door' }],
+      ['GET', '/ops/errors'], ['GET', '/ops/errors/sample?area=api&event=crash'], ['POST', '/ops/errors/state', { area: 'api', event: 'crash', action: 'mute' }],
+      ['PUT', '/ops/alerts', { fresh: false }], ['GET', '/ops/support'], ['GET', '/ops/audit']
+    ];
+    let refused = 0;
+    for (const [m, route, body] of routes) {
+      r = await call(m, route, body);
+      if (r.status === 403) refused++; else check(`a member cannot ${m} ${route}`, false, r.status + ' ' + r.text);
+    }
+    check(`every Ops route refuses a member (${routes.length})`, refused === routes.length);
+    r = await as2('GET', '/ops/people/999000000000000001');
+    check("member two cannot open member one's Ops page", r.status === 403, r.text);
+
+    r = await call('POST', '/messages', { body: '   ' });
+    check('an empty message is refused', r.status === 400, r.text);
+    r = await call('POST', '/messages', { body: 'x'.repeat(2001) });
+    check('a message over 2,000 characters is refused', r.status === 413, r.text);
+    const words = 'Test message ' + Date.now();
+    r = await call('POST', '/messages', { body: words });
+    check('a member can write to the admin', r.status === 201 && r.json.body === words && r.json.sender === 'member', r.json);
+    r = await call('GET', '/messages');
+    check('…and sees it in their own thread', r.status === 200 && r.json.messages.some((m) => m.body === words && m.sender === 'member'), r.json);
+    check('…with what they sent through the old feedback form in it too', r.status === 200 && r.json.messages.some((m) => m.feedback && m.body === 'test feedback'), r.json && r.json.messages.slice(-3));
+    check('…and nothing unread from the admin', r.status === 200 && r.json.unread === 0, r.json && r.json.unread);
+    r = await as2('GET', '/messages');
+    check("member two does not see member one's messages", r.status === 200 && !r.json.messages.some((m) => m.body === words), r.json);
+    r = await call('POST', '/messages/read');
+    check('marking the thread read works', r.status === 200 && typeof r.json.read === 'number', r.json);
+    r = await call('GET', '/account/export');
+    check("the export carries the member's messages", r.status === 200 && Array.isArray(r.json.messages) && r.json.messages.some((m) => m.body === words && m.from === 'you'), r.json && r.json.messages);
+    r = await call('GET', '/me?b=11-08.0000&i=1');
+    check('/me takes the build and the home-screen flag without a fuss', r.status === 200 && r.json.profile.device === undefined, r.json);
+  }
+
   // A third test member is filled with data, then deletes its account. soma_jobs does the deleting in the
   // background and removes the profile last, so a fresh profile on /me means everything else has gone.
   console.log('deleting an account');

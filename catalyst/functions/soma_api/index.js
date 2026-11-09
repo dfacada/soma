@@ -9,6 +9,7 @@
 
 const express = require('express');
 const { withUser, isTestId } = require('./lib/auth');
+const { deviceOf } = require('./lib/ops');
 const catalyst = require('zcatalyst-sdk-node');
 const { HttpError } = require('./lib/db');
 const { writeLog } = require('./lib/log');
@@ -36,8 +37,19 @@ app.get('/health', (_req, res) => {
 });
 
 // The one route a pending user can call: the app shows "waiting for approval" from profile.status.
+// It also notes the kind of device and the app's build (?b=, and ?i=1 from the home-screen app), which Soma Ops shows
+// as "last seen on". Written only when it changes, and never for the synthetic test members.
 app.get('/me', withUser, (req, res) => {
-  res.json({ id: req.user.id, email: req.user.email, name: req.user.name, profile: req.profile });
+  const b = String(req.query.b || '');
+  if (/^[A-Za-z0-9_.:-]{1,24}$/.test(b) && !isTestId(req.user.id) && req.profile.rowId) {
+    const device = `${deviceOf(req.get('user-agent'))} · ${req.query.i === '1' ? 'app' : 'browser'} · ${b}`;
+    if (device !== req.profile.device) {
+      void req.admin.datastore().table('profiles').updateRow({ ROWID: req.profile.rowId, last_device: device })
+        .catch((e) => console.error(JSON.stringify({ action: 'device_note', error: e.message })));
+    }
+  }
+  const { device: _device, ...profile } = req.profile;
+  res.json({ id: req.user.id, email: req.user.email, name: req.user.name, profile });
 });
 
 app.use(require('./routes/me'));
@@ -58,7 +70,9 @@ app.use(require('./routes/jobs'));
 app.use(require('./routes/health'));
 app.use(require('./routes/push'));
 app.use(require('./routes/logs'));
+app.use(require('./routes/messages'));
 app.use(require('./routes/admin'));
+app.use(require('./routes/ops'));
 
 app.use((_req, res) => res.status(404).json({ error: 'no such route' }));
 // Anything that ends as a 5xx goes into the log: a crash (500) and the 502/503s this API raises on purpose when

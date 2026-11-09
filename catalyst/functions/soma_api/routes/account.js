@@ -29,7 +29,7 @@ const num = (v) => (v === null || v === '' || v === undefined ? null : Number(v)
 router.get('/account/export', member, wrap(async (req, res) => {
   const uid = needId(req.user.id);
   const by = `WHERE user_id = ${uid}`;
-  const [profiles, checkins, dayLogs, activity, weight, recipes, entries, reviews, months, memberships, feedback, tokens] = await Promise.all([
+  const [profiles, checkins, dayLogs, activity, weight, recipes, entries, reviews, months, memberships, feedback, tokens, messages] = await Promise.all([
     select(req.admin, 'profiles', `SELECT email, display_name, role, status, settings_json, CREATEDTIME FROM profiles ${by}`),
     selectAll(req.admin, 'checkins', `SELECT day, mood, habits_json, counts_json FROM checkins ${by} ORDER BY day ASC`),
     selectAll(req.admin, 'day_logs', `SELECT day, meals_json, extras_json FROM day_logs ${by} ORDER BY day ASC`),
@@ -41,7 +41,8 @@ router.get('/account/export', member, wrap(async (req, res) => {
     selectAll(req.admin, 'health_months', `SELECT ym, ciphertext FROM health_months ${by} ORDER BY ym ASC`),
     select(req.admin, 'round_members', `SELECT round_id, daily_target, start_day, status FROM round_members ${by} LIMIT 300`),
     selectAll(req.admin, 'feedback', `SELECT body, CREATEDTIME FROM feedback ${by} ORDER BY CREATEDTIME ASC`),
-    select(req.admin, 'vault_tokens', `SELECT provider, created_ms FROM vault_tokens ${by} LIMIT 100`)
+    select(req.admin, 'vault_tokens', `SELECT provider, created_ms FROM vault_tokens ${by} LIMIT 100`),
+    selectAll(req.admin, 'messages', `SELECT sender, body, created_ms FROM messages ${by} ORDER BY created_ms ASC`)
   ]);
   const roundIds = [...new Set(memberships.map((m) => needId(m.round_id)))];
   const rounds = roundIds.length ? await select(req.admin, 'rounds', `SELECT ROWID, name, start_date, length_days FROM rounds WHERE ROWID IN (${roundIds.join(', ')}) LIMIT 300`) : [];
@@ -70,6 +71,7 @@ router.get('/account/export', member, wrap(async (req, res) => {
     reviews: reviews.map((r) => ({ weekStart: r.week_start, ciphertext: r.ciphertext, hasAudio: bool(r.has_audio), createdMs: num(r.created_ms) })),
     sleep: months.map((r) => ({ month: r.ym, ciphertext: r.ciphertext })),
     feedback: feedback.map((r) => ({ body: r.body, sent: r.CREATEDTIME })),
+    messages: messages.map((r) => ({ from: r.sender === 'admin' ? 'Soma' : 'you', body: r.body, sentMs: num(r.created_ms) })),
     // Which services are linked, never the tokens: they are vault ciphertext that only opens on a device.
     linked: tokens.map((r) => ({ service: r.provider, since: num(r.created_ms) }))
   });
@@ -80,13 +82,17 @@ router.get('/account/export', member, wrap(async (req, res) => {
 router.delete('/account', withUser, wrap(async (req, res) => {
   if (!req.body || req.body.confirm !== 'DELETE') throw new HttpError(400, 'type DELETE to confirm');
   if (req.profile.role === 'admin') throw new HttpError(403, "an admin account can't be deleted from the app");
-  const uid = needId(req.user.id);
+  res.status(202).json(await startDeletion(req, { uid: needId(req.user.id), rowId: req.profile.rowId, test: isTestUser(req) }));
+}));
 
-  await req.admin.datastore().table('profiles').updateRow({ ROWID: req.profile.rowId, status: 'deleting' });
+/** Begin deleting an account: mark it 'deleting', remove the sign-in, queue the job. Used by DELETE /account (your own)
+ *  and by Soma Ops (an admin, on the person's written request, recorded in the audit first). */
+async function startDeletion(req, { uid, rowId, test }) {
+  await req.admin.datastore().table('profiles').updateRow({ ROWID: rowId, status: 'deleting' });
 
   // The sign-in first: from here on nobody can act as this person, and the job's work cannot be undone by a new
   // request recreating rows. The synthetic test members have no sign-in to delete. A failure is the job's to retry.
-  let signInGone = isTestUser(req);
+  let signInGone = Boolean(test);
   if (!signInGone) {
     try { signInGone = Boolean(await catalyst.initialize(req, { scope: 'admin' }).userManagement().deleteUser(uid)); }
     catch (e) { void writeLog(req.admin, { level: 'warn', source: 'api', area: 'account', event: 'sign_in_delete_failed', message: e.message, userId: uid }); }
@@ -99,15 +105,16 @@ router.delete('/account', withUser, wrap(async (req, res) => {
       target_type: 'Function',
       target_name: 'soma_jobs',
       jobpool_name: POOL,
-      params: { type: 'delete_account', user_id: uid, sign_in_gone: signInGone ? '1' : '0', test: isTestUser(req) ? '1' : '0' }
+      params: { type: 'delete_account', user_id: uid, sign_in_gone: signInGone ? '1' : '0', test: test ? '1' : '0' }
     });
   } catch (e) {
     // The profile already says 'deleting', so the hourly sweep will do it; only the wait is longer.
     queued = false;
     void writeLog(req.admin, { level: 'warn', source: 'api', area: 'account', event: 'delete_queue_failed', message: e.message, userId: uid });
   }
-  console.log(JSON.stringify({ action: 'account_delete_started', user: uid, queued, signInGone }));
-  res.status(202).json({ deleting: true, queued, signInGone });
-}));
+  console.log(JSON.stringify({ action: 'account_delete_started', user: uid, queued, signInGone, by: req.user.id === uid ? 'self' : 'admin' }));
+  return { deleting: true, queued, signInGone };
+}
 
 module.exports = router;
+module.exports.startDeletion = startDeletion;

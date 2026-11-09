@@ -102,6 +102,7 @@ router.put('/google-health/link', member, wrap(async (req, res) => {
   if (!ciphertext || !/^[A-Za-z0-9+/=]{40,}$/.test(ciphertext)) throw new HttpError(400, 'ciphertext must be base64');
   const key = ukey(req.user.id);
   await upsert(req.admin, 'vault_tokens', `SELECT ROWID FROM vault_tokens WHERE ukey = '${key}'`, { user_id: req.user.id, provider: PROVIDER, ukey: key, ciphertext, created_ms: Date.now() });
+  void note(req, 'connected', 'connected to Google Health', null, 'info');
   res.json({ ok: true });
 }));
 

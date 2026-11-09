@@ -28,6 +28,8 @@ export type Scene = {
   reduced?: boolean;
   /** Whose screen: the settled member (the default), someone on their first day, or someone waiting for approval. */
   who?: Who;
+  /** A window size other than the phone's, for screens made for a computer first (Soma Ops). */
+  view?: { width: number; height: number };
 };
 
 export type Area = {
@@ -49,6 +51,7 @@ export const AREAS: Area[] = [
   { id: "settings", title: "Settings and What's new", files: ["src/components/app/Settings.tsx", "src/components/app/WhatsNew.tsx", "src/components/app/Telegram.tsx"] },
   { id: "moments", title: "Full-screen moments: recording, saying what you ate, the day closing", files: ["src/components/app/Moments.tsx", "src/components/app/moments.module.css"] },
   { id: "welcome", title: "Getting in: waiting for approval and making the vault", files: ["src/components/app/Session.tsx", "src/components/app/Journal.tsx"] },
+  { id: "ops", title: "Soma Ops: the admin's console (a computer first; a phone too)", files: ["src/components/ops/OpsShell.tsx", "src/components/ops/Overview.tsx", "src/components/ops/Issues.tsx", "src/components/ops/People.tsx", "src/components/ops/Person.tsx", "src/components/ops/Errors.tsx", "src/components/ops/Support.tsx", "src/components/ops/Audit.tsx", "src/components/ops/ops.module.css"] },
 ];
 
 /** The shared design system: tokens, primitives, the shell and the shared CSS modules. One maker, run alone. */
@@ -61,6 +64,7 @@ export const SYSTEM_FILES = [
 // Titles say what the screen must show, so a critic can catch a state that contradicts the data, not only bad looks.
 // The member: 12 full days in a row before today (best 21); today at 7:30 pm has weight, check-in (Great),
 // breakfast, lunch, the snack, 60 of 100 push-ups and a walk; the journal and dinner are left, so 3 of 5 are done.
+const DESK = { width: 1280, height: 900 };
 export const SCENES: Scene[] = [
   { id: "today", area: "today", title: "Today at 7:30 pm: 3 of 5 done, journal and dinner left, a 12-day streak (best 21)", path: "/", frames: 1 },
   { id: "today-closed", area: "today", title: "Today with all five done: the day is closed and the streak is 13", path: "/", day: "closed" },
@@ -94,4 +98,13 @@ export const SCENES: Scene[] = [
   { id: "new-insights", area: "insights", who: "new", title: "Insights on day one: not one day logged yet", path: "/insights/" },
   { id: "new-tomorrow", area: "tomorrow", who: "new", title: "Tomorrow's brief on day one: nothing connected", path: "/tomorrow/" },
   { id: "new-settings", area: "settings", who: "new", title: "Settings on day one: no vault, Fitbit not connected", path: "/settings/", frames: 2 },
+
+  // Soma Ops, the admin's console, on invented people (ops-world.ts): a computer-sized window first, and a phone.
+  { id: "ops-overview", area: "ops", view: DESK, title: "Ops overview: today's tiles, cohorts, the funnel, people a day (the first three days not counted yet), issues by kind", path: "/ops/", frames: 1 },
+  { id: "ops-issues", area: "ops", view: DESK, title: "Ops issues: eight open, five need you; the first (journal entries won't open) picked, with its fix and a message ready", path: "/ops/issues/" },
+  { id: "ops-person", area: "ops", view: DESK, title: "Ops, one person: fourteen days done or not with no values, their issue, errors, messages, values locked, journal never visible, AI use", path: "/ops/person/?id=800000000000000101", frames: 1 },
+  { id: "ops-errors", area: "ops", view: DESK, title: "Ops errors: six problems grouped from 24 hours, the newest picked with its sample, Telegram alerts", path: "/ops/errors/", frames: 1 },
+  { id: "ops-people", area: "ops", view: DESK, title: "Ops people: one waiting for approval, everyone, the sign-up invites", path: "/ops/people/" },
+  { id: "ops-audit", area: "ops", view: DESK, title: "Ops audit: values shown with a reason, a message, a mute, an approval", path: "/ops/audit/" },
+  { id: "ops-phone", area: "ops", title: "Ops overview on a phone: the nav is a row of tabs", path: "/ops/", frames: 1 },
 ];

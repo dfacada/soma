@@ -150,6 +150,31 @@ const PATHS = {
   refresh: <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />,
   send: <path d="M4 12l16-8-6 16-2.5-6.5L4 12zM11.5 13.5L20 4" />,
   chevron: <path d="M9 5l7 7-7 7" />,
+  // Soma Ops' nav (2026-11-08), drawn like the rest: 24 grid, round ends.
+  grid: (
+    <>
+      <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+      <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+      <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+      <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+    </>
+  ),
+  inbox: <path d="M4 13h4l2 3h4l2-3h4M4 13l2.5-7.5h11L20 13v5.5H4z" />,
+  user: (
+    <>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c1-3.5 3.8-5.5 7-5.5s6 2 7 5.5" />
+    </>
+  ),
+  alert: <path d="M12 4l9 16H3zM12 10v4M12 17v.5" />,
+  chat: <path d="M4 5h16v11H9l-5 4z" />,
+  doc: <path d="M7 3.5h8l3.5 3.5v13.5H7zM10 11h6M10 14.5h6M10 18h3" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M16 16l4.5 4.5" />
+    </>
+  ),
   task: (
     <>
       <rect x="4" y="4" width="16" height="16" rx="4" />

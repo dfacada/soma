@@ -12,8 +12,8 @@
 
 const webpush = require('web-push');
 const { writeLog } = require('./log');
+const { closingRules, leftToday } = require('./closing');
 
-const MEALS = ['breakfast', 'lunch', 'snack', 'dinner'];
 const WINDOW_MIN = 120; // how long after the chosen time a late cron run may still nudge
 const SUBJECT = 'https://soma-onkasary.onslate.com/privacy/';
 const parse = (text, fallback) => { try { return text ? JSON.parse(text) : fallback; } catch (_e) { return fallback; } };
@@ -31,13 +31,8 @@ function nudgeSettings(settings) {
   const s = settings && typeof settings === 'object' ? settings : {};
   const n = s.nudge && typeof s.nudge === 'object' ? s.nudge : {};
   const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(n.time || '');
-  // Steps close the day only for someone who chose Steps as a move, at their steps goal (src/lib/moves.ts movedOn).
-  const steps = Array.isArray(s.moves) && s.moves.some((x) => x && x.key === 'steps');
-  const goal = Number(s.goals && s.goals.steps);
-  return {
-    on: n.on === true, minutes: m ? Number(m[1]) * 60 + Number(m[2]) : 20 * 60 + 30, requireWeight: s.requireWeight !== false,
-    stepsGoal: steps ? (Number.isFinite(goal) && goal > 0 ? goal : 8000) : null
-  };
+  // Steps close the day only for someone who chose Steps as a move, at their steps goal (closing.js).
+  return Object.assign({ on: n.on === true, minutes: m ? Number(m[1]) * 60 + Number(m[2]) : 20 * 60 + 30 }, closingRules(s));
 }
 
 /** Is it this device's moment? After the chosen time, inside the window, and not already nudged today. */
@@ -45,22 +40,7 @@ function due(local, minutes, lastDay) {
   return Boolean(local) && local.minutes >= minutes && local.minutes < minutes + WINDOW_MIN && lastDay !== local.day;
 }
 
-/** A types_json value that is something logged: a session, or an amount above nothing (src/lib/moves.ts). */
-const logged = (v) => v === true || (Boolean(v) && typeof v === 'object' && Number(v.n) > 0);
-
-/** What is still open, in card order. An empty list is a closed day. Activity: any move logged, or, for someone who
- *  chose Steps, steps at their goal (`stepsGoal`, null otherwise). Same rule as src/lib/moves.ts movedOn. */
-function leftToday({ weight, mood, entries, meals, pushups, types, steps }, requireWeight, stepsGoal = null) {
-  const left = [];
-  if (requireWeight && !weight) left.push('Weight');
-  if (!mood) left.push('Check-in');
-  if (!entries) left.push('Journal');
-  const eaten = MEALS.filter((k) => meals && meals[k]).length;
-  if (eaten < 4) left.push(eaten === 0 ? 'Food' : `${4 - eaten} meal${eaten === 3 ? '' : 's'}`);
-  const moved = pushups > 0 || Object.values(types || {}).some(logged) || (stepsGoal !== null && Number(steps) >= stepsGoal);
-  if (!moved) left.push('Activity');
-  return left;
-}
+// The closing rule itself (leftToday) lives in closing.js, shared with Soma Ops.
 
 // ── The week-in-review reminder. The review can only be written on a device with the vault open (src/lib/review.ts),
 // so at the person's review day and time this tells them it is ready to write. Opening it writes it, and sends it to
@@ -173,7 +153,12 @@ async function run(app, params) {
       return true;
     } catch (e) {
       // 404 and 410 mean the browser has dropped this subscription for good.
-      if (e.statusCode === 404 || e.statusCode === 410) { tally.gone++; sub.gone = true; await table.deleteRow(sub.ROWID).catch(() => undefined); return false; }
+      if (e.statusCode === 404 || e.statusCode === 410) {
+        tally.gone++; sub.gone = true;
+        await table.deleteRow(sub.ROWID).catch(() => undefined);
+        await writeLog(app, { level: 'warn', source: 'job', area: 'push', event: 'subscription_gone', message: 'the phone dropped its reminder subscription', status: e.statusCode, userId: uid, test: /^99900000000000000[123]$/.test(uid) });
+        return false;
+      }
       tally.failed++;
       const fails = (Number(sub.fails) || 0) + 1;
       sub.fails = fails;

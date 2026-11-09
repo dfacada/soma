@@ -5,7 +5,6 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api";
 import { isDevIdentity } from "@/lib/catalyst";
 import { haptic } from "@/lib/haptics";
 import { hm } from "@/lib/sleep";
@@ -22,6 +21,7 @@ import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/f
 import { planMeals, type Habit, type Settings } from "@/lib/settings";
 import { Button, ButtonLink, Chip, Field, Icon, Input, Pill, Segmented, Select, Sheet, Switch, Toast, useTabVisible } from "@/components/ui";
 import { Admin } from "./Admin";
+import { MessagesThread } from "./Messages";
 import { DataSettings } from "./AccountData";
 import { useHealth } from "./Health";
 import { NudgeSettings } from "./Nudge";
@@ -42,7 +42,7 @@ const THEME_NAME: Record<ThemeMode, string> = { dark: "Night", light: "Light", s
 const SLEEP_GOALS = [360, 390, 420, 450, 480, 510, 540, 570, 600];
 const HEALTH_SHORT = { loading: "Checking…", unconfigured: "Not available yet", off: "Not connected", connected: "Connected", reconnect: "Needs reconnecting" } as const;
 /** The sections a link can open as /settings/#id: Activity's Fitbit link, Tomorrow's Open Settings, the return from Google. */
-const SECTIONS = ["account", "appearance", "opening", "checkin", "food", "weight", "activity", "nudge", "brief", "fitbit", "journal", "review", "data", "whats-new", "feedback", "admin"];
+const SECTIONS = ["account", "appearance", "opening", "checkin", "food", "weight", "activity", "nudge", "brief", "fitbit", "journal", "review", "data", "whats-new", "messages", "admin"];
 /** What the Opening words row says it is set to. */
 const openingSummary = (source: OpeningSource, mine: number) =>
   source === "soma" || mine === 0 ? "Soma's words" : source === "mine" ? `${mine} of yours` : `Soma's and ${mine} of yours`;
@@ -299,10 +299,10 @@ export function SettingsScreen() {
         <Section {...sec("whats-new")} title="What's new" summary={`${CHANGES[0].title} · ${releaseDate(CHANGES[0].date)}`}>
           <ChangesSettings />
         </Section>
-        <Section {...sec("feedback")} title="Feedback" summary="Something broken or missing? Tell David.">
-          <Feedback say={say} />
+        <Section {...sec("messages")} title="Messages" summary="Something broken or missing? Write to David.">
+          <MessagesThread say={say} />
         </Section>
-        {me.profile.role === "admin" && <Section {...sec("admin")} title="Admin" summary="Approvals, users, the log and feedback" />}
+        {me.profile.role === "admin" && <Section {...sec("admin")} title="Admin" summary="Soma Ops, and your own transcripts" />}
       </Group>
       {me.profile.role === "admin" && open.has("admin") && <Admin say={say} />}
 
@@ -471,27 +471,6 @@ function SnackForm({ onAdd }: { onAdd: (name: string, kcal: number) => void }) {
       <Input className={a.kcalInput} placeholder="kcal" aria-label="Snack calories" inputMode="numeric" pattern="[0-9]*" value={kcal} onChange={(e) => setKcal(digits(e.target.value, 4))} />
       <Button type="submit" disabled={!ok}>Add</Button>
     </form>
-  );
-}
-
-function Feedback({ say }: { say: (m: string) => void }) {
-  const [body, setBody] = useState("");
-  const [busy, setBusy] = useState(false);
-  async function send(e: React.FormEvent) {
-    e.preventDefault();
-    if (!body.trim()) return;
-    setBusy(true);
-    try { await api("POST", "/feedback", { body: body.trim() }); setBody(""); say("Sent. Thank you."); }
-    catch { say("Couldn't send that"); }
-    finally { setBusy(false); }
-  }
-  return (
-    <>
-      <form className={a.vaultForm} onSubmit={send}>
-        <textarea className={a.note} rows={3} maxLength={4000} value={body} aria-label="Feedback" placeholder="Something broken, confusing or missing? It goes straight to David." onChange={(e) => setBody(e.target.value)} />
-        <div><Button type="submit" variant="secondary" disabled={busy || !body.trim()}>{busy ? "Sending…" : "Send feedback"}</Button></div>
-      </form>
-    </>
   );
 }
 

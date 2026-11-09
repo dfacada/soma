@@ -16,6 +16,15 @@ const scrub = (text) => String(text).replace(/[A-Za-z0-9_\-+/=%]{40,}/g, '[redac
 const clean = (v, max) => (v === undefined || v === null || v === '' ? null : scrub(typeof v === 'string' ? v : JSON.stringify(v)).slice(0, max));
 const slug = (v, max, fallback) => (typeof v === 'string' && v.trim() ? v.trim().toLowerCase().replace(/[^a-z0-9_.:-]+/g, '_').slice(0, max) : fallback);
 
+// The release that wrote a server row (deploy.js sets SOMA_RELEASE), so Soma Ops can say which release a problem
+// came with. The browser's rows carry the app's own build instead (src/lib/log.ts).
+function withRelease(entry) {
+  const rel = process.env.SOMA_RELEASE;
+  if (!rel || entry.source === 'client') return entry.detail;
+  if (entry.detail === undefined || entry.detail === null || entry.detail === '') return { release: rel };
+  return typeof entry.detail === 'object' && !Array.isArray(entry.detail) ? Object.assign({ release: rel }, entry.detail) : entry.detail;
+}
+
 /** entry: { level, source, area, event, message, detail, userId, status, test } */
 async function writeLog(admin, entry) {
   try {
@@ -26,7 +35,7 @@ async function writeLog(admin, entry) {
       area: slug(entry.area, 40, 'app'),
       event: slug(entry.event, 80, 'failure'),
       message: clean(entry.message, 255),
-      detail: clean(entry.detail, DETAIL_MAX),
+      detail: clean(withRelease(entry), DETAIL_MAX),
       is_test: entry.test ? 'true' : 'false'
     };
     if (/^\d{1,19}$/.test(String(entry.userId || ''))) row.user_id = String(entry.userId);

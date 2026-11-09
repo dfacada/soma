@@ -8,7 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { api, ApiError, type Me } from "@/lib/api";
 import { catalystAuth, currentUser, isDevIdentity } from "@/lib/catalyst";
 import { applyLook } from "@/lib/look";
-import { report } from "@/lib/log";
+import { BUILD, isInstalled, report } from "@/lib/log";
 import { withMove } from "@/lib/moves";
 import { mergeSettings, type Settings } from "@/lib/settings";
 import { dayKey } from "@/lib/today";
@@ -77,7 +77,9 @@ async function resolveSession(step: (at: OpenStep, progress: StepProgress) => vo
     step("Checking your account", 0);
     // An invite link opened on this device goes with the first call: a brand-new account it can let in starts active.
     const invite = keptInvite();
-    let me = await api<Me>("GET", "/me" + (invite ? `?invite=${invite}` : ""));
+    // The build and whether this is the home-screen app go with it: Soma Ops shows where someone last used Soma.
+    const device = `b=${encodeURIComponent(BUILD)}&i=${isInstalled() ? 1 : 0}`;
+    let me = await api<Me>("GET", `/me?${device}` + (invite ? `&invite=${invite}` : ""));
     let used: { notice: string | null; kind: string | null } = { notice: null, kind: null };
     // An account that was already waiting (made before the link was opened, or elsewhere): the link lets it in now.
     if (me.profile.status === "pending" && invite) {
