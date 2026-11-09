@@ -235,7 +235,7 @@ async function rollup(app, now) {
 
 // ── Alerts ──
 
-/** At most this many alerts in any hour, whatever happens: a flood of problems is one look at Ops, not a pager. */
+/** Soma's own alerts (the server's and the jobs' problems, and the server error rate) get this many an hour. */
 const ALERTS_PER_HOUR = 6;
 
 /**
@@ -243,31 +243,38 @@ const ALERTS_PER_HOUR = 6;
  * { last15, per15 }; release: { at } | null; sent: Map key → last sent ms.
  *
  * `trusted` is a problem the server or a job wrote, whose code is Soma's own. Anyone signed in can report a line from
- * the app with an area and event of their choosing (POST /logs), so a code the app reported never goes into a
- * message (it could read like a link, "app.visit.evil.com"), and one person alone cannot make a "new problem" alert:
- * that takes two people in the hour. Ops → Errors shows the code, as text.
+ * the app with an area and event of their choosing (POST /logs), so what the app reported is kept apart from Soma's
+ * own alerts and can never crowd them out:
+ *   - Soma's own come first (the server error rate first of all) and have their own six an hour.
+ *   - Everything the app reported is one summary at most, once an hour, with counts and no codes (a code could read
+ *     like a link, "app.visit.evil.com"). A problem counts as new only with two people in the hour, and as wide with
+ *     ten. Ops → Errors shows the codes, as text.
  */
 function alertsDue({ toggles, problems, api, release, sent, now }) {
-  const out = [];
-  const fresh = (p) => p.first > now - 20 * 60000;
   const quiet = (key) => !sent.has(key) || sent.get(key) < now - HOUR;
+  const fresh = (p) => p.first > now - 20 * 60000;
   const times = (n) => `${n} time${n === 1 ? '' : 's'}`;
+  const own = [], fromApp = [];
+  if (toggles.api && api.last15 >= 10 && api.last15 >= 2 * Math.max(api.per15, 1) && quiet('api')) own.push({ id: 'api', text: `Soma: ${api.last15} server errors in 15 minutes, about ${Math.max(1, Math.round(api.last15 / Math.max(api.per15, 1)))} times the usual.` });
   for (const p of problems) {
-    const k = (kind) => `${kind}:${p.trusted ? 's' : 'c'}:${p.id}`;
-    const fromApp = `a problem the app reported (${p.people1h} ${p.people1h === 1 ? 'person' : 'people'} in the last hour; Soma Ops → Errors has it)`;
     const isNew = fresh(p) && (p.trusted || p.people1h >= 2);
-    if (toggles.fresh && isNew && quiet(k('fresh'))) {
-      out.push({ id: k('fresh'), text: p.trusted ? `Soma: a new problem, ${p.id}, ${times(p.count15)} in the last 15 minutes.` : `Soma: a new problem: ${fromApp}.` });
-    } else if (toggles.deploy && release && isNew && p.first - release.at < HOUR && p.first >= release.at && quiet(k('deploy'))) {
-      out.push({ id: k('deploy'), text: p.trusted ? `Soma: ${p.id} started within an hour of the release.` : `Soma: since the release, ${fromApp}.` });
+    const afterRelease = Boolean(release) && isNew && p.first >= release.at && p.first - release.at < HOUR;
+    if (!p.trusted) {
+      if ((toggles.fresh && isNew) || (toggles.deploy && afterRelease) || (toggles.wide && p.people1h >= 10)) fromApp.push(p);
+      continue;
     }
-    if (toggles.wide && p.people1h >= 10 && quiet(k('wide'))) {
-      out.push({ id: k('wide'), text: p.trusted ? `Soma: ${p.id} reached ${p.people1h} people in the last hour.` : `Soma: ${fromApp.replace(/^a problem/, 'one problem')} reached 10 or more.` });
-    }
+    const k = (kind) => `${kind}:s:${p.id}`;
+    if (toggles.fresh && isNew && quiet(k('fresh'))) own.push({ id: k('fresh'), text: `Soma: a new problem, ${p.id}, ${times(p.count15)} in the last 15 minutes.` });
+    else if (toggles.deploy && afterRelease && quiet(k('deploy'))) own.push({ id: k('deploy'), text: `Soma: ${p.id} started within an hour of the release.` });
+    if (toggles.wide && p.people1h >= 10 && quiet(k('wide'))) own.push({ id: k('wide'), text: `Soma: ${p.id} reached ${p.people1h} people in the last hour.` });
   }
-  if (toggles.api && api.last15 >= 10 && api.last15 >= 2 * Math.max(api.per15, 1) && quiet('api')) out.push({ id: 'api', text: `Soma: ${api.last15} server errors in 15 minutes, about ${Math.max(1, Math.round(api.last15 / Math.max(api.per15, 1)))} times the usual.` });
-  const lastHour = [...sent.values()].filter((at) => at > now - HOUR).length;
-  return out.slice(0, Math.max(0, ALERTS_PER_HOUR - lastHour));
+  const ownLastHour = [...sent].filter(([key, at]) => key !== 'app' && at > now - HOUR).length;
+  const out = own.slice(0, Math.max(0, ALERTS_PER_HOUR - ownLastHour));
+  if (fromApp.length && quiet('app')) {
+    const people = Math.max(...fromApp.map((p) => p.people1h));
+    out.push({ id: 'app', text: `Soma: ${fromApp.length === 1 ? 'a problem' : `${fromApp.length} problems`} the app reported in the last hour, the largest from ${people} ${people === 1 ? 'person' : 'people'}. Soma Ops → Errors has ${fromApp.length === 1 ? 'it' : 'them'}.` });
+  }
+  return out;
 }
 
 async function telegram(app, text) {
@@ -324,7 +331,7 @@ async function alerts(app, now) {
   const sent = new Map(Object.entries((sentState.value && sentState.value.sent) || {}).map(([k, v]) => [k, num(v)]));
   const due = alertsDue({ toggles, problems, api: { last15, per15: day / 95 }, release, sent, now });
   if (!due.length) return;
-  for (const a of due.slice(0, 5)) {
+  for (const a of due.slice(0, ALERTS_PER_HOUR + 1)) {
     try { await telegram(app, a.text); sent.set(a.id, now); }
     catch (e) { await writeLog(app, { level: 'warn', source: 'job', area: 'ops', event: 'alert_failed', message: e.message }); break; }
   }
