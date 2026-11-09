@@ -207,20 +207,30 @@ console.log("cohorts and the funnel");
   check("the funnel follows the newest cohort past its third week", f.week === "2026-10-05" && f.steps.map((s) => s[1]).join() === "3,2,2,2,1", f);
 }
 
-console.log("alerts: counts and codes, never a name");
+console.log("alerts: counts and codes, never a name, never a code someone typed");
 {
   const base = { toggles: { fresh: true, wide: true, api: true, deploy: false }, api: { last15: 0, per15: 2 }, release: null, sent: new Map(), now };
-  let due = job.alertsDue({ ...base, problems: [{ id: "food.estimate_failed", first: now - 5 * 60000, people1h: 1, count15: 3 }] });
-  check("a new problem", due.length === 1 && due[0].id === "fresh:food.estimate_failed" && /3 times/.test(due[0].text), due);
-  due = job.alertsDue({ ...base, problems: [{ id: "push.send_failed", first: now - 9 * DAY, people1h: 12, count15: 4 }] });
-  check("one problem reaching 10 people in an hour", due.length === 1 && due[0].id === "wide:push.send_failed");
+  const server = (id, extra) => ({ id, trusted: true, first: now - 5 * 60000, people1h: 1, count15: 3, ...extra });
+  const app = (id, extra) => ({ id, trusted: false, first: now - 5 * 60000, people1h: 1, count15: 3, ...extra });
+  let due = job.alertsDue({ ...base, problems: [server("review.write_failed")] });
+  check("a new problem the server wrote, by its code", due.length === 1 && due[0].id === "fresh:s:review.write_failed" && /review\.write_failed, 3 times/.test(due[0].text), due);
+  due = job.alertsDue({ ...base, problems: [app("app.visit.evil.com")] });
+  check("a code the app reported, from one person alone, sends nothing", due.length === 0, due);
+  due = job.alertsDue({ ...base, problems: [app("app.visit.evil.com", { people1h: 2 })] });
+  check("from two people it alerts, without the code", due.length === 1 && !due[0].text.includes("evil") && /the app reported/.test(due[0].text), due);
+  due = job.alertsDue({ ...base, problems: [app("push.x", { first: now - 9 * DAY, people1h: 12 }), server("push.send_failed", { first: now - 9 * DAY, people1h: 12 })] });
+  check("10 people in an hour: the server's by code, the app's without", due.length === 2 && due[1].text.includes("push.send_failed") && !due[0].text.includes("push.x"), due.map((d) => d.text));
   due = job.alertsDue({ ...base, problems: [], api: { last15: 25, per15: 3 } });
   check("server errors at twice the usual", due.length === 1 && due[0].id === "api");
-  due = job.alertsDue({ ...base, problems: [{ id: "food.estimate_failed", first: now - 5 * 60000, people1h: 1, count15: 3 }], sent: new Map([["fresh:food.estimate_failed", now - 10 * 60000]]) });
+  due = job.alertsDue({ ...base, problems: [server("food.estimate_failed")], sent: new Map([["fresh:s:food.estimate_failed", now - 10 * 60000]]) });
   check("at most once a problem an hour", due.length === 0);
-  due = job.alertsDue({ ...base, toggles: { fresh: false, wide: false, api: false, deploy: true }, release: { at: now - 30 * 60000 }, problems: [{ id: "tone.failed", first: now - 10 * 60000, people1h: 2, count15: 2 }] });
-  check("new errors after a release, when only that is on", due.length === 1 && due[0].id === "deploy:tone.failed");
-  check("no alert text names anyone", !JSON.stringify(job.alertsDue({ ...base, problems: [{ id: "a.b", first: now - 60000, people1h: 11, count15: 1 }] })).match(/Priya|@/));
+  due = job.alertsDue({ ...base, problems: Array.from({ length: 9 }, (_, i) => server("a.e" + i)) });
+  check("at most six alerts an hour, however many problems", due.length === 6, due.length);
+  due = job.alertsDue({ ...base, problems: Array.from({ length: 9 }, (_, i) => server("a.e" + i)), sent: new Map([["x", now - 5 * 60000], ["y", now - 10 * 60000], ["z", now - 2 * HOUR]]) });
+  check("…counting the ones already sent this hour", due.length === 4, due.length);
+  due = job.alertsDue({ ...base, toggles: { fresh: false, wide: false, api: false, deploy: true }, release: { at: now - 30 * 60000 }, problems: [server("tone.failed", { first: now - 10 * 60000, people1h: 2, count15: 2 })] });
+  check("new errors after a release, when only that is on", due.length === 1 && due[0].id === "deploy:s:tone.failed");
+  check("no alert text names anyone", !JSON.stringify(job.alertsDue({ ...base, problems: [server("a.b", { people1h: 11 })] })).match(/Priya|@/));
 }
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

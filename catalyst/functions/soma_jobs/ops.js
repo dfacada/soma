@@ -235,19 +235,39 @@ async function rollup(app, now) {
 
 // ── Alerts ──
 
-/** Which alerts to send, from what the log says. Pure. problems: [{ id, first, people1h, count15 }]; api: { last15,
- *  per15 }; release: { at } | null; sent: Map id → last sent ms. */
+/** At most this many alerts in any hour, whatever happens: a flood of problems is one look at Ops, not a pager. */
+const ALERTS_PER_HOUR = 6;
+
+/**
+ * Which alerts to send, from what the log says. Pure. problems: [{ id, trusted, first, people1h, count15 }]; api:
+ * { last15, per15 }; release: { at } | null; sent: Map key → last sent ms.
+ *
+ * `trusted` is a problem the server or a job wrote, whose code is Soma's own. Anyone signed in can report a line from
+ * the app with an area and event of their choosing (POST /logs), so a code the app reported never goes into a
+ * message (it could read like a link, "app.visit.evil.com"), and one person alone cannot make a "new problem" alert:
+ * that takes two people in the hour. Ops → Errors shows the code, as text.
+ */
 function alertsDue({ toggles, problems, api, release, sent, now }) {
   const out = [];
   const fresh = (p) => p.first > now - 20 * 60000;
-  const quiet = (id) => !sent.has(id) || sent.get(id) < now - HOUR;
+  const quiet = (key) => !sent.has(key) || sent.get(key) < now - HOUR;
+  const times = (n) => `${n} time${n === 1 ? '' : 's'}`;
   for (const p of problems) {
-    if (toggles.fresh && fresh(p) && quiet('fresh:' + p.id)) out.push({ id: 'fresh:' + p.id, text: `Soma: a new problem, ${p.id}, ${p.count15} time${p.count15 === 1 ? '' : 's'} in the last 15 minutes.` });
-    else if (toggles.deploy && release && fresh(p) && p.first - release.at < HOUR && p.first >= release.at && quiet('deploy:' + p.id)) out.push({ id: 'deploy:' + p.id, text: `Soma: ${p.id} started within an hour of the release.` });
-    if (toggles.wide && p.people1h >= 10 && quiet('wide:' + p.id)) out.push({ id: 'wide:' + p.id, text: `Soma: ${p.id} reached ${p.people1h} people in the last hour.` });
+    const k = (kind) => `${kind}:${p.trusted ? 's' : 'c'}:${p.id}`;
+    const fromApp = `a problem the app reported (${p.people1h} ${p.people1h === 1 ? 'person' : 'people'} in the last hour; Soma Ops → Errors has it)`;
+    const isNew = fresh(p) && (p.trusted || p.people1h >= 2);
+    if (toggles.fresh && isNew && quiet(k('fresh'))) {
+      out.push({ id: k('fresh'), text: p.trusted ? `Soma: a new problem, ${p.id}, ${times(p.count15)} in the last 15 minutes.` : `Soma: a new problem: ${fromApp}.` });
+    } else if (toggles.deploy && release && isNew && p.first - release.at < HOUR && p.first >= release.at && quiet(k('deploy'))) {
+      out.push({ id: k('deploy'), text: p.trusted ? `Soma: ${p.id} started within an hour of the release.` : `Soma: since the release, ${fromApp}.` });
+    }
+    if (toggles.wide && p.people1h >= 10 && quiet(k('wide'))) {
+      out.push({ id: k('wide'), text: p.trusted ? `Soma: ${p.id} reached ${p.people1h} people in the last hour.` : `Soma: ${fromApp.replace(/^a problem/, 'one problem')} reached 10 or more.` });
+    }
   }
   if (toggles.api && api.last15 >= 10 && api.last15 >= 2 * Math.max(api.per15, 1) && quiet('api')) out.push({ id: 'api', text: `Soma: ${api.last15} server errors in 15 minutes, about ${Math.max(1, Math.round(api.last15 / Math.max(api.per15, 1)))} times the usual.` });
-  return out;
+  const lastHour = [...sent.values()].filter((at) => at > now - HOUR).length;
+  return out.slice(0, Math.max(0, ALERTS_PER_HOUR - lastHour));
 }
 
 async function telegram(app, text) {
@@ -269,7 +289,7 @@ async function alerts(app, now) {
   // Three reads on a quiet run: the state rows, the last hour's errors, and the server's last 15 minutes.
   const [states, hour, last15] = await Promise.all([
     select(app, 'ops_state', "SELECT ROWID, skey, value FROM ops_state WHERE skey IN ('release', 'alerts', 'alerted') LIMIT 10"),
-    selectAll(app, 'logs', `SELECT area, event, user_id, created_ms FROM logs WHERE ${lv} AND created_ms > ${now - HOUR} ORDER BY created_ms DESC`, 3000),
+    selectAll(app, 'logs', `SELECT area, event, user_id, created_ms, source FROM logs WHERE ${lv} AND created_ms > ${now - HOUR} ORDER BY created_ms DESC`, 3000),
     countOf(app, 'logs', `${lv} AND source = 'api' AND created_ms > ${now - 15 * 60000}`)
   ]);
   const st = (k) => { const r = states.find((x) => x.skey === k); return r ? { rowId: r.ROWID, value: parse(r.value, {}) } : { rowId: null, value: null }; };
@@ -291,12 +311,15 @@ async function alerts(app, now) {
   const per = new Map();
   for (const r of hour) {
     const id = `${r.area}.${r.event}`;
-    if (!per.has(id)) per.set(id, { id, first: first.get(id) || num(r.created_ms), people: new Set(), count15: 0 });
-    const p = per.get(id);
+    // What the app reported and what the server wrote are kept apart, so a reported line can never pass for Soma's own.
+    const trusted = r.source === 'api' || r.source === 'job';
+    const key = (trusted ? 's:' : 'c:') + id;
+    if (!per.has(key)) per.set(key, { id, trusted, first: first.get(id) || num(r.created_ms), people: new Set(), count15: 0 });
+    const p = per.get(key);
     if (r.user_id) p.people.add(String(r.user_id));
     if (num(r.created_ms) > now - 15 * 60000) p.count15++;
   }
-  const problems = [...per.values()].map((p) => ({ id: p.id, first: p.first, people1h: p.people.size, count15: p.count15 }));
+  const problems = [...per.values()].map((p) => ({ id: p.id, trusted: p.trusted, first: p.first, people1h: p.people.size, count15: p.count15 }));
   const sentState = st('alerted');
   const sent = new Map(Object.entries((sentState.value && sentState.value.sent) || {}).map(([k, v]) => [k, num(v)]));
   const due = alertsDue({ toggles, problems, api: { last15, per15: day / 95 }, release, sent, now });
@@ -306,7 +329,8 @@ async function alerts(app, now) {
     catch (e) { await writeLog(app, { level: 'warn', source: 'job', area: 'ops', event: 'alert_failed', message: e.message }); break; }
   }
   // Keep a day of marks: older ones can never matter again.
-  const keep = Object.fromEntries([...sent].filter(([, at]) => at > now - DAY));
+  // A day of marks at most, and the newest 50: older ones can never matter again, and the state row stays small.
+  const keep = Object.fromEntries([...sent].filter(([, at]) => at > now - DAY).sort((a, b) => b[1] - a[1]).slice(0, 50));
   await putState(app, 'alerted', { sent: keep }, sentState.rowId);
 }
 
