@@ -13,6 +13,8 @@ import { report } from "@/lib/log";
 import { prepareChallenge } from "@/lib/vault-passkey";
 import { PALETTES, type MotionMode, type ThemeMode } from "@/lib/look";
 import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX, type OpeningSource } from "@/lib/opening";
+import { mainOf, movesOf } from "@/lib/moves";
+import { MovesChooser } from "./MovesChooser";
 import { SOMA_PHRASES } from "@/lib/opening-words";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
 import { planMeals, type Habit, type Settings } from "@/lib/settings";
@@ -47,6 +49,14 @@ const OPENING_HELP: Record<OpeningSource, string> = {
   mine: "Only the phrases you add below, taking turns.",
   both: "Yours and Soma's take turns, a day each.",
 };
+/** What the Your moves row says: the main move first, then the others. */
+function movesSummary(s: Settings) {
+  const all = movesOf(s);
+  const main = mainOf(s);
+  if (!main) return "Not chosen yet";
+  const rest = all.filter((x) => x.key !== main.key).map((x) => x.name.toLowerCase());
+  return `${main.name} is your main${rest.length ? ` · ${rest.join(", ")}` : ""}`;
+}
 const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "calm";
 /** "20:30" as "8:30 pm". */
 const clockOf = (hm: string) => { const [h, m] = hm.split(":").map(Number); return new Date(2000, 0, 1, h || 0, m || 0).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase(); };
@@ -206,16 +216,8 @@ export function SettingsScreen() {
           </Field>
         </Section>
 
-        <Section {...sec("activity")} title="Activity" summary={`${settings.pushupTarget} push-ups a day · ${settings.activityTypes.map((x) => x.name).join(", ")}`}>
-          <Field name="Daily push-up target" help="Yours alone. Flat, every day, no ramp.">
-            <Commit numeric value={String(settings.pushupTarget)} label="Daily push-up target" onCommit={(v) => { const n = Number(v); if (n >= 1 && n <= 10000 && n !== settings.pushupTarget) void save({ pushupTarget: n }, `Target set to ${n}`); }} />
-          </Field>
-          <span className="eb" style={{ paddingTop: 6 }}>Activity types</span>
-          <div className={a.chips}>
-            {settings.activityTypes.map((x, i) => <Pill key={x.key} label={x.name} onRemove={settings.activityTypes.length > 1 ? () => void save({ activityTypes: settings.activityTypes.filter((_, j) => j !== i) }) : undefined} />)}
-          </div>
-          <AddRow placeholder="Add an activity" disabled={settings.activityTypes.length >= 8}
-            onAdd={(name) => { if (settings.activityTypes.some((x) => x.name.toLowerCase() === name.toLowerCase())) return say("That one is already there"); void save({ activityTypes: [...settings.activityTypes, { key: slug(name), name }] }, `Added ${name}`); }} />
+        <Section {...sec("activity")} title="Your moves" summary={movesSummary(settings)}>
+          <MovesChooser say={say} />
         </Section>
       </Group>
 

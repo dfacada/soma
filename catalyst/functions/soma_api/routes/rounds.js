@@ -1,7 +1,9 @@
-// Push-up rounds. A round is a date window with rest days and scoring knobs; membership carries each person's
-// own flat daily target. There is no per-round log table: the board reads the same `activity` rows Today writes,
-// so the two can never disagree. Rules (streaks, points, ranks) are computed by the client from src/lib/round.ts;
-// this file only stores and serves.
+// Rounds. A round is a date window with rest days and scoring knobs, counting one kind of move (2026-11-08: push-ups,
+// a run, a walk, a ride, a swim, yoga, steps, or minutes of any move; no kind is push-ups, as every round before
+// kinds was). Membership carries each person's own flat daily target, in the kind's kept unit (lib/moves.js:
+// kilometres as metres). There is no per-round log table: the board reads the same `activity` rows Today writes,
+// frozen at their last on-time save (round_pushups, round_json), so a late backfill never moves a board. Rules
+// (streaks, points, ranks) are computed by the client from src/lib/round.ts; this file only stores and serves.
 //
 // Two kinds (2026-11-08, before Soma opens to people who don't know each other):
 //   open rounds      made by an admin; every member sees them and can join (as before).
@@ -16,9 +18,10 @@ const { member, admin, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, selectAll, upsert, needId, needDay, packJson, unpackJson, fitText, bool } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 const invites = require('../lib/invites');
+const { kindOf, needKind, needTarget, roundAmount } = require('../lib/moves');
 
 const router = express.Router();
-const ROUND_COLS = 'ROWID, name, start_date, length_days, rest_days_json, bonus_hit, bonus_streak, badge_streak, badge_hits, join_open, archived, invite_only, created_by';
+const ROUND_COLS = 'ROWID, name, start_date, length_days, rest_days_json, bonus_hit, bonus_streak, badge_streak, badge_hits, join_open, archived, invite_only, created_by, kind';
 const MEMBER_COLS = 'ROWID, round_id, user_id, daily_target, start_day, status, join_seq';
 const OWN_ROUNDS_MAX = 3;      // live private rounds one member can run at once
 const ROUND_MEMBERS_MAX = 50;  // people in one private round
@@ -29,7 +32,8 @@ const shapeRound = (r) => ({
   id: String(r.ROWID), name: r.name, startDate: r.start_date, lengthDays: Number(r.length_days),
   restDays: unpackJson(r.rest_days_json, []),
   bonusHit: num(r.bonus_hit, 30), bonusStreak: num(r.bonus_streak, 10), badgeStreak: num(r.badge_streak, 7), badgeHits: num(r.badge_hits, 30),
-  joinOpen: bool(r.join_open), archived: bool(r.archived), inviteOnly: bool(r.invite_only), ownerId: String(r.created_by)
+  joinOpen: bool(r.join_open), archived: bool(r.archived), inviteOnly: bool(r.invite_only), ownerId: String(r.created_by),
+  kind: kindOf(r.kind)
 });
 const shapeMember = (m) => ({ userId: String(m.user_id), dailyTarget: Number(m.daily_target), startDay: Number(m.start_day), joinSeq: Number(m.join_seq), status: m.status });
 
@@ -122,6 +126,10 @@ router.post('/rounds', member, wrap(async (req, res) => {
   const isAdmin = req.profile.role === 'admin';
   const v = roundValues(b, true);
   if (v.rest_days_json === undefined) v.rest_days_json = '[]';
+  const kind = needKind(b.kind);
+  // Everything that can be refused is refused before the round is made, so a bad target never leaves an empty round.
+  const target = b.dailyTarget === undefined ? null : needTarget(kind, b.dailyTarget);
+  const today = target === null ? null : needDay(b.today);
   const inviteOnly = isAdmin ? b.inviteOnly === true : true;
   if (!isAdmin) {
     needStartNearNow(v.start_date);
@@ -130,14 +138,13 @@ router.post('/rounds', member, wrap(async (req, res) => {
   }
   const row = await req.admin.datastore().table('rounds').insertRow({
     bonus_hit: 30, bonus_streak: 10, badge_streak: 7, badge_hits: 30, join_open: 'true', archived: 'false', ...v,
-    invite_only: inviteOnly ? 'true' : 'false', created_by: req.user.id
+    invite_only: inviteOnly ? 'true' : 'false', created_by: req.user.id, kind
   });
   const out = shapeRound(row);
   if (inviteOnly) {
     const roundId = String(row.ROWID);
-    const target = b.dailyTarget === undefined ? null : int('dailyTarget', b.dailyTarget, 1, 10000);
     if (target !== null) {
-      const startDay = Math.min(Math.max(dayIndex(out.startDate, needDay(b.today)), 1), out.lengthDays);
+      const startDay = Math.min(Math.max(dayIndex(out.startDate, today), 1), out.lengthDays);
       const ukey = `${roundId}:${req.user.id}`;
       await upsert(req.admin, 'round_members', `SELECT ROWID FROM round_members WHERE ukey = '${ukey}'`,
         { round_id: roundId, user_id: req.user.id, ukey, daily_target: target, start_day: startDay, status: 'active', join_seq: 1 });
@@ -152,6 +159,8 @@ router.put('/rounds/:id', member, wrap(async (req, res) => {
   const current = await findRound(req, req.params.id);
   needManage(req, current);
   const b = req.body || {};
+  // What a round counts is fixed: everyone's target is in its unit.
+  if (b.kind !== undefined && needKind(b.kind) !== kindOf(current.kind)) throw new HttpError(409, 'what a round counts is fixed once it is made');
   const v = roundValues(b, false, Number(current.length_days));
   // Only an admin turns a round private or open; a member's round is private for good.
   if (b.inviteOnly !== undefined && req.profile.role === 'admin') v.invite_only = b.inviteOnly ? 'true' : 'false';
@@ -200,7 +209,7 @@ async function joinRound(req, round, dailyTarget, today) {
 router.post('/rounds/:id/join', member, wrap(async (req, res) => {
   const round = await findRound(req, req.params.id);
   const b = req.body || {};
-  const dailyTarget = int('dailyTarget', b.dailyTarget, 1, 10000);
+  const dailyTarget = needTarget(round.kind, b.dailyTarget);
   if (bool(round.invite_only) && !canManage(req, round)) {
     // A private round takes its current link; an old link the maker replaced opens nothing.
     const inv = await invites.findInvite(req.admin, b.code);
@@ -215,7 +224,7 @@ router.put('/rounds/:id/me', member, wrap(async (req, res) => {
   const round = await findRound(req, req.params.id);
   const mine = await membership(req, String(round.ROWID), req.user.id);
   if (!mine || mine.status !== 'active') throw new HttpError(404, 'you are not in this round');
-  await req.admin.datastore().table('round_members').updateRow({ ROWID: mine.ROWID, daily_target: int('dailyTarget', (req.body || {}).dailyTarget, 1, 10000) });
+  await req.admin.datastore().table('round_members').updateRow({ ROWID: mine.ROWID, daily_target: needTarget(round.kind, (req.body || {}).dailyTarget) });
   res.json(shapeMember(await membership(req, String(round.ROWID), req.user.id)));
 }));
 
@@ -257,8 +266,9 @@ router.post('/rounds/:id/invite', member, wrap(async (req, res) => {
   res.status(201).json({ code: inv.code, uses: 0, maxUses: LINK_USES });
 }));
 
-// ── The board: round + members + everyone's push-ups inside the round's dates ──
-// Members see each other's daily counts. That is what a leaderboard is; nothing else about a member is exposed.
+// ── The board: round + members + everyone's numbers for its kind inside the round's dates ──
+// Members see each other's daily numbers for what the round counts. That is what a leaderboard is; nothing else
+// about a member is exposed, not even their other moves: the server works out the one number and sends only that.
 router.get('/rounds/:id/board', member, wrap(async (req, res) => {
   const round = await findRound(req, req.params.id);
   const roundId = String(round.ROWID);
@@ -272,16 +282,20 @@ router.get('/rounds/:id/board', member, wrap(async (req, res) => {
   let names = new Map();
   if (ids.length) {
     const end = addDays(round.start_date, Number(round.length_days) - 1);
+    const kind = kindOf(round.kind);
+    // round_pushups and round_json, never pushups or types_json: a backfill logged more than two days late is the
+    // member's record, not the round's.
+    const col = kind === 'pushups' ? 'round_pushups' : 'round_json';
     const [rows, profiles] = await Promise.all([
-      // round_pushups, not pushups: a backfill logged more than two days late is the member's record, not the round's.
-      selectAll(req.admin, 'activity', `SELECT user_id, day, round_pushups FROM activity WHERE day >= '${round.start_date}' AND day <= '${end}' AND user_id IN (${ids.join(', ')}) ORDER BY ROWID ASC`),
+      selectAll(req.admin, 'activity', `SELECT user_id, day, ${col} FROM activity WHERE day >= '${round.start_date}' AND day <= '${end}' AND user_id IN (${ids.join(', ')}) ORDER BY ROWID ASC`),
       select(req.admin, 'profiles', `SELECT user_id, display_name FROM profiles WHERE user_id IN (${ids.join(', ')}) LIMIT 300`)
     ]);
     names = new Map(profiles.map((p) => [String(p.user_id), p.display_name || 'Member']));
     for (const r of rows) {
-      // No push-up count means only other activity was logged that day: not a push-up log at all.
-      if (r.round_pushups === null || r.round_pushups === undefined || r.round_pushups === '') continue;
-      (logs[String(r.user_id)] ||= {})[dayIndex(round.start_date, r.day)] = Number(r.round_pushups);
+      // Nothing it counts on a day means only other moves were logged: not a log for this round at all.
+      const n = kind === 'pushups' ? roundAmount('pushups', { pushups: r.round_pushups }) : roundAmount(kind, unpackJson(r.round_json, null));
+      if (n === null || !Number.isFinite(n)) continue;
+      (logs[String(r.user_id)] ||= {})[dayIndex(round.start_date, r.day)] = n;
     }
   }
   res.json({ round: shapeRound(round), members: members.map((m) => ({ ...shapeMember(m), displayName: names.get(String(m.user_id)) || 'Member' })), logs });

@@ -79,8 +79,8 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   check('weight round-trips as a number', r.status === 200 && r.json.value === 182.4, r.json);
   r = await call('PUT', '/weight/' + day, { value: 'heavy' });
   check('non-numeric weight is 400', r.status === 400, r.text);
-  r = await call('PUT', '/activity/' + day, { pushups: 100, types: { walk: 30 } });
-  check('activity saves', r.status === 200 && r.json.pushups === 100 && r.json.types.walk === 30, r.json);
+  r = await call('PUT', '/activity/' + day, { pushups: 100, types: { walk: { n: 30, u: 'min' }, gym: true } });
+  check('activity saves', r.status === 200 && r.json.pushups === 100 && r.json.types.walk.n === 30 && r.json.types.gym === true, r.json);
   r = await call('PUT', '/activity/' + day, { pushups: 12.5 });
   check('fractional pushups is 400', r.status === 400, r.text);
   // Backfill: push-ups count for the round only when logged within two days; the record takes them either way.
@@ -242,6 +242,79 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     await call('DELETE', `/rounds/${pid}/me`);
     r = await call('GET', '/rounds');
     check('an archived private round its maker has left is out of their list', r.status === 200 && !r.json.rounds.some((x) => x.id === pid), r.json && r.json.rounds.map((x) => x.name));
+  }
+
+  // Moves and rounds of any move (2026-11-08, lib/moves.js). A round counts one kind of move; targets are whole
+  // numbers in its kept unit (km as metres); the board reads each day as frozen at its last on-time save (round_json)
+  // and sends only the one number for its kind, never anyone's other moves.
+  console.log('moves and rounds of any move');
+  {
+    const as2 = (method, route, body) => call(method, route, body, { 'x-test-member': '2' });
+    const today = new Date().toISOString().slice(0, 10);
+    const ME = '999000000000000001', TWO = '999000000000000002';
+    // A run that failed half way may have left its rounds live, and a member can run only three at once.
+    r = await call('GET', '/rounds');
+    for (const x of (r.json && r.json.rounds) || []) if (x.inviteOnly && !x.archived && x.ownerId === ME && x.name.startsWith('__test_')) await call('PUT', `/rounds/${x.id}`, { archived: true });
+
+    r = await call('PUT', '/activity/' + day, { types: { walk: 30 } });
+    check('a bare number for a move is refused', r.status === 400, r.text);
+    r = await call('PUT', '/activity/' + day, { types: { run: { n: 3, u: 'miles' } } });
+    check('an unknown unit is refused', r.status === 400, r.text);
+    r = await call('PUT', '/activity/' + day, { types: { run: { n: 5, u: 'km' } }, roundJson: { types: { run: { n: 99, u: 'km' } } } });
+    check('moves logged years late: the record has them, the round does not, and the client cannot set that', r.status === 200 && r.json.types.run.n === 5 && r.json.roundJson == null, r.json);
+    r = await call('PUT', '/activity/' + today, { pushups: 0, types: { run: { n: 5.25, u: 'km' }, yoga: { n: 20, u: 'min' }, gym: true, walk: false } });
+    check('moves logged on the day are frozen for rounds, cleared ones dropped', r.status === 200 && same(r.json.roundJson && r.json.roundJson.types, { run: { n: 5.25, u: 'km' }, yoga: { n: 20, u: 'min' }, gym: true }), r.json);
+    r = await call('PUT', '/activity/' + today, { steps: 9000 });
+    check('typed steps freeze beside the moves, keeping them', r.status === 200 && r.json.steps === 9000 && r.json.roundJson && r.json.roundJson.steps === 9000 && r.json.roundJson.types.run.n === 5.25, r.json);
+    r = await call('PUT', '/activity/' + today, { steps: 12.5 });
+    check('fractional steps are 400', r.status === 400, r.text);
+    await as2('PUT', '/activity/' + today, { types: { run: { n: 3, u: 'km' }, walk: { n: 15, u: 'min' } } });
+
+    r = await call('POST', '/rounds', { name: '__test_run__', startDate: today, lengthDays: 7, kind: 'run', dailyTarget: 50, today });
+    check('a run target under 100 metres is refused', r.status === 400, r.text);
+    r = await call('GET', '/rounds');
+    check('…before anything is made: no empty round is left behind', r.status === 200 && !r.json.rounds.some((x) => x.name === '__test_run__' && !x.archived), r.json && r.json.rounds.map((x) => x.name));
+    r = await call('POST', '/rounds', { name: '__test_run__', startDate: today, lengthDays: 7, kind: 'chess', dailyTarget: 5000, today });
+    check('an unknown kind is refused', r.status === 400, r.text);
+    r = await call('POST', '/rounds', { name: '__test_run__', startDate: today, lengthDays: 7, kind: 'run', dailyTarget: 5000, today });
+    check('a member makes a run round with a 5 km target', r.status === 201 && r.json.kind === 'run' && Boolean(r.json.invite), r.json);
+    const runId = r.json && r.json.id, runCode = r.json && r.json.invite && r.json.invite.code;
+    r = await call('PUT', `/rounds/${runId}`, { kind: 'pushups' });
+    check('what a round counts is fixed once made', r.status === 409, r.text);
+    r = await as2('POST', `/invites/${runCode}/accept`, { today });
+    check('the link joins someone to a run round', r.status === 200 && r.json.round && r.json.round.kind === 'run', r.json);
+    const pub = await (await fetch(BASE + '/invites/' + runCode)).json();
+    check('the link says what the round counts to someone not signed in', pub.round && pub.round.kind === 'run', pub);
+    r = await call('GET', `/rounds/${runId}/board`);
+    const two = r.json && r.json.members && r.json.members.find((x) => x.userId === TWO);
+    check('…with the kind\'s default target when they have no run goal: 5 km, in metres', Boolean(two) && two.dailyTarget === 5000, r.json && r.json.members);
+    check("the board has each member's run that day, in metres, and nothing else of theirs", r.status === 200 && r.json.logs[ME] && r.json.logs[ME][1] === 5250 && r.json.logs[TWO] && r.json.logs[TWO][1] === 3000
+      && JSON.stringify(r.json).indexOf('yoga') === -1 && JSON.stringify(r.json).indexOf('walk') === -1, r.json);
+    r = await as2('PUT', `/rounds/${runId}/me`, { dailyTarget: 3000 });
+    check('a member changes their own target, in metres', r.status === 200 && r.json.dailyTarget === 3000, r.json);
+    r = await as2('PUT', `/rounds/${runId}/me`, { dailyTarget: 2.5 });
+    check('…and a fraction of a metre is refused', r.status === 400, r.text);
+
+    r = await call('POST', '/rounds', { name: '__test_minutes__', startDate: today, lengthDays: 7, kind: 'minutes', dailyTarget: 30, today });
+    const minId = r.json && r.json.id, minCode = r.json && r.json.invite && r.json.invite.code;
+    await as2('POST', `/invites/${minCode}/accept`, { today });
+    r = await call('GET', `/rounds/${minId}/board`);
+    check('a minutes round adds up every timed move (yoga 20; walk 15, and a run in km has no minutes)', r.status === 200 && r.json.logs[ME] && r.json.logs[ME][1] === 20 && r.json.logs[TWO] && r.json.logs[TWO][1] === 15, r.json && r.json.logs);
+
+    r = await call('POST', '/rounds', { name: '__test_steps__', startDate: today, lengthDays: 7, kind: 'steps', dailyTarget: 8000, today });
+    const stepsId = r.json && r.json.id;
+    r = await call('GET', `/rounds/${stepsId}/board`);
+    check('a steps round counts the steps frozen with the day', r.status === 200 && r.json.logs[ME] && r.json.logs[ME][1] === 9000, r.json && r.json.logs);
+
+    // Tidy: archived and left, so they drop out of every list and never count against the cap.
+    for (const id of [runId, minId, stepsId]) {
+      if (!id) continue;
+      await call('PUT', `/rounds/${id}`, { archived: true });
+      await call('DELETE', `/rounds/${id}/me`);
+      await as2('DELETE', `/rounds/${id}/me`);
+    }
+    await call('DELETE', '/activity/' + today);
+    await as2('DELETE', '/activity/' + today);
   }
 
   console.log('vault and entries');

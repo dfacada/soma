@@ -1,6 +1,7 @@
 // Insights: what comes with great days, how the window went, the journal's tone, and the privacy of reading it.
 //   node --import ./scripts/ts-resolve.mjs scripts/test-great-days.mjs
 import { greatDays, journalTone, progress, weekCompare } from "../src/lib/great-days.ts";
+import { mainOf } from "../src/lib/moves.ts";
 import { deidentify, phoneTone, shuffleForSending, fingerprint } from "../src/lib/journal-read.ts";
 import { DEFAULT_SETTINGS } from "../src/lib/settings.ts";
 
@@ -22,20 +23,21 @@ days.forEach((day, i) => {
 });
 
 console.log("great days");
-const g = greatDays(map, days, DEFAULT_SETTINGS, 100, null);
+const main = { move: mainOf(DEFAULT_SETTINGS), goal: 100 };
+const g = greatDays(map, days, DEFAULT_SETTINGS, main, null);
 check("counts the checked-in and great days", g.checkedIn === 12 && g.great === 6, g);
 const top = g.lifts.map((d) => d.key);
 check("moving, reading and staying under the drinks limit come with great days", ["active", "habit:read", "limit:drinks"].every((k) => top.includes(k)), top);
 check("a habit spread evenly over both kinds of day is not a finding", !top.includes("habit:meditate"));
 check("something done every day has no other side to compare", !top.includes("meals") && !top.includes("journal"));
 check("a lift is the share of great days when done minus when not", g.lifts.find((d) => d.key === "active").lift === 1);
-const few = greatDays(map, days.slice(0, 4), DEFAULT_SETTINGS, 100, null);
+const few = greatDays(map, days.slice(0, 4), DEFAULT_SETTINGS, main, null);
 check("too few days on a side shows nothing", few.lifts.length === 0 && few.drags.length === 0, few);
 
 console.log("journal tone");
 const tones = Object.fromEntries(days.map((d, i) => [d, i < 6 ? 0.6 : -0.2]));
 const themes = Object.fromEntries(days.map((d, i) => [d, i < 6 ? ["family", "training"] : ["work"]]));
-const t = journalTone(map, days, DEFAULT_SETTINGS, 100, null, tones, themes);
+const t = journalTone(map, days, DEFAULT_SETTINGS, main, null, tones, themes);
 check("the mean tone of the window", Math.abs(t.mean - 0.2) < 1e-9, t.mean);
 check("days you moved sound brighter", t.brighter[0] && t.brighter[0].lift > 0.7 && ["active", "habit:read", "limit:drinks"].includes(t.brighter[0].key), t.brighter[0]);
 check("bright days bring up their own themes, not the ones from heavier days", t.brightThemes.includes("family") && !t.brightThemes.includes("work"), t.brightThemes);

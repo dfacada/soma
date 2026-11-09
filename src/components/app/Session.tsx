@@ -9,6 +9,7 @@ import { api, ApiError, type Me } from "@/lib/api";
 import { catalystAuth, currentUser, isDevIdentity } from "@/lib/catalyst";
 import { applyLook } from "@/lib/look";
 import { report } from "@/lib/log";
+import { withMove } from "@/lib/moves";
 import { mergeSettings, type Settings } from "@/lib/settings";
 import { dayKey } from "@/lib/today";
 import { acceptInvite, cleanCode, forgetInvite, keptInvite } from "@/lib/invite";
@@ -44,7 +45,7 @@ type State =
   | { kind: "error"; message: string }
   | { kind: "ready"; me: Me };
 
-type Resolved = Exclude<State, { kind: "loading" | "ready" }> | { kind: "ready"; me: Me; displayName: string; stored: Record<string, unknown>; notice: string | null };
+type Resolved = Exclude<State, { kind: "loading" | "ready" }> | { kind: "ready"; me: Me; displayName: string; stored: Record<string, unknown>; notice: string | null; joinedKind: string | null };
 
 /** An invite link's code from whatever was pasted: the code itself, or the whole link with ?c= in it. */
 function codeFrom(text: string): string | null {
@@ -52,18 +53,19 @@ function codeFrom(text: string): string | null {
   return cleanCode(m ? decodeURIComponent(m[1]) : text);
 }
 
-/** Use the invite link this device kept (src/lib/invite.ts): join its round, and say how it went. */
-async function applyKeptInvite(code: string): Promise<string | null> {
+/** Use the invite link this device kept (src/lib/invite.ts): join its round, and say how it went. `kind` is what the
+ *  round counts, so the move can be added to the person's moves. */
+async function applyKeptInvite(code: string): Promise<{ notice: string | null; kind: string | null }> {
   try {
     const r = await acceptInvite(code, dayKey(new Date()));
     forgetInvite();
-    if (!r.round) return r.approved ? "Welcome to Soma" : null;
-    return r.already ? `You're already in ${r.round.name}` : `You're in ${r.round.name}`;
+    if (!r.round) return { notice: r.approved ? "Welcome to Soma" : null, kind: null };
+    return { notice: r.already ? `You're already in ${r.round.name}` : `You're in ${r.round.name}`, kind: r.round.kind || "pushups" };
   } catch (e) {
     // A link that no longer works is forgotten; one that failed for another reason is tried on the next open.
-    if (e instanceof ApiError && (e.status === 410 || e.status === 403)) { forgetInvite(); return e.message; }
+    if (e instanceof ApiError && (e.status === 410 || e.status === 403)) { forgetInvite(); return { notice: e.message, kind: null }; }
     report("invite", "accept_failed", e, undefined, "warn");
-    return null;
+    return { notice: null, kind: null };
   }
 }
 
@@ -76,18 +78,19 @@ async function resolveSession(step: (at: OpenStep, progress: StepProgress) => vo
     // An invite link opened on this device goes with the first call: a brand-new account it can let in starts active.
     const invite = keptInvite();
     let me = await api<Me>("GET", "/me" + (invite ? `?invite=${invite}` : ""));
-    let notice: string | null = null;
+    let used: { notice: string | null; kind: string | null } = { notice: null, kind: null };
     // An account that was already waiting (made before the link was opened, or elsewhere): the link lets it in now.
     if (me.profile.status === "pending" && invite) {
-      notice = await applyKeptInvite(invite);
+      used = await applyKeptInvite(invite);
       me = await api<Me>("GET", "/me");
     }
     if (me.profile.status !== "active") return { kind: "blocked", me };
-    if (invite && keptInvite()) notice = await applyKeptInvite(invite);
+    if (invite && keptInvite()) used = await applyKeptInvite(invite);
+    const { notice } = used;
     step("Checking your account", 0.5);
     const s = await api<{ displayName: string; settings: Record<string, unknown> }>("GET", "/settings");
     step("Loading your days", "unknown");
-    return { kind: "ready", me, displayName: s.displayName || me.name || "", stored: s.settings || {}, notice };
+    return { kind: "ready", me, displayName: s.displayName || me.name || "", stored: s.settings || {}, notice, joinedKind: used.kind };
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) return { kind: "signedOut" };
     return { kind: "error", message: e instanceof Error ? e.message : "Something went wrong" };
@@ -106,10 +109,16 @@ export function SessionGate({ children }: { children: ReactNode }) {
   const apply = useCallback((r: Resolved) => {
     if (r.kind === "ready") {
       // A first open: no release ever seen and no day joined yet (a new account's settings are empty). Today becomes
-      // the day this person joined, so the week strips never count the days before it as missed.
+      // the day this person joined, so the week strips never count the days before it as missed. An empty list of
+      // moves says they have not chosen how they move yet: without it they would get the push-ups and activity types
+      // of settings from before moves (settings.ts), and nobody new starts with push-ups.
       const fresh = !r.stored.seenChanges && !r.stored.joined;
-      stored = fresh ? { ...r.stored, joined: dayKey(new Date()) } : r.stored;
-      if (fresh) void api("PUT", "/settings", { settings: stored }).catch((e) => report("app", "joined_save_failed", e, undefined, "warn"));
+      stored = fresh ? { ...r.stored, joined: dayKey(new Date()), ...(Array.isArray(r.stored.moves) ? {} : { moves: [] }) } : r.stored;
+      // Joining a round with a link adds the move it counts (made main for someone with none), so a new person who
+      // came in through a push-up round has push-ups to log.
+      const more = r.joinedKind ? withMove(mergeSettings(stored), r.joinedKind) : null;
+      if (more) stored = { ...stored, ...more };
+      if (fresh || more) void api("PUT", "/settings", { settings: stored }).catch((e) => report("app", fresh ? "joined_save_failed" : "invite_move_save_failed", e, undefined, "warn"));
       setSettings(mergeSettings(stored));
       setDisplayName(r.displayName);
       setNotice(r.notice);

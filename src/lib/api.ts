@@ -3,6 +3,7 @@
 
 import { authToken, forgetToken, DEV_TEST_KEY, isDevIdentity } from "./catalyst";
 import { report } from "./log";
+import type { MoveTypes } from "./moves";
 
 export const API_BASE = "https://soma-939530195.development.catalystserverless.com/server/soma_api/execute";
 
@@ -56,8 +57,9 @@ export type Eaten = { name: string; kcal: number; protein: number; carbs?: numbe
 export type Extra = { name: string; kcal: number; protein?: number; carbs?: number; fat?: number };
 /** A meal slot holds a snapshot of what was eaten, so swapping the plan later never rewrites past days. */
 export type DayLog = { day: string; meals: Record<string, Eaten | boolean>; extras: Extra[] };
-/** `steps` is written by the Google Health sync, never by a day save. */
-export type ActivityDay = { day: string; pushups: number | null; types: Record<string, boolean>; steps?: number | null };
+/** `steps` is written by the Google Health sync (or typed on the log sheet), never by an ordinary day save. `types`
+ *  holds every move but push-ups and steps: true for a session, { n, u } for an amount (src/lib/moves.ts). */
+export type ActivityDay = { day: string; pushups: number | null; types: MoveTypes; steps?: number | null };
 export type EntryMeta = { id: string; createdMs: number; hasAudio: boolean; hasPhoto: boolean; transcriptStatus: string };
 export type Days = {
   from: string; to: string;

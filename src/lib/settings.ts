@@ -4,13 +4,13 @@
 import { BOWL_VARIANTS, MEAL_PLANS, SNACK_PRESETS, type BowlId, type MealPlanId } from "./food-data";
 import { isPalette, MOTION_MODES, THEME_MODES, type MotionMode, type PaletteId, type ThemeMode } from "./look";
 import { NOTE_MAX, OPENING_SOURCES, PHRASE_MAX, PHRASES_MAX, type OpeningSource, type Phrase } from "./opening";
+import { cleanMoves, legacyMoves, type MoveSetting } from "./moves";
 
 export type Mood = { id: string; label: string; on: boolean };
 export type Habit = { id: string; label: string; type: "daily" | "counter"; goal?: number; dir?: "at_least" | "at_most" };
 export type Meal = "breakfast" | "lunch" | "snack" | "dinner";
 export type PlannedMeal = { name: string; kcal: number; protein: number; carbs?: number; fat?: number };
 export type Snack = { name: string; kcal: number; protein?: number; carbs?: number; fat?: number; portion?: string };
-export type ActivityType = { key: string; name: string };
 
 export type Settings = {
   moods: Mood[];
@@ -23,9 +23,12 @@ export type Settings = {
   /** Sleep to aim for, in minutes: the sleep pill fills toward it. 8 hours unless changed, as Fitbit's own default. */
   sleepGoal: number;
   snacks: Snack[];
-  activityTypes: ActivityType[];
-  /** Per person, flat, no ramp. Round membership will carry its own target once rounds exist. */
-  pushupTarget: number;
+  /** The moves this person tracks, each with its own daily goal (src/lib/moves.ts). Any of them closes the day. An
+   *  empty list is someone new who has not chosen yet; settings from before moves existed become their push-ups and
+   *  activity types (legacyMoves), so nothing changes for them until they choose. */
+  moves: MoveSetting[];
+  /** The move Today and Activity lead with. One of `moves`, or "" while there are none. */
+  mainMove: string;
   bestStreak: number;
   /** The newest changelog release this person has seen (src/lib/changelog.ts); "" = never seen one. */
   seenChanges: string;
@@ -87,8 +90,10 @@ export const DEFAULT_SETTINGS: Settings = {
   // Standard plan defaults from docs/HANDOFF.md §6.
   goals: { kcal: 2100, protein: 200, carbs: 150, fat: 75, steps: 8000 },
   sleepGoal: 480,
-  activityTypes: [{ key: "walk", name: "Walk" }, { key: "gym", name: "Gym" }, { key: "run", name: "Run" }],
-  pushupTarget: 100,
+  // What nothing stored means: settings from before moves existed. A new account stores an empty list on its first
+  // open (Session.tsx), so nobody new starts with push-ups.
+  moves: legacyMoves({}),
+  mainMove: "pushups",
   bestStreak: 0,
   seenChanges: "",
   seenInstall: false,
@@ -125,6 +130,13 @@ export function planMeals(planId: MealPlanId, bowl: BowlId): Record<Meal, Planne
 const SAMPLE_MEALS = ["Eggs & toast", "Overnight oats", "Greek yogurt bowl", "Chicken burrito bowl", "Turkey sandwich", "Lentil soup & bread", "Yogurt & berries", "Apple & almonds", "Protein shake", "Salmon, rice & greens", "Steak & sweet potato", "Veg stir-fry & tofu"];
 const SAMPLE_SNACKS = ["Beef stick", "Coffee, black", "Coffee with creamer", "Spindrift"];
 
+/** Moves as stored, or, for settings from before moves, the push-up target and activity types they had. */
+function movesFrom(s: Partial<Settings>): Pick<Settings, "moves" | "mainMove"> {
+  const moves = Array.isArray(s.moves) ? cleanMoves(s.moves) : legacyMoves(s as { pushupTarget?: unknown; activityTypes?: unknown });
+  const main = typeof s.mainMove === "string" && moves.some((m) => m.key === s.mainMove) ? s.mainMove : moves[0]?.key ?? "";
+  return { moves, mainMove: main };
+}
+
 /** Stored values win key by key; anything missing or of the wrong kind falls back to the default. */
 export function mergeSettings(stored: unknown): Settings {
   const s = (stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {}) as Partial<Settings>;
@@ -140,8 +152,7 @@ export function mergeSettings(stored: unknown): Settings {
     goals: { ...d.goals, ...(s.goals || {}) },
     sleepGoal: typeof s.sleepGoal === "number" && s.sleepGoal >= 240 && s.sleepGoal <= 720 ? Math.round(s.sleepGoal) : d.sleepGoal,
     snacks: Array.isArray(s.snacks) && !(s.snacks.length > 0 && s.snacks.every((x) => SAMPLE_SNACKS.includes(x?.name))) ? s.snacks : d.snacks,
-    activityTypes: list(s.activityTypes, d.activityTypes),
-    pushupTarget: Math.max(1, Math.round(num(s.pushupTarget, d.pushupTarget))),
+    ...movesFrom(s),
     bestStreak: Math.round(num(s.bestStreak, 0)),
     seenChanges: typeof s.seenChanges === "string" ? s.seenChanges.slice(0, 40) : "",
     seenInstall: s.seenInstall === true,

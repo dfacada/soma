@@ -4,6 +4,8 @@
 // the link is for, keeps the code on this device, and sends the person on into Soma, where signing up or in picks the
 // code up. Someone already signed in is joined to the round the moment Soma opens.
 
+import { kindOf } from "@/lib/moves";
+import { cap } from "@/lib/today";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cleanCode, forgetInvite, keepInvite, previewInvite, type InvitePreview } from "@/lib/invite";
@@ -55,7 +57,7 @@ export function JoinInvite() {
         <span className="d" style={{ fontSize: 30, textWrap: "balance", maxWidth: 340 }}>{round ? round.name : "Join Soma"}</span>
         <p className="muted" style={{ maxWidth: 340, textWrap: "balance", lineHeight: 1.5 }}>
           {round
-            ? `A push-up round: ${round.lengthDays} days from ${when(round.startDate)}, everyone aiming at their own daily target. Soma also keeps your journal, food and weight, and closes your day in a few taps.`
+            ? `${cap(kindOf(round.kind).round)}: ${round.lengthDays} days from ${when(round.startDate)}, everyone aiming at their own daily target. Soma also keeps your journal, food and weight, and closes your day in a few taps.`
             : "Soma closes your day in a few taps: a voice journal only you can read, your meals, your weight and your push-ups."}
         </p>
         <ButtonLink href="/">{round ? "Join the round" : "Join Soma"}</ButtonLink>

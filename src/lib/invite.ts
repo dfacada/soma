@@ -9,8 +9,9 @@ import { api, API_BASE } from "./api";
 const KEY = "soma-invite";
 const KEEP_MS = 14 * 24 * 60 * 60 * 1000;
 
-export type InvitePreview = { ok: boolean; reason: string | null; from: string | null; round: { name: string; startDate: string; lengthDays: number } | null };
-export type Accepted = { approved: boolean; already: boolean; round: { id: string; name: string } | null };
+/** `kind` is what the round counts (src/lib/moves.ts RoundKind); absent from an older API, which means push-ups. */
+export type InvitePreview = { ok: boolean; reason: string | null; from: string | null; round: { name: string; startDate: string; lengthDays: number; kind?: string } | null };
+export type Accepted = { approved: boolean; already: boolean; round: { id: string; name: string; kind?: string } | null };
 
 /** Codes are Crockford base32, ten characters; typed loosely (case, spaces, dashes, O for 0) they still read. */
 export function cleanCode(text: string | null | undefined): string | null {

@@ -3,6 +3,7 @@
 // first of all unless the user has switched that requirement off. Order here is the order of the cards on Today.
 
 import type { ActivityDay, Checkin, DayLog, EntryMeta } from "./api";
+import { loggedOf, movedOn, movesOf } from "./moves";
 import { MEALS, type Meal, type Settings } from "./settings";
 
 const pad = (n: number) => (n < 10 ? "0" : "") + n;
@@ -38,12 +39,13 @@ export type DayStatus = {
   weightRequired: boolean;
   weight: number | null;
   meals: number; leftMeals: Meal[]; kcal: number; protein: number; carbs: number; fat: number;
+  /** Push-ups logged, and how many of the person's moves were logged out of how many they have. */
   pushups: number; acts: number; actTotal: number;
   doneCount: number;
   /** How many tasks close the day: 5 with weight required, 4 without. */
   taskCount: number;
   closed: boolean;
-  /** 0–1; food counts meal by meal. Activity is whole or nothing: one logged activity is the task done (David, 2026-09-17). */
+  /** 0–1; food counts meal by meal. Activity is whole or nothing: one logged move is the task done (David, 2026-09-17). */
   progress: number;
   /** One segment per task, in the order they sit on Today. */
   ring: { key: TaskKey; value: number; color: string }[];
@@ -60,14 +62,15 @@ export function dayStatus(data: DayData | undefined, settings: Settings): DaySta
   const total = (f: "kcal" | "protein" | "carbs" | "fat") => Math.round(ate.reduce((n, x) => n + (Number(x[f]) || 0), 0));
   const kcal = total("kcal");
   const pushups = d.activity?.pushups || 0;
-  const types = d.activity?.types || {};
-  const acts = (pushups > 0 ? 1 : 0) + settings.activityTypes.filter((t) => types[t.key]).length;
-  const actTotal = 1 + settings.activityTypes.length;
+  const moves = movesOf(settings);
+  const acts = moves.filter((m) => loggedOf(d.activity, m).done).length;
+  const actTotal = moves.length;
 
   const checkinDone = Boolean(d.checkin?.mood);
   const journalDone = d.entries > 0;
   const foodDone = meals === 4;
-  const activityDone = acts > 0;
+  // Any move logged, even one no longer on the list; steps only at their goal (moves.ts movedOn, and nudge.js).
+  const activityDone = movedOn(d.activity, settings);
   const weightRequired = settings.requireWeight;
   const weightDone = d.weight !== undefined;
   const ring: DayStatus["ring"] = [

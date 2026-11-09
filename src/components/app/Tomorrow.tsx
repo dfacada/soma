@@ -118,7 +118,7 @@ export function TomorrowScreen() {
                 <Stat value={free ? compact(freeMs) : "—"} label="free" />
               </>
               : <>
-                <Stat value={soma.pushups.rest ? "Rest" : fmt(soma.pushups.target)} label={soma.pushups.rest ? "no push-ups" : "push-ups"} />
+                {soma.move && <Stat value={soma.move.rest ? "Rest" : soma.move.goal.split(" ")[0]} label={soma.move.rest ? `no ${soma.move.name.toLowerCase()}` : soma.move.goal.split(" ").slice(1).join(" ") || soma.move.name.toLowerCase()} />}
                 <Stat value={fmt(soma.kcal)} label="kcal" />
                 <Stat value={String(soma.weighIn ? 5 : 4)} label="to close" />
               </>}
@@ -264,7 +264,7 @@ function TaskList({ title, tasks, when }: { title: string; tasks: BriefTask[]; w
 
 /** What Soma already knows about the day: the five things that close it, with the plan and the round filled in. */
 function SomaCard({ soma }: { soma: SomaSide }) {
-  const p = soma.pushups;
+  const p = soma.move;
   return (
     <section className={s.card} aria-label="Soma">
       <span className="eb">Soma</span>
@@ -279,9 +279,9 @@ function SomaCard({ soma }: { soma: SomaSide }) {
           ))}
         </div>
       </Row>
-      {p.rest
-        ? <Row domain="activity" icon="barbell" title="Rest day" sub="No push-up target. Any activity still closes the day." />
-        : <Row domain="activity" icon="barbell" title={`${fmt(p.target)} push-ups`} sub={p.dayNumber ? `Day ${p.dayNumber} of the round.` : "Your daily target."} />}
+      {p && (p.rest
+        ? <Row domain="activity" icon="run" title="Rest day" sub={`No ${p.name.toLowerCase()} target. Any of your moves still closes the day.`} />
+        : <Row domain="activity" icon="run" title={`${p.name} · ${p.goal}`} sub={p.dayNumber ? `Day ${p.dayNumber} of the round.` : "Your daily goal. Any of your moves closes the day."} />)}
     </section>
   );
 }

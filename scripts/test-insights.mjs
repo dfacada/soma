@@ -33,7 +33,8 @@ check("an empty window is all zeros, no NaN", JSON.stringify(insights({}, DEFAUL
 console.log("sleep and factors");
 const ci = (n, mood, habits = {}) => ({ day: day(n), mood, habits, counts: {} });
 const night = (asleep, start) => ({ asleep, awake: 30, inBed: asleep + 30, deep: 60, rem: 90, light: asleep - 150, start, end: "07:00" });
-const walk = DEFAULT_SETTINGS.activityTypes[0];
+// Settings from before moves: push-ups first, then walk, gym and run (src/lib/moves.ts legacyMoves).
+const walk = { key: DEFAULT_SETTINGS.moves[1].key, name: "Walk" };
 const big = {}, nights = {};
 [["Focused", 470, "22:50", true, 9000], ["Great", 455, "23:10", true, 8500], ["Peaceful", 430, "23:40", true, 4000], ["Focused", 380, "00:20", false, 8200],
  ["Down", 340, "01:10", false, 3000], ["Anxious", 350, "00:40", false, 2500], ["Normal", 400, "23:30", true, 5000], ["Tired", 300, "01:30", false, null]].forEach(([mood, asleep, start, walked, steps], n) => {

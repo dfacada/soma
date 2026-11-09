@@ -31,7 +31,13 @@ function nudgeSettings(settings) {
   const s = settings && typeof settings === 'object' ? settings : {};
   const n = s.nudge && typeof s.nudge === 'object' ? s.nudge : {};
   const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(n.time || '');
-  return { on: n.on === true, minutes: m ? Number(m[1]) * 60 + Number(m[2]) : 20 * 60 + 30, requireWeight: s.requireWeight !== false };
+  // Steps close the day only for someone who chose Steps as a move, at their steps goal (src/lib/moves.ts movedOn).
+  const steps = Array.isArray(s.moves) && s.moves.some((x) => x && x.key === 'steps');
+  const goal = Number(s.goals && s.goals.steps);
+  return {
+    on: n.on === true, minutes: m ? Number(m[1]) * 60 + Number(m[2]) : 20 * 60 + 30, requireWeight: s.requireWeight !== false,
+    stepsGoal: steps ? (Number.isFinite(goal) && goal > 0 ? goal : 8000) : null
+  };
 }
 
 /** Is it this device's moment? After the chosen time, inside the window, and not already nudged today. */
@@ -39,15 +45,20 @@ function due(local, minutes, lastDay) {
   return Boolean(local) && local.minutes >= minutes && local.minutes < minutes + WINDOW_MIN && lastDay !== local.day;
 }
 
-/** What is still open, in card order. An empty list is a closed day. */
-function leftToday({ weight, mood, entries, meals, pushups, types }, requireWeight) {
+/** A types_json value that is something logged: a session, or an amount above nothing (src/lib/moves.ts). */
+const logged = (v) => v === true || (Boolean(v) && typeof v === 'object' && Number(v.n) > 0);
+
+/** What is still open, in card order. An empty list is a closed day. Activity: any move logged, or, for someone who
+ *  chose Steps, steps at their goal (`stepsGoal`, null otherwise). Same rule as src/lib/moves.ts movedOn. */
+function leftToday({ weight, mood, entries, meals, pushups, types, steps }, requireWeight, stepsGoal = null) {
   const left = [];
   if (requireWeight && !weight) left.push('Weight');
   if (!mood) left.push('Check-in');
   if (!entries) left.push('Journal');
   const eaten = MEALS.filter((k) => meals && meals[k]).length;
   if (eaten < 4) left.push(eaten === 0 ? 'Food' : `${4 - eaten} meal${eaten === 3 ? '' : 's'}`);
-  if (!(pushups > 0) && !Object.values(types || {}).some(Boolean)) left.push('Activity');
+  const moved = pushups > 0 || Object.values(types || {}).some(logged) || (stepsGoal !== null && Number(steps) >= stepsGoal);
+  if (!moved) left.push('Activity');
   return left;
 }
 
@@ -129,10 +140,10 @@ async function dayFacts(app, uid, local, now) {
     select(app, 'weight', `SELECT ROWID FROM weight ${where}`),
     select(app, 'checkins', `SELECT mood FROM checkins ${where}`),
     select(app, 'day_logs', `SELECT meals_json FROM day_logs ${where}`),
-    select(app, 'activity', `SELECT pushups, types_json FROM activity ${where}`),
+    select(app, 'activity', `SELECT pushups, types_json, steps FROM activity ${where}`),
     select(app, 'entries', `SELECT ROWID FROM entries WHERE user_id = ${uid} AND created_ms >= ${startMs} LIMIT 1`)
   ]);
-  return { weight: w.length > 0, mood: c[0] && c[0].mood, entries: e.length, meals: parse(l[0] && l[0].meals_json, {}), pushups: Number(a[0] && a[0].pushups) || 0, types: parse(a[0] && a[0].types_json, {}) };
+  return { weight: w.length > 0, mood: c[0] && c[0].mood, entries: e.length, meals: parse(l[0] && l[0].meals_json, {}), pushups: Number(a[0] && a[0].pushups) || 0, types: parse(a[0] && a[0].types_json, {}), steps: Number(a[0] && a[0].steps) || 0 };
 }
 
 async function run(app, params) {
@@ -212,7 +223,7 @@ async function run(app, params) {
 
     if (!user.active || !user.settings.on || !due(local, user.settings.minutes, sub.last_day)) { tally.notDue++; continue; }
     if (!user.facts.has(local.day)) user.facts.set(local.day, await dayFacts(app, uid, local, now));
-    const left = leftToday(user.facts.get(local.day), user.settings.requireWeight);
+    const left = leftToday(user.facts.get(local.day), user.settings.requireWeight, user.settings.stepsGoal);
     // Either way this device is settled for today: a closed day stays quiet, an open one is nudged exactly once.
     if (!left.length) { tally.closed++; await table.updateRow({ ROWID: sub.ROWID, last_day: local.day }); continue; }
     if (await send(sub, uid, message(left))) await table.updateRow({ ROWID: sub.ROWID, last_day: local.day, fails: 0 });

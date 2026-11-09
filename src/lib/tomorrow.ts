@@ -299,7 +299,6 @@ const NOT_A_BLOCK = /night|bed|sleep|water|drink/i;
 const PHRASES: Record<string, { phrase: string; need: number; evening?: boolean }> = {
   active: { phrase: "moving", need: 30 },
   steps: { phrase: "a walk", need: 30 },
-  pushups: { phrase: "your push-ups", need: 15 },
   journal: { phrase: "a journal entry", need: 15, evening: true },
 };
 
@@ -310,7 +309,8 @@ export type Insight = { text: string; driver: Driver; block: Block | null };
  *  `free` is null when the calendar is not known, and then no block is named. */
 export function insightLine(lifts: Driver[], free: Block[] | null): Insight | null {
   for (const d of lifts) {
-    const known = PHRASES[d.key];
+    // The main move says itself ("your run"); it gets twenty minutes, like a habit.
+    const known = PHRASES[d.key] || (d.phrase ? { phrase: d.phrase, need: 20 } : undefined);
     const habit = d.key.startsWith("habit:") && !NOT_A_BLOCK.test(d.label) ? { phrase: `“${d.label}”`, need: 20 } : null;
     const fit = known || habit;
     if (!fit) continue;
@@ -327,20 +327,22 @@ export function insightLine(lifts: Driver[], free: Block[] | null): Insight | nu
 /** Soma's side of the day, as the brief and its text show it. */
 export type SomaSide = {
   weighIn: boolean;
-  pushups: { target: number; rest: boolean; dayNumber: number | null };
+  /** The main move and its goal that day (the round's target when the round counts it), or null with no moves yet.
+   *  `goal` reads as words: "100 push-ups", "5 km", "a session". */
+  move: { name: string; goal: string; rest: boolean; dayNumber: number | null } | null;
   meals: { key: Meal; meal: string; name: string; kcal: number; protein: number }[];
   kcal: number; protein: number;
 };
 
-/** What Soma already knows about the day: weigh-in when weight closes days, the push-up target or a rest day (the
- *  round's, from `rounds.forDay`), and the four planned meals. */
-export function somaSide(settings: Settings, round: { target: number; rest: boolean; dayNumber: number | null }): SomaSide {
+/** What Soma already knows about the day: weigh-in when weight closes days, the main move's goal or a rest day (the
+ *  round's, from `rounds.goalFor`), and the four planned meals. */
+export function somaSide(settings: Settings, move: SomaSide["move"]): SomaSide {
   const meals = MEALS.map((key) => {
     const p = settings.plan[key];
     return { key, meal: key.charAt(0).toUpperCase() + key.slice(1), name: p.name, kcal: Math.round(Number(p.kcal) || 0), protein: Math.round(Number(p.protein) || 0) };
   });
   return {
-    weighIn: settings.requireWeight, pushups: round, meals,
+    weighIn: settings.requireWeight, move, meals,
     kcal: meals.reduce((n, m) => n + m.kcal, 0), protein: meals.reduce((n, m) => n + m.protein, 0),
   };
 }
@@ -365,7 +367,7 @@ export function summaryLine(brief: Brief | null, soma: SomaSide): string {
     const n = dueTasks(brief.tasks, brief.day, brief.events || []).length;
     if (n) parts.push(`${n} task${n === 1 ? "" : "s"}`);
   }
-  parts.push(soma.pushups.rest ? "rest day" : `${soma.pushups.target} push-ups`);
+  if (soma.move) parts.push(soma.move.rest ? "rest day" : soma.move.goal);
   return parts.join(" · ");
 }
 
@@ -416,7 +418,7 @@ export function briefText(brief: Brief, soma: SomaSide, free: Block[] | null, in
   }
   lines.push("", "💪 <b>Soma</b>");
   if (soma.weighIn) lines.push("⚖️ Weigh in");
-  lines.push(soma.pushups.rest ? "😌 Rest day for push-ups" : `🏋️ ${soma.pushups.target} push-ups${soma.pushups.dayNumber ? ` <i>· day ${soma.pushups.dayNumber}</i>` : ""}`);
+  if (soma.move) lines.push(soma.move.rest ? `😌 Rest day for ${soma.move.name.toLowerCase()}` : `🏃 ${soma.move.goal}${soma.move.dayNumber ? ` <i>· day ${soma.move.dayNumber}</i>` : ""}`);
   for (const m of soma.meals) lines.push(`${MEAL_MARK[m.key] || "🍽"} ${esc(m.name)}  <i>${m.kcal.toLocaleString("en-US")} kcal</i>`);
   lines.push(`<i>${soma.kcal.toLocaleString("en-US")} kcal · ${soma.protein} g protein planned</i>`);
   if (insight) lines.push("", `✨ <i>${esc(insight.text)}</i>`);

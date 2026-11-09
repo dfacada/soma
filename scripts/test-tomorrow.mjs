@@ -142,18 +142,20 @@ check("no block long enough says so", insightLine([lift("active", "Moved")], [{ 
 check("nothing that fits a block means no line", insightLine([lift("protein", "Hit your 200 g protein"), lift("sleep", "Slept 7 hours")], blocks) === null);
 
 console.log("Soma's side and the text");
-const soma = somaSide(DEFAULT_SETTINGS, { target: 100, rest: false, dayNumber: 43 });
+const soma = somaSide(DEFAULT_SETTINGS, { name: "Push-ups", goal: "100 push-ups", rest: false, dayNumber: 43 });
 const planKcal = Object.values(DEFAULT_SETTINGS.plan).reduce((n, m) => n + Math.round(m.kcal), 0);
 check("the four planned meals, in order, with their total", soma.meals.map((m) => m.key).join() === "breakfast,lunch,snack,dinner" && soma.kcal === planKcal && soma.weighIn === true);
-check("weighing in follows the setting", somaSide({ ...DEFAULT_SETTINGS, requireWeight: false }, { target: 100, rest: false, dayNumber: null }).weighIn === false);
+check("weighing in follows the setting", somaSide({ ...DEFAULT_SETTINGS, requireWeight: false }, { name: "Push-ups", goal: "100 push-ups", rest: false, dayNumber: null }).weighIn === false);
+check("someone with no moves yet has no move in the brief", somaSide(DEFAULT_SETTINGS, null).move === null && summaryLine({ day: "2026-11-03", builtMs: 0, events: null, tasks: null }, somaSide(DEFAULT_SETTINGS, null)) === "", summaryLine({ day: "2026-11-03", builtMs: 0, events: null, tasks: null }, somaSide(DEFAULT_SETTINGS, null)));
+check("a run as the main move", summaryLine({ day: "2026-11-03", builtMs: 0, events: [], tasks: [] }, somaSide(DEFAULT_SETTINGS, { name: "Run", goal: "5 km", rest: false, dayNumber: null })) === "Nothing on the calendar · 5 km");
 const brief = { day: D, builtMs: 0, events: ev, tasks };
 const text0 = () => briefText(brief, soma, fb, null);
 check("the Today line counts the day's events and names the first to start on it", summaryLine(brief, soma) === "5 events, first at 9 am · 4 tasks · 100 push-ups", summaryLine(brief, soma));
 check("an event from the night before reads as until", text0().includes("<code>until 1:30 am</code>  Late show"));
-check("the Today line on a rest day with nothing connected", summaryLine({ day: D, builtMs: 0, events: null, tasks: null }, { ...soma, pushups: { target: 100, rest: true, dayNumber: 7 } }) === "rest day");
+check("the Today line on a rest day with nothing connected", summaryLine({ day: D, builtMs: 0, events: null, tasks: null }, { ...soma, move: { name: "Push-ups", goal: "100 push-ups", rest: true, dayNumber: 7 } }) === "rest day");
 check("an empty calendar says so", summaryLine({ day: D, builtMs: 0, events: [], tasks: [] }, soma) === "Nothing on the calendar · 100 push-ups");
 const text = briefText(brief, soma, fb, moving);
-check("the text has the day, the times and titles, the tasks and Soma's side", text.startsWith("🌙 <b>Tuesday 3 November</b>") && text.includes("<code>9–9:30 am</code>  Standup") && !text.includes("Pay rent") && text.includes("🔵 Call Sam  <code>2:30 pm</code>") && text.includes("🏋️ 100 push-ups <i>· day 43</i>") && text.includes("✨ <i>Great days come with moving"), text);
+check("the text has the day, the times and titles, the tasks and Soma's side", text.startsWith("🌙 <b>Tuesday 3 November</b>") && text.includes("<code>9–9:30 am</code>  Standup") && !text.includes("Pay rent") && text.includes("🔵 Call Sam  <code>2:30 pm</code>") && text.includes("🏃 100 push-ups <i>· day 43</i>") && text.includes("✨ <i>Great days come with moving"), text);
 check("the text carries no place, link or description", !text.includes("Room 4") && !text.includes("http") && !text.includes("bank"));
 console.log("sending it to Telegram by itself");
 const on = { telegram: true, time: "21:00", sent: "" };

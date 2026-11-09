@@ -3,6 +3,7 @@
 // The written pattern analysis still needs the Claude job. Everything here is a count of what was really logged:
 // "on your best days you more often…" is a pattern in the record, never a claim about cause.
 
+import { amountText, loggedOf, movesOf } from "./moves";
 import { addDays, dayKey, dayStatus, type DayMap } from "./today";
 import type { Nights } from "./health";
 import type { Settings } from "./settings";
@@ -105,7 +106,7 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
     const isGood = GOOD_MOODS.includes(mood);
     note("Did push-ups", isGood, st.pushups > 0);
     note("Hit the push-up target", isGood, st.pushups > 0 ? st.pushups >= pushupTarget : undefined);
-    for (const t of settings.activityTypes) note(t.name, isGood, Boolean(d?.activity?.types[t.key]));
+    for (const mv of movesOf(settings)) if (mv.key !== "pushups" && mv.key !== "steps") note(mv.name, isGood, loggedOf(d?.activity, mv).done);
     for (const h of settings.habits) {
       if (h.type === "daily") note(h.label, isGood, Boolean(d?.checkin?.habits[h.id]));
       else if (h.goal) { const c = d?.checkin?.counts[h.id] || 0; note(`${h.label} ${h.dir === "at_most" ? "at or under" : "at least"} ${h.goal}`, isGood, h.dir === "at_most" ? c <= h.goal : c >= h.goal); }
@@ -176,7 +177,11 @@ export function dayLog(map: DayMap, settings: Settings, today: Date, windowDays:
     if (!st.activityDone) missed.push("Activity");
     const did: string[] = [];
     if (st.pushups > 0) did.push(`${st.pushups.toLocaleString("en-US")} push-ups`);
-    for (const t of settings.activityTypes) if (d?.activity?.types[t.key]) did.push(t.name);
+    for (const mv of movesOf(settings)) {
+      if (mv.key === "pushups" || mv.key === "steps") continue;
+      const l = loggedOf(d?.activity, mv);
+      if (l.done) did.push(l.n !== null ? `${mv.name} ${amountText(mv, l)}` : mv.name);
+    }
     const steps = d?.activity?.steps;
     if (steps !== null && steps !== undefined && steps > 0) did.push(`${steps.toLocaleString("en-US")} steps`);
     const empty = st.doneCount === 0 && st.meals === 0 && st.weight === null && did.length === 0;

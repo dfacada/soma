@@ -75,6 +75,57 @@ const PATHS = {
       <path d="M11 13.5l3.5 2.5-1 4.5M11 13.5l-2 3.5H5" />
     </>
   ),
+  // The moves a person can choose (src/lib/moves.ts), from the activities mock-up (2026-11-08). `walk` above is
+  // footprints, which is Steps; a walk is the figure.
+  pushup: (
+    <>
+      <path d="M3 17h18" />
+      <path d="M5 13h10l3-3" />
+      <circle cx="19.5" cy="7.5" r="1.6" />
+      <path d="M8 13v4M13 13v4" />
+    </>
+  ),
+  walker: (
+    <>
+      <circle cx="12.5" cy="4.5" r="1.8" />
+      <path d="M12.5 8l-2 5.5 3 3 1 4.5" />
+      <path d="M10.5 13.5L8 16" />
+      <path d="M13 9.5l3 2.5" />
+    </>
+  ),
+  cycle: (
+    <>
+      <circle cx="5.5" cy="16" r="3.5" />
+      <circle cx="18.5" cy="16" r="3.5" />
+      <path d="M5.5 16l4-7h5l4 7" />
+      <path d="M9.5 9l3 7" />
+      <path d="M13 6h3" />
+    </>
+  ),
+  yoga: (
+    <>
+      <circle cx="12" cy="4.5" r="1.8" />
+      <path d="M12 8v6" />
+      <path d="M5 10.5c2 1.5 4.5 2.2 7 2.2s5-.7 7-2.2" />
+      <path d="M6.5 19.5c1.6-2.2 3.4-3.3 5.5-3.3s3.9 1.1 5.5 3.3" />
+    </>
+  ),
+  swim: (
+    <>
+      <circle cx="16.5" cy="6.5" r="1.8" />
+      <path d="M5.5 12l4-3.5 3.5 2" />
+      <path d="M2.5 15.5c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0" />
+      <path d="M2.5 19.5c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0" />
+    </>
+  ),
+  ball: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M3.5 12h17" />
+      <path d="M12 3.5c2.6 2.4 2.6 14.6 0 17" />
+      <path d="M12 3.5c-2.6 2.4-2.6 14.6 0 17" />
+    </>
+  ),
   gear: (
     <>
       <circle cx="12" cy="12" r="3" />

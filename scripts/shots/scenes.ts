@@ -40,7 +40,7 @@ export type Area = {
 
 export const AREAS: Area[] = [
   { id: "today", title: "Today: the orb, the day's tasks and the week strip", files: ["src/components/app/Today.tsx", "src/components/app/today.module.css", "src/components/app/DayBanner.tsx", "src/components/ui/Orb.tsx"] },
-  { id: "sheets", title: "Today's sheets: weight, check-in, push-ups, steps and sleep", files: ["src/components/app/WeightSheet.tsx", "src/components/app/PushSheet.tsx", "src/components/app/sheets.module.css", "src/components/app/Steps.tsx", "src/components/app/steps.module.css", "src/components/app/Sleep.tsx", "src/components/app/sleep.module.css"] },
+  { id: "sheets", title: "Today's sheets: weight, check-in, a move, steps and sleep", files: ["src/components/app/WeightSheet.tsx", "src/components/app/MoveSheet.tsx", "src/components/app/moves.module.css", "src/components/app/sheets.module.css", "src/components/app/Steps.tsx", "src/components/app/steps.module.css", "src/components/app/Sleep.tsx", "src/components/app/sleep.module.css"] },
   { id: "journal", title: "Journal: entries, search, the vault", files: ["src/components/app/JournalScreen.tsx"] },
   { id: "food", title: "Food: the day's meals, macros and saying what you ate", files: ["src/components/app/Food.tsx", "src/components/app/FoodSay.tsx"] },
   { id: "activity", title: "Activity: push-ups, moves and the round", files: ["src/components/app/Activity.tsx", "src/components/app/Rounds.tsx"] },

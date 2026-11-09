@@ -2,7 +2,8 @@
 
 // Today is the actionable screen: every daily task completes with a tap here (docs/HANDOFF.md).
 // Soma Night (2026-11-02): a greeting, the orb (one bead per task, the sphere lit by what is done), the week strip,
-// and a bento of task cards in card order: weight, check-in, journal, food, activity.
+// and a bento of task cards in card order: weight, check-in, journal, food, activity. The activity card leads with the
+// person's main move (2026-11-08); their other moves sit under it, and any of them closes the day.
 //
 // Backfill: tap one of the six earlier days in the week strip and every card edits that day instead, under a header
 // that says so. The streak and the round stay on today. On a past day the journal can also be written, not only
@@ -10,7 +11,7 @@
 
 import { useGoTab } from "./tabs";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Overlay, Sheet, StatPill, Toast, type IconName, type MedallionState, type OrbBead } from "@/components/ui";
+import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Overlay, Sheet, StatPill, Toast, type MedallionState, type OrbBead } from "@/components/ui";
 import { MEALS } from "@/lib/settings";
 import { hm } from "@/lib/sleep";
 import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS, type TaskKey } from "@/lib/today";
@@ -27,7 +28,9 @@ import { describeError, mmss, useSayRecorder } from "./FoodSay";
 import { applySaid, describeFood, knownFromDays, saidLine, type Said } from "@/lib/food-say";
 import { DayClosed, FoodMoment } from "./Moments";
 import { MoodFace } from "./MoodFace";
-import { PushSheet } from "./PushSheet";
+import { MoveSheet, moveIcon } from "./MoveSheet";
+import { MovesChooser } from "./MovesChooser";
+import { OTHER_MOVE, amountText, applyMove, closesDay, goalText, loggedOf, mainOf, movesOf, num, progressOf, savedLine, unitWord, type Move, type MoveSave } from "@/lib/moves";
 import { TomorrowCard } from "./Tomorrow";
 import { WeightSheet } from "./WeightSheet";
 import { useRounds } from "./Rounds";
@@ -40,7 +43,6 @@ const fmt = (n: number) => n.toLocaleString("en-US");
 /** A sentence with its numbers in mono, as every number in Soma is (the week line's streak and best): "2 left to
  *  close the day", "↑ 0.9 lb since last", "3 meals left". The words keep the body face. */
 const nums = (text: string): ReactNode => text.split(/(\d[\d,.]*\d|\d)/).map((part, i) => (i % 2 ? <span key={i} className="m">{part}</span> : part));
-const ACT_ICONS: Record<string, IconName> = { walk: "walk", gym: "barbell", run: "run" };
 const BEADS: Record<TaskKey, Omit<OrbBead, "key" | "value">> = {
   weight: { domain: "food", icon: "scale", label: "Weight" },
   checkin: { domain: "journal", icon: "heart", label: "Check-in" },
@@ -55,10 +57,12 @@ export function Today() {
   const journal = useJournal();
   const rounds = useRounds();
 
-  const { map, error, reload, unsaved, retry, change, today, viewKey: k, view, isToday, setView, windowDays: WINDOW_DAYS } = useDays();
+  const { map, error, reload, unsaved, retry, change, setSteps, today, viewKey: k, view, isToday, setView, windowDays: WINDOW_DAYS } = useDays();
   const [writing, setWriting] = useState(false);
   const [checkinSheet, setCheckinSheet] = useState(false);
-  const [pushSheet, setPushSheet] = useState(false);
+  // The log sheet: closed (false), or open on a move (its key; null opens on the main move).
+  const [moveSheet, setMoveSheet] = useState<string | null | false>(false);
+  const [chooser, setChooser] = useState(false);
   const [weightSheet, setWeightSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -69,7 +73,8 @@ export function Today() {
   const voice = useSayRecorder(foodFailed);
   const [reading, setReading] = useState(false);
 
-  const closePush = useCallback(() => setPushSheet(false), []);
+  const closeMove = useCallback(() => setMoveSheet(false), []);
+  const closeChooser = useCallback(() => setChooser(false), []);
   const closeWeight = useCallback(() => setWeightSheet(false), []);
   const closeCheckin = useCallback(() => setCheckinSheet(false), []);
   const health = useHealth();
@@ -120,14 +125,11 @@ export function Today() {
   const data = days[k];
   const checkin = data?.checkin;
   const eaten = data?.log?.meals || {};
-  const types = data?.activity?.types || {};
   const hour = new Date().getHours();
   const head = headline(st, run.now, hour);
-  // In a running round the target is the one I joined with; otherwise my own setting. Rest days have none.
-  const forDay = rounds.forDay(k);
-  const target = forDay.target;
-  const rest = forDay.rest;
-  // Push-ups count for the round only when logged within two days (the server decides; this is only for the words).
+  // The round I am in on this day, while it runs: it sets the goal (and rest days) of the move it counts.
+  const roundDay = rounds.forDay(k);
+  // Moves count for a round only when logged within two days (the server decides; this is only for the words).
   const lateForRound = k < dayKey(addDays(today, -2));
   const when = isToday ? "today" : "that day";
   const initials = (displayName || me.email).split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -224,16 +226,45 @@ export function Today() {
     say(v === null ? "Weight cleared" : `Weight logged · ${v} lb`);
   };
 
-  // ── Activity ──
-  const actNames = [...(st.pushups > 0 ? ["push-ups"] : []), ...settings.activityTypes.filter((x) => types[x.key]).map((x) => x.name.toLowerCase())];
-  const actSub = st.acts
-    ? `Done · ${cap(actNames.join(", "))}${!rest && st.pushups >= target ? " · target hit" : ""}`
-    : rest ? "Rest day for push-ups. Any activity closes it." : "Any activity closes it. Tap to count push-ups.";
-  const savePushups = (n: number) => {
-    change("activity", k, (d) => { d.activity.pushups = n; });
-    haptic(n > 0 && !rest && n >= target && st.pushups < target ? "done" : "tap");
-    setPushSheet(false);
-    say(lateForRound && n ? `${n} push-ups saved to your record · too late to count for the round` : n >= target && !rest ? `Target hit · ${n} push-ups` : n ? `${n} push-ups logged` : "Push-ups cleared");
+  // ── Activity: the main move leads, the others sit under it ──
+  const act = data?.activity;
+  const moves = movesOf(settings);
+  const main = mainOf(settings);
+  const goalOf = (mv: Move) => rounds.goalFor(mv, k);
+  const mainGoal = main ? goalOf(main) : null;
+  const mainAt = main && mainGoal ? { ...main, goal: mainGoal.goal } : null;
+  const mainLogged = mainAt ? loggedOf(act, mainAt) : null;
+  const mainProgress = mainAt && mainLogged ? progressOf(mainAt, mainLogged) : null;
+  const rest = Boolean(mainGoal?.rest);
+  const others = moves.filter((x) => x.key !== main?.key);
+  // What was logged, in the order the moves are listed, with "Other" (its name, if it has one) last.
+  const otherLog = act?.types?.[OTHER_MOVE.key];
+  const loggedNames = [
+    ...moves.filter((x) => loggedOf(act, goalOf(x).fromRound ? { ...x, goal: goalOf(x).goal } : x).done).map((x) => x.key === "steps" ? "steps" : x.name.toLowerCase()),
+    ...(otherLog ? [typeof otherLog === "object" && otherLog.label ? otherLog.label.toLowerCase() : "something else"] : []),
+  ];
+  const goalHit = mainProgress !== null && mainProgress >= 1 && !rest && main?.unit !== "session";
+  const actSub = !main ? ""
+    : st.activityDone ? `Done · ${cap(loggedNames.join(", ") || "a move")}${goalHit ? " · goal hit" : ""}`
+    : rest ? `A rest day for ${main.name.toLowerCase()}. Any of your moves closes it.`
+    : `Any of your moves closes it. Tap to log your ${main.key === "pushups" ? "push-ups" : main.unit === "session" ? `${main.name.toLowerCase()} session` : main.name.toLowerCase()}.`;
+  const saveMove = (s: MoveSave) => {
+    const mv = [...moves, OTHER_MOVE].find((x) => x.key === s.key) || OTHER_MOVE;
+    const g = goalOf(mv);
+    haptic(!st.activityDone && closesDay(s, settings.goals.steps) ? "done" : "tap");
+    if (s.key === "steps") void setSteps(k, s.n === null ? null : Math.round(s.n)).catch(() => say("Couldn't save your steps. Try again.", 4500));
+    else change("activity", k, (d) => applyMove(d, s));
+    setMoveSheet(false);
+    say(savedLine(mv, s, g, lateForRound && Boolean(roundDay.round)));
+  };
+  // A tap on one of the other moves: ten more push-ups, a session done or undone, minutes done at their goal (the
+  // mock-up's "tap when done"). A distance, steps or reps of your own open the sheet, so no number is made up.
+  const quickTap = (mv: Move) => {
+    const l = loggedOf(act, mv);
+    if (mv.key === "pushups") return saveMove({ key: "pushups", n: (st.pushups || 0) + 10, u: "reps" });
+    if (mv.unit === "session") return saveMove({ key: mv.key, n: l.done ? null : 1, u: "session" });
+    if (mv.unit === "min") return saveMove({ key: mv.key, n: l.done ? null : goalOf(mv).goal, u: "min" });
+    setMoveSheet(mv.key);
   };
 
   // ── Up next ──
@@ -428,29 +459,51 @@ export function Today() {
           </div>
         </div>
 
-        <div className={tile(st.activityDone, true, false, "activity")} style={hue("activity")}>
-          <span className={t.tint} /><span className={t.sweep} />
-          <button type="button" className={t.hit} onClick={() => setPushSheet(true)}
-            aria-label={rest ? `Push-ups: rest day, ${st.pushups} logged` : `Push-ups: ${st.pushups} of ${target}. Count them`}>
-            <span className={t.th}><Medallion domain="activity" icon="barbell" state={st.activityDone ? "done" : "idle"} /><span className="eb">Activity</span></span>
-            {/* The target is mono, like Food's "/ 2,100 kcal" and the push-up sheet's "/ 100"; a bare unit is not. */}
-            <span className={t.big}><span key={st.pushups} className={`dc ${t.roll}`}>{st.pushups}</span><span className={rest ? t.unit : `m ${t.unit}`}>{rest ? "push-ups · rest day" : `/ ${target} push-ups`}</span></span>
-            <span className={t.sub}>{nums(actSub)}</span>
-            {!rest && <span className={t.bar}><i style={{ width: `${Math.min(100, (st.pushups / Math.max(1, target)) * 100).toFixed(1)}%` }} /></span>}
-          </button>
-          <div className={t.toggles}>
-            {/* Ten push-ups in one tap, without opening the counter: a set done between other things. */}
-            <button type="button" className={t.toggle} aria-label="Add ten push-ups" onClick={() => savePushups(st.pushups + 10)}>
-              <span className="dc">+10</span><span>Push-ups</span>
+        {main && mainAt && mainLogged ? (
+          <div className={tile(st.activityDone, true, false, "activity")} style={hue("activity")}>
+            <span className={t.tint} /><span className={t.sweep} />
+            <button type="button" className={t.hit} onClick={() => setMoveSheet(null)}
+              aria-label={`${main.name}: ${amountText(main, mainLogged)}${main.unit === "session" || rest ? "" : `, goal ${goalText(mainAt)}`}. Log it`}>
+              <span className={t.th}><Medallion domain="activity" icon={moveIcon(main)} state={st.activityDone ? "done" : "idle"} /><span className="eb">Activity · {main.name}</span></span>
+              {/* The goal is mono, like Food's "/ 2,100 kcal"; a session is done or not, in words. */}
+              {main.unit === "session"
+                ? <span className={t.big}><span className={`d ${t.roll}`} style={{ fontSize: 30 }}>{mainLogged.done ? "Done" : "Not yet"}</span><span className={t.unit}>{mainLogged.done ? "today" : "a session"}</span></span>
+                : <span className={t.big}>
+                  <span key={mainLogged.n ?? 0} className={`dc ${t.roll}`}>{num(mainLogged.n ?? 0, mainLogged.u ?? main.unit)}</span>
+                  <span className={`m ${t.unit}`}>{mainLogged.u && mainLogged.u !== main.unit ? unitWord(mainLogged.u) : rest ? `${main.key === "pushups" ? "push-ups" : unitWord(main.unit)} · rest day` : `/ ${goalText(mainAt)}`}</span>
+                </span>}
+              <span className={t.sub}>{nums(actSub)}</span>
+              {main.unit !== "session" && !rest && mainProgress !== null && <span className={t.bar}><i style={{ width: `${(mainProgress * 100).toFixed(1)}%` }} /></span>}
             </button>
-            {settings.activityTypes.map((x) => (
-              <button key={x.key} type="button" className={`${t.toggle} ${types[x.key] ? t.toggleOn : ""}`} aria-pressed={Boolean(types[x.key])} aria-label={x.name}
-                onClick={() => { haptic(!types[x.key] && !st.activityDone ? "done" : "tap"); change("activity", k, (d) => { d.activity.types[x.key] = !d.activity.types[x.key]; }); }}>
-                <Icon name={ACT_ICONS[x.key] || "pulse"} size={18} /><span>{x.name}</span>
+            <div className={t.toggles}>
+              {others.slice(0, 3).map((x) => {
+                const l = loggedOf(act, x);
+                const label = x.key === "pushups" ? null : l.done && l.n !== null && x.unit !== "session" ? `${x.name} · ${num(l.n, l.u)}` : x.name;
+                return x.key === "pushups"
+                  ? <button key={x.key} type="button" className={`${t.toggle} ${l.done ? t.toggleOn : ""}`} aria-label={`Add ten push-ups${l.n ? `, ${l.n} so far` : ""}`} onClick={() => quickTap(x)}>
+                    <span className="dc">+10</span><span>{l.n ? `Push-ups · ${l.n}` : "Push-ups"}</span>
+                  </button>
+                  : <button key={x.key} type="button" className={`${t.toggle} ${l.done ? t.toggleOn : ""}`} aria-pressed={x.unit === "session" || x.unit === "min" ? l.done : undefined}
+                    aria-label={x.unit === "session" || x.unit === "min" ? `${x.name}${l.done ? `, ${amountText(x, l)}` : ""}` : `${x.name}: log it`} onClick={() => quickTap(x)}>
+                    <Icon name={moveIcon(x)} size={18} /><span>{label}</span>
+                  </button>;
+              })}
+              <button type="button" className={t.toggle} aria-label="Log another move" onClick={() => { haptic(); setMoveSheet(others[3]?.key ?? OTHER_MOVE.key); }}>
+                <Icon name="plus" size={18} /><span>{others.length > 3 ? "More" : "Other"}</span>
               </button>
-            ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          // Someone new: no moves yet. The card asks how they move, and the chooser opens from it.
+          <div className={tile(st.activityDone, true, false, "activity")} style={hue("activity")}>
+            <span className={t.tint} /><span className={t.sweep} />
+            <button type="button" className={t.hit} onClick={() => { haptic(); setChooser(true); }} aria-label="Choose how you move">
+              <span className={t.th}><Medallion domain="activity" icon="run" state={st.activityDone ? "done" : "idle"} /><span className="eb">Activity</span></span>
+              <span className="d" style={{ fontSize: 22, lineHeight: 1.15 }}>How do you like to move?</span>
+              <span className={t.sub}>Pick what you actually do: a walk, a run, yoga, push-ups. Any of them closes your day.</span>
+            </button>
+          </div>
+        )}
 
         {/* From 6 pm the evening turns to the next day: the brief is one tap away. */}
         {isToday && hour >= 18 && <TomorrowCard />}
@@ -482,8 +535,12 @@ export function Today() {
       <WeightSheet open={weightSheet} onClose={closeWeight} current={st.weight} last={lastWeight} onSave={saveWeight} />
       <SleepSheet open={sleepSheet} onClose={closeSleep} day={k} isToday={isToday} />
       <StepsSheet open={stepsSheet} onClose={closeSteps} day={k} />
-      <PushSheet open={pushSheet} onClose={closePush} current={st.pushups} target={target} rest={rest} dayNumber={forDay.dayNumber} onSave={savePushups}
+      <MoveSheet open={moveSheet !== false} onClose={closeMove} moves={moves} start={moveSheet || null} activity={act} goalFor={goalOf}
+        round={roundDay.round ? { name: roundDay.round.name, kind: roundDay.kind } : null} onSave={saveMove}
         day={isToday ? undefined : longDay(view)} late={lateForRound} />
+      <Sheet open={chooser} title="Your moves" onClose={closeChooser}>
+        {chooser && <MovesChooser first say={say} onSaved={closeChooser} />}
+      </Sheet>
       <WriteSheet open={writing} day={longDay(view)} onClose={() => setWriting(false)}
         onSave={async (text) => {
           try { await journal.writeEntry(text, checkin?.mood ?? null, k); setWriting(false); return null; }

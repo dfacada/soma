@@ -1,20 +1,26 @@
 "use client";
 
-// The push-up rounds the user can see, shared by Today (target, rest day) and Activity (chain, board).
-// `current` is the round that sets Today's target and rest days. Someone in more than one round (an open round and
-// a private one with friends, say) picks which board Activity shows with `select`; Today keeps following `current`.
+// The rounds the user can see, shared by Today (goal, rest day) and Activity (chain, board).
+// `current` is the round that sets Today's goal and rest days for the move it counts. Someone in more than one round
+// (an open round and a private one with friends, say) picks which board Activity shows with `select`; Today keeps
+// following `current`.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
+import { countsFor, kindOf, targetShown, type KindDef, type Move } from "@/lib/moves";
 import { dayIndexOf, isRestDay, phaseOf, type Log, type Member, type Round } from "@/lib/round";
 import { useDays } from "./Days";
-import { useSession } from "./Session";
 
 export type MyMembership = { userId: string; dailyTarget: number; startDay: number; joinSeq: number; status: "active" | "removed" };
 export type RoundRow = Round & { me: MyMembership | null };
 export type Board = { round: Round; members: Member[]; logs: Record<string, Log> };
 export type RoundInvite = { code: string; uses: number; maxUses: number | null };
-type NewRound = { name: string; startDate: string; lengthDays: number; restDays: number[]; inviteOnly?: boolean; dailyTarget?: number };
+type NewRound = { name: string; startDate: string; lengthDays: number; restDays: number[]; kind: string; inviteOnly?: boolean; dailyTarget?: number };
+/** The round that counts on a day: the running one I am in, its kind, my target in its kept unit, rest day, day number. */
+export type RoundDay = { round: RoundRow | null; kind: KindDef; target: number | null; rest: boolean; dayNumber: number | null };
+/** A move's goal on a day, as Today and Activity show it: the round's target (in the move's unit) when the round I am
+ *  in counts that move, with its rest days; else my own goal. */
+export type MoveGoal = { goal: number; rest: boolean; dayNumber: number | null; fromRound: boolean };
 
 type Rounds = {
   loading: boolean;
@@ -26,13 +32,10 @@ type Rounds = {
   select: (roundId: string) => void;
   /** Boards fetched so far, by round id. */
   boards: Record<string, Board>;
-  /** Target, rest day and round day for any day (backfill uses this for the day being filled in). */
-  forDay: (key: string) => { target: number; rest: boolean; dayNumber: number | null };
-  /** My push-up target today: the round's if I am in a running one, else my own setting. */
-  target: number;
-  /** True when today is a rest day in a round I am in. */
-  restToday: boolean;
-  dayNumber: number | null;
+  /** The running round I am in on any day, with its target, rest day and day number (backfill uses this for the day
+   *  being filled in). */
+  forDay: (key: string) => RoundDay;
+  goalFor: (move: Move, key: string) => MoveGoal;
   reload: () => Promise<void>;
   join: (roundId: string, dailyTarget: number) => Promise<void>;
   setTarget: (roundId: string, dailyTarget: number) => Promise<void>;
@@ -81,7 +84,6 @@ async function fetchRounds(today: string, also: string | null): Promise<{ rounds
 }
 
 export function RoundsProvider({ children }: { children: ReactNode }) {
-  const { settings } = useSession();
   const { todayKey } = useDays();
   const [state, setState] = useState<{ rounds: RoundRow[]; boards: Record<string, Board> } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -115,18 +117,26 @@ export function RoundsProvider({ children }: { children: ReactNode }) {
     const rounds = state?.rounds || [];
     const current = pick(rounds, todayKey);
     const chosen = selected ? rounds.find((r) => r.id === selected && !r.archived) || null : null;
-    const forDay = (key: string) => {
-      const inRunning = current?.me?.status === "active" && phaseOf(current, key) === "running";
+    const forDay = (key: string): RoundDay => {
+      const inRunning = Boolean(current && current.me?.status === "active" && phaseOf(current, key) === "running");
       const dayNumber = current && inRunning ? dayIndexOf(current, key) : null;
-      return { target: inRunning ? current!.me!.dailyTarget : settings.pushupTarget, rest: Boolean(current && dayNumber && isRestDay(current, dayNumber)), dayNumber };
+      return {
+        round: inRunning ? current : null, kind: kindOf(current?.kind), target: inRunning ? current!.me!.dailyTarget : null,
+        rest: Boolean(current && dayNumber && isRestDay(current, dayNumber)), dayNumber,
+      };
     };
-    const now = forDay(todayKey);
+    const goalFor = (move: Move, key: string): MoveGoal => {
+      const f = forDay(key);
+      // Minutes count every timed move, so their target is not any one move's goal; rest days still apply to them.
+      const counts = Boolean(f.round) && countsFor(f.kind, move.key, move.unit);
+      if (!counts) return { goal: move.goal, rest: false, dayNumber: null, fromRound: false };
+      return { goal: f.kind.kind === "minutes" || f.target === null ? move.goal : targetShown(f.kind, f.target), rest: f.rest, dayNumber: f.dayNumber, fromRound: f.kind.kind !== "minutes" };
+    };
     return {
       loading: state === null, rounds, current, shown: chosen || current, select, boards: state?.boards || {},
-      target: now.target, restToday: now.rest, dayNumber: now.dayNumber, forDay,
-      reload, join, setTarget, leave, create, update, inviteFor, newInvite, removeMember,
+      forDay, goalFor, reload, join, setTarget, leave, create, update, inviteFor, newInvite, removeMember,
     };
-  }, [state, selected, todayKey, settings.pushupTarget, select, reload, join, setTarget, leave, create, update, inviteFor, newInvite, removeMember]);
+  }, [state, selected, todayKey, select, reload, join, setTarget, leave, create, update, inviteFor, newInvite, removeMember]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

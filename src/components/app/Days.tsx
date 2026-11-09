@@ -124,11 +124,26 @@ function useDaysState(today: Date, windowDays: number) {
     setMap(next);
   }, []);
 
+  // Steps typed on the log sheet (no tracker sending them) are saved on their own, never with an ordinary day save,
+  // so a save of moves can never send stale steps over newer ones the tracker wrote. Shows at once; undone and
+  // rethrown if the save fails, for the sheet's caller to say so.
+  const setSteps = useCallback(async (day: string, steps: number | null) => {
+    const before = latest.current[day]?.activity;
+    const put = (activity: ActivityDay | undefined) => {
+      const cur = latest.current[day] || emptyDay();
+      latest.current = { ...latest.current, [day]: { ...cur, activity } };
+      setMap(latest.current);
+    };
+    put({ day, pushups: null, types: {}, ...before, steps });
+    try { await api("PUT", `/activity/${day}`, { steps }); }
+    catch (e) { report("days", "steps_save_failed", e, { day }); put(before); throw e; }
+  }, []);
+
   const retry = useCallback(() => {
     [...failed.current].forEach((key) => { const i = key.indexOf(":"); void flush(key.slice(0, i) as Resource, key.slice(i + 1)); });
   }, [flush]);
 
-  return useMemo(() => ({ map, error, reload: load, unsaved, retry, change, applySteps }), [map, error, load, unsaved, retry, change, applySteps]);
+  return useMemo(() => ({ map, error, reload: load, unsaved, retry, change, applySteps, setSteps }), [map, error, load, unsaved, retry, change, applySteps, setSteps]);
 }
 
 type DaysValue = ReturnType<typeof useDaysState> & {

@@ -12,8 +12,8 @@ check("…and in Tokyo (already 09:45 on the 18th)", n.localNow(at, "Asia/Tokyo"
 check("an unknown zone is null, not a crash", n.localNow(at, "Mars/Olympus"), null);
 
 console.log("settings");
-check("off by default, 20:30, weight required", n.nudgeSettings({}), { on: false, minutes: 1230, requireWeight: true });
-check("the stored time and weight choice are read", n.nudgeSettings({ nudge: { on: true, time: "21:15" }, requireWeight: false }), { on: true, minutes: 1275, requireWeight: false });
+check("off by default, 20:30, weight required", n.nudgeSettings({}), { on: false, minutes: 1230, requireWeight: true, stepsGoal: null });
+check("the stored time and weight choice are read", n.nudgeSettings({ nudge: { on: true, time: "21:15" }, requireWeight: false }), { on: true, minutes: 1275, requireWeight: false, stepsGoal: null });
 check("a nonsense time falls back", n.nudgeSettings({ nudge: { on: true, time: "25:99" } }).minutes, 1230);
 
 console.log("when");
@@ -30,6 +30,13 @@ check("everything open, in card order", n.leftToday({}, true), ["Weight", "Check
 check("weight not required is not asked for", n.leftToday({ ...full, weight: false }, false), []);
 check("meals are counted", n.leftToday({ ...full, meals: { breakfast: {}, lunch: {}, dinner: {} } }, true), ["1 meal"]);
 check("push-ups alone are activity", n.leftToday({ ...full, types: {}, pushups: 20 }, true), []);
+check("a move logged with an amount is activity", n.leftToday({ ...full, types: { run: { n: 3.2, u: "km" } } }, true), []);
+check("a cleared move is not", n.leftToday({ ...full, types: { walk: false, run: { n: 0, u: "km" } } }, true), ["Activity"]);
+check("steps do not close the day for someone who did not choose them", n.leftToday({ ...full, types: {}, steps: 20000 }, true), ["Activity"]);
+check("steps close it at the goal for someone who chose them", n.leftToday({ ...full, types: {}, steps: 8000 }, true, 8000), []);
+check("…and not below it", n.leftToday({ ...full, types: {}, steps: 7999 }, true, 8000), ["Activity"]);
+check("chose Steps: the goal comes from settings", n.nudgeSettings({ moves: [{ key: "steps", goal: 1 }], goals: { steps: 6000 } }).stepsGoal, 6000);
+check("no moves stored (settings from before moves): steps never count", n.nudgeSettings({ goals: { steps: 6000 } }).stepsGoal, null);
 check("one thing left reads as a sentence", n.message(["Journal"]), { title: "One to go", body: "Journal closes the day.", url: "/", tag: "soma-nudge" });
 check("several are listed", n.message(["Weight", "Journal", "2 meals"]), { title: "Three to go", body: "Weight · Journal · 2 meals", url: "/", tag: "soma-nudge" });
 

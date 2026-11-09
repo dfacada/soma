@@ -3,6 +3,7 @@
 // map, settings, and when known the nights and the journal's tone, in; a few plain findings out. Worked out on the
 // device. Every finding is a pattern in the person's own record, never a claim about cause.
 
+import { goalText, loggedOf, progressOf, type Move } from "./moves";
 import { GOOD_MOODS } from "./insights";
 import type { Nights } from "./health";
 import type { Settings } from "./settings";
@@ -16,16 +17,35 @@ export const MIN_CHECKINS = 6;
 export const MIN_LIFT = 0.15;
 
 /** Something a day either had or did not. Undefined when the day cannot say (no food logged, no night recorded). */
-type Test = { key: string; label: string; test: (day: string) => boolean | undefined };
+type Test = { key: string; label: string; phrase?: string; test: (day: string) => boolean | undefined };
 
-function tests(map: DayMap, settings: Settings, pushupTarget: number, nights: Nights | null): Test[] {
+/** The main move with its goal (the round's target when the round counts it): "Did your 5 km run". */
+export type MainGoal = { move: Move; goal: number };
+
+/** "Did your 100 push-ups", "Did your 5 km run", "Did your 20 min of yoga", "Did your gym session"; what the brief
+ *  says it as ("your run"). Steps have their own test. */
+function mainTest(map: DayMap, main: MainGoal | null): Test[] {
+  if (!main || main.move.key === "steps") return [];
+  const mv = { ...main.move, goal: main.goal };
+  const name = mv.name.toLowerCase();
+  const label = mv.unit === "session" ? `Did your ${name} session`
+    : mv.key === "pushups" ? `Did your ${goalText(mv)}`
+    : mv.unit === "km" ? `Did your ${goalText(mv)} ${name}`
+    : `Did your ${goalText(mv)} of ${name}`;
+  return [{
+    key: "move", label, phrase: `your ${mv.key === "pushups" ? "push-ups" : name}`,
+    test: (k) => { const l = loggedOf(map[k]?.activity, mv); const p = progressOf(mv, l); return p === null ? l.done : p >= 1; },
+  }];
+}
+
+function tests(map: DayMap, settings: Settings, main: MainGoal | null, nights: Nights | null): Test[] {
   const st = (k: string) => dayStatus(map[k], settings);
   const checkin = (k: string) => map[k]?.checkin;
   return [
     { key: "protein", label: `Hit your ${settings.goals.protein} g protein`, test: (k) => (st(k).meals > 0 ? st(k).protein >= settings.goals.protein : undefined) },
     { key: "meals", label: "Logged all four meals", test: (k) => st(k).foodDone },
     { key: "active", label: "Moved", test: (k) => st(k).activityDone },
-    { key: "pushups", label: `Did your ${pushupTarget} push-ups`, test: (k) => st(k).pushups >= pushupTarget },
+    ...mainTest(map, main),
     { key: "journal", label: "Talked to your journal", test: (k) => (map[k]?.entries || 0) > 0 },
     { key: "steps", label: `Walked ${settings.goals.steps.toLocaleString("en-US")} steps`, test: (k) => { const s = map[k]?.activity?.steps; return s === null || s === undefined ? undefined : s >= settings.goals.steps; } },
     { key: "sleep", label: "Slept 7 hours", test: (k) => { const n = nights?.[k]; return n ? n.asleep >= 420 : undefined; } },
@@ -40,7 +60,7 @@ function tests(map: DayMap, settings: Settings, pushupTarget: number, nights: Ni
 
 export type Side = { days: number; hits: number };
 /** Great days: the share of great days when you did it against when you did not. */
-export type Driver = { key: string; label: string; did: Side; didnt: Side; lift: number };
+export type Driver = { key: string; label: string; did: Side; didnt: Side; lift: number; phrase?: string };
 /** Journal tone: the mean tone (-1…1) of the days you did it against the days you did not. */
 export type ToneDriver = { key: string; label: string; did: { days: number; mean: number }; didnt: { days: number; mean: number }; lift: number };
 
@@ -55,8 +75,8 @@ export type GreatDays = {
 
 export const isGreat = (mood: string | null | undefined) => !!mood && GOOD_MOODS.includes(mood);
 
-export function greatDays(map: DayMap, days: string[], settings: Settings, pushupTarget: number, nights: Nights | null): GreatDays {
-  const all = tests(map, settings, pushupTarget, nights).map((t) => ({ ...t, did: { days: 0, hits: 0 }, didnt: { days: 0, hits: 0 } }));
+export function greatDays(map: DayMap, days: string[], settings: Settings, main: MainGoal | null, nights: Nights | null): GreatDays {
+  const all = tests(map, settings, main, nights).map((t) => ({ ...t, did: { days: 0, hits: 0 }, didnt: { days: 0, hits: 0 } }));
   let checkedIn = 0, great = 0;
   for (const k of days) {
     const mood = map[k]?.checkin?.mood;
@@ -74,7 +94,7 @@ export function greatDays(map: DayMap, days: string[], settings: Settings, pushu
   }
   const scored: Driver[] = all
     .filter((t) => t.did.days >= MIN_SIDE && t.didnt.days >= MIN_SIDE)
-    .map(({ key, label, did, didnt }) => ({ key, label, did, didnt, lift: did.hits / did.days - didnt.hits / didnt.days }));
+    .map(({ key, label, phrase, did, didnt }) => ({ key, label, ...(phrase ? { phrase } : {}), did, didnt, lift: did.hits / did.days - didnt.hits / didnt.days }));
   return {
     checkedIn, great,
     lifts: scored.filter((d) => d.lift >= MIN_LIFT).sort((a, b) => b.lift - a.lift),
@@ -93,12 +113,12 @@ export type JournalTone = {
 };
 
 /** `tones` is the journal's tone per day, -1 (heavy) … 1 (bright); `themes` the topics per day, when known. */
-export function journalTone(map: DayMap, days: string[], settings: Settings, pushupTarget: number, nights: Nights | null,
+export function journalTone(map: DayMap, days: string[], settings: Settings, main: MainGoal | null, nights: Nights | null,
   tones: Record<string, number>, themes: Record<string, string[]> = {}): JournalTone {
   const known = days.filter((k) => typeof tones[k] === "number");
   const mean = known.length ? known.reduce((n, k) => n + tones[k], 0) / known.length : 0;
   const brighter: ToneDriver[] = [];
-  for (const t of tests(map, settings, pushupTarget, nights)) {
+  for (const t of tests(map, settings, main, nights)) {
     const yes: number[] = [], no: number[] = [];
     for (const k of known) { const had = t.test(k); if (had !== undefined) (had ? yes : no).push(tones[k]); }
     if (yes.length < MIN_SIDE || no.length < MIN_SIDE) continue;

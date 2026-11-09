@@ -22,7 +22,7 @@
 
 const express = require('express');
 const { member, wrap, isTestUser } = require('../lib/auth');
-const { HttpError, select, upsert, needId, needDay, fitText } = require('../lib/db');
+const { HttpError, select, upsert, needId, needDay, fitText, unpackJson } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 
 const note = (req, event, message, detail, level) => writeLog(req.admin, { level: level || 'error', source: 'api', area: 'google-health', event, message, detail, userId: req.user.id, test: isTestUser(req) });
@@ -217,16 +217,23 @@ router.post('/google-health/sync', member, wrap(async (req, res) => {
 
   // One read, then two bulk writes: a 60-day backfill must fit well inside the 30 s limit.
   const uid = needId(req.user.id);
-  const existing = await select(req.admin, 'activity', `SELECT ROWID, day, steps FROM activity WHERE user_id = ${uid} AND day >= '${from}' AND day <= '${to}' LIMIT 300`);
+  const existing = await select(req.admin, 'activity', `SELECT ROWID, day, steps, round_json FROM activity WHERE user_id = ${uid} AND day >= '${from}' AND day <= '${to}' LIMIT 300`);
   const byDay = new Map(existing.map((r) => [r.day, r]));
   const inserts = [], updates = [];
   for (const p of days) {
     const row = byDay.get(p.day);
+    // Steps from the tracker count for a steps round whenever they arrive (a phone left shut for three days still
+    // walked them), so the frozen copy a board reads (round_json, routes/days.js) takes them too.
     if (row) {
       const had = row.steps === null || row.steps === '' || row.steps === undefined ? null : Number(row.steps);
-      if (had !== p.steps && !(had === null && p.steps === 0)) updates.push({ ROWID: row.ROWID, steps: p.steps });
+      const snap = unpackJson(row.round_json, null);
+      const kept = snap && typeof snap === 'object' ? snap : {};
+      const frozen = kept.steps === undefined || kept.steps === null ? null : Number(kept.steps);
+      const stepsChange = had !== p.steps && !(had === null && p.steps === 0);
+      const frozenChange = frozen !== p.steps && !(frozen === null && p.steps === 0);
+      if (stepsChange || frozenChange) updates.push({ ROWID: row.ROWID, steps: p.steps, round_json: JSON.stringify(Object.assign({}, kept, { steps: p.steps })) });
     }
-    else if (p.steps > 0) inserts.push({ user_id: req.user.id, day: p.day, ukey: uid + ':' + p.day, steps: p.steps });
+    else if (p.steps > 0) inserts.push({ user_id: req.user.id, day: p.day, ukey: uid + ':' + p.day, steps: p.steps, round_json: JSON.stringify({ steps: p.steps }) });
   }
   const table = req.admin.datastore().table('activity');
   if (updates.length) await table.updateRows(updates);

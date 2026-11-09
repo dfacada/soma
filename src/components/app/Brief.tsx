@@ -19,6 +19,7 @@ import { useDays } from "./Days";
 import { useHealth } from "./Health";
 import { useJournal } from "./Journal";
 import { useRounds } from "./Rounds";
+import { goalText, mainOf } from "@/lib/moves";
 import { useSession } from "./Session";
 
 type Tomorrow = {
@@ -228,19 +229,24 @@ export function TomorrowProvider({ children }: { children: ReactNode }) {
     void read(fresh, day);
   }, [vault, links, unseal, seal, read, day]);
 
-  const { forDay, target } = rounds;
-  const round = forDay(day);
   const todayKey = dayKey(today);
+  // The main move with today's goal (for the insight), and with the brief's day's goal (for Soma's side of it).
+  const main = mainOf(settings);
+  const goalToday = main ? rounds.goalFor(main, todayKey).goal : 0;
+  const onDay = main ? rounds.goalFor(main, day) : null;
   const lifts = useMemo(() => {
     if (!map) return [];
     const days = Array.from({ length: LOOKBACK }, (_, i) => dayKey(addDays(today, i - (LOOKBACK - 1))));
-    const g = greatDays(map, days, settings, target, nights);
+    const g = greatDays(map, days, settings, main ? { move: main, goal: goalToday } : null, nights);
     return g.checkedIn >= MIN_CHECKINS ? g.lifts : [];
-    // todayKey, not the Date object: a new Date each render must not recount.
+    // todayKey, not the Date object: a new Date each render must not recount. `main` is read from settings.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, todayKey, settings, target, nights]);
+  }, [map, todayKey, settings, goalToday, nights]);
 
-  const soma = useMemo(() => somaSide(settings, { target: round.target, rest: round.rest, dayNumber: round.dayNumber }), [settings, round.target, round.rest, round.dayNumber]);
+  const moveName = main?.name ?? "", moveGoal = main && onDay ? goalText({ ...main, goal: onDay.goal }) : "";
+  const soma = useMemo(() => somaSide(settings, moveName && onDay ? { name: moveName, goal: moveGoal, rest: onDay.rest, dayNumber: onDay.dayNumber } : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [settings, moveName, moveGoal, onDay?.rest, onDay?.dayNumber]);
 
   // The day's shape, for the screen and for the words sent to Telegram alike.
   const shape = useMemo(() => {

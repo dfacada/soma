@@ -1,5 +1,7 @@
-// Push-up round rules. Pure functions, no I/O, no imports: ported from the 100 Push-Ups app's lib/domain
-// (which was itself a port of the original spreadsheet) and tested by scripts/test-round.mjs.
+// Round rules. Pure functions, no I/O, no imports: ported from the 100 Push-Ups app's lib/domain (which was itself
+// a port of the original spreadsheet) and tested by scripts/test-round.mjs. A round counts one kind of move
+// (src/lib/moves.ts ROUND_KINDS: push-ups, a run, minutes of anything…); these rules only see whole numbers in that
+// kind's kept unit (reps, metres, minutes, steps), so they are the same for every kind.
 //
 // What Soma changed, on purpose (docs/HANDOFF.md §2):
 //   - The target is per person and flat. There is no ramp and no test number.
@@ -21,9 +23,11 @@ export type Round = {
   joinOpen: boolean; archived: boolean;
   /** A private round: only its members see it, and joining takes its invite link. `ownerId` made it and runs it. */
   inviteOnly?: boolean; ownerId?: string;
+  /** What it counts (moves.ts RoundKind). Absent is push-ups: every round made before kinds. */
+  kind?: string;
 };
 export type Member = { userId: string; displayName: string; dailyTarget: number; startDay: number; joinSeq: number; status: "active" | "removed" | "banned" };
-/** dayIndex → reps. An absent key means nothing was logged that day. */
+/** dayIndex → the day's number in the round's kept unit. An absent key means nothing it counts was logged. */
 export type Log = Record<number, number>;
 export type Phase = "upcoming" | "running" | "finished" | "archived";
 

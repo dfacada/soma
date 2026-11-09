@@ -19,6 +19,7 @@ const { HttpError, select, needId, needDay, unpackJson, bool } = require('../lib
 const { writeLog } = require('../lib/log');
 const invites = require('../lib/invites');
 const { joinRound, shapeRound, findRoundRow } = require('./rounds');
+const { goalForKind, needTarget, kindOf } = require('../lib/moves');
 
 const router = express.Router();
 
@@ -30,13 +31,13 @@ router.get('/invites/:code', wrap(async (req, res) => {
   const [why, maker, round] = await Promise.all([
     invites.whyNot(app, inv),
     select(app, 'profiles', `SELECT display_name FROM profiles WHERE user_id = ${needId(inv.created_by)}`).then((r) => r[0] || null),
-    inv.round_id ? select(app, 'rounds', `SELECT name, start_date, length_days, archived FROM rounds WHERE ROWID = ${needId(inv.round_id)}`).then((r) => r[0] || null) : null
+    inv.round_id ? select(app, 'rounds', `SELECT name, start_date, length_days, archived, kind FROM rounds WHERE ROWID = ${needId(inv.round_id)}`).then((r) => r[0] || null) : null
   ]);
   res.json({
     ok: !why,
     reason: why,
     from: maker ? String(maker.display_name || '').trim().split(/\s+/)[0] || null : null,
-    round: round && !why ? { name: round.name, startDate: round.start_date, lengthDays: Number(round.length_days) } : null
+    round: round && !why ? { name: round.name, startDate: round.start_date, lengthDays: Number(round.length_days), kind: kindOf(round.kind) } : null
   });
 }));
 
@@ -65,13 +66,14 @@ router.post('/invites/:code/accept', withUser, wrap(async (req, res) => {
   if (inv.round_id) {
     const row = await findRoundRow(req, String(inv.round_id)).catch(() => null);
     if (row && !bool(row.archived)) {
-      // The person's own daily push-up target unless they chose one here.
+      // The person's own goal for what the round counts unless they chose a target here; the round's default for
+      // someone who has none (a new person has not chosen their moves yet).
       let target = b.dailyTarget;
       if (target === undefined) {
         const s = await select(req.admin, 'profiles', `SELECT settings_json FROM profiles WHERE user_id = ${needId(req.user.id)}`);
-        target = Number(unpackJson(s[0] && s[0].settings_json, {}).pushupTarget) || 100;
+        target = goalForKind(unpackJson(s[0] && s[0].settings_json, {}), row.kind);
       }
-      if (!Number.isInteger(target) || target < 1 || target > 10000) throw new HttpError(400, 'dailyTarget must be a whole number from 1 to 10000');
+      needTarget(row.kind, target);
       const joined = await joinRound(req, row, target, needDay(b.today));
       already = joined.already;
       round = shapeRound(row);

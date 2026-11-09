@@ -20,6 +20,7 @@ import { useHealth } from "./Health";
 import { useJournal } from "./Journal";
 import { useJournalTone } from "./JournalTone";
 import { useRounds } from "./Rounds";
+import { mainOf } from "@/lib/moves";
 import { useSession } from "./Session";
 import { useGoTab } from "./tabs";
 import a from "./app.module.css";
@@ -42,7 +43,7 @@ async function fetchYear(today: Date): Promise<DayMap> {
 export function InsightsScreen() {
   const { settings } = useSession();
   const { map, error, reload, today, windowDays } = useDays();
-  const { target } = useRounds();
+  const rounds = useRounds();
   const health = useHealth();
   const [range, setRange] = useState<Range>("30");
   const [year, setYear] = useState<DayMap | null>(null);
@@ -67,8 +68,11 @@ export function InsightsScreen() {
 
   // The live 60 days go on top of the fetched year, so a tap made a minute ago on Today is already counted here.
   const data = range === "365" && year ? { ...year, ...map } : map;
-  const g = greatDays(data, days, settings, target, health.nights);
-  const jt = journalTone(data, days, settings, target, health.nights, tone.tones, tone.themes);
+  // The main move with today's goal (the round's target when the round counts it): "Did your 5 km run".
+  const main = mainOf(settings);
+  const mainGoal = main ? { move: main, goal: rounds.goalFor(main, todayKey).goal } : null;
+  const g = greatDays(data, days, settings, mainGoal, health.nights);
+  const jt = journalTone(data, days, settings, mainGoal, health.nights, tone.tones, tone.themes);
   const p = progress(data, days, settings);
   const run = streak(map, settings, today, windowDays);
   const log = dayLog(data, settings, today, days.length);
