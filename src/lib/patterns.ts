@@ -2,7 +2,7 @@
 // device from the day map, like the rest of Insights. Pure (no React), so scripts/test-patterns.mjs runs it as it is.
 
 import type { Nights } from "./health";
-import { GOOD_MOODS, HARD_MOODS } from "./insights";
+import { toneOf, type Mood } from "./moods";
 import type { Settings } from "./settings";
 import { dayStatus, type DayMap } from "./today";
 
@@ -68,7 +68,7 @@ export type MoodBand = "good" | "other" | "hard";
 export type SplitSide = { days: number; good: number; other: number; hard: number };
 export type SplitRow = { label: string; yes: SplitSide; no: SplitSide; enough: boolean };
 
-const band = (mood: string): MoodBand => (GOOD_MOODS.includes(mood) ? "good" : HARD_MOODS.includes(mood) ? "hard" : "other");
+const band = (mood: string, moods: Mood[]): MoodBand => { const t = toneOf(mood, moods); return t === "good" ? "good" : t === "hard" ? "hard" : "other"; };
 const side = (): SplitSide => ({ days: 0, good: 0, other: 0, hard: 0 });
 
 export function moodSplit(map: DayMap, days: string[], settings: Settings, nights: Nights | null): { checkedIn: number; rows: SplitRow[] } {
@@ -87,7 +87,7 @@ export function moodSplit(map: DayMap, days: string[], settings: Settings, night
     const mood = map[k]?.checkin?.mood;
     if (!mood) continue;
     checkedIn++;
-    const b = band(mood);
+    const b = band(mood, settings.moods);
     tests.forEach(({ test }, i) => {
       const had = test(k);
       if (had === undefined) return;

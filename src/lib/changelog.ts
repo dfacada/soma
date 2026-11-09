@@ -16,6 +16,7 @@ export const CHANGES: Release[] = [
     date: "2026-11-08",
     title: "Getting ready for more people",
     items: [
+      "Make the moods your own. Settings → Check-in → Rename, remove or add moods: add your own words, rename Soma's, take out the ones you never use, and say whether each one is a good, okay or hard day, so Insights still reads your days the way you mean them. Past check-ins keep the words they had.",
       "Choose how you move. Push-ups aren't a must any more: Settings → Your moves lets you pick what you actually do (a run, a walk, yoga, a swim, a ride, a gym session, steps, or something of your own), give each a daily goal, and make one your main move. Any of them closes your day. If you've been doing push-ups, nothing changes until you choose.",
       "Today and Activity lead with your main move. The activity card shows it against its goal, say 3.2 of 5 km, with your other moves under it: ten more push-ups in a tap, a gym session or your yoga done in a tap. Activity gives it the big ring, quick buttons and the last seven days.",
       "Logging fits the move. One sheet for all of them: tap per rep for push-ups, distance or time for a run, minutes for yoga or a walk, done or not for a gym session. Other logs anything that isn't on your list, with a name if you like, and steps can be typed in when no tracker sends them.",

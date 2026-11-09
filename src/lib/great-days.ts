@@ -4,7 +4,7 @@
 // device. Every finding is a pattern in the person's own record, never a claim about cause.
 
 import { goalText, loggedOf, progressOf, type Move } from "./moves";
-import { GOOD_MOODS } from "./insights";
+import { toneOf, type Mood } from "./moods";
 import type { Nights } from "./health";
 import type { Settings } from "./settings";
 import { dayStatus, type DayMap } from "./today";
@@ -73,7 +73,8 @@ export type GreatDays = {
   drags: Driver[];
 };
 
-export const isGreat = (mood: string | null | undefined) => !!mood && GOOD_MOODS.includes(mood);
+/** A great day: a good mood, by the person's own list (a renamed mood or one of their own counts as they said). */
+export const isGreat = (mood: string | null | undefined, moods: Mood[]) => toneOf(mood, moods) === "good";
 
 export function greatDays(map: DayMap, days: string[], settings: Settings, main: MainGoal | null, nights: Nights | null): GreatDays {
   const all = tests(map, settings, main, nights).map((t) => ({ ...t, did: { days: 0, hits: 0 }, didnt: { days: 0, hits: 0 } }));
@@ -82,7 +83,7 @@ export function greatDays(map: DayMap, days: string[], settings: Settings, main:
     const mood = map[k]?.checkin?.mood;
     if (!mood) continue;
     checkedIn++;
-    const g = isGreat(mood);
+    const g = isGreat(mood, settings.moods);
     if (g) great++;
     for (const t of all) {
       const had = t.test(k);

@@ -5,8 +5,9 @@ import { BOWL_VARIANTS, MEAL_PLANS, SNACK_PRESETS, type BowlId, type MealPlanId 
 import { isPalette, MOTION_MODES, THEME_MODES, type MotionMode, type PaletteId, type ThemeMode } from "./look";
 import { NOTE_MAX, OPENING_SOURCES, PHRASE_MAX, PHRASES_MAX, type OpeningSource, type Phrase } from "./opening";
 import { cleanMoves, legacyMoves, type MoveSetting } from "./moves";
+import { cleanMoods, type Mood } from "./moods";
 
-export type Mood = { id: string; label: string; on: boolean };
+export type { Mood } from "./moods";
 export type Habit = { id: string; label: string; type: "daily" | "counter"; goal?: number; dir?: "at_least" | "at_most" };
 export type Meal = "breakfast" | "lunch" | "snack" | "dinner";
 export type PlannedMeal = { name: string; kcal: number; protein: number; carbs?: number; fat?: number };
@@ -144,7 +145,7 @@ export function mergeSettings(stored: unknown): Settings {
   const list = <T,>(v: T[] | undefined, fallback: T[]) => (Array.isArray(v) && v.length ? v : fallback);
   const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback);
   return {
-    moods: list(s.moods, d.moods),
+    moods: cleanMoods(s.moods, d.moods),
     habits: list(s.habits, d.habits),
     mealPlan: s.mealPlan && s.mealPlan in MEAL_PLANS ? s.mealPlan : d.mealPlan,
     bowl: s.bowl && s.bowl in BOWL_VARIANTS ? s.bowl : d.bowl,

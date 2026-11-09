@@ -14,6 +14,8 @@ import { prepareChallenge } from "@/lib/vault-passkey";
 import { PALETTES, type MotionMode, type ThemeMode } from "@/lib/look";
 import { NOTE_MAX, PHRASE_MAX, PHRASES_MAX, type OpeningSource } from "@/lib/opening";
 import { mainOf, movesOf } from "@/lib/moves";
+import { MOOD_LABEL_MAX, MOODS_MAX, moodId, moodTone, type Mood, type MoodTone } from "@/lib/moods";
+import { MoodFace } from "./MoodFace";
 import { MovesChooser } from "./MovesChooser";
 import { SOMA_PHRASES } from "@/lib/opening-words";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
@@ -68,6 +70,7 @@ export function SettingsScreen() {
   const timer = useRef<number | undefined>(undefined);
   const say = useCallback((m: string) => { setToast(m); window.clearTimeout(timer.current); timer.current = window.setTimeout(() => setToast(null), 1800); }, []);
   const save = useCallback((patch: Partial<Settings>, done?: string) => saveSettings(patch).then(() => { if (done) say(done); }, () => say("Couldn't save that")), [saveSettings, say]);
+  const [editMoods, setEditMoods] = useState(false);
 
   const g = settings.goals;
   // Which plan the four targets currently match, if any.
@@ -169,6 +172,24 @@ export function SettingsScreen() {
             ))}
           </div>
           <p className="muted" style={{ fontSize: 12 }}>The moods that are on are the ones offered on Today.</p>
+          <button type="button" className={a.lnk} style={{ alignSelf: "flex-start", minHeight: 44 }} aria-expanded={editMoods} onClick={() => setEditMoods(!editMoods)}>
+            {editMoods ? "Done changing moods" : "Rename, remove or add moods"}
+          </button>
+          {editMoods && <>
+            {/* A mood's words are what a check-in keeps, so a rename only changes what is offered from now on. Good,
+                okay or hard is how Insights reads a day: renamed moods and moods of your own count the way you say. */}
+            {settings.moods.map((m, i) => (
+              <MoodRow key={m.id} mood={m} canRemove={settings.moods.length > 1 && !(m.on && moodsOn <= 1)}
+                taken={(label) => settings.moods.some((x, j) => j !== i && x.label.toLowerCase() === label.toLowerCase())}
+                onChange={(next) => void save({ moods: settings.moods.map((x, j) => (j === i ? next : x)) })}
+                onRemove={() => void save({ moods: settings.moods.filter((_, j) => j !== i) }, `Removed ${m.label}`)} say={say} />
+            ))}
+            <AddRow placeholder="Add a mood" max={MOOD_LABEL_MAX} disabled={settings.moods.length >= MOODS_MAX} note={`${MOODS_MAX} is the limit. Take one out to add another.`}
+              onAdd={(label) => {
+                if (settings.moods.some((x) => x.label.toLowerCase() === label.toLowerCase())) return say("That mood is already there");
+                void save({ moods: [...settings.moods, { id: moodId(label, settings.moods.map((x) => x.id)), label, on: true }] }, `Added ${label}`);
+              }} />
+          </>}
           <span className="eb" style={{ paddingTop: 6 }}>Habits</span>
           {settings.habits.map((h, i) => <HabitRow key={h.id} habit={h} canRemove={settings.habits.length > 1}
             onChange={(next) => void save({ habits: settings.habits.map((x, j) => (j === i ? next : x)) })}
@@ -359,10 +380,10 @@ function HealthSettings({ steps, onSteps, sleep, onSleep }: { steps: number; onS
 }
 
 /** A text field that saves when you leave it or press Enter, and snaps back if the value is rejected. */
-function Commit({ value, label, numeric, onCommit }: { value: string; label: string; numeric?: boolean; onCommit: (v: string) => unknown }) {
+function Commit({ value, label, numeric, max = 100, onCommit }: { value: string; label: string; numeric?: boolean; max?: number; onCommit: (v: string) => unknown }) {
   const [draft, setDraft] = useState<string | null>(null);
   return (
-    <Input compact aria-label={label} value={draft ?? value} maxLength={100} inputMode={numeric ? "numeric" : undefined} pattern={numeric ? "[0-9]*" : undefined}
+    <Input compact aria-label={label} value={draft ?? value} maxLength={max} inputMode={numeric ? "numeric" : undefined} pattern={numeric ? "[0-9]*" : undefined}
       onChange={(e) => setDraft(numeric ? digits(e.target.value) : e.target.value)}
       onBlur={() => { if (draft !== null && draft !== value) onCommit(draft); setDraft(null); }}
       onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
@@ -391,12 +412,38 @@ function HabitRow({ habit, canRemove, onChange, onRemove }: { habit: Habit; canR
   );
 }
 
-function AddRow({ placeholder, onAdd, disabled, note }: { placeholder: string; onAdd: (v: string) => void; disabled?: boolean; note?: string }) {
+/** One mood to rename, mark good, okay or hard, or take out. The face is the one the check-in shows. */
+function MoodRow({ mood, canRemove, taken, onChange, onRemove, say }: {
+  mood: Mood; canRemove: boolean; taken: (label: string) => boolean; onChange: (m: Mood) => void; onRemove: () => void; say: (m: string) => void;
+}) {
+  return (
+    <div className={a.habitRow}>
+      <div className={a.habitTop}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+          <span className="muted" style={{ display: "inline-flex" }}><MoodFace id={mood.id} size={26} /></span>
+          <Commit value={mood.label} label={`Rename ${mood.label}`} max={MOOD_LABEL_MAX} onCommit={(v) => {
+            const t = String(v).trim().slice(0, MOOD_LABEL_MAX);
+            if (!t || t === mood.label) return;
+            if (taken(t)) return say("That mood is already there");
+            onChange({ ...mood, label: t });
+          }} />
+        </span>
+        {canRemove && <button type="button" className={a.lnk} style={{ minHeight: 44 }} onClick={onRemove}>Remove</button>}
+      </div>
+      <div className={a.habitControls}>
+        <Segmented label={`What a day of ${mood.label} is`} value={moodTone(mood)} onChange={(tone) => onChange({ ...mood, tone: tone as MoodTone })}
+          options={[{ value: "good", label: "Good day" }, { value: "okay", label: "Okay" }, { value: "hard", label: "Hard day" }]} />
+      </div>
+    </div>
+  );
+}
+
+function AddRow({ placeholder, onAdd, disabled, note, max = 40 }: { placeholder: string; onAdd: (v: string) => void; disabled?: boolean; note?: string; max?: number }) {
   const [v, setV] = useState("");
   if (disabled) return note ? <p className="muted" style={{ fontSize: 12 }}>{note}</p> : null;
   return (
-    <form className={a.extraForm} onSubmit={(e) => { e.preventDefault(); const t = v.trim().slice(0, 40); if (!t) return; onAdd(t); setV(""); }}>
-      <Input placeholder={placeholder} aria-label={placeholder} value={v} maxLength={40} onChange={(e) => setV(e.target.value)} />
+    <form className={a.extraForm} onSubmit={(e) => { e.preventDefault(); const t = v.trim().slice(0, max); if (!t) return; onAdd(t); setV(""); }}>
+      <Input placeholder={placeholder} aria-label={placeholder} value={v} maxLength={max} onChange={(e) => setV(e.target.value)} />
       <Button type="submit" disabled={!v.trim()}>Add</Button>
     </form>
   );

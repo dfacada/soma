@@ -3,13 +3,15 @@
 // The written pattern analysis still needs the Claude job. Everything here is a count of what was really logged:
 // "on your best days you more often…" is a pattern in the record, never a claim about cause.
 
+import { toneOf } from "./moods";
 import { amountText, loggedOf, movesOf } from "./moves";
 import { addDays, dayKey, dayStatus, type DayMap } from "./today";
 import type { Nights } from "./health";
 import type { Settings } from "./settings";
 
-export const GOOD_MOODS = ["Focused", "Peaceful", "Great", "Grateful", "Excited"];
-export const HARD_MOODS = ["Down", "Overwhelmed", "Anxious"];
+// Soma's own words for good and hard days live with the moods (moods.ts); a day's mood is read through the person's
+// own list first (toneOf), so a renamed mood, or one of their own, still counts the way they said.
+export { GOOD_MOODS, HARD_MOODS } from "./moods";
 
 /** Something a day either had or did not. `good`/`rest` count the days that had it, out of the days where it is known. */
 export type Factor = { label: string; good: number; goodDays: number; rest: number; restDays: number; /** share on good days minus share on the rest, -1…1 */ lift: number };
@@ -103,7 +105,8 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
     if (st.activityDone) activeCheckedIn++;
 
     // What this day had, for "what do my best days have in common". Undefined means unknown, and is not counted.
-    const isGood = GOOD_MOODS.includes(mood);
+    const tone = toneOf(mood, settings.moods);
+    const isGood = tone === "good";
     note("Did push-ups", isGood, st.pushups > 0);
     note("Hit the push-up target", isGood, st.pushups > 0 ? st.pushups >= pushupTarget : undefined);
     for (const mv of movesOf(settings)) if (mv.key !== "pushups" && mv.key !== "steps") note(mv.name, isGood, loggedOf(d?.activity, mv).done);
@@ -122,9 +125,9 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
       const b = sleep.buckets[SLEEP_BUCKETS.findIndex((x) => night.asleep < x.below)];
       b.nights++;
       if (isGood) { b.good++; sleep.good.push(night.asleep); }
-      if (HARD_MOODS.includes(mood)) { sleep.hard.push(night.asleep); if (night.asleep < 360) sleep.hardShort++; }
+      if (tone === "hard") { sleep.hard.push(night.asleep); if (night.asleep < 360) sleep.hardShort++; }
     }
-    const bucket = GOOD_MOODS.includes(mood) ? out.good : HARD_MOODS.includes(mood) ? out.hard : null;
+    const bucket = tone === "good" ? out.good : tone === "hard" ? out.hard : null;
     if (!bucket) continue;
     bucket.days++;
     if (st.activityDone) bucket.withActivity++;
