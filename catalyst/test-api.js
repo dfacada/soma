@@ -395,6 +395,9 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     check('a forged challenge is refused', r.status === 400, r.text);
     r = await call('POST', '/vault-passkeys/unlock', assertion(good, { origin: 'https://evil.example' }));
     check('another origin is refused', r.status === 400, r.text);
+    // The address Dayhub lived at until 2026-11-10. Slate can hand that name to anyone now, so it must stay refused.
+    r = await call('POST', '/vault-passkeys/unlock', assertion(good, { origin: 'https://soma-onkasary.onslate.com' }));
+    check('the address Dayhub left is refused too', r.status === 400 && /origin/.test(r.text), r.text);
     r = await call('POST', '/vault-passkeys/unlock', assertion(good, { rp: 'evil.example' }));
     check('another relying party is refused', r.status === 400, r.text);
     r = await call('POST', '/vault-passkeys/unlock', assertion(await challenge('unlock'), { id: b64u(nodeCrypto.randomBytes(20)) }));
@@ -522,9 +525,11 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const state = 'abcdefghijklmnop1234';
   r = await call('POST', '/google-health/auth-url', { redirectUri: 'https://evil.example/settings/', state });
   check('auth-url refuses a redirect that is not ours', r.status === 400, r.text);
-  r = await call('POST', '/google-health/auth-url', { redirectUri: 'https://soma-onkasary.onslate.com/settings/', state: 'short' });
-  check('auth-url refuses a weak state', r.status === 400, r.text);
   r = await call('POST', '/google-health/auth-url', { redirectUri: 'https://soma-onkasary.onslate.com/settings/', state });
+  check('auth-url refuses the address Dayhub left', r.status === 400, r.text);
+  r = await call('POST', '/google-health/auth-url', { redirectUri: 'https://dayhub-onkasary.onslate.com/settings/', state: 'short' });
+  check('auth-url refuses a weak state', r.status === 400, r.text);
+  r = await call('POST', '/google-health/auth-url', { redirectUri: 'https://dayhub-onkasary.onslate.com/settings/', state });
   check(configured ? 'auth-url asks for offline, read-only activity' : 'auth-url is 503 until the keys are set',
     configured ? r.status === 200 && r.json.url.includes('access_type=offline') && r.json.url.includes('googlehealth.activity_and_fitness.readonly') && r.json.url.includes('googlehealth.sleep.readonly') && r.json.url.includes('state=' + state) && !r.json.url.includes('secret') : r.status === 503, r.json);
   r = await call('POST', '/google-health/sync', { refreshToken: 'not-a-real-token-0000', from: day2, to: day });

@@ -15,7 +15,7 @@ const { writeLog } = require('./log');
 const { closingRules, leftToday } = require('./closing');
 
 const WINDOW_MIN = 120; // how long after the chosen time a late cron run may still nudge
-const SUBJECT = 'https://soma-onkasary.onslate.com/privacy/';
+const SUBJECT = 'https://dayhub-onkasary.onslate.com/privacy/';
 const parse = (text, fallback) => { try { return text ? JSON.parse(text) : fallback; } catch (_e) { return fallback; } };
 
 /** The wall clock in a time zone: { day: 'YYYY-MM-DD', minutes since local midnight }. Null for a zone Node does not know. */

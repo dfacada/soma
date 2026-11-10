@@ -6,7 +6,7 @@
 import { useSyncExternalStore } from "react";
 import { AndroidAdd, AndroidMenu, IosAdd, IosShare, OnHomeScreen } from "./InstallArt";
 
-export const SOMA_URL = "soma-onkasary.onslate.com";
+export const SOMA_URL = "dayhub-onkasary.onslate.com";
 export type Which = "ios" | "android" | "desktop";
 
 export const STEPS: Record<Which, { title: string; note: string; steps: string[] }> = {

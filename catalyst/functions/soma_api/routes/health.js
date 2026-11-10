@@ -38,7 +38,7 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const STEPS_URL = 'https://health.googleapis.com/v4/users/me/dataTypes/steps/dataPoints:dailyRollUp';
 // Must match the OAuth client's Authorized redirect URIs exactly. A Production hostname joins this list.
-const REDIRECTS = ['https://soma-onkasary.onslate.com/settings/', 'http://localhost:3000/settings/'];
+const REDIRECTS = ['https://dayhub-onkasary.onslate.com/settings/', 'http://localhost:3000/settings/'];
 const MAX_DAYS = 85; // dailyRollUp allows 90 for steps; stay clear of the edge
 
 const config = () => {

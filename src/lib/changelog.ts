@@ -16,11 +16,12 @@ export const CHANGES: Release[] = [
     date: "2026-11-10",
     title: "A new name: Dayhub",
     items: [
-      "Soma is now called Dayhub. It's the same app with a new name. Your account, your journal and everything you've logged are exactly where they were, your vault passphrase is the same, and so is the address. You'll see the new name on the opening screen, in notifications and in Telegram messages. The icon on your Home Screen may still say Soma under it: that's only a label, and it opens the same app.",
+      "Dayhub has a new address: dayhub-onkasary.onslate.com. The old address has stopped working, and so has an icon that was added to a Home Screen from it. Everything you've logged is where it was, but each phone or computer sees the new address as a new place. So on each one: sign in again, type your vault passphrase and turn Face ID unlock back on in Settings, add Dayhub to your Home Screen again and delete the old icon, then turn your reminders back on.",
+      "Soma is now called Dayhub. It's the same app with a new name. Your account, your journal and everything you've logged are exactly where they were, and your vault passphrase is the same. You'll see the new name on the opening screen, in notifications and in Telegram messages.",
       "The code for connecting Telegram now starts with DAYHUB-. The bot is still @Soma_me_bot, and a chat that's already connected stays connected.",
       "A download of your data is now named dayhub-export. The data file inside it is now dayhub-data.json, and what it holds is the same as before.",
       "Privacy and Terms carry the new name and today's date. What Dayhub stores, and who can read it, is the same as before. Both now send you to Messages in Settings to reach David, which replaced the feedback form.",
-      "Admin: Soma Ops is now Dayhub Ops. Same place, same address, and its Telegram alerts now begin with Dayhub.",
+      "Admin: Soma Ops is now Dayhub Ops. Same place in the app, and its Telegram alerts now begin with Dayhub.",
     ],
   },
   {
@@ -161,7 +162,7 @@ export const CHANGES: Release[] = [
       "What's new is easier to scan. Each change has a short headline; tap it to read the rest.",
       "Recording moves with your voice. While you record a journal entry, the bars around the microphone and the glowing circle rise when you speak up and go still when you pause. Saying what you ate on Today moves the same way. Nothing extra is recorded or sent; the sound is only measured on your phone to draw it.",
       "Smoother voice motion. Each bar rises the moment you speak and settles gently as your voice tails off, and the bars blend into each other so the ring flows like a wave instead of flickering.",
-      "The privacy page now names everyone who handles your data. New on it: Claude, which reads the food you describe to estimate calories, your week's journal for the week in review if you've switched that on, and your journal for Insights if you chose With Claude (with names and details taken out first). Groq turns food you say aloud into words and reads your week in review aloud when you ask, as well as transcribing if you've switched that on. Morgen, Todoist and Telegram are on it too. Settings → Privacy policy, or soma-onkasary.onslate.com/privacy/.",
+      "The privacy page now names everyone who handles your data. New on it: Claude, which reads the food you describe to estimate calories, your week's journal for the week in review if you've switched that on, and your journal for Insights if you chose With Claude (with names and details taken out first). Groq turns food you say aloud into words and reads your week in review aloud when you ask, as well as transcribing if you've switched that on. Morgen, Todoist and Telegram are on it too. Settings → Privacy policy, or dayhub-onkasary.onslate.com/privacy/.",
       "Tomorrow's brief now shows only the Todoist tasks due that day. Overdue tasks and ones still open from today stay in Todoist.",
       "The brief in Telegram is easier to read. Each part has a bold heading, your events sit one to a line with the times lined up, each free block gets its own line, your tasks have a coloured dot for their priority, and your meals and push-ups come underneath.",
     ],
@@ -273,7 +274,7 @@ export const CHANGES: Release[] = [
     date: "2026-09-22",
     title: "Sharing Dayhub, and who is using it",
     items: [
-      "A page to send anyone joining: soma-onkasary.onslate.com/install/ shows how to add Dayhub to a Home Screen on an iPhone, an Android phone or a computer, and what to do once they are in.",
+      "A page to send anyone joining: dayhub-onkasary.onslate.com/install/ shows how to add Dayhub to a Home Screen on an iPhone, an Android phone or a computer, and what to do once they are in.",
       "That page now draws each step on a phone: which button to tap, where it sits, and what Dayhub looks like once it is on the Home Screen.",
       "Opening Dayhub in a browser on a phone now shows those steps once, so nobody has to be told twice. It never appears if Dayhub is already on your Home Screen, and Settings keeps a link to the steps.",
       "For the admin: Settings \u2192 Admin \u2192 Users now shows when each person last used Dayhub, most recent first, and how many were around this week. Tap Activity on someone to see their last fortnight: which days they logged, how many journal entries, push-ups and steps.",
