@@ -32,7 +32,7 @@ if (!fs.existsSync(secretsPath)) {
 
 const secrets = JSON.parse(fs.readFileSync(secretsPath, 'utf8'));
 // Which release wrote a log row or sent an alert: the deploy's UTC month-day.hourminute, like the app's own build
-// (next.config.ts). The functions read it as SOMA_RELEASE; Soma Ops shows it under Live now and per problem.
+// (next.config.ts). The functions read it as SOMA_RELEASE; Dayhub Ops shows it under Live now and per problem.
 const RELEASE = new Date().toISOString().slice(5, 16).replace('T', '.').replace(':', '');
 const names = only ? [only] : targets;
 const originals = new Map();

@@ -1,10 +1,10 @@
-// The words that meet you when Soma opens (David, 2026-09-17: "inspirational quotes that pop up before you do
+// The words that meet you when Dayhub opens (David, 2026-09-17: "inspirational quotes that pop up before you do
 // anything"). One phrase, full screen, once a day on each device (David, same day: "should happen once a day
 // only"): the first open of the day gets the words, every later one goes straight in. They take turns by day. Anything else that wants attention on
 // opening (the vault prompt) waits for `opened`, so two things never land on the screen at once.
 //
 // Where the words come from is the person's choice (David, 2026-11-08: "inspirational or ... your own or combo of
-// both"): Soma's own set (opening-words.ts), their own phrases, or both, taking turns a day each.
+// both"): Dayhub's own set (opening-words.ts), their own phrases, or both, taking turns a day each.
 
 import { SOMA_PHRASES } from "./opening-words";
 
@@ -16,9 +16,9 @@ export const PHRASE_MAX = 140, NOTE_MAX = 240, PHRASES_MAX = 12;
 const same = (a: Phrase, b: Phrase) => a.text.trim().toLowerCase() === b.text.trim().toLowerCase();
 
 /**
- * The phrase for one turn. "soma": Soma's set in order. "mine": the person's own. "both": theirs on even turns and
- * Soma's on odd ones, each list keeping its own order, with any of Soma's that they also keep left out so no day
- * repeats the one before. With none of their own, Soma's alone: words that are switched on always have something to
+ * The phrase for one turn. "soma": Dayhub's set in order. "mine": the person's own. "both": theirs on even turns and
+ * Dayhub's on odd ones, each list keeping its own order, with any of Dayhub's that they also keep left out so no day
+ * repeats the one before. With none of their own, Dayhub's alone: words that are switched on always have something to
  * say. Pure, for scripts/test-opening.mjs.
  */
 export function phraseFor(turn: number, source: OpeningSource, mine: Phrase[], soma: Phrase[] = SOMA_PHRASES): Phrase {

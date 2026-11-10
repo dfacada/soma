@@ -1,4 +1,4 @@
-// Sleep as Soma shows it (src/lib/sleep.ts): the formatting, the stages, the evening axis and the week.
+// Sleep as Dayhub shows it (src/lib/sleep.ts): the formatting, the stages, the evening axis and the week.
 //
 //   node --import ./scripts/ts-resolve.mjs scripts/test-sleep.mjs
 

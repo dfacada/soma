@@ -1,6 +1,6 @@
 "use client";
 
-// The words and pictures for adding Soma to a Home Screen, in one place: the public page (/install/, for the link
+// The words and pictures for adding Dayhub to a Home Screen, in one place: the public page (/install/, for the link
 // David emails) and the splash inside the app (components/app/InstallSplash.tsx) show the same thing.
 
 import { useSyncExternalStore } from "react";
@@ -12,13 +12,13 @@ export type Which = "ios" | "android" | "desktop";
 export const STEPS: Record<Which, { title: string; note: string; steps: string[] }> = {
   ios: {
     title: "iPhone and iPad",
-    note: "Use Safari. Other browsers on iPhone cannot add an app that receives Soma's evening reminder.",
+    note: "Use Safari. Other browsers on iPhone cannot add an app that receives Dayhub's evening reminder.",
     steps: [
       `Open Safari and go to ${SOMA_URL}.`,
       "Tap the Share button: the square with an arrow pointing up, at the bottom of the screen (at the top on an iPad).",
       "Scroll down the list and tap Add to Home Screen.",
-      "Tap Add, at the top right. Soma is now on your Home Screen like any other app.",
-      "Open Soma from the Home Screen icon and sign in there.",
+      "Tap Add, at the top right. Dayhub is now on your Home Screen like any other app.",
+      "Open Dayhub from the Home Screen icon and sign in there.",
     ],
   },
   android: {
@@ -29,12 +29,12 @@ export const STEPS: Record<Which, { title: string; note: string; steps: string[]
       "Tap the three dots at the top right.",
       "Tap Add to Home screen (it may say Install app).",
       "Tap Install, or Add, to confirm.",
-      "Open Soma from the Home Screen icon and sign in there.",
+      "Open Dayhub from the Home Screen icon and sign in there.",
     ],
   },
   desktop: {
     title: "Mac and Windows",
-    note: "Optional. Soma works in any browser tab; installing it just gives it its own window.",
+    note: "Optional. Dayhub works in any browser tab; installing it just gives it its own window.",
     steps: [
       `Open Chrome or Edge and go to ${SOMA_URL}.`,
       "Look for the install icon at the right of the address bar, a screen with a downward arrow.",
@@ -49,17 +49,17 @@ export const ART: Record<Which, { art: React.ReactNode; caption: string }[]> = {
   ios: [
     { art: <IosShare />, caption: "1. Share, in the bottom bar" },
     { art: <IosAdd />, caption: "2. Add to Home Screen" },
-    { art: <OnHomeScreen />, caption: "3. Soma, on your Home Screen" },
+    { art: <OnHomeScreen />, caption: "3. Dayhub, on your Home Screen" },
   ],
   android: [
     { art: <AndroidMenu />, caption: "1. The three dots, top right" },
     { art: <AndroidAdd />, caption: "2. Add to Home screen" },
-    { art: <OnHomeScreen />, caption: "3. Soma, on your Home Screen" },
+    { art: <OnHomeScreen />, caption: "3. Dayhub, on your Home Screen" },
   ],
   desktop: [],
 };
 
-/** True when Soma is already running from a Home Screen icon or an installed window. */
+/** True when Dayhub is already running from a Home Screen icon or an installed window. */
 export function installed(): boolean {
   if (typeof window === "undefined") return false;
   const ios = (navigator as Navigator & { standalone?: boolean }).standalone === true;

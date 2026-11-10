@@ -28,7 +28,7 @@ export type Scene = {
   reduced?: boolean;
   /** Whose screen: the settled member (the default), someone on their first day, or someone waiting for approval. */
   who?: Who;
-  /** A window size other than the phone's, for screens made for a computer first (Soma Ops). */
+  /** A window size other than the phone's, for screens made for a computer first (Dayhub Ops). */
   view?: { width: number; height: number };
 };
 
@@ -51,7 +51,7 @@ export const AREAS: Area[] = [
   { id: "settings", title: "Settings and What's new", files: ["src/components/app/Settings.tsx", "src/components/app/WhatsNew.tsx", "src/components/app/Telegram.tsx"] },
   { id: "moments", title: "Full-screen moments: recording, saying what you ate, the day closing", files: ["src/components/app/Moments.tsx", "src/components/app/moments.module.css"] },
   { id: "welcome", title: "Getting in: waiting for approval and making the vault", files: ["src/components/app/Session.tsx", "src/components/app/Journal.tsx"] },
-  { id: "ops", title: "Soma Ops: the admin's console (a computer first; a phone too)", files: ["src/components/ops/OpsShell.tsx", "src/components/ops/Overview.tsx", "src/components/ops/Issues.tsx", "src/components/ops/People.tsx", "src/components/ops/Person.tsx", "src/components/ops/Errors.tsx", "src/components/ops/Support.tsx", "src/components/ops/Audit.tsx", "src/components/ops/ops.module.css"] },
+  { id: "ops", title: "Dayhub Ops: the admin's console (a computer first; a phone too)", files: ["src/components/ops/OpsShell.tsx", "src/components/ops/Overview.tsx", "src/components/ops/Issues.tsx", "src/components/ops/People.tsx", "src/components/ops/Person.tsx", "src/components/ops/Errors.tsx", "src/components/ops/Support.tsx", "src/components/ops/Audit.tsx", "src/components/ops/ops.module.css"] },
 ];
 
 /** The shared design system: tokens, primitives, the shell and the shared CSS modules. One maker, run alone. */
@@ -87,7 +87,7 @@ export const SCENES: Scene[] = [
   { id: "moment-record", area: "moments", title: "Recording a journal entry, full screen", path: "/", steps: [{ click: "Record a journal entry" }, { wait: 1500 }] },
   { id: "moment-food", area: "moments", title: "Saying what you ate, full screen, listening", path: "/", steps: [{ click: "Say what you ate" }, { wait: 1500 }] },
 
-  // Day one. Everyone who joins starts here, and Soma starts empty for all of them (no data is migrated): the account
+  // Day one. Everyone who joins starts here, and Dayhub starts empty for all of them (no data is migrated): the account
   // is minutes old, nothing is logged, there is no vault yet and Fitbit is not connected. A round is under way and open.
   { id: "new-pending", area: "welcome", who: "pending", title: "Just signed up: the account waits for the admin to approve it", path: "/" },
   { id: "new-vault", area: "welcome", who: "new", title: "Day one: the Journal card tapped for the first time, which asks to create the vault", path: "/", steps: [{ click: "Record a journal entry" }] },
@@ -99,7 +99,7 @@ export const SCENES: Scene[] = [
   { id: "new-tomorrow", area: "tomorrow", who: "new", title: "Tomorrow's brief on day one: nothing connected", path: "/tomorrow/" },
   { id: "new-settings", area: "settings", who: "new", title: "Settings on day one: no vault, Fitbit not connected", path: "/settings/", frames: 2 },
 
-  // Soma Ops, the admin's console, on invented people (ops-world.ts): a computer-sized window first, and a phone.
+  // Dayhub Ops, the admin's console, on invented people (ops-world.ts): a computer-sized window first, and a phone.
   { id: "ops-overview", area: "ops", view: DESK, title: "Ops overview: today's tiles, cohorts, the funnel, people a day (the first three days not counted yet), issues by kind", path: "/ops/", frames: 1 },
   { id: "ops-issues", area: "ops", view: DESK, title: "Ops issues: eight open, five need you; the first (journal entries won't open) picked, with its fix and a message ready", path: "/ops/issues/" },
   { id: "ops-person", area: "ops", view: DESK, title: "Ops, one person: fourteen days done or not with no values, their issue, errors, messages, values locked, journal never visible, AI use", path: "/ops/person/?id=800000000000000101", frames: 1 },

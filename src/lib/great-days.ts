@@ -146,7 +146,7 @@ export const TASK_LABEL: Record<TaskKey, string> = { weight: "Weight", checkin: 
 export type Progress = { days: number; closed: number; rates: { key: TaskKey; rate: number }[]; weakest: TaskKey | null; perDay: { day: string; done: number; total: number }[] };
 
 /** How the window went: days closed, how often each task got done, and which one most often kept a day open. Counted
- *  from the first day anything was logged, so a year's view is not dragged down by the months before Soma. */
+ *  from the first day anything was logged, so a year's view is not dragged down by the months before Dayhub. */
 export function progress(map: DayMap, all: string[], settings: Settings): Progress {
   const logged = (k: string) => { const d = map[k]; return !!d && (!!d.checkin || !!d.log || !!d.activity || d.weight !== undefined || d.entries > 0); };
   const first = all.findIndex(logged);

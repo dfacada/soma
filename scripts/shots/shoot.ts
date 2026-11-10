@@ -1,4 +1,4 @@
-// Screenshots of every Soma screen, for the polish loop's critics (docs/POLISH.md). Runs the dev server's pages in a
+// Screenshots of every Dayhub screen, for the polish loop's critics (docs/POLISH.md). Runs the dev server's pages in a
 // headless Edge at iPhone size, on the made-up member in world.ts, in Night and Light.
 //
 //   npm run shots                                   every scene, both themes, into shots/latest/
@@ -274,7 +274,7 @@ async function main() {
             catch (e) { throw new Error(`step ${i + 1} (${JSON.stringify(s)}) failed: ${(e as Error).message.split("\n")[0]}`); }
           }
           await settle(page);
-          // The Next.js dev badge is not part of Soma.
+          // The Next.js dev badge is not part of Dayhub.
           await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
           if (o.dump) console.log(`\n── ${scene.id} · ${theme}\n` + await page.locator("body").ariaSnapshot());
           for (let frame = 0; frame <= (scene.frames || 0); frame++) {

@@ -1,4 +1,4 @@
-// Insights from what Soma actually records. Pure: a window of days in, plain numbers out.
+// Insights from what Dayhub actually records. Pure: a window of days in, plain numbers out.
 // Sleep comes from Google Health when it is connected and the vault is open; without it those parts are null.
 // The written pattern analysis still needs the Claude job. Everything here is a count of what was really logged:
 // "on your best days you more often…" is a pattern in the record, never a claim about cause.
@@ -9,7 +9,7 @@ import { addDays, dayKey, dayStatus, type DayMap } from "./today";
 import type { Nights } from "./health";
 import type { Settings } from "./settings";
 
-// Soma's own words for good and hard days live with the moods (moods.ts); a day's mood is read through the person's
+// Dayhub's own words for good and hard days live with the moods (moods.ts); a day's mood is read through the person's
 // own list first (toneOf), so a renamed mood, or one of their own, still counts the way they said.
 export { GOOD_MOODS, HARD_MOODS } from "./moods";
 

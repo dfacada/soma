@@ -1,6 +1,6 @@
 "use client";
 
-// Soma Ops · Errors: a day of the log grouped into problems (one code each), with who it touches, its last twelve
+// Dayhub Ops · Errors: a day of the log grouped into problems (one code each), with who it touches, its last twelve
 // hours, when it first appeared and which build it came with; one of them as logged; mute or mark fixed; and when to
 // hear about it on Telegram. Every row, unfiltered, is under it (LogView, the old Settings → Admin → Log).
 

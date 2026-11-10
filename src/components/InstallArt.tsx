@@ -105,17 +105,17 @@ export function AndroidAdd() {
   );
 }
 
-/** The result, on either phone: Soma sitting on the Home Screen. */
+/** The result, on either phone: Dayhub sitting on the Home Screen. */
 export function OnHomeScreen() {
   const tile = (x: number, y: number) => <rect x={x} y={y} width="22" height="22" rx="6" fill={HAIR} opacity="0.7" />;
   return (
-    <Phone label="A phone Home Screen with the Soma icon among the other apps.">
+    <Phone label="A phone Home Screen with the Dayhub icon among the other apps.">
       {tile(20, 40)}{tile(50, 40)}{tile(80, 40)}
-      {/* Soma: the day ring on bone, as the real icon is */}
+      {/* Dayhub: the day ring on bone, as the real icon is */}
       <rect x="20" y="76" width="22" height="22" rx="6" fill={BONE} stroke={HAIR} />
       <circle cx="31" cy="87" r="6.5" fill="none" stroke={HAIR} strokeWidth="2.5" />
       <path d="M31 80.5a6.5 6.5 0 0 1 6.5 6.5" fill="none" stroke={MARK} strokeWidth="2.5" strokeLinecap="round" />
-      <text x="31" y="106" textAnchor="middle" fontSize="6" fill={INK}>Soma</text>
+      <text x="31" y="106" textAnchor="middle" fontSize="6" fill={INK}>Dayhub</text>
       {tile(50, 76)}{tile(80, 76)}
       {tile(20, 118)}{tile(50, 118)}{tile(80, 118)}
       <rect x="20" y="170" width="82" height="28" rx="10" fill={SURF} opacity="0.8" transform="translate(-1 0)" />

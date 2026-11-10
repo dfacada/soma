@@ -45,11 +45,11 @@ const HEALTH_SHORT = { loading: "Checking…", unconfigured: "Not available yet"
 const SECTIONS = ["account", "appearance", "opening", "checkin", "food", "weight", "activity", "nudge", "brief", "fitbit", "journal", "review", "data", "whats-new", "messages", "admin"];
 /** What the Opening words row says it is set to. */
 const openingSummary = (source: OpeningSource, mine: number) =>
-  source === "soma" || mine === 0 ? "Soma's words" : source === "mine" ? `${mine} of yours` : `Soma's and ${mine} of yours`;
+  source === "soma" || mine === 0 ? "Dayhub's words" : source === "mine" ? `${mine} of yours` : `Dayhub's and ${mine} of yours`;
 const OPENING_HELP: Record<OpeningSource, string> = {
-  soma: `A different line each day from Soma's own ${SOMA_PHRASES.length}. Your own phrases are kept for when you choose Mine or Both.`,
+  soma: `A different line each day from Dayhub's own ${SOMA_PHRASES.length}. Your own phrases are kept for when you choose Mine or Both.`,
   mine: "Only the phrases you add below, taking turns.",
-  both: "Yours and Soma's take turns, a day each.",
+  both: "Yours and Dayhub's take turns, a day each.",
 };
 /** What the Your moves row says: the main move first, then the others. */
 function movesSummary(s: Settings) {
@@ -113,7 +113,7 @@ export function SettingsScreen() {
           {!isDevIdentity && <Button variant="secondary" onClick={signOut}>Sign out</Button>}
         </Section>
 
-        <Section {...sec("appearance")} title="Appearance" summary={`${THEME_NAME[settings.theme]} · ${settings.motion === "calm" ? "Calm" : "Lively"} · ${PALETTES.find((p) => p.id === settings.palette)?.name || "Soma"}`}>
+        <Section {...sec("appearance")} title="Appearance" summary={`${THEME_NAME[settings.theme]} · ${settings.motion === "calm" ? "Calm" : "Lively"} · ${PALETTES.find((p) => p.id === settings.palette)?.name || "Dayhub"}`}>
           <Field name="Theme" help="System follows your phone: Night when it is dark, Light when it is not.">
             <Segmented block label="Theme" value={settings.theme} onChange={(v) => void save({ theme: v as ThemeMode })}
               options={[{ value: "dark", label: "Night" }, { value: "light", label: "Light" }, { value: "system", label: "System" }]} />
@@ -135,17 +135,17 @@ export function SettingsScreen() {
         </Section>
 
         <Section {...sec("opening")} title="Opening words" summary={settings.opening.on ? `On · ${openingSummary(settings.opening.source, settings.opening.phrases.length)}` : "Off"}>
-          <Field name="Show when Soma opens" help="The first time you open Soma each day, one line fills the screen before anything else, a different one each day. A tap goes on.">
+          <Field name="Show when Dayhub opens" help="The first time you open Dayhub each day, one line fills the screen before anything else, a different one each day. A tap goes on.">
             <Switch checked={settings.opening.on} label="Show opening words" onChange={(v) => void save({ opening: { ...settings.opening, on: v } }, v ? "Opening words on" : "Opening words off")} />
           </Field>
           <Field name="Words from" help={OPENING_HELP[settings.opening.source]}>
             <Segmented label="Where the opening words come from" value={settings.opening.source}
-              onChange={(v) => void save({ opening: { ...settings.opening, source: v as OpeningSource } }, v === "soma" ? "Soma's words" : v === "mine" ? "Only your phrases" : "Yours and Soma's, taking turns")}
-              options={[{ value: "soma", label: "Soma's" }, { value: "mine", label: "Mine" }, { value: "both", label: "Both" }]} />
+              onChange={(v) => void save({ opening: { ...settings.opening, source: v as OpeningSource } }, v === "soma" ? "Dayhub's words" : v === "mine" ? "Only your phrases" : "Yours and Dayhub's, taking turns")}
+              options={[{ value: "soma", label: "Dayhub's" }, { value: "mine", label: "Mine" }, { value: "both", label: "Both" }]} />
           </Field>
           {settings.opening.source !== "soma" && <span className="eb" style={{ paddingTop: 6 }}>Your phrases</span>}
           {settings.opening.source !== "soma" && settings.opening.phrases.length === 0 && (
-            <p className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>None yet. Add one below{settings.opening.source === "mine" ? "; until then Soma's own words show." : "."}</p>
+            <p className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>None yet. Add one below{settings.opening.source === "mine" ? "; until then Dayhub's own words show." : "."}</p>
           )}
           {settings.opening.source !== "soma" && settings.opening.phrases.map((p, i) => (
             <div key={p.text + i} className={a.habitRow}>
@@ -271,15 +271,15 @@ export function SettingsScreen() {
               </Button>
             </Field>
           )}
-          <Field name="Ask when Soma opens" help="On: Soma asks for your passphrase once each time you open it, so your journal, sleep and Fitbit sync are ready. You can always tap Not now.">
-            <Switch checked={settings.unlockOnOpen} label="Ask for the vault when Soma opens" onChange={(v) => void save({ unlockOnOpen: v }, v ? "Soma will ask when it opens" : "Soma will not ask on opening")} />
+          <Field name="Ask when Dayhub opens" help="On: Dayhub asks for your passphrase once each time you open it, so your journal, sleep and Fitbit sync are ready. You can always tap Not now.">
+            <Switch checked={settings.unlockOnOpen} label="Ask for the vault when Dayhub opens" onChange={(v) => void save({ unlockOnOpen: v }, v ? "Dayhub will ask when it opens" : "Dayhub will not ask on opening")} />
           </Field>
           <Field name="Cloud transcription" help="Off by default. When on, each recording is sent to Groq to be transcribed, then blanked and deleted from the server; the transcript is encrypted into the entry on this device.">
             <Switch checked={settings.cloudTranscription} label="Cloud transcription" onChange={(v) => void save({ cloudTranscription: v }, v ? "Cloud transcription on" : "Cloud transcription off")} />
           </Field>
           <Field name="Read my journal for Insights"
             help={settings.journalInsights === "claude"
-              ? "With Claude: before anything leaves this phone, names, places, emails, phone numbers, addresses and links are taken out, and the days go out shuffled with no dates. Soma sends them under its own key with nothing about your account; only a tone and a few general themes come back, kept encrypted on this phone. Nothing is stored on the server. Taking names out is careful but not perfect."
+              ? "With Claude: before anything leaves this phone, names, places, emails, phone numbers, addresses and links are taken out, and the days go out shuffled with no dates. Dayhub sends them under its own key with nothing about your account; only a tone and a few general themes come back, kept encrypted on this phone. Nothing is stored on the server. Taking names out is careful but not perfect."
               : "On this phone: a word list reads the tone of each day's entries. Nothing leaves your phone. With Claude reads tone and themes far better, with names and details taken out first."}>
             <Segmented label="Read my journal for Insights" value={settings.journalInsights}
               onChange={(v) => void save({ journalInsights: v as "phone" | "claude" }, v === "claude" ? "Insights will ask Claude, without your name" : "Insights reads your journal on this phone")}
@@ -295,14 +295,14 @@ export function SettingsScreen() {
         </Section>
       </Group>
 
-      <Group label="Soma">
+      <Group label="Dayhub">
         <Section {...sec("whats-new")} title="What's new" summary={`${CHANGES[0].title} · ${releaseDate(CHANGES[0].date)}`}>
           <ChangesSettings />
         </Section>
         <Section {...sec("messages")} title="Messages" summary="Something broken or missing? Write to David.">
           <MessagesThread say={say} />
         </Section>
-        {me.profile.role === "admin" && <Section {...sec("admin")} title="Admin" summary="Soma Ops, and your own transcripts" />}
+        {me.profile.role === "admin" && <Section {...sec("admin")} title="Admin" summary="Dayhub Ops, and your own transcripts" />}
       </Group>
       {me.profile.role === "admin" && open.has("admin") && <Admin say={say} />}
 
@@ -342,7 +342,7 @@ const HEALTH_LINE = {
   loading: "Checking…",
   unconfigured: "Not available yet. David has to finish the Google setup first.",
   off: "Not connected.",
-  connected: "Connected. Steps and sleep refresh every half hour while Soma is open and your vault is unlocked.",
+  connected: "Connected. Steps and sleep refresh every half hour while Dayhub is open and your vault is unlocked.",
   reconnect: "Google has ended the connection. Connect again to keep steps and sleep coming.",
 } as const;
 
@@ -374,7 +374,7 @@ function HealthSettings({ steps, onSteps, sleep, onSleep }: { steps: number; onS
         </Select>
       </Field>
       {linked && <div><button type="button" className={a.lnk} style={{ minHeight: 44 }} onClick={() => void health.disconnect()}>Disconnect</button></div>}
-      <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Fitbit moved to Google Health in 2026, so you sign in with the Google account your Fitbit uses. Soma asks to read two things, activity and sleep, and keeps daily step totals and one line per night (time asleep, stages, bed and wake times). There is no sleep score: Google does not share Fitbit’s. Sleep and the connection itself are encrypted with your vault key, so the server cannot read either.</p>
+      <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Fitbit moved to Google Health in 2026, so you sign in with the Google account your Fitbit uses. Dayhub asks to read two things, activity and sleep, and keeps daily step totals and one line per night (time asleep, stages, bed and wake times). There is no sleep score: Google does not share Fitbit’s. Sleep and the connection itself are encrypted with your vault key, so the server cannot read either.</p>
     </>
   );
 }
@@ -509,7 +509,7 @@ function PasskeyField({ say }: { say: (m: string) => void }) {
   );
 }
 
-/** Every change ever made to Soma, newest first (src/lib/changelog.ts). What's new shows the unseen ones on opening. */
+/** Every change ever made to Dayhub, newest first (src/lib/changelog.ts). What's new shows the unseen ones on opening. */
 function ChangesSettings() {
   const [open, setOpen] = useState(false);
   // The latest release's title and date are on the row above; this field is named for what its button opens.
@@ -518,7 +518,7 @@ function ChangesSettings() {
       <Field name="Every change" help={`${CHANGES.length} ${CHANGES.length === 1 ? "update" : "updates"} so far, newest first.`}>
         <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>See all changes</Button>
       </Field>
-      <Field name="Soma on your Home Screen" help="An icon, full screen, and the evening reminder. The steps for your phone, and a link you can send to someone else.">
+      <Field name="Dayhub on your Home Screen" help="An icon, full screen, and the evening reminder. The steps for your phone, and a link you can send to someone else.">
         {/* The same small secondary pill as See all changes, so the two fields end alike. Still a link to the page. */}
         <ButtonLink href="/install/" variant="secondary" size="sm">How to install</ButtonLink>
       </Field>
@@ -540,7 +540,7 @@ function ReviewSettings({ say }: { say: (m: string) => void }) {
 
   return (
     <>
-      <Field name="Write one each week" help="Once a week Soma reads back what your journal said: a synopsis, the things worth remembering, and what came up more than once.">
+      <Field name="Write one each week" help="Once a week Dayhub reads back what your journal said: a synopsis, the things worth remembering, and what came up more than once.">
         <Switch checked={r.on} label="Write a weekly review" onChange={(v) => void set({ on: v }, v ? "Weekly review on" : "Weekly review off")} />
       </Field>
       {r.on && <>
@@ -552,10 +552,10 @@ function ReviewSettings({ say }: { say: (m: string) => void }) {
             <Input type="time" aria-label="Time" value={r.time} style={{ width: 120 }} onChange={(e) => void set({ time: e.target.value }, "Time saved")} />
           </div>
         </Field>
-        <Field name="Read my journal to write it" help="Off, nothing happens: this is the one feature where journal text leaves your phone. On, Soma decrypts that week's entries here and sends the text through its own server to Claude, which writes the review. Neither Soma nor Claude keeps it; what comes back is encrypted again before it is stored.">
+        <Field name="Read my journal to write it" help="Off, nothing happens: this is the one feature where journal text leaves your phone. On, Dayhub decrypts that week's entries here and sends the text through its own server to Claude, which writes the review. Neither Dayhub nor Claude keeps it; what comes back is encrypted again before it is stored.">
           <Switch checked={r.consent} label="Let Claude read that week's entries" onChange={(v) => void set({ consent: v }, v ? "Thank you. Reviews will be written." : "Off. No journal text will be sent.")} />
         </Field>
-        <Field name="Send it to Telegram" help="The whole review as a message when it is written. Telegram keeps whatever is sent to it, so this is a copy of your journal's summary outside Soma.">
+        <Field name="Send it to Telegram" help="The whole review as a message when it is written. Telegram keeps whatever is sent to it, so this is a copy of your journal's summary outside Dayhub.">
           <Switch checked={r.telegram} label="Send the review to Telegram" onChange={(v) => void set({ telegram: v }, v ? "It will be sent to Telegram" : "It will stay in the app")} />
         </Field>
         {r.telegram && (

@@ -93,7 +93,7 @@ function StepsBody({ day, onClose }: { day: string; onClose: () => void }) {
             </p>
           </>
         ) : (
-          <p className={z.none}>{going ? "Nothing synced for today yet. Trackers send steps through the day, and Soma checks every half hour while it's open." : "No steps were reported for this day."}</p>
+          <p className={z.none}>{going ? "Nothing synced for today yet. Trackers send steps through the day, and Dayhub checks every half hour while it's open." : "No steps were reported for this day."}</p>
         )}
       </div>
 

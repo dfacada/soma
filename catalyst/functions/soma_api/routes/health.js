@@ -92,7 +92,7 @@ router.post('/google-health/exchange', member, wrap(async (req, res) => {
     await note(req, 'exchange_refused', 'Google refused the sign-in code', { status: r.status, error: r.json && r.json.error }, 'warn');
     throw new HttpError(r.status === 400 ? 400 : 502, 'Google refused the sign-in code; try connecting again');
   }
-  if (!r.json.refresh_token) throw new HttpError(502, 'Google sent no refresh token; remove Soma under myaccount.google.com/connections and connect again');
+  if (!r.json.refresh_token) throw new HttpError(502, 'Google sent no refresh token; remove Dayhub under myaccount.google.com/connections and connect again');
   if (!String(r.json.scope || '').split(' ').includes(SCOPE)) throw new HttpError(409, 'the activity permission was not ticked on Google\'s screen; connect again and allow it');
   res.json({ refreshToken: r.json.refresh_token, sleep: String(r.json.scope || '').split(' ').includes(SLEEP_SCOPE) });
 }));

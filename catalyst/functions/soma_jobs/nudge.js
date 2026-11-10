@@ -40,7 +40,7 @@ function due(local, minutes, lastDay) {
   return Boolean(local) && local.minutes >= minutes && local.minutes < minutes + WINDOW_MIN && lastDay !== local.day;
 }
 
-// The closing rule itself (leftToday) lives in closing.js, shared with Soma Ops.
+// The closing rule itself (leftToday) lives in closing.js, shared with Dayhub Ops.
 
 // ── The week-in-review reminder. The review can only be written on a device with the vault open (src/lib/review.ts),
 // so at the person's review day and time this tells them it is ready to write. Opening it writes it, and sends it to
@@ -74,7 +74,7 @@ function reviewDueNow(local, rs, sentWeek) {
   return sentWeek === week ? null : week;
 }
 
-const REVIEW_MESSAGE = { title: 'Your week is ready', body: 'Open Soma to write your week in review.', url: '/review/', tag: 'soma-review' };
+const REVIEW_MESSAGE = { title: 'Your week is ready', body: 'Open Dayhub to write your week in review.', url: '/review/', tag: 'soma-review' };
 
 // ── Tomorrow's brief (2026-11-02). The brief is read on the phone with the vault open (the calendar and task keys are
 // sealed with it), so this only says it is ready: at the person's brief time, once per device per day
@@ -103,7 +103,7 @@ function briefDayOf(local) {
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 function briefMessage(local) {
   const name = WEEKDAY_NAMES[weekdayOf(briefDayOf(local))];
-  return { title: "Tomorrow's brief", body: `See what ${name} looks like: your calendar, tasks and Soma's side of the day.`, url: '/tomorrow/', tag: 'soma-brief' };
+  return { title: "Tomorrow's brief", body: `See what ${name} looks like: your calendar, tasks and Dayhub's side of the day.`, url: '/tomorrow/', tag: 'soma-brief' };
 }
 
 function message(left) {
@@ -187,7 +187,7 @@ async function run(app, params) {
     const user = users.get(uid);
     if (!user) continue;
     const local = localNow(now, sub.tz || 'UTC') || localNow(now, 'UTC');
-    if (test) { await send(sub, uid, { title: 'Soma', body: 'Notifications work on this device.', url: '/settings/' }); continue; }
+    if (test) { await send(sub, uid, { title: 'Dayhub', body: 'Notifications work on this device.', url: '/settings/' }); continue; }
 
     // The week in review first: its own day and time, its own once-a-week mark.
     const week = user.active ? reviewDueNow(local, user.review, sub.review_week) : null;

@@ -46,7 +46,7 @@ export function useSayRecorder(onError?: (message: string) => void) {
     if (typeof MediaRecorder === "undefined") { fail("This browser can't record. Type it on Food instead."); return false; }
     let stream: MediaStream;
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); }
-    catch (e) { report("food", "mic_denied", e, undefined, "warn"); fail("Soma can't use the microphone. Allow it in Settings, or type it on Food."); return false; }
+    catch (e) { report("food", "mic_denied", e, undefined, "warn"); fail("Dayhub can't use the microphone. Allow it in Settings, or type it on Food."); return false; }
     const mime = pickMime();
     const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
     const chunks: Blob[] = [];

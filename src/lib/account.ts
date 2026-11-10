@@ -53,9 +53,9 @@ export async function buildExport(vault: VaultReach | null, withRecordings: bool
   const { journal, reviews, sleep, ...rest } = server;
   const out: Record<string, unknown> = {
     about: vault
-      ? `Everything Soma kept for you on ${day}, with your journal, weekly reviews and sleep opened with your vault key.` +
+      ? `Everything Dayhub kept for you on ${day}, with your journal, weekly reviews and sleep opened with your vault key.` +
         (withRecordings ? " Each recording is in the recordings folder, named by when you made it." : " Recordings are not in this file; export again with Include recordings to get them.")
-      : `Everything Soma kept for you on ${day}. Your journal, weekly reviews and sleep are encrypted with your vault passphrase and are not in this file: unlock your vault in Soma and export again to include them.`,
+      : `Everything Dayhub kept for you on ${day}. Your journal, weekly reviews and sleep are encrypted with your vault passphrase and are not in this file: unlock your vault in Dayhub and export again to include them.`,
     ...rest,
   };
 
@@ -109,10 +109,10 @@ export async function buildExport(vault: VaultReach | null, withRecordings: bool
   }
 
   const json = JSON.stringify(out, null, 2);
-  if (!files.length) return { file: new Blob([json], { type: "application/json" }), name: `soma-export-${day}.json`, missed };
+  if (!files.length) return { file: new Blob([json], { type: "application/json" }), name: `dayhub-export-${day}.json`, missed };
   onStep({ label: "Making the file" });
-  const zip = await makeZip([{ name: "soma-data.json", data: json }, ...files], (done, total) => onStep({ label: "Making the file", done, total }));
-  return { file: zip, name: `soma-export-${day}.zip`, missed };
+  const zip = await makeZip([{ name: "dayhub-data.json", data: json }, ...files], (done, total) => onStep({ label: "Making the file", done, total }));
+  return { file: zip, name: `dayhub-export-${day}.zip`, missed };
 }
 
 /** Hands the file to the browser's own save (Files on an iPhone, Downloads on a computer). */

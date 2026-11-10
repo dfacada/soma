@@ -58,8 +58,8 @@ async function findProfile(admin, userId) {
 // A new sign-up waits for approval, and nothing else tells the admin it is there. Every active admin with a paired
 // Telegram chat (routes/telegram.js) gets one line. No name and no email: a person who has only just signed up has
 // not agreed to Telegram, so nothing about them goes there. Best effort; it never holds up the request.
-const WAITING = 'Someone new signed up for Soma and is waiting for you. Approve them in Settings → Admin.';
-const INVITED = 'Someone new joined Soma with an invite link. They are in already; see them in Settings → Admin.';
+const WAITING = 'Someone new signed up for Dayhub and is waiting for you. Approve them in Settings → Admin.';
+const INVITED = 'Someone new joined Dayhub with an invite link. They are in already; see them in Settings → Admin.';
 async function tellAdmins(admin, text = WAITING) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return;

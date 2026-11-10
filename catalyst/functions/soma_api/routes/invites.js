@@ -27,7 +27,7 @@ const router = express.Router();
 router.get('/invites/:code', wrap(async (req, res) => {
   const app = catalyst.initialize(req, { scope: 'admin' });
   const inv = await invites.findInvite(app, req.params.code);
-  if (!inv) throw new HttpError(404, 'That invite code is not one Soma knows.');
+  if (!inv) throw new HttpError(404, 'That invite code is not one Dayhub knows.');
   const [why, maker, round] = await Promise.all([
     invites.whyNot(app, inv),
     select(app, 'profiles', `SELECT display_name FROM profiles WHERE user_id = ${needId(inv.created_by)}`).then((r) => r[0] || null),
@@ -59,7 +59,7 @@ router.post('/invites/:code/accept', withUser, wrap(async (req, res) => {
     void writeLog(req.admin, { level: 'info', source: 'api', area: 'invites', event: 'invite_approved', message: 'an invite let someone in', detail: { round: inv.round_id ? String(inv.round_id) : null }, userId: req.user.id });
   } else if (!inv || bool(inv.revoked)) {
     // Already a member: joining a round only needs the link to be the round's current one.
-    throw new HttpError(410, inv ? 'That invite was turned off by the person who made it.' : 'That invite code is not one Soma knows.');
+    throw new HttpError(410, inv ? 'That invite was turned off by the person who made it.' : 'That invite code is not one Dayhub knows.');
   }
 
   let round = null, already = false;

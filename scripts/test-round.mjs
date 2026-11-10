@@ -1,5 +1,5 @@
 // Round rules. The rest-day schedule and set breakdown are asserted against the original spreadsheet's numbers
-// (via the 100 Push-Ups app's parity suite); the streak and scoring cases pin what Soma changed and what it kept.
+// (via the 100 Push-Ups app's parity suite); the streak and scoring cases pin what Dayhub changed and what it kept.
 //
 //   node scripts/test-round.mjs
 

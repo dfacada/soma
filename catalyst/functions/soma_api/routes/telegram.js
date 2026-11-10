@@ -57,7 +57,7 @@ function secret() {
 /** A six-character code, true for this person for ten minutes, with nothing stored. */
 function codeFor(userId, window) {
   const mac = crypto.createHmac('sha256', secret()).update(`telegram:${userId}:${window}`).digest('base64');
-  return 'SOMA-' + mac.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
+  return 'DAYHUB-' + mac.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
 }
 
 async function telegram(method, body, isForm) {
@@ -108,7 +108,7 @@ router.post('/telegram/pair', member, wrap(async (req, res) => {
     .reverse()
     .find((u) => codes.some((c) => u.message.text.toUpperCase().includes(c)));
   if (!hit) throw new HttpError(404, 'no message with that code yet. Send the code to the bot, then tap Connect again.');
-  // A person's own chat with the bot, never a group or channel: what Soma sends is a reading of someone's journal,
+  // A person's own chat with the bot, never a group or channel: what Dayhub sends is a reading of someone's journal,
   // and a group would hand it to everyone in it (and let the bot be used to post into any group).
   if (!hit.message.chat || hit.message.chat.type !== 'private') {
     throw new HttpError(409, 'that code was sent in a group. Send it to @Soma_me_bot in a private chat, then tap Connect again.');
@@ -121,7 +121,7 @@ router.post('/telegram/pair', member, wrap(async (req, res) => {
   const others = await select(req.admin, 'profiles', `SELECT ROWID FROM profiles WHERE telegram_chat = '${chat}' AND user_id != ${needId(req.user.id)}`);
   for (const o of others) await req.admin.datastore().table('profiles').updateRow({ ROWID: o.ROWID, telegram_chat: null });
   await req.admin.datastore().table('profiles').updateRow({ ROWID: row.ROWID, telegram_chat: chat });
-  await telegram('sendMessage', { chat_id: chat, text: 'Soma is connected. Your week in review, and tomorrow\'s brief when you send it, will arrive here.' }).catch(() => undefined);
+  await telegram('sendMessage', { chat_id: chat, text: 'Dayhub is connected. Your week in review, and tomorrow\'s brief when you send it, will arrive here.' }).catch(() => undefined);
   console.log(JSON.stringify({ action: 'telegram_paired', user: req.user.id }));
   res.json({ connected: true, chat: '…' + chat.slice(-4) });
 }));

@@ -1,4 +1,4 @@
-// Soma Ops, the browser side without React: what the /ops routes answer (catalyst/functions/soma_api/routes/ops.js)
+// Dayhub Ops, the browser side without React: what the /ops routes answer (catalyst/functions/soma_api/routes/ops.js)
 // and the small words and dates the screens share. Admin only; every route checks again on the server.
 
 export type Sev = "needs" | "watching" | "handled";

@@ -1,6 +1,6 @@
 "use client";
 
-// Soma Ops · Audit: what admins did to or saw of someone else's account, newest first. Written by the API
+// Dayhub Ops · Audit: what admins did to or saw of someone else's account, newest first. Written by the API
 // (lib/audit.js) as it happens; nothing here can change or delete a row.
 
 import Link from "next/link";

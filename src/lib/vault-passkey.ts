@@ -115,8 +115,8 @@ export async function enrolPasskey(key: CryptoKey, user: { id: string; email: st
     const userHandle = old?.userHandle || b64url(crypto.getRandomValues(new Uint8Array(16)));
     const cred = (await navigator.credentials.create({
       publicKey: {
-        rp: { name: "Soma" },
-        user: { id: fromB64url(userHandle), name: user.email || "Soma", displayName: `Soma vault · ${user.name || user.email}` },
+        rp: { name: "Dayhub" },
+        user: { id: fromB64url(userHandle), name: user.email || "Dayhub", displayName: `Dayhub vault · ${user.name || user.email}` },
         challenge: new TextEncoder().encode(challenge),
         pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -8 }, { type: "public-key", alg: -257 }],
         authenticatorSelection: { authenticatorAttachment: "platform", residentKey: "preferred", userVerification: "required" },
@@ -127,7 +127,7 @@ export async function enrolPasskey(key: CryptoKey, user: { id: string; email: st
     if (!cred) throw new PasskeyError("cancelled", "Cancelled");
     const res = cred.response as AuthenticatorAttestationResponse;
     const spki = res.getPublicKey?.();
-    if (!spki) throw new PasskeyError("unsupported", "This passkey uses a key type Soma can't check.");
+    if (!spki) throw new PasskeyError("unsupported", "This passkey uses a key type Dayhub can't check.");
     const credId = b64url(cred.rawId);
     const { share } = await api<{ share: string }>("POST", "/vault-passkeys/register", {
       challenge, id: credId, clientDataJSON: b64url(res.clientDataJSON), publicKey: b64url(spki), alg: res.getPublicKeyAlgorithm(),

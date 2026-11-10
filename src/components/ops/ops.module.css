@@ -1,6 +1,6 @@
-/* Soma Ops (src/app/ops/): the admin's console, after the Ops mock-ups (claude.ai/artifact/EQg4RUS8Xn9Qveeychh5FV,
+/* Dayhub Ops (src/app/ops/): the admin's console, after the Ops mock-ups (claude.ai/artifact/EQg4RUS8Xn9Qveeychh5FV,
    boards Overview, Issues, One person, Errors). Desktop first with a sidebar from 900px; a row of tabs on a phone.
-   Soma's own tokens only, so Night and Light both work. Status colours (critical, warning) are allowed here: this is
+   Dayhub's own tokens only, so Night and Light both work. Status colours (critical, warning) are allowed here: this is
    admin. The accent is the activity hue, as in the mock-ups. */
 
 .ops { min-height: 100dvh; background: var(--bone); color: var(--ink); }

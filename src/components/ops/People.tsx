@@ -1,6 +1,6 @@
 "use client";
 
-// Soma Ops · People: whoever is waiting for approval, everyone else newest first, a search, and the sign-up invite
+// Dayhub Ops · People: whoever is waiting for approval, everyone else newest first, a search, and the sign-up invite
 // links (moved here from Settings → Admin). A person opens their page.
 
 import Link from "next/link";

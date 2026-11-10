@@ -1,4 +1,4 @@
-// Matching what you type against food Soma already knows: your plan, the recipe book, your quick snacks, and
+// Matching what you type against food Dayhub already knows: your plan, the recipe book, your quick snacks, and
 // every off-plan item you have logged in the days already loaded. A hit fills the macros instantly, offline and
 // free; only a miss goes to the estimator (routes/food.js). No React and no imports beyond the food data, so
 // scripts/test-food-match.mjs runs this file as it is.
@@ -22,7 +22,7 @@ export function tokens(text: string): string[] {
 const normal = (text: string) => tokens(text).join(" ");
 
 /**
- * Everything Soma can answer without asking. Later entries win ties, so what you logged yourself comes first:
+ * Everything Dayhub can answer without asking. Later entries win ties, so what you logged yourself comes first:
  * your own numbers beat the book's.
  */
 export function knownFoods(input: {
@@ -44,7 +44,7 @@ export function knownFoods(input: {
 }
 
 /**
- * The best thing Soma already knows for this text, or null. `exact` means the words matched, not merely overlapped;
+ * The best thing Dayhub already knows for this text, or null. `exact` means the words matched, not merely overlapped;
  * an inexact match is offered as a suggestion, never used on its own.
  */
 export function matchFood(text: string, known: Known[]): Match | null {

@@ -27,10 +27,10 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Soma",
+  title: "Dayhub",
   description: "Journal, food and push-ups in one place.",
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, title: "Soma", statusBarStyle: "black" },
+  appleWebApp: { capable: true, title: "Dayhub", statusBarStyle: "black" },
   robots: { index: false, follow: false },
 };
 

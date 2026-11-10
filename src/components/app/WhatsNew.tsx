@@ -1,6 +1,6 @@
 "use client";
 
-// What's new: once, the first time Soma opens after an update, the releases this person has not seen
+// What's new: once, the first time Dayhub opens after an update, the releases this person has not seen
 // (src/lib/changelog.ts). It waits for the opening words and the vault prompt waits for it, so only one thing is
 // ever on the screen. Seen is remembered on the account (settings.seenChanges), so it shows once per person, not
 // once per phone. Settings keeps the whole history (ReleaseList).
@@ -24,7 +24,7 @@ export function WhatsNew() {
     let alive = true;
     void installDone.then((installShown) => {
       if (!alive) return;
-      // Someone opening Soma for the first time has nothing to compare: every note is about a change to a screen they
+      // Someone opening Dayhub for the first time has nothing to compare: every note is about a change to a screen they
       // have never seen. Their first open marks the current release as seen, so What's new starts with the next one.
       // (Every account that existed before this has a mark already; settings that failed to load never get here.)
       if (!seen.current) {

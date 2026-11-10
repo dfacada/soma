@@ -1,6 +1,6 @@
 "use client";
 
-// Soma Ops · Issues: people who need a look, found from signals in the data (lib/ops.js detectIssues). Each one
+// Dayhub Ops · Issues: people who need a look, found from signals in the data (lib/ops.js detectIssues). Each one
 // clears itself when its signal does; Mark handled only hides it until the signal comes back newer.
 
 import Link from "next/link";
@@ -115,10 +115,10 @@ export function IssueDetail({ it, onChanged, say, compact = false }: { it: Issue
       {it.kind !== "Approval" && (
         <label className={o.label}>
           <span className="eb">Message {it.first}</span>
-          <textarea className={o.ta} rows={4} value={draft} maxLength={2000} placeholder={`Write to ${it.first}. It shows in Soma as a message from you.`} onChange={(e) => { setDraft(e.target.value); setSent(false); }} />
+          <textarea className={o.ta} rows={4} value={draft} maxLength={2000} placeholder={`Write to ${it.first}. It shows in Dayhub as a message from you.`} onChange={(e) => { setDraft(e.target.value); setSent(false); }} />
         </label>
       )}
-      {sent && <span className={o.ok}>Sent. It shows in Soma as a message from you, and in Support.</span>}
+      {sent && <span className={o.ok}>Sent. It shows in Dayhub as a message from you, and in Support.</span>}
       <div className={o.btnRow}>
         {it.approve && <Button size="sm" variant="food" disabled={busy !== null} onClick={() => { haptic(); void act("approve", () => api("POST", `/admin/profiles/${it.userId}/status`, { status: "active" }), `${it.first} is in`); }}>Approve</Button>}
         {it.kind !== "Approval" && <Button size="sm" variant="activity" disabled={busy !== null || !draft.trim()} onClick={() => { haptic(); void act("send", () => api("POST", `/ops/people/${it.userId}/messages`, { body: draft.trim() }), "Message sent").then((ok) => { if (ok) setSent(true); }); }}>{busy === "send" ? "Sending…" : "Send message"}</Button>}

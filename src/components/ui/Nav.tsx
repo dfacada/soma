@@ -53,7 +53,7 @@ export function TabBar({ current, onSelect, className, todayProgress }: NavProps
 export function Sidebar({ current, onSelect, footer, className }: NavProps & { footer?: ReactNode; className?: string }) {
   return (
     <nav className={cx(s.side, className)} aria-label="Sections">
-      <div className={s.sideBrand}>Soma</div>
+      <div className={s.sideBrand}>Dayhub</div>
       {[...SECTIONS, SETTINGS].map((t) => (
         <button key={t.id} type="button" className={cx(s.nav, s[t.hue], current === t.id && s.navOn)} aria-current={current === t.id ? "page" : undefined} onClick={() => onSelect(t.id)}>
           <Icon name={t.icon} size={t.id === "settings" ? 18 : 22} />

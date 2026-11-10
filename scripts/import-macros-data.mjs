@@ -13,8 +13,8 @@ const macros = path.resolve(process.argv[2] || path.join(import.meta.dirname, ".
 const load = (file) => import(pathToFileURL(path.join(macros, "lib", "data", file)).href);
 const [{ MEAL_PLANS, BOWL_VARIANTS }, { SNACK_PRESETS }, { RECIPES }] = await Promise.all([load("plans.ts"), load("snacks.ts"), load("recipes.ts")]);
 
-// Macros names its meals by id; Soma has four fixed slots. Anything else a plan carries (the Standard plan's
-// anytime whey) is an extra: it becomes a quick snack, because in Soma four meals close the day.
+// Macros names its meals by id; Dayhub has four fixed slots. Anything else a plan carries (the Standard plan's
+// anytime whey) is an extra: it becomes a quick snack, because in Dayhub four meals close the day.
 const SLOT = { shake: "breakfast", "bowl-noon": "lunch", yogurt: "snack", snack: "snack", "bowl-pm": "dinner" };
 const meal = (m) => ({ name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat, time: m.time, desc: m.desc, ...(m.fixedPortion ? { fixedPortion: true } : {}) });
 

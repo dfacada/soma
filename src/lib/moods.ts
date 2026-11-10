@@ -1,6 +1,6 @@
 // Moods: the words a check-in offers (David, 2026-11-08: "for the moods, that should be something that someone can set
 // as well, to be able to edit, add, or remove"). Each is good, okay or hard, so Insights can still tell a good day
-// from a hard one after someone renames Soma's moods or adds their own. Pure; scripts/test-moods.mjs.
+// from a hard one after someone renames Dayhub's moods or adds their own. Pure; scripts/test-moods.mjs.
 
 export type MoodTone = "good" | "okay" | "hard";
 export const MOOD_TONES: MoodTone[] = ["good", "okay", "hard"];
@@ -10,21 +10,21 @@ export type Mood = { id: string; label: string; on: boolean; tone?: MoodTone };
 export const MOOD_LABEL_MAX = 20;
 export const MOODS_MAX = 16;
 
-/** Soma's own words for good and hard days. A day logged with a word that is no longer on someone's list (renamed or
+/** Dayhub's own words for good and hard days. A day logged with a word that is no longer on someone's list (renamed or
  *  taken out since) is read by these. */
 export const GOOD_MOODS = ["Focused", "Peaceful", "Great", "Grateful", "Excited"];
 export const HARD_MOODS = ["Down", "Overwhelmed", "Anxious"];
-// Soma's own moods keep what they are by id, so renaming "Great" to "Brilliant" leaves it a good day.
+// Dayhub's own moods keep what they are by id, so renaming "Great" to "Brilliant" leaves it a good day.
 const GOOD_IDS = ["focused", "peaceful", "great", "grateful", "excited"];
 const HARD_IDS = ["down", "overwhelmed", "anxious"];
 
-/** What a mood on the list is: what the person chose, else Soma's own for its id, else okay. */
+/** What a mood on the list is: what the person chose, else Dayhub's own for its id, else okay. */
 export function moodTone(m: Pick<Mood, "id" | "tone">): MoodTone {
   if (m.tone && MOOD_TONES.includes(m.tone)) return m.tone;
   return GOOD_IDS.includes(m.id) ? "good" : HARD_IDS.includes(m.id) ? "hard" : "okay";
 }
 
-/** What a logged mood (the words on the day) is: by the person's list when it is on it, by Soma's own words when not.
+/** What a logged mood (the words on the day) is: by the person's list when it is on it, by Dayhub's own words when not.
  *  Null with no mood. */
 export function toneOf(label: string | null | undefined, moods: Mood[]): MoodTone | null {
   if (!label) return null;

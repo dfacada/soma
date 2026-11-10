@@ -1,6 +1,6 @@
 {
-  "name": "Soma",
-  "short_name": "Soma",
+  "name": "Dayhub",
+  "short_name": "Dayhub",
   "description": "Journal, food and push-ups in one place.",
   "start_url": "/",
   "scope": "/",

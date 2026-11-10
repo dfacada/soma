@@ -4,7 +4,7 @@
 // Weight lives on Insights, where the trend belongs; logging it stays on Today, where it closes the day.
 // The plans, recipes and quick snacks are David's own, generated from the Macros repo (src/lib/food-data.ts).
 // Follows the prototype's viewFood, with one deliberate difference: carbs and fat are real sums (the prototype
-// faked them from calories). Off-plan items are typed in plain words: Soma answers from what it already knows
+// faked them from calories). Off-plan items are typed in plain words: Dayhub answers from what it already knows
 // (food-match.ts) and asks the estimator (routes/food.js) only for something new.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -99,7 +99,7 @@ export function Food() {
       {!isToday && <DayBanner view={view} onBack={() => setView(null)} />}
       {unsaved && <div className={a.unsaved} role="alert"><span>Some changes are not saved yet.</span><Button size="sm" variant="secondary" onClick={retry}>Retry</Button></div>}
 
-      {/* A newcomer starts on Soma's standard plan and targets, which were made for one particular person. Until they
+      {/* A newcomer starts on Dayhub's standard plan and targets, which were made for one particular person. Until they
           say otherwise, say so plainly, once: set their own, or keep these (settings.foodSetUp). */}
       {isToday && settings.joined !== "" && !settings.foodSetUp && (
         <Card>

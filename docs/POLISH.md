@@ -1,6 +1,6 @@
 # The polish loop
 
-A way to make Soma's screens better without David checking every pixel: real screenshots, harsh critics that never see the code first, makers that fix what they find, and a blind judge that decides whether each change actually helped. It runs as one saved workflow and stops on its own.
+A way to make Dayhub's screens better without David checking every pixel: real screenshots, harsh critics that never see the code first, makers that fix what they find, and a blind judge that decides whether each change actually helped. It runs as one saved workflow and stops on its own.
 
 The idea comes from a prompt that went around for building a game: fan out sub-agents, one per part; have a separate, harsh critic check each part visually; compare against the real thing blind, side by side; loop until it wins. The parts that work are kept here. The parts that don't are changed:
 
@@ -23,7 +23,7 @@ The idea comes from a prompt that went around for building a game: fan out sub-a
   Scenes with `who: "new"` or `who: "pending"` run on a second world instead: someone on their first day (approved minutes ago, nothing logged, no vault, Fitbit not connected, settings empty as a new account's are) or someone waiting for approval. Every member starts there, so every area has a day-one scene (`new-*`), and the `welcome` area holds the waiting screen and making the vault.
 
   **The page never reaches Catalyst or Stratus.** Every API and storage request is answered from that fixture, and anything else trying to leave the machine is refused and listed in the report. So the rig cannot see or change anyone's data, and it works the same in any checkout. It is deterministic: two runs on the same `--at` give identical pictures. `--against <earlier run>` writes `diff.json`, which says which screens changed. Images also go to `shots/blind/` under content-hash names, so a judge can't tell which version a file is.
-- **The critic: `.claude/agents/soma-critic.md`.** Read-only. It holds the rubric and Soma's design rules, and returns a punch list plus a `keep` list.
+- **The critic: `.claude/agents/soma-critic.md`.** Read-only. It holds the rubric and Dayhub's design rules, and returns a punch list plus a `keep` list.
 - **The judge: `.claude/agents/soma-judge.md`.** It can only read images. It gets two sets of images with neutral names and says which is better crafted, and what the loser did better.
 - **The workflow: `.claude/workflows/soma-polish.js`.**
   - **Baseline:** shoot everything, compare with any reference images, then one critic per area.
@@ -49,13 +49,13 @@ The idea comes from a prompt that went around for building a game: fan out sub-a
 Start a **new** session in this folder (agents load when a session starts), then paste:
 
 ```
-Run Soma's polish loop (docs/POLISH.md) with the saved workflow .claude/workflows/soma-polish.js.
+Run Dayhub's polish loop (docs/POLISH.md) with the saved workflow .claude/workflows/soma-polish.js.
 
 1. Check git status is clean, then start the dev server (preview_start soma-dev).
 2. Run the workflow with args {"rounds": 3}.
 3. When it returns, read the report and look at the last round's screenshots yourself (the "last" folder it names). For any screen the final blind judge rated worse than the baseline, fix it or revert the change that caused it.
 4. Turn the areas' "changes" into What's new lines in src/lib/changelog.ts, run npm run check, commit and push to master, then build and deploy the frontend.
-5. Tell me in plain words what changed screen by screen, each area's critic score at the start and the end, what is still open, and how Soma compared with my reference images.
+5. Tell me in plain words what changed screen by screen, each area's critic score at the start and the end, what is still open, and how Dayhub compared with my reference images.
 ```
 
 Arguments, all optional:

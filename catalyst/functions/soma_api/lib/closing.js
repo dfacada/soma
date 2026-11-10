@@ -1,5 +1,5 @@
 // The server's copy of the day-closing rule (the app's is src/lib/today.ts with src/lib/moves.ts movedOn). The evening
-// nudge and Soma Ops both judge a day by it. This file is copied byte for byte into soma_api/lib/closing.js, because
+// nudge and Dayhub Ops both judge a day by it. This file is copied byte for byte into soma_api/lib/closing.js, because
 // the two functions deploy apart; scripts/test-ops.mjs checks the copies match. Change the rule here, there and in
 // the app together.
 

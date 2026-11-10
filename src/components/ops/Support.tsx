@@ -1,6 +1,6 @@
 "use client";
 
-// Soma Ops · Support: one thread a person, the ones waiting for an answer first. A thread opens on the person's page,
+// Dayhub Ops · Support: one thread a person, the ones waiting for an answer first. A thread opens on the person's page,
 // where the reply box is.
 
 import Link from "next/link";
@@ -30,7 +30,7 @@ export function Support() {
         <h1 className={o.h1}>Support</h1>
         <span className={o.sub}>{waiting ? `${waiting} waiting for an answer` : "nobody is waiting"} · {threads.length} thread{threads.length === 1 ? "" : "s"} in 90 days</span>
       </div>
-      <p className={o.note}>People write from Settings → Messages in Soma; you answer on their page, and it shows in Soma as a message from you. Messages are not end-to-end encrypted, and the screen where people write says so.</p>
+      <p className={o.note}>People write from Settings → Messages in Dayhub; you answer on their page, and it shows in Dayhub as a message from you. Messages are not end-to-end encrypted, and the screen where people write says so.</p>
       {threads.length === 0 ? <p className={o.empty}>Nobody has written yet.</p> : (
         <div className={o.list}>
           {threads.map((t) => (

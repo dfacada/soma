@@ -1,4 +1,4 @@
-// Soma Ops: the admin's console for running Soma with many people (src/app/ops/). Every route needs an active admin,
+// Dayhub Ops: the admin's console for running Dayhub with many people (src/app/ops/). Every route needs an active admin,
 // and these are, with routes/admin.js, the only routes that read across members. The rules live in lib/ops.js.
 //
 //   GET  /ops/badges                   open issues and unanswered messages, for the nav
@@ -8,7 +8,7 @@
 //   GET  /ops/people?q=&offset=&status=
 //   GET  /ops/people/:userId?tz=       one person: who, days done or not, issues, errors, messages, AI use
 //   POST /ops/people/:userId/reveal    { reason } — their food, weight and activity values, on the record
-//   POST /ops/people/:userId/messages  { body } — shows in Soma as a message from the admin
+//   POST /ops/people/:userId/messages  { body } — shows in Dayhub as a message from the admin
 //   POST /ops/people/:userId/delete    { confirm: their email, reason } — on their request, on the record
 //   GET  /ops/errors                   problems grouped from 24 hours of the log, the alert switches
 //   GET  /ops/errors/sample?area=&event=

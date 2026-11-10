@@ -1,6 +1,6 @@
 "use client";
 
-// Soma Ops · Overview: today in tiles, the people-a-day chart, the sign-up cohorts and the funnel, and what the issues
+// Dayhub Ops · Overview: today in tiles, the people-a-day chart, the sign-up cohorts and the funnel, and what the issues
 // are about. Live counts from the API; the history comes from the hourly job (soma_jobs/ops.js).
 
 import Link from "next/link";
@@ -126,7 +126,7 @@ export function Overview() {
             <h2 className={o.h2}>People active each day</h2>
             <span className={o.sub}>{counted.length < data.days.length ? `counted since ${fmtIsoDay(counted[0]?.day || data.days[data.days.length - 1].day)}` : "last 14 days"}</span>
           </div>
-          <div className={o.chart} role="img" aria-label={`People who opened Soma each day: ${counted.map((d) => `${fmtIsoDay(d.day)} ${d.seen}`).join(", ") || "not counted yet"}`}>
+          <div className={o.chart} role="img" aria-label={`People who opened Dayhub each day: ${counted.map((d) => `${fmtIsoDay(d.day)} ${d.seen}`).join(", ") || "not counted yet"}`}>
             {data.days.map((d, i) => (
               <div key={d.day} className={o.col}>
                 <div className={`${o.colBar} ${d.seen === null ? o.colNone : i === data.days.length - 1 ? o.colToday : ""}`} style={d.seen === null ? undefined : { height: `${Math.max(2, ((d.seen || 0) / top) * 100)}%` }} title={d.seen === null ? "not counted" : `${d.seen} people`} />
@@ -134,7 +134,7 @@ export function Overview() {
               </div>
             ))}
           </div>
-          <p className={o.note}>People who opened Soma that day (UTC). A day is only known on the day, so the chart fills from when Ops began counting.</p>
+          <p className={o.note}>People who opened Dayhub that day (UTC). A day is only known on the day, so the chart fills from when Ops began counting.</p>
         </section>
 
         <section aria-label="Issues by kind" className={`${o.panel} ${o.narrow}`}>
@@ -148,7 +148,7 @@ export function Overview() {
               <div className={`${o.track} ${o.trackThin}`}><div className={`${o.fill} ${o.fillWarn}`} style={{ width: `${(v / kindTop) * 100}%` }} /></div>
             </div>
           )) : <p className={o.note}>{badges ? "Nothing open." : "Counting…"}</p>}
-          {kinds[0]?.[0] === "Fitbit" && <p className={o.note}>Fitbit leads until Google verifies Soma: unverified connections end about every 7 days.</p>}
+          {kinds[0]?.[0] === "Fitbit" && <p className={o.note}>Fitbit leads until Google verifies Dayhub: unverified connections end about every 7 days.</p>}
         </section>
       </div>
     </>

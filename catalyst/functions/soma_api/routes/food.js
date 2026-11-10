@@ -11,7 +11,7 @@
 // breakfast, a burger with a salad for lunch") and splits it into items, each with the meal it was for. `known` is
 // the person's own foods (plan, snacks, recent items) so "my shake" comes back with their numbers, not a guess.
 //
-// Food is server-readable in Soma (leaderboards, admin fixes), so the words typed here leave the device like the
+// Food is server-readable in Dayhub (leaderboards, admin fixes), so the words typed here leave the device like the
 // rest of the food log. Journal text never does. The text is not written to any log.
 
 'use strict';
@@ -75,9 +75,9 @@ function readJson(message) {
   if (message.parsed_output) return message.parsed_output;
   const text = (message.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   const start = text.indexOf('{'), end = text.lastIndexOf('}');
-  if (start < 0 || end < start) throw new HttpError(502, 'the estimate came back in a form Soma could not read');
+  if (start < 0 || end < start) throw new HttpError(502, 'the estimate came back in a form Dayhub could not read');
   try { return JSON.parse(text.slice(start, end + 1)); }
-  catch (_e) { throw new HttpError(502, 'the estimate came back in a form Soma could not read'); }
+  catch (_e) { throw new HttpError(502, 'the estimate came back in a form Dayhub could not read'); }
 }
 
 /** One structured call to Haiku. A model that will not take a schema is asked plainly for JSON instead; a busy or

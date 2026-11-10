@@ -59,7 +59,7 @@ async function applyKeptInvite(code: string): Promise<{ notice: string | null; k
   try {
     const r = await acceptInvite(code, dayKey(new Date()));
     forgetInvite();
-    if (!r.round) return { notice: r.approved ? "Welcome to Soma" : null, kind: null };
+    if (!r.round) return { notice: r.approved ? "Welcome to Dayhub" : null, kind: null };
     return { notice: r.already ? `You're already in ${r.round.name}` : `You're in ${r.round.name}`, kind: r.round.kind || "pushups" };
   } catch (e) {
     // A link that no longer works is forgotten; one that failed for another reason is tried on the next open.
@@ -77,7 +77,7 @@ async function resolveSession(step: (at: OpenStep, progress: StepProgress) => vo
     step("Checking your account", 0);
     // An invite link opened on this device goes with the first call: a brand-new account it can let in starts active.
     const invite = keptInvite();
-    // The build and whether this is the home-screen app go with it: Soma Ops shows where someone last used Soma.
+    // The build and whether this is the home-screen app go with it: Dayhub Ops shows where someone last used Dayhub.
     const device = `b=${encodeURIComponent(BUILD)}&i=${isInstalled() ? 1 : 0}`;
     let me = await api<Me>("GET", `/me?${device}` + (invite ? `&invite=${invite}` : ""));
     let used: { notice: string | null; kind: string | null } = { notice: null, kind: null };
@@ -104,7 +104,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
   const [opening, setOpening] = useState<{ at: OpenStep; progress: StepProgress }>({ at: "Starting", progress: "unknown" });
   const [settings, setSettings] = useState<Settings | null>(null);
   const [displayName, setDisplayName] = useState("");
-  // A line about an invite link that was just used ("You're in Morning crew"), shown once as Soma opens.
+  // A line about an invite link that was just used ("You're in Morning crew"), shown once as Dayhub opens.
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => { if (!notice) return; const t = window.setTimeout(() => setNotice(null), 4000); return () => window.clearTimeout(t); }, [notice]);
 
@@ -187,7 +187,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
   if (state.kind === "error") {
     return (
       <Centered>
-        <span className="d" style={{ fontSize: 28 }}>Can&apos;t reach Soma</span>
+        <span className="d" style={{ fontSize: 28 }}>Can&apos;t reach Dayhub</span>
         <p className="muted">{state.message}</p>
         <Button onClick={load}>Try again</Button>
       </Centered>
@@ -226,22 +226,22 @@ function Blocked({ me, onRetry, onSignOut }: { me: Me; onRetry: () => void; onSi
       <Centered>
         <span className={a.splashOrb} aria-hidden><i /><i /><i /></span>
         <span className="d" style={{ fontSize: 30 }}>Deleting your account</span>
-        <p className="muted" style={{ maxWidth: 320, textWrap: "balance" }}>Everything Soma kept for you is being deleted. It takes a few minutes and can&apos;t be undone.</p>
+        <p className="muted" style={{ maxWidth: 320, textWrap: "balance" }}>Everything Dayhub kept for you is being deleted. It takes a few minutes and can&apos;t be undone.</p>
         <div className={a.rowButtons}><Button variant="secondary" onClick={onSignOut}>Sign out</Button></div>
       </Centered>
     );
   }
   return (
     <Centered>
-      {/* Soma's own face on the first screen a new member sees, so the wait reads as the app's, not an error's. */}
+      {/* Dayhub's own face on the first screen a new member sees, so the wait reads as the app's, not an error's. */}
       <span className={a.splashOrb} aria-hidden><i /><i /><i /></span>
-      <span className={`d ${a.wordmark}`} style={{ fontSize: 40 }} aria-label="Soma">Soma</span>
+      <span className={`d ${a.wordmark}`} style={{ fontSize: 40 }} aria-label="Dayhub">Dayhub</span>
       <span className="eb">{me.email}</span>
       <span className="d" style={{ fontSize: 30 }}>{disabled ? "Account disabled" : "Waiting for approval"}</span>
       <p className="muted" style={{ maxWidth: 320, textWrap: "balance" }}>
         {disabled
           ? "This account has been turned off. Ask David if that is a mistake."
-          : "You're signed up. If someone sent you an invite link, paste it below and you're in. Otherwise David lets each new member in by hand: open Soma again later, or tap Check again."}
+          : "You're signed up. If someone sent you an invite link, paste it below and you're in. Otherwise David lets each new member in by hand: open Dayhub again later, or tap Check again."}
       </p>
       {!disabled && (
         <form className={a.vaultRow} style={{ width: "100%", maxWidth: 360 }} onSubmit={submitCode}>
@@ -294,7 +294,7 @@ function SignIn() {
     <main className={a.signin}>
       <div className={a.signinHead}>
         <span className="eb">Journal · Food · Activity</span>
-        <span className={`d ${a.wordmark}`}>Soma</span>
+        <span className={`d ${a.wordmark}`}>Dayhub</span>
       </div>
       {invited && <p className={a.noteOk}>Your invite is saved on this device. Sign in, or sign up if you&apos;re new, and you&apos;re in.</p>}
       {mode === "in" ? (

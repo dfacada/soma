@@ -1,11 +1,11 @@
-// Soma jobs — Catalyst Job function (900 s budget). Dispatches on params.type.
+// Dayhub jobs — Catalyst Job function (900 s budget). Dispatches on params.type.
 //
 //   transcribe   Groq whisper-large-v3-turbo over a plaintext audio object the browser uploaded for this purpose.
 //                The audio is deleted as soon as Groq has answered, whatever the answer was. The transcript is
 //                written next to it for the browser to collect, encrypt into the entry and delete.
 //   nudge        the evening nudge, from a 15-minute cron (nudge.js); with test=1, a test notification for one user.
 //   delete_account  every row and file of an account (account.js), queued by soma_api's DELETE /account.
-//                The nudge cron also runs Soma Ops' counting and alerts (ops.js).
+//                The nudge cron also runs Dayhub Ops' counting and alerts (ops.js).
 //                The same cron prunes the log and the AI usage counts once a day and sweeps stale transcription
 //                jobs once an hour.
 //   anything else is logged and dropped: only soma_api submits jobs, and it only submits these.
@@ -172,7 +172,7 @@ module.exports = async (jobRequest, context) => {
         await pruneUsage(app).catch((e) => writeLog(app, { level: 'warn', source: 'job', area: 'quota', event: 'prune_failed', message: e.message }));
         // Hourly, like the job sweep: finish any account deletion a job left half done (or never started).
         if (new Date().getUTCMinutes() < 15) await account.finishDeletions(app).catch((e) => writeLog(app, { source: 'job', area: 'account', event: 'finish_failed', message: e.message }));
-        // Soma Ops: the hourly counts, the daily closed days and cohorts, and the Telegram alerts (ops.js).
+        // Dayhub Ops: the hourly counts, the daily closed days and cohorts, and the Telegram alerts (ops.js).
         await ops.run(app).catch((e) => writeLog(app, { level: 'warn', source: 'job', area: 'ops', event: 'run_failed', message: e.message }));
       }
     } else {

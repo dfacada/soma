@@ -1,6 +1,6 @@
 "use client";
 
-// Admin section of Settings: the way into Soma Ops (src/app/ops/), where approvals, people, issues, errors, messages
+// Admin section of Settings: the way into Dayhub Ops (src/app/ops/), where approvals, people, issues, errors, messages
 // and the audit now live, and the one admin tool that has to stay in the app: transcribing your own recordings, which
 // needs your vault key on this device. Only rendered for admins; every route behind it checks the role again.
 
@@ -14,9 +14,9 @@ export function Admin({ say }: { say: (m: string) => void }) {
   return (
     <>
       <Card>
-        <span className="eb">Soma Ops</span>
-        <p style={{ fontSize: 14, lineHeight: 1.5 }}>Run Soma from one place: who needs a look, everyone&apos;s days done or not, errors grouped into problems, messages, invites and the audit of what admins did. Best on a computer; it works on a phone too.</p>
-        <div><ButtonLink href="/ops/" variant="activity">Open Soma Ops</ButtonLink></div>
+        <span className="eb">Dayhub Ops</span>
+        <p style={{ fontSize: 14, lineHeight: 1.5 }}>Run Dayhub from one place: who needs a look, everyone&apos;s days done or not, errors grouped into problems, messages, invites and the audit of what admins did. Best on a computer; it works on a phone too.</p>
+        <div><ButtonLink href="/ops/" variant="activity">Open Dayhub Ops</ButtonLink></div>
       </Card>
       <TranscribeMissing say={say} />
     </>

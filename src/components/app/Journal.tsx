@@ -788,10 +788,10 @@ function VaultForm({ creating, busy, onSubmit, onSkip, passkeyName, onPasskey, c
     <form className={a.vaultForm} onSubmit={submit}>
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
         {creating
-          ? "Your journal is encrypted on this device before it is uploaded. The passphrase never leaves it, so nobody can read your entries, David included. Next, Soma gives you a recovery code: if you forget the passphrase, that code is the only way back in."
+          ? "Your journal is encrypted on this device before it is uploaded. The passphrase never leaves it, so nobody can read your entries, David included. Next, Dayhub gives you a recovery code: if you forget the passphrase, that code is the only way back in."
           : "Your journal, sleep and Fitbit are encrypted. Food, weight, check-in and activity work without unlocking."}
       </p>
-      {/* The one secret Soma cannot reset, chosen once, usually on day one: worth a sentence of advice. */}
+      {/* The one secret Dayhub cannot reset, chosen once, usually on day one: worth a sentence of advice. */}
       {creating && (
         <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
           A short sentence works best: four or five words only you would put together. When your phone offers to save it,
@@ -835,13 +835,13 @@ function RecoveryCode({ code, onDone }: { code: string; onDone: () => void }) {
     <div className={a.vaultForm}>
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
         If you ever forget your passphrase, this code opens your journal and lets you choose a new one. Save it
-        somewhere safe, like your password manager. Soma can&apos;t show it to you again.
+        somewhere safe, like your password manager. Dayhub can&apos;t show it to you again.
       </p>
       <p className={`m ${a.recoveryCode}`} aria-label={"Recovery code " + code}>
         <span>{groups.slice(0, 4).join("-")}</span><span>{groups.slice(4).join("-")}</span>
       </p>
       <p className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>
-        Keep it as private as your passphrase: with it and your Soma sign-in, anyone could open your journal.
+        Keep it as private as your passphrase: with it and your Dayhub sign-in, anyone could open your journal.
       </p>
       <div className={a.rowButtons}>
         <Button variant="secondary" onClick={() => { haptic(); void navigator.clipboard?.writeText(code).then(() => setCopied(true), () => setCopied(false)); }}>{copied ? "Copied" : "Copy"}</Button>

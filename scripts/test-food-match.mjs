@@ -1,4 +1,4 @@
-// What Soma answers about food without asking anyone: the matcher (src/lib/food-match.ts) and the server's
+// What Dayhub answers about food without asking anyone: the matcher (src/lib/food-match.ts) and the server's
 // cleaner (catalyst/functions/soma_api/routes/food.js). Both are pure, so both run here.
 //
 //   node --import ./scripts/ts-resolve.mjs scripts/test-food-match.mjs
@@ -49,7 +49,7 @@ check("no JSON at all is an error, not a crash", (() => { try { readJson(asText(
 console.log("a whole day said in one go");
 const day = cleanDay({ items: [{ meal: "breakfast", name: "Egg bagel", kcal: 550.4, protein: -3, carbs: 9999, fat: 20, note: "" }, { meal: "brunch", name: "Fries", kcal: "320" }, { meal: "lunch", name: "  " }] });
 check("each item is clamped like a single estimate", day[0].kcal === 550 && day[0].protein === 0 && day[0].carbs === 800, day[0]);
-check("a meal Soma does not have becomes an extra", day[1]?.meal === "extra" && day[1].kcal === 320, day[1]);
+check("a meal Dayhub does not have becomes an extra", day[1]?.meal === "extra" && day[1].kcal === 320, day[1]);
 check("an item with no name is dropped", day.length === 2, day);
 check("no items is an empty day, not a crash", cleanDay({}).length === 0 && cleanDay(null).length === 0);
 check("at most 20 items", cleanDay({ items: Array.from({ length: 30 }, () => ({ name: "x", kcal: 1 })) }).length === 20);

@@ -12,7 +12,7 @@ const check = (name, ok, detail) => { if (ok) { passed++; console.log("  ok   " 
 const d = DEFAULT_SETTINGS.moods;
 
 console.log("what is kept");
-check("nothing stored is Soma's ten", mergeSettings({}).moods.length === 10 && mergeSettings({ moods: [] }).moods.length === 10);
+check("nothing stored is Dayhub's ten", mergeSettings({}).moods.length === 10 && mergeSettings({ moods: [] }).moods.length === 10);
 const kept = cleanMoods([
   { id: "great", label: "Brilliant", on: true },
   { id: "own-wired", label: "  Wired  ", on: true, tone: "hard" },
@@ -29,12 +29,12 @@ check(`at most ${MOODS_MAX}`, cleanMoods(Array.from({ length: 30 }, (_, i) => ({
 check("a mood of your own gets a unique id", moodId("Wired!", ["own-wired"]) === "own-wired-2");
 
 console.log("good, okay or hard");
-check("Soma's own keep what they are by id, whatever they are called", moodTone({ id: "great" }) === "good" && moodTone({ id: "down" }) === "hard" && moodTone({ id: "tired" }) === "okay");
+check("Dayhub's own keep what they are by id, whatever they are called", moodTone({ id: "great" }) === "good" && moodTone({ id: "down" }) === "hard" && moodTone({ id: "tired" }) === "okay");
 check("a mood of your own is okay until you say", moodTone({ id: "own-wired" }) === "okay" && moodTone({ id: "own-wired", tone: "hard" }) === "hard");
-check("what you say wins over Soma's", moodTone({ id: "great", tone: "okay" }) === "okay");
+check("what you say wins over Dayhub's", moodTone({ id: "great", tone: "okay" }) === "okay");
 const mine = [{ id: "great", label: "Brilliant", on: true }, { id: "own-wired", label: "Wired", on: true, tone: "hard" }, { id: "own-buzzing", label: "Buzzing", on: true, tone: "good" }];
 check("a day logged with a renamed mood reads as before", toneOf("Brilliant", mine) === "good");
-check("a day logged before the rename still reads as good (Soma's own words)", toneOf("Great", mine) === "good" && toneOf("Down", mine) === "hard");
+check("a day logged before the rename still reads as good (Dayhub's own words)", toneOf("Great", mine) === "good" && toneOf("Down", mine) === "hard");
 check("your own moods read the way you said, in any case", toneOf("wired", mine) === "hard" && toneOf("Buzzing", mine) === "good");
 check("words nobody knows are okay; no mood is nothing", toneOf("Meh", mine) === "okay" && toneOf(null, mine) === null);
 check("a great day follows your list", isGreat("Buzzing", mine) && isGreat("Brilliant", mine) && !isGreat("Wired", mine) && !isGreat("Meh", mine));

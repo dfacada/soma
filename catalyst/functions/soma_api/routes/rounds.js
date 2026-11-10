@@ -5,7 +5,7 @@
 // frozen at their last on-time save (round_pushups, round_json), so a late backfill never moves a board. Rules
 // (streaks, points, ranks) are computed by the client from src/lib/round.ts; this file only stores and serves.
 //
-// Two kinds (2026-11-08, before Soma opens to people who don't know each other):
+// Two kinds (2026-11-08, before Dayhub opens to people who don't know each other):
 //   open rounds      made by an admin; every member sees them and can join (as before).
 //   private rounds   invite_only: made by any member, or by an admin who ticks private. Only their members see
 //                    them; joining takes the round's invite link (lib/invites.js), which also lets a new person in

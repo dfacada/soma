@@ -1,6 +1,6 @@
-// Sleep as Soma shows it (David, 2026-11-03, from a screenshot of Google Health's Today: "especially the sleep").
+// Sleep as Dayhub shows it (David, 2026-11-03, from a screenshot of Google Health's Today: "especially the sleep").
 // Everything comes from the nights Google Health reports (src/lib/health.ts Night: minutes, bed and wake as local
-// clock times), held only while the vault is open. There is no sleep score: Google does not share Fitbit's, and Soma
+// clock times), held only while the vault is open. There is no sleep score: Google does not share Fitbit's, and Dayhub
 // does not make one up (CLAUDE.md). No React, so scripts/test-sleep.mjs runs it as it is.
 
 import type { Night, Nights } from "./health";

@@ -2,7 +2,7 @@
 // stored on the server only as ciphertext (routes/links.js):
 //   Morgen: every connected calendar, Google included. Morgen only answers browsers on its own sites, so the read
 //     goes through soma_api (routes/morgen.js), which uses the key for that request and keeps nothing.
-//   Todoist: read from this device straight from Todoist, which answers any site. Soma's server never sees the token.
+//   Todoist: read from this device straight from Todoist, which answers any site. Dayhub's server never sees the token.
 
 import { api } from "./api";
 import type { MorgenEvent, TodoistTask } from "./tomorrow";

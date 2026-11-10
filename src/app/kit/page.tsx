@@ -74,7 +74,7 @@ export default function Kit() {
       <header className={k.head}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="eb">Component kit · direction A</span>
-          <span className={`d ${k.wordmark}`}>Soma</span>
+          <span className={`d ${k.wordmark}`}>Dayhub</span>
           <p className={k.note}>One day, one page. Three domains share one quiet surface and are told apart by a single hue each, used only where it carries information: a dot, a ring, a number. Everything else is ink on bone.</p>
         </div>
         <div className={k.legend}>
@@ -157,7 +157,7 @@ export default function Kit() {
         <span className="eb">Today · cards, medallions, tiles, minis</span>
         <div className={k.specimens}>
           <div className={k.phoneCol}>
-            {/* The Soma Night hero (Today since 2026-11-02); the DayRing below is what it replaced. */}
+            {/* The Dayhub Night hero (Today since 2026-11-02); the DayRing below is what it replaced. */}
             <div className={k.wrap}>
               <Button size="sm" variant="secondary" onClick={() => setMoment("closed")}>Show day closed</Button>
               <Button size="sm" variant="secondary" onClick={() => setMoment("food")}>Show food logged</Button>

@@ -1,4 +1,4 @@
-/* Full-screen moments (Soma Night, 2026-11-02): recording a journal entry, saying what you ate, and the day
+/* Full-screen moments (Dayhub Night, 2026-11-02): recording a journal entry, saying what you ate, and the day
    closing. Each opens as a circle growing from the bottom of the screen and covers the tab bar.
    Every end state is the element's resting style, and its animation plays in from the start (fill both): Reduce
    Motion stops every animation (globals.css), so it lands straight on the finished screen. */

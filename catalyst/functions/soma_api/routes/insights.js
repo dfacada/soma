@@ -4,7 +4,7 @@
 //
 // What arrives here has already been made anonymous in the browser (src/lib/journal-read.ts): names, emails, phone
 // numbers, addresses and links are taken out, and the days come shuffled under random labels with no dates. This
-// function adds nothing about the person: the request to Claude carries Soma's own key, no user id, no metadata,
+// function adds nothing about the person: the request to Claude carries Dayhub's own key, no user id, no metadata,
 // nothing from the account. **Nothing of it is stored or logged**: not the text, not the answer, not a word of
 // either in an error. What goes back is a number and a few generic theme words per label, which the browser
 // encrypts with the vault key before keeping.

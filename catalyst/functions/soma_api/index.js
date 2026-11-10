@@ -1,4 +1,4 @@
-// Soma API — Zoho Catalyst Advanced I/O function (Express on the raw (req, res) handler).
+// Dayhub API — Zoho Catalyst Advanced I/O function (Express on the raw (req, res) handler).
 // Every route resolves the caller first (lib/auth.js) and every query is scoped by user_id
 // (lib/db.js); Catalyst Data Store has no row-level security, so this layer is the security boundary.
 //
@@ -37,7 +37,7 @@ app.get('/health', (_req, res) => {
 });
 
 // The one route a pending user can call: the app shows "waiting for approval" from profile.status.
-// It also notes the kind of device and the app's build (?b=, and ?i=1 from the home-screen app), which Soma Ops shows
+// It also notes the kind of device and the app's build (?b=, and ?i=1 from the home-screen app), which Dayhub Ops shows
 // as "last seen on". Written only when it changes, and never for the synthetic test members.
 app.get('/me', withUser, (req, res) => {
   const b = String(req.query.b || '');

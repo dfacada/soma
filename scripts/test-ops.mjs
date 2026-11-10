@@ -1,4 +1,4 @@
-// Soma Ops' rules, on rows made up here: issues from signals, errors grouped into problems, a person's done-or-not
+// Dayhub Ops' rules, on rows made up here: issues from signals, errors grouped into problems, a person's done-or-not
 // days, the closed days the job keeps, cohorts, the funnel and the alerts. Also that the two copies of the closing
 // rule are one file.
 //
@@ -100,7 +100,7 @@ console.log("issues come from signals still in the data");
   s.quiet = [{ user_id: "102", closed_json: JSON.stringify({ c: closedDays }), last_seen_ms: String(now - 6 * DAY) }];
   const out = ops.detectIssues(s, now);
   check("a regular who stopped six days ago", out.length === 1 && out[0].kind === "Gone quiet" && /closed 16 of 21 days/.test(out[0].meta), out.map((i) => i.meta));
-  check("someone still opening Soma has not gone quiet", ops.quietOf({ c: closedDays }, now - DAY, now) === null);
+  check("someone still opening Dayhub has not gone quiet", ops.quietOf({ c: closedDays }, now - DAY, now) === null);
   check("nor someone who never had a run", ops.quietOf({ c: closedDays.slice(0, 5) }, 0, now) === null);
 }
 {
@@ -219,14 +219,14 @@ console.log("alerts: counts and codes, never a name, never a code someone typed"
   due = job.alertsDue({ ...base, problems: [app("app.visit.evil.com", { people1h: 2 })] });
   check("from two people it is one summary, without the code", due.length === 1 && due[0].id === "app" && !due[0].text.includes("evil") && /the app reported/.test(due[0].text), due);
   due = job.alertsDue({ ...base, problems: [app("push.x", { first: now - 9 * DAY, people1h: 12 }), server("push.send_failed", { first: now - 9 * DAY, people1h: 12 })] });
-  check("10 people in an hour: Soma's own by code first, the app's in the summary without", due.length === 2 && due[0].text.includes("push.send_failed") && due[1].id === "app" && !due[1].text.includes("push.x"), due.map((d) => d.text));
+  check("10 people in an hour: Dayhub's own by code first, the app's in the summary without", due.length === 2 && due[0].text.includes("push.send_failed") && due[1].id === "app" && !due[1].text.includes("push.x"), due.map((d) => d.text));
   const flood = Array.from({ length: 9 }, (_, i) => app("app.e" + i, { people1h: 2 }));
   due = job.alertsDue({ ...base, problems: flood, api: { last15: 25, per15: 3 } });
-  check("what the app reported cannot crowd out Soma's own: the error rate first, then one summary", due.length === 2 && due[0].id === "api" && due[1].id === "app" && /9 problems/.test(due[1].text), due.map((d) => d.id));
+  check("what the app reported cannot crowd out Dayhub's own: the error rate first, then one summary", due.length === 2 && due[0].id === "api" && due[1].id === "app" && /9 problems/.test(due[1].text), due.map((d) => d.id));
   due = job.alertsDue({ ...base, problems: flood, sent: new Map([["app", now - 20 * 60000]]) });
   check("the summary goes at most once an hour", due.length === 0, due);
   due = job.alertsDue({ ...base, problems: [...flood, server("review.write_failed")], sent: new Map([["app", now - 20 * 60000]]) });
-  check("…and never stands in the way of a problem of Soma's own", due.length === 1 && due[0].id === "fresh:s:review.write_failed", due.map((d) => d.id));
+  check("…and never stands in the way of a problem of Dayhub's own", due.length === 1 && due[0].id === "fresh:s:review.write_failed", due.map((d) => d.id));
   due = job.alertsDue({ ...base, problems: [], api: { last15: 25, per15: 3 } });
   check("server errors at twice the usual", due.length === 1 && due[0].id === "api");
   due = job.alertsDue({ ...base, problems: [server("food.estimate_failed")], sent: new Map([["fresh:s:food.estimate_failed", now - 10 * 60000]]) });
@@ -234,7 +234,7 @@ console.log("alerts: counts and codes, never a name, never a code someone typed"
   due = job.alertsDue({ ...base, problems: Array.from({ length: 9 }, (_, i) => server("a.e" + i)) });
   check("at most six alerts an hour, however many problems", due.length === 6, due.length);
   due = job.alertsDue({ ...base, problems: Array.from({ length: 9 }, (_, i) => server("a.e" + i)), sent: new Map([["x", now - 5 * 60000], ["y", now - 10 * 60000], ["z", now - 2 * HOUR], ["app", now - 5 * 60000]]) });
-  check("…counting Soma's own already sent this hour, not the app's summary", due.length === 4, due.length);
+  check("…counting Dayhub's own already sent this hour, not the app's summary", due.length === 4, due.length);
   due = job.alertsDue({ ...base, toggles: { fresh: false, wide: false, api: false, deploy: true }, release: { at: now - 30 * 60000 }, problems: [server("tone.failed", { first: now - 10 * 60000, people1h: 2, count15: 2 })] });
   check("new errors after a release, when only that is on", due.length === 1 && due[0].id === "deploy:s:tone.failed");
   check("no alert text names anyone", !JSON.stringify(job.alertsDue({ ...base, problems: [server("a.b", { people1h: 11 })] })).match(/Priya|@/));

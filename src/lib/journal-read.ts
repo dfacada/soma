@@ -4,8 +4,8 @@
 // Two ways to read a day's words, and the person picks (settings.journalInsights):
 //   - on the phone (the default): a word list scores the tone. Nothing leaves the device.
 //   - with Claude: before any text leaves the phone, deidentify() takes out names, emails, phone numbers, addresses,
-//     links and long numbers, and the days go out shuffled under random labels with no dates. Soma's server sends
-//     them on under Soma's own key with nothing about the account; only a tone and a few generic themes come back.
+//     links and long numbers, and the days go out shuffled under random labels with no dates. Dayhub's server sends
+//     them on under Dayhub's own key with nothing about the account; only a tone and a few generic themes come back.
 // Either way the result is kept encrypted with the vault key, on this device.
 
 /** Words that are capitalised but are not names, so they stay. */
@@ -13,7 +13,7 @@ const NOT_NAMES = new Set([
   "I", "I'm", "I've", "I'd", "I'll", "OK", "Okay", "TV",
   "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
   "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December",
-  "Christmas", "Easter", "Thanksgiving", "God", "Mom", "Mum", "Dad", "Soma",
+  "Christmas", "Easter", "Thanksgiving", "God", "Mom", "Mum", "Dad", "Soma", "Dayhub",
 ]);
 
 const SENTENCE_START = /(^|[.!?…]\s+|\n\s*)$/;

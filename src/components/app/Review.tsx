@@ -139,7 +139,7 @@ export function ReviewScreen() {
         <Card>
           <span className="eb">Not switched on</span>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>
-            To write this, Soma decrypts that week&apos;s journal entries on this device and sends the text to Claude
+            To write this, Dayhub decrypts that week&apos;s journal entries on this device and sends the text to Claude
             through its own server, which keeps none of it. That is the one time your journal leaves your phone.
             Turn it on under Week in review in Settings.
           </p>

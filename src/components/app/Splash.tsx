@@ -1,6 +1,6 @@
 "use client";
 
-// What opening Soma looks like until Today is ready: the wordmark, and under it a StageBar naming the step that is
+// What opening Dayhub looks like until Today is ready: the wordmark, and under it a StageBar naming the step that is
 // actually running. The session gate draws it while it signs in (Session.tsx); OpenProgress draws the same thing
 // over the app while the days, the vault and the entries load, so the hand-over between them does not show.
 // No provider imports here: Session renders this before any provider exists.
@@ -31,7 +31,7 @@ export function Splash({ steps = OPEN_STEPS, at, progress, detail, ready = false
       {/* A small orb holding the three colours, and the letters rising in (only on the first splash: the overlay
           that takes over from it keeps them still, so the hand-over does not replay). */}
       <span className={`${a.splashOrb} ${overlay ? "" : a.splashIn}`} aria-hidden><i /><i /><i /></span>
-      <span className={`d ${a.wordmark} ${overlay ? "" : a.splashIn}`}>{"Soma".split("").map((c, i) => <span key={i} style={{ animationDelay: `${0.3 + i * 0.08}s` }}>{c}</span>)}</span>
+      <span className={`d ${a.wordmark} ${overlay ? "" : a.splashIn}`}>{"Dayhub".split("").map((c, i) => <span key={i} style={{ animationDelay: `${0.3 + i * 0.08}s` }}>{c}</span>)}</span>
       <div className={a.splashBar}>
         <StageBar labelMotion domain="journal" steps={[...steps]} at={Math.max(0, steps.indexOf(at))} progress={ready ? 1 : progress} detail={ready ? undefined : detail} note={ready ? "Ready" : undefined} />
       </div>
@@ -39,7 +39,7 @@ export function Splash({ steps = OPEN_STEPS, at, progress, detail, ready = false
   );
 }
 
-/** The three washes, as chosen from the preview (David, 2026-10-21): Soma's journal, food and activity colours, each a
+/** The three washes, as chosen from the preview (David, 2026-10-21): Dayhub's journal, food and activity colours, each a
  *  soft radial gradient drifting on its own slow loop around a point near the centre. x/y place it, dx/dy are how far
  *  it drifts each way, p is one full loop. The drift is two eased back-and-forth slides, one per axis (app.module.css). */
 const WASH = [

@@ -1,9 +1,9 @@
-// Keys for tomorrow's brief (David, 2026-11-02): a Morgen API key and a Todoist token. They are kept the way Soma
+// Keys for tomorrow's brief (David, 2026-11-02): a Morgen API key and a Todoist token. They are kept the way Dayhub
 // keeps the Google Health connection: sealed on the device with the vault key, stored here only as ciphertext
 // (vault_tokens, one row per person per provider). This function cannot open them and never tries.
 //
 // The Todoist token is only ever used by the phone itself, which calls Todoist directly. The Morgen key comes back
-// here in the clear for one request at a time (routes/morgen.js), because Morgen refuses calls from Soma's web address.
+// here in the clear for one request at a time (routes/morgen.js), because Morgen refuses calls from Dayhub's web address.
 //
 //   GET    /links                 { links: { morgen: { ciphertext, createdMs } | null, todoist: … | null } }
 //   PUT    /links/:provider       { ciphertext }

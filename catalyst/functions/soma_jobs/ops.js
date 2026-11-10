@@ -1,4 +1,4 @@
-// Soma Ops' counting, on the 15-minute nudge cron (index.js). Three parts, each cheap when there is nothing to do:
+// Dayhub Ops' counting, on the 15-minute nudge cron (index.js). Three parts, each cheap when there is nothing to do:
 //
 //   snapshot  hourly: today's people seen, members, sign-ups, errors and AI use, into ops_state 'day:<UTC day>'.
 //             "Seen" is only knowable on the day (profiles keep the last time, not every time), so the overview's
@@ -235,17 +235,17 @@ async function rollup(app, now) {
 
 // ── Alerts ──
 
-/** Soma's own alerts (the server's and the jobs' problems, and the server error rate) get this many an hour. */
+/** Dayhub's own alerts (the server's and the jobs' problems, and the server error rate) get this many an hour. */
 const ALERTS_PER_HOUR = 6;
 
 /**
  * Which alerts to send, from what the log says. Pure. problems: [{ id, trusted, first, people1h, count15 }]; api:
  * { last15, per15 }; release: { at } | null; sent: Map key → last sent ms.
  *
- * `trusted` is a problem the server or a job wrote, whose code is Soma's own. Anyone signed in can report a line from
- * the app with an area and event of their choosing (POST /logs), so what the app reported is kept apart from Soma's
+ * `trusted` is a problem the server or a job wrote, whose code is Dayhub's own. Anyone signed in can report a line from
+ * the app with an area and event of their choosing (POST /logs), so what the app reported is kept apart from Dayhub's
  * own alerts and can never crowd them out:
- *   - Soma's own come first (the server error rate first of all) and have their own six an hour.
+ *   - Dayhub's own come first (the server error rate first of all) and have their own six an hour.
  *   - Everything the app reported is one summary at most, once an hour, with counts and no codes (a code could read
  *     like a link, "app.visit.evil.com"). A problem counts as new only with two people in the hour, and as wide with
  *     ten. Ops → Errors shows the codes, as text.
@@ -255,7 +255,7 @@ function alertsDue({ toggles, problems, api, release, sent, now }) {
   const fresh = (p) => p.first > now - 20 * 60000;
   const times = (n) => `${n} time${n === 1 ? '' : 's'}`;
   const own = [], fromApp = [];
-  if (toggles.api && api.last15 >= 10 && api.last15 >= 2 * Math.max(api.per15, 1) && quiet('api')) own.push({ id: 'api', text: `Soma: ${api.last15} server errors in 15 minutes, about ${Math.max(1, Math.round(api.last15 / Math.max(api.per15, 1)))} times the usual.` });
+  if (toggles.api && api.last15 >= 10 && api.last15 >= 2 * Math.max(api.per15, 1) && quiet('api')) own.push({ id: 'api', text: `Dayhub: ${api.last15} server errors in 15 minutes, about ${Math.max(1, Math.round(api.last15 / Math.max(api.per15, 1)))} times the usual.` });
   for (const p of problems) {
     const isNew = fresh(p) && (p.trusted || p.people1h >= 2);
     const afterRelease = Boolean(release) && isNew && p.first >= release.at && p.first - release.at < HOUR;
@@ -264,15 +264,15 @@ function alertsDue({ toggles, problems, api, release, sent, now }) {
       continue;
     }
     const k = (kind) => `${kind}:s:${p.id}`;
-    if (toggles.fresh && isNew && quiet(k('fresh'))) own.push({ id: k('fresh'), text: `Soma: a new problem, ${p.id}, ${times(p.count15)} in the last 15 minutes.` });
-    else if (toggles.deploy && afterRelease && quiet(k('deploy'))) own.push({ id: k('deploy'), text: `Soma: ${p.id} started within an hour of the release.` });
-    if (toggles.wide && p.people1h >= 10 && quiet(k('wide'))) own.push({ id: k('wide'), text: `Soma: ${p.id} reached ${p.people1h} people in the last hour.` });
+    if (toggles.fresh && isNew && quiet(k('fresh'))) own.push({ id: k('fresh'), text: `Dayhub: a new problem, ${p.id}, ${times(p.count15)} in the last 15 minutes.` });
+    else if (toggles.deploy && afterRelease && quiet(k('deploy'))) own.push({ id: k('deploy'), text: `Dayhub: ${p.id} started within an hour of the release.` });
+    if (toggles.wide && p.people1h >= 10 && quiet(k('wide'))) own.push({ id: k('wide'), text: `Dayhub: ${p.id} reached ${p.people1h} people in the last hour.` });
   }
   const ownLastHour = [...sent].filter(([key, at]) => key !== 'app' && at > now - HOUR).length;
   const out = own.slice(0, Math.max(0, ALERTS_PER_HOUR - ownLastHour));
   if (fromApp.length && quiet('app')) {
     const people = Math.max(...fromApp.map((p) => p.people1h));
-    out.push({ id: 'app', text: `Soma: ${fromApp.length === 1 ? 'a problem' : `${fromApp.length} problems`} the app reported in the last hour, the largest from ${people} ${people === 1 ? 'person' : 'people'}. Soma Ops → Errors has ${fromApp.length === 1 ? 'it' : 'them'}.` });
+    out.push({ id: 'app', text: `Dayhub: ${fromApp.length === 1 ? 'a problem' : `${fromApp.length} problems`} the app reported in the last hour, the largest from ${people} ${people === 1 ? 'person' : 'people'}. Dayhub Ops → Errors has ${fromApp.length === 1 ? 'it' : 'them'}.` });
   }
   return out;
 }
@@ -318,7 +318,7 @@ async function alerts(app, now) {
   const per = new Map();
   for (const r of hour) {
     const id = `${r.area}.${r.event}`;
-    // What the app reported and what the server wrote are kept apart, so a reported line can never pass for Soma's own.
+    // What the app reported and what the server wrote are kept apart, so a reported line can never pass for Dayhub's own.
     const trusted = r.source === 'api' || r.source === 'job';
     const key = (trusted ? 's:' : 'c:') + id;
     if (!per.has(key)) per.set(key, { id, trusted, first: first.get(id) || num(r.created_ms), people: new Set(), count15: 0 });

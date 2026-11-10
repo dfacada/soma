@@ -141,7 +141,7 @@ check("without the calendar no block is named", insightLine([lift("active", "Mov
 check("no block long enough says so", insightLine([lift("active", "Moved")], [{ start: at(D, "12:00"), end: at(D, "12:20") }])?.text === "Great days come with moving · no free 30 minutes tomorrow");
 check("nothing that fits a block means no line", insightLine([lift("protein", "Hit your 200 g protein"), lift("sleep", "Slept 7 hours")], blocks) === null);
 
-console.log("Soma's side and the text");
+console.log("Dayhub's side and the text");
 const soma = somaSide(DEFAULT_SETTINGS, { name: "Push-ups", goal: "100 push-ups", rest: false, dayNumber: 43 });
 const planKcal = Object.values(DEFAULT_SETTINGS.plan).reduce((n, m) => n + Math.round(m.kcal), 0);
 check("the four planned meals, in order, with their total", soma.meals.map((m) => m.key).join() === "breakfast,lunch,snack,dinner" && soma.kcal === planKcal && soma.weighIn === true);
@@ -155,7 +155,7 @@ check("an event from the night before reads as until", text0().includes("<code>u
 check("the Today line on a rest day with nothing connected", summaryLine({ day: D, builtMs: 0, events: null, tasks: null }, { ...soma, move: { name: "Push-ups", goal: "100 push-ups", rest: true, dayNumber: 7 } }) === "rest day");
 check("an empty calendar says so", summaryLine({ day: D, builtMs: 0, events: [], tasks: [] }, soma) === "Nothing on the calendar · 100 push-ups");
 const text = briefText(brief, soma, fb, moving);
-check("the text has the day, the times and titles, the tasks and Soma's side", text.startsWith("🌙 <b>Tuesday 3 November</b>") && text.includes("<code>9–9:30 am</code>  Standup") && !text.includes("Pay rent") && text.includes("🔵 Call Sam  <code>2:30 pm</code>") && text.includes("🏃 100 push-ups <i>· day 43</i>") && text.includes("✨ <i>Great days come with moving"), text);
+check("the text has the day, the times and titles, the tasks and Dayhub's side", text.startsWith("🌙 <b>Tuesday 3 November</b>") && text.includes("<code>9–9:30 am</code>  Standup") && !text.includes("Pay rent") && text.includes("🔵 Call Sam  <code>2:30 pm</code>") && text.includes("🏃 100 push-ups <i>· day 43</i>") && text.includes("✨ <i>Great days come with moving"), text);
 check("the text carries no place, link or description", !text.includes("Room 4") && !text.includes("http") && !text.includes("bank"));
 console.log("sending it to Telegram by itself");
 const on = { telegram: true, time: "21:00", sent: "" };

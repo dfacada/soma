@@ -1,7 +1,7 @@
 "use client";
 
 // Messages between a member and the admin (catalyst/functions/soma_api/routes/messages.js). The admin writes from
-// Soma Ops; here the member reads and answers. MessageCard sits on Today while a message is unread; MessagesThread is
+// Dayhub Ops; here the member reads and answers. MessageCard sits on Today while a message is unread; MessagesThread is
 // Settings → Messages, which replaced the one-way feedback form (old feedback shows in the thread).
 
 import Link from "next/link";
@@ -46,8 +46,8 @@ export function MessageCard() {
     void api("POST", "/messages/read").catch((e) => report("messages", "read_failed", e, undefined, "warn"));
   };
   return (
-    <section className={a.msgCard} aria-label={`A message from ${msg.from || "Soma"}`}>
-      <span className="eb">From {msg.from || "Soma"} · {when(msg.at)}{more ? ` · ${more} more` : ""}</span>
+    <section className={a.msgCard} aria-label={`A message from ${msg.from || "Dayhub"}`}>
+      <span className="eb">From {msg.from || "Dayhub"} · {when(msg.at)}{more ? ` · ${more} more` : ""}</span>
       <p className={a.msgBody}>{msg.body}</p>
       <div className={a.msgActions}>
         <Link href="/settings/#messages" className={a.lnk} onClick={seen}>Reply</Link>
@@ -97,7 +97,7 @@ export function MessagesThread({ say }: { say: (m: string) => void }) {
         <div className={a.thread}>
           {thread.messages.map((m) => (
             <div key={m.id} className={`${a.bubble} ${m.sender === "member" ? a.bubbleMine : ""}`}>
-              <span className={a.bubbleWho}>{m.sender === "admin" ? m.from || "Soma" : "You"} · {when(m.at)}{m.feedback ? " · feedback" : ""}</span>
+              <span className={a.bubbleWho}>{m.sender === "admin" ? m.from || "Dayhub" : "You"} · {when(m.at)}{m.feedback ? " · feedback" : ""}</span>
               <span className={a.bubbleBody}>{m.body}</span>
             </div>
           ))}

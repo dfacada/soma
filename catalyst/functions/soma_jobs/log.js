@@ -1,4 +1,4 @@
-// The one log. Every failure anywhere in Soma ends up as a row in `logs`, whoever noticed it: the browser
+// The one log. Every failure anywhere in Dayhub ends up as a row in `logs`, whoever noticed it: the browser
 // (POST /logs), this API (the error handler and the places that catch and carry on), or a job (soma_jobs has its
 // own copy of this file; keep the two the same). David reads it in Settings → Admin → Log.
 //
@@ -16,7 +16,7 @@ const scrub = (text) => String(text).replace(/[A-Za-z0-9_\-+/=%]{40,}/g, '[redac
 const clean = (v, max) => (v === undefined || v === null || v === '' ? null : scrub(typeof v === 'string' ? v : JSON.stringify(v)).slice(0, max));
 const slug = (v, max, fallback) => (typeof v === 'string' && v.trim() ? v.trim().toLowerCase().replace(/[^a-z0-9_.:-]+/g, '_').slice(0, max) : fallback);
 
-// The release that wrote a server row (deploy.js sets SOMA_RELEASE), so Soma Ops can say which release a problem
+// The release that wrote a server row (deploy.js sets SOMA_RELEASE), so Dayhub Ops can say which release a problem
 // came with. The browser's rows carry the app's own build instead (src/lib/log.ts).
 function withRelease(entry) {
   const rel = process.env.SOMA_RELEASE;

@@ -50,7 +50,7 @@ export function DataSettings({ say }: { say: (m: string) => void }) {
   return (
     <>
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
-        Download everything Soma keeps for you: your days, meals, weight, activity, check-ins, recipes and settings,
+        Download everything Dayhub keeps for you: your days, meals, weight, activity, check-ins, recipes and settings,
         and with your vault unlocked, your journal, weekly reviews and sleep.
       </p>
       {!open && (
@@ -109,7 +109,7 @@ function DeleteSheet({ open, onClose, admin, userId }: { open: boolean; onClose:
     return (
       <Sheet open={open} title="Account deleted" onClose={signOut}>
         <p className="muted" style={{ lineHeight: 1.5 }}>
-          Your sign-in is gone, and everything Soma kept for you is being deleted now. It takes a few minutes and can&apos;t be undone.
+          Your sign-in is gone, and everything Dayhub kept for you is being deleted now. It takes a few minutes and can&apos;t be undone.
         </p>
         <Button block onClick={signOut}>Done</Button>
       </Sheet>
@@ -122,7 +122,7 @@ function DeleteSheet({ open, onClose, admin, userId }: { open: boolean; onClose:
       ) : (
         <>
           <p style={{ lineHeight: 1.5 }}>
-            This deletes everything Soma keeps for you: your journal and recordings, your days, meals, weight, activity
+            This deletes everything Dayhub keeps for you: your journal and recordings, your days, meals, weight, activity
             and check-ins, weekly reviews, sleep, your place in any rounds, and your sign-in. A group you started passes to
             the next person in it.
           </p>

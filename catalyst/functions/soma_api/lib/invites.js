@@ -38,7 +38,7 @@ async function findInvite(admin, code) {
 
 /** Why an invite cannot let anyone in, in words for the person holding it; null when it can. Reads the maker. */
 async function whyNot(admin, inv) {
-  if (!inv) return 'That invite code is not one Soma knows.';
+  if (!inv) return 'That invite code is not one Dayhub knows.';
   if (bool(inv.revoked)) return 'That invite was turned off by the person who made it.';
   if (inv.expires_ms && Number(inv.expires_ms) < Date.now()) return 'That invite has expired. Ask for a new one.';
   if (inv.max_uses !== null && inv.max_uses !== undefined && inv.max_uses !== '' && Number(inv.uses || 0) >= Number(inv.max_uses)) return 'That invite has been used up. Ask for a new one.';

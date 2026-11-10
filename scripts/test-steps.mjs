@@ -1,4 +1,4 @@
-// Steps as Soma shows them (src/lib/steps.ts): the short numbers, the days, the summary and the chart's scale.
+// Steps as Dayhub shows them (src/lib/steps.ts): the short numbers, the days, the summary and the chart's scale.
 //
 //   node --import ./scripts/ts-resolve.mjs scripts/test-steps.mjs
 

@@ -33,9 +33,9 @@ export type Settings = {
   bestStreak: number;
   /** The newest changelog release this person has seen (src/lib/changelog.ts); "" = never seen one. */
   seenChanges: string;
-  /** Whether they have been shown how to put Soma on their Home Screen (or are already running it from there). */
+  /** Whether they have been shown how to put Dayhub on their Home Screen (or are already running it from there). */
   seenInstall: boolean;
-  /** The local day this person first opened Soma (YYYY-MM-DD), set on that open (Session.tsx). Days before it are
+  /** The local day this person first opened Dayhub (YYYY-MM-DD), set on that open (Session.tsx). Days before it are
    *  not missed days, so the week strips leave them out. "" for everyone who joined before this existed. */
   joined: string;
   /** Whether a newcomer has answered Food's "make the plan yours" card (set their own targets, or kept these). */
@@ -59,7 +59,7 @@ export type Settings = {
   palette: PaletteId;
   motion: MotionMode;
   /** The words shown full screen when the app opens. An empty list is a choice and stays empty. */
-  /** `source`: Soma's own words, the person's own phrases, or both taking turns (opening.ts). */
+  /** `source`: Dayhub's own words, the person's own phrases, or both taking turns (opening.ts). */
   opening: { on: boolean; source: OpeningSource; phrases: Phrase[] };
   /** One notification at `time` (local, HH:MM) when the day is still open. The server reads this: soma_jobs/nudge.js. */
   nudge: { on: boolean; time: string };
@@ -112,7 +112,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "dark",
   palette: "soma",
   motion: "lively",
-  // Nobody starts with anyone else's phrases: David's first two are in Soma's own set (opening-words.ts).
+  // Nobody starts with anyone else's phrases: David's first two are in Dayhub's own set (opening-words.ts).
   opening: { on: true, source: "both", phrases: [] },
   nudge: { on: false, time: "20:30" },
   brief: { on: false, time: "21:00", telegram: false, sent: "" },
@@ -126,7 +126,7 @@ export function planMeals(planId: MealPlanId, bowl: BowlId): Record<Meal, Planne
   return { breakfast: pick(meals.breakfast), lunch: pick(b || meals.lunch), snack: pick(meals.snack), dinner: pick(b || meals.dinner) };
 }
 
-// Soma first shipped with invented sample meals and snacks. An account that still holds one (it only takes one
+// Dayhub first shipped with invented sample meals and snacks. An account that still holds one (it only takes one
 // swap to store the whole plan) gets the real thing instead; a name the user typed themselves is never touched.
 const SAMPLE_MEALS = ["Eggs & toast", "Overnight oats", "Greek yogurt bowl", "Chicken burrito bowl", "Turkey sandwich", "Lentil soup & bread", "Yogurt & berries", "Apple & almonds", "Protein shake", "Salmon, rice & greens", "Steak & sweet potato", "Veg stir-fry & tofu"];
 const SAMPLE_SNACKS = ["Beef stick", "Coffee, black", "Coffee with creamer", "Spindrift"];

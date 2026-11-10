@@ -1,4 +1,4 @@
-/* Soma Night (2026-11-02) pieces for the Journal, Food and Activity tabs. */
+/* Dayhub Night (2026-11-02) pieces for the Journal, Food and Activity tabs. */
 
 .headPill { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--hue) 16%, transparent); color: var(--hue); font-size: 13px; font-weight: 600; flex-shrink: 0; }
 /* Light: a hue is too faint on its own tint for small text, so words on a tint take the hue's ink, as a hue Tag does

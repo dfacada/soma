@@ -10,7 +10,7 @@ const R = 118; // the bead ring, in the 280 box
 const C = 2 * Math.PI * R;
 const GAP = 6; // degrees of bare track between two tasks' arcs
 
-/** The Today hero (Soma Night): a sphere holding the three hues, brighter as their tasks get done, with one bead
+/** The Today hero (Dayhub Night): a sphere holding the three hues, brighter as their tasks get done, with one bead
  *  per task on a ring around it. Each bead owns the stretch of ring centred on it and lights it in its own hue for the
  *  share done (food meal by meal), so the ring always says what its beads say. Closed, the ring turns into a spinning
  *  glow. `children` sits in the middle (the count, or the closed mark). */

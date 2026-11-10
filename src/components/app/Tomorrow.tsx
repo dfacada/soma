@@ -1,7 +1,7 @@
 "use client";
 
 // Tomorrow's brief, full screen (/tomorrow/), the card on Today that opens it from 6 pm, and its Settings card.
-// Soma Night, facts only: what the day holds, never what to do with it.
+// Dayhub Night, facts only: what the day holds, never what to do with it.
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -262,12 +262,12 @@ function TaskList({ title, tasks, when }: { title: string; tasks: BriefTask[]; w
   );
 }
 
-/** What Soma already knows about the day: the five things that close it, with the plan and the round filled in. */
+/** What Dayhub already knows about the day: the five things that close it, with the plan and the round filled in. */
 function SomaCard({ soma }: { soma: SomaSide }) {
   const p = soma.move;
   return (
-    <section className={s.card} aria-label="Soma">
-      <span className="eb">Soma</span>
+    <section className={s.card} aria-label="Dayhub">
+      <span className="eb">Dayhub</span>
       {soma.weighIn && <Row domain="food" icon="scale" title="Weigh in" sub="One of the five things that close the day." />}
       <Row domain="journal" icon="heart" title="Check in and journal" sub="A mood, your habits, and a few words." />
       <Row domain="food" icon="leaf" title="Four meals planned" sub={`${fmt(soma.kcal)} kcal · ${fmt(soma.protein)} g protein`}>
@@ -310,14 +310,14 @@ function InsightCard({ insight }: { insight: Insight }) {
 const HELP: Record<Provider, { name: string; off: string; on: string; label: string }> = {
   morgen: {
     name: "Morgen",
-    off: "Your calendar, from every account connected to Morgen: Google, and anything you made in Morgen. Get the key at platform.morgen.so, under Developers API. It is sealed with your vault key; for each read Soma's server passes it to Morgen and keeps nothing, because Morgen won't take calls from Soma's page directly.",
-    on: "Connected. Read when the brief opens; Soma's server passes the key to Morgen and keeps neither the key nor your events.",
+    off: "Your calendar, from every account connected to Morgen: Google, and anything you made in Morgen. Get the key at platform.morgen.so, under Developers API. It is sealed with your vault key; for each read Dayhub's server passes it to Morgen and keeps nothing, because Morgen won't take calls from Dayhub's page directly.",
+    on: "Connected. Read when the brief opens; Dayhub's server passes the key to Morgen and keeps neither the key nor your events.",
     label: "Morgen API key",
   },
   todoist: {
     name: "Todoist",
-    off: "Tasks due tomorrow, and only those. In Todoist: Settings → Integrations → Developer → API token. Sealed with your vault key and used only by this phone, straight with Todoist: Soma's server never sees it. Soma only reads.",
-    on: "Connected. Read straight from Todoist on this phone; Soma only reads, never changes a task.",
+    off: "Tasks due tomorrow, and only those. In Todoist: Settings → Integrations → Developer → API token. Sealed with your vault key and used only by this phone, straight with Todoist: Dayhub's server never sees it. Dayhub only reads.",
+    on: "Connected. Read straight from Todoist on this phone; Dayhub only reads, never changes a task.",
     label: "Todoist API token",
   },
 };
@@ -335,11 +335,11 @@ export function TomorrowSettings({ say }: { say: (m: string) => void }) {
   return (
     <>
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.55, margin: 0 }}>
-        From 6 pm a card on Today opens the next day: your calendar with the free time between, your tasks, and Soma&apos;s side of it.
+        From 6 pm a card on Today opens the next day: your calendar with the free time between, your tasks, and Dayhub&apos;s side of it.
       </p>
       <BriefNotice say={say} />
-      <Field name="Send it to Telegram" help="Once a day, the first time the brief is read after its time, it goes to the Telegram chat connected under Week in review: times and titles, tasks and Soma's side, never a description, an attendee or a link. Telegram keeps what it is sent. The brief also has a Send button.">
-        <Switch checked={b.telegram} label="Send tomorrow's brief to Telegram" onChange={(v) => void saveSettings({ brief: { ...b, telegram: v } }).then(() => say(v ? "The brief will go to Telegram" : "The brief stays in Soma"), () => say("Couldn't save that"))} />
+      <Field name="Send it to Telegram" help="Once a day, the first time the brief is read after its time, it goes to the Telegram chat connected under Week in review: times and titles, tasks and Dayhub's side, never a description, an attendee or a link. Telegram keeps what it is sent. The brief also has a Send button.">
+        <Switch checked={b.telegram} label="Send tomorrow's brief to Telegram" onChange={(v) => void saveSettings({ brief: { ...b, telegram: v } }).then(() => say(v ? "The brief will go to Telegram" : "The brief stays in Dayhub"), () => say("Couldn't save that"))} />
       </Field>
       {!open && journal.vault !== "checking" && (
         <Field name="Keys" help="Both keys are kept sealed with your vault. Unlock it to connect or change them.">
@@ -394,7 +394,7 @@ function BriefNotice({ say }: { say: (m: string) => void }) {
       setDevice(state);
       if (state !== "on") {
         report("push", "not_enabled", undefined, { state, for: "brief" }, "warn");
-        say(state === "blocked" ? "Notifications are blocked on this device" : state === "needs-install" ? "Add Soma to your Home Screen first" : "Notifications were not allowed");
+        say(state === "blocked" ? "Notifications are blocked on this device" : state === "needs-install" ? "Add Dayhub to your Home Screen first" : "Notifications were not allowed");
         return;
       }
       await saveSettings({ brief: { ...b, on: true } });

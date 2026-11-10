@@ -1,4 +1,4 @@
-// Steps as Soma shows them (David, 2026-11-04: "When I click on steps I want to be able to see the history of steps
+// Steps as Dayhub shows them (David, 2026-11-04: "When I click on steps I want to be able to see the history of steps
 // just like clicking on the sleep"). Daily totals from Google Health live in the day map (activity.steps), so the
 // history reaches as far back as the screens load: today and the 60 days before it (Days.tsx). No React, so
 // scripts/test-steps.mjs runs it as it is.

@@ -38,7 +38,7 @@ export function forgetInvite() {
 export async function previewInvite(code: string): Promise<InvitePreview> {
   const res = await fetch(`${API_BASE}/invites/${code}`);
   const json = await res.json().catch(() => null) as (InvitePreview & { error?: string }) | null;
-  if (res.status === 404) return { ok: false, reason: json?.error || "That invite code is not one Soma knows.", from: null, round: null };
+  if (res.status === 404) return { ok: false, reason: json?.error || "That invite code is not one Dayhub knows.", from: null, round: null };
   if (!res.ok || !json) throw new Error(`invite preview failed (${res.status})`);
   return json;
 }

@@ -29,7 +29,7 @@ export type DayShape = "open" | "last" | "closed";
 export type Theme = "night" | "light";
 /** Whose screens these are: the settled member with two months behind them, someone on their first day (approved
  *  minutes ago: nothing logged, no vault, Fitbit not connected, settings as the app makes them), or someone who has
- *  just signed up and is waiting for approval. Everyone who joins Soma starts as the last two. */
+ *  just signed up and is waiting for approval. Everyone who joins Dayhub starts as the last two. */
 export type Who = "settled" | "new" | "pending";
 
 export type World = {
@@ -267,7 +267,7 @@ export function answer(w: World, method: string, path: string, body: unknown): {
       case "/admin/feedback": return ok({ items: [] });
       case "/messages": return ok({ messages: [], unread: 0 });
     }
-    // Soma Ops, on its own invented people (ops-world.ts).
+    // Dayhub Ops, on its own invented people (ops-world.ts).
     const ops = opsAnswer(w.now, route, q);
     if (ops) return ok(ops);
     if (route === `/rounds/${w.board.round.id}/board`) {

@@ -1,5 +1,5 @@
-// Soma's own opening words (David, 2026-11-08: "an option where they can be inspirational or you can use your own
-// or combo of both ... a little bit of variety"). Written for Soma, in the voice of David's first two, which lead
+// Dayhub's own opening words (David, 2026-11-08: "an option where they can be inspirational or you can use your own
+// or combo of both ... a little bit of variety"). Written for Dayhub, in the voice of David's first two, which lead
 // the list: a short line, then a sentence or two in plain words. Original lines only: no quotations, so nothing is
 // borrowed and nothing is misattributed. No health claims and nothing about weight. Each line fits PHRASE_MAX and
 // each note NOTE_MAX (scripts/test-opening.mjs checks).

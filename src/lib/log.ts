@@ -9,7 +9,7 @@ import { API_BASE } from "./api";
 import { authToken, DEV_TEST_KEY, isDevIdentity } from "./catalyst";
 
 export type Level = "error" | "warn" | "info";
-/** This build's name (next.config.ts): which release a problem came with, in Soma Ops. */
+/** This build's name (next.config.ts): which release a problem came with, in Dayhub Ops. */
 export const BUILD = process.env.NEXT_PUBLIC_BUILD || "dev";
 /** Is this the home-screen app rather than a browser tab. */
 export const isInstalled = () => typeof window !== "undefined" && (window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);

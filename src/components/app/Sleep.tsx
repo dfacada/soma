@@ -4,7 +4,7 @@
 // The night you woke from on the day shown: time asleep against your goal, bed and wake, and the stages as one bar;
 // then seven nights as windows on an evening-to-morning axis, so when you slept shows as well as how long. All of it
 // from the nights Google Health reports, decrypted on this phone (useHealth). No sleep score: Google does not share
-// Fitbit's, and Soma does not make one up (CLAUDE.md).
+// Fitbit's, and Dayhub does not make one up (CLAUDE.md).
 
 import { Sheet } from "@/components/ui";
 import { clock12, hm, lastNights, stagesOf, weekOf, windowOf } from "@/lib/sleep";
@@ -56,7 +56,7 @@ export function SleepSheet({ open, onClose, day, isToday }: { open: boolean; onC
             )}
           </div>
         ) : (
-          <p className={z.none}>{isToday ? "Nothing for last night yet. Trackers often sync later in the morning; Soma checks every half hour while it's open." : "No night was reported for this day."}</p>
+          <p className={z.none}>{isToday ? "Nothing for last night yet. Trackers often sync later in the morning; Dayhub checks every half hour while it's open." : "No night was reported for this day."}</p>
         )}
 
         {stages.length > 0 && (
@@ -117,7 +117,7 @@ export function SleepSheet({ open, onClose, day, isToday }: { open: boolean; onC
           )}
         </section>
 
-        <p className={z.note}>From Google Health, and encrypted with your vault key. Google doesn&apos;t share Fitbit&apos;s sleep score, so Soma doesn&apos;t show one.</p>
+        <p className={z.note}>From Google Health, and encrypted with your vault key. Google doesn&apos;t share Fitbit&apos;s sleep score, so Dayhub doesn&apos;t show one.</p>
       </div>
     </Sheet>
   );

@@ -174,7 +174,7 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       setLastSyncMs(0);
       noteSleepGranted(userId, null);
       setSleepAllowed(null);
-      say(res.revoked ? "Disconnected, and access revoked at Google" : "Disconnected. To revoke access too, remove Soma in your Google account.");
+      say(res.revoked ? "Disconnected, and access revoked at Google" : "Disconnected. To revoke access too, remove Dayhub in your Google account.");
     } catch { say("Couldn't disconnect"); }
   }, [link, vault, unseal, userId, say]);
 

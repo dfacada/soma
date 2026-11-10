@@ -1,5 +1,5 @@
 /* The sleep sheet (Sleep.tsx): last night, its stages, and seven nights as windows on an evening axis. All in the
-   journal's hue family, the colour of the night in Soma, with awake in a neutral (another domain's hue would say
+   journal's hue family, the colour of the night in Dayhub, with awake in a neutral (another domain's hue would say
    it belongs there). Met and not met look as they do on the steps sheet (steps.module.css), its pair. */
 
 .sleep { display: flex; flex-direction: column; gap: 22px; padding-bottom: 6px; --hue: var(--journal); }

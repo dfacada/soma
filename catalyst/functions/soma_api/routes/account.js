@@ -50,7 +50,7 @@ router.get('/account/export', member, wrap(async (req, res) => {
   const p = profiles[0] || {};
 
   res.json({
-    app: 'Soma',
+    app: 'Dayhub',
     exportedAt: new Date().toISOString(),
     account: { email: p.email || req.user.email, displayName: p.display_name || '', role: p.role, joined: p.CREATEDTIME || null },
     settings: unpackJson(p.settings_json, {}),
@@ -71,7 +71,7 @@ router.get('/account/export', member, wrap(async (req, res) => {
     reviews: reviews.map((r) => ({ weekStart: r.week_start, ciphertext: r.ciphertext, hasAudio: bool(r.has_audio), createdMs: num(r.created_ms) })),
     sleep: months.map((r) => ({ month: r.ym, ciphertext: r.ciphertext })),
     feedback: feedback.map((r) => ({ body: r.body, sent: r.CREATEDTIME })),
-    messages: messages.map((r) => ({ from: r.sender === 'admin' ? 'Soma' : 'you', body: r.body, sentMs: num(r.created_ms) })),
+    messages: messages.map((r) => ({ from: r.sender === 'admin' ? 'Dayhub' : 'you', body: r.body, sentMs: num(r.created_ms) })),
     // Which services are linked, never the tokens: they are vault ciphertext that only opens on a device.
     linked: tokens.map((r) => ({ service: r.provider, since: num(r.created_ms) }))
   });
@@ -86,7 +86,7 @@ router.delete('/account', withUser, wrap(async (req, res) => {
 }));
 
 /** Begin deleting an account: mark it 'deleting', remove the sign-in, queue the job. Used by DELETE /account (your own)
- *  and by Soma Ops (an admin, on the person's written request, recorded in the audit first). */
+ *  and by Dayhub Ops (an admin, on the person's written request, recorded in the audit first). */
 async function startDeletion(req, { uid, rowId, test }) {
   await req.admin.datastore().table('profiles').updateRow({ ROWID: rowId, status: 'deleting' });
 

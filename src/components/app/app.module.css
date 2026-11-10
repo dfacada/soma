@@ -13,7 +13,7 @@
 .page { display: flex; flex-direction: column; gap: 12px; padding: calc(18px + var(--inset-top)) 16px calc(104px + var(--inset-bottom)); max-width: 560px; margin: 0 auto; }
 .pageHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 4px 4px 0; }
 .pageTitle { font-size: 44px; line-height: 0.95; margin-top: 6px; letter-spacing: -0.025em; }
-/* Soma Night: the blocks of a tab rise in one after another each time it shows (Shell sets screenIn on the showing tab). */
+/* Dayhub Night: the blocks of a tab rise in one after another each time it shows (Shell sets screenIn on the showing tab). */
 /* backwards, not both: once a block has risen in, its animation lets go, so it never becomes the frame a sheet or
    anything else fixed is positioned in. */
 .screenIn > * > * { animation: screenRise 0.65s var(--ease-out) backwards; }
@@ -197,7 +197,7 @@ button.lnk:active { opacity: 0.5; transform: scale(0.92); transition-duration: 0
 .paletteDots i { width: 16px; height: 16px; border-radius: 999px; border: 2px solid var(--surface); background: var(--dot); }
 .paletteDots i + i { margin-left: -6px; }
 /* Night shows each dot in the hue Night really lights it to: the same mix toward white as globals.css (76% for
-   activity, the third dot), or the hand-picked Night hue a palette names (--dot-night: Soma's own). */
+   activity, the third dot), or the hand-picked Night hue a palette names (--dot-night: Dayhub's own). */
 :global(:root[data-theme="dark"]) .paletteDots i { background: var(--dot-night, color-mix(in oklab, var(--dot) 74%, white)); }
 :global(:root[data-theme="dark"]) .paletteDots i:nth-child(3) { background: var(--dot-night, color-mix(in oklab, var(--dot) 76%, white)); }
 /* Settings: labelled groups, each one card of rows; a row names a section and says what it is set to now, and opens
@@ -338,7 +338,7 @@ button.changeHit:active { transform: scale(0.98); transition-duration: 0.06s; }
 /* Opening splash (Splash.tsx): the wordmark and a StageBar naming the real step. As an overlay it covers the app
    until Today is ready, then fades. Under the opening words (80), over the tab bar and sheets. */
 .splashBar { width: min(280px, 100%); }
-/* Soma Night (2026-11-02): a small orb above the wordmark, its three colours drifting inside it. */
+/* Dayhub Night (2026-11-02): a small orb above the wordmark, its three colours drifting inside it. */
 .splashOrb { position: relative; display: block; width: 96px; height: 96px; border-radius: 50%; overflow: hidden; isolation: isolate; background: var(--surface-2); border: 1px solid var(--hairline-strong); box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6); }
 .splashOrb i { position: absolute; width: 82px; height: 82px; border-radius: 50%; mix-blend-mode: screen; animation: splashDrift 7s ease-in-out infinite alternate; }
 :global(:root[data-theme="light"]) .splashOrb i { mix-blend-mode: multiply; }

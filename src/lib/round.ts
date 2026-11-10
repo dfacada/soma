@@ -3,7 +3,7 @@
 // (src/lib/moves.ts ROUND_KINDS: push-ups, a run, minutes of anything…); these rules only see whole numbers in that
 // kind's kept unit (reps, metres, minutes, steps), so they are the same for every kind.
 //
-// What Soma changed, on purpose (docs/HANDOFF.md §2):
+// What Dayhub changed, on purpose (docs/HANDOFF.md §2):
 //   - The target is per person and flat. There is no ramp and no test number.
 //   - Points are hits and streak only. Total reps are left out: with per-person targets, counting reps would
 //     rank a 100-a-day member above a 30-a-day member for the size of the target, not for keeping to it.

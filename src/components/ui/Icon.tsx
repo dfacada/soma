@@ -150,7 +150,7 @@ const PATHS = {
   refresh: <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />,
   send: <path d="M4 12l16-8-6 16-2.5-6.5L4 12zM11.5 13.5L20 4" />,
   chevron: <path d="M9 5l7 7-7 7" />,
-  // Soma Ops' nav (2026-11-08), drawn like the rest: 24 grid, round ends.
+  // Dayhub Ops' nav (2026-11-08), drawn like the rest: 24 grid, round ends.
   grid: (
     <>
       <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />

@@ -80,9 +80,9 @@ function readJson(message) {
   if (message.parsed_output) return message.parsed_output;
   const text = (message.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   const start = text.indexOf('{'), end = text.lastIndexOf('}');
-  if (start < 0 || end < start) throw new HttpError(502, 'the review came back in a form Soma could not read');
+  if (start < 0 || end < start) throw new HttpError(502, 'the review came back in a form Dayhub could not read');
   try { return JSON.parse(text.slice(start, end + 1)); }
-  catch (_e) { throw new HttpError(502, 'the review came back in a form Soma could not read'); }
+  catch (_e) { throw new HttpError(502, 'the review came back in a form Dayhub could not read'); }
 }
 
 router.post('/review/write', member, wrap(async (req, res) => {

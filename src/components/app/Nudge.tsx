@@ -16,8 +16,8 @@ import { useSession } from "./Session";
 export const LINE: Record<PushState | "checking", string> = {
   checking: "Checking this device…",
   unsupported: "This browser cannot receive notifications.",
-  "needs-install": "On iPhone and iPad, notifications only reach the Home Screen app. In your browser tap Share, then Add to Home Screen, open Soma from there and switch this on.",
-  blocked: "Notifications are blocked for Soma on this device. Allow them in the device's settings, then come back.",
+  "needs-install": "On iPhone and iPad, notifications only reach the Home Screen app. In your browser tap Share, then Add to Home Screen, open Dayhub from there and switch this on.",
+  blocked: "Notifications are blocked for Dayhub on this device. Allow them in the device's settings, then come back.",
   off: "Not on for this device yet.",
   on: "On for this device.",
 };
@@ -34,7 +34,7 @@ export function NudgeKeeper() {
   // The nudge and tomorrow's brief both arrive on this device's subscription.
   const on = settings.nudge.on || settings.brief.on;
   useEffect(() => { if (on) void refreshPush().catch(() => undefined); }, [on]);
-  // A notification tapped while Soma is open: the service worker asks for its page (public/sw.js). Only Soma's own
+  // A notification tapped while Dayhub is open: the service worker asks for its page (public/sw.js). Only Dayhub's own
   // paths are followed.
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -69,7 +69,7 @@ export function NudgeSettings({ say }: { say: (m: string) => void }) {
       const state = await enablePush();
       setDevice(state);
       if (state !== "on") report("push", "not_enabled", undefined, { state }, "warn");
-      if (state !== "on") return say(state === "blocked" ? "Notifications are blocked on this device" : state === "needs-install" ? "Add Soma to your Home Screen first" : "Notifications were not allowed");
+      if (state !== "on") return say(state === "blocked" ? "Notifications are blocked on this device" : state === "needs-install" ? "Add Dayhub to your Home Screen first" : "Notifications were not allowed");
       if (!on) await saveSettings({ nudge: { on: true, time } });
       say(`You'll get a nudge at ${time} if the day is still open`);
     } catch (e) { report("push", "enable_failed", e); say(e instanceof ApiError || e instanceof Error ? e.message : "Couldn't turn notifications on"); }

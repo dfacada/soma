@@ -39,7 +39,7 @@ export async function encryptBytes(key: CryptoKey, plain: ArrayBuffer | Uint8Arr
 /** Throws on a wrong key or tampered data: AES-GCM authenticates. */
 export async function decryptBytes(key: CryptoKey, packed: ArrayBuffer | Uint8Array): Promise<ArrayBuffer> {
   const bytes = packed instanceof Uint8Array ? packed : new Uint8Array(packed);
-  if (bytes.length < 13 + 16 || bytes[0] !== VERSION) throw new Error("not a Soma vault object");
+  if (bytes.length < 13 + 16 || bytes[0] !== VERSION) throw new Error("not a Dayhub vault object");
   return crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes.slice(1, 13) }, key, bytes.slice(13));
 }
 
@@ -112,14 +112,14 @@ export async function openOnDevice(sealed: string, deviceKey: CryptoKey, share: 
   return crypto.subtle.importKey("raw", raw, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
 }
 
-// ── The recovery code (2026-11-08, before Soma opens to people David doesn't know: a stranger who forgets their
+// ── The recovery code (2026-11-08, before Dayhub opens to people David doesn't know: a stranger who forgets their
 // passphrase would otherwise lose their journal for good).
 //
 // The vault key comes straight from the first passphrase, and everything is encrypted with it, so a forgotten
 // passphrase cannot be "reset" by making a new key without re-encrypting the whole journal. Instead:
 //   - The recovery code is 20 random bytes (160 bits), shown once as 32 letters and digits. A key made from it with
 //     HKDF seals a copy of the vault key, which the server keeps (vault_meta.recovery_key). The code itself is never
-//     stored anywhere; Soma cannot show it again.
+//     stored anywhere; Dayhub cannot show it again.
 //   - Forgot the passphrase: the code opens that copy, and the person chooses a new passphrase, which seals the same
 //     vault key again (wrap_salt, wrapped_key: PBKDF2 like the first). From then on unlockVault uses the new one.
 // Nothing is re-encrypted, so the old passphrase still derives the key mathematically. That is fine for someone who

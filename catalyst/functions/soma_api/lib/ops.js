@@ -1,4 +1,4 @@
-// Soma Ops, the pure part: no Data Store here, so scripts/test-ops.mjs runs every rule on rows it makes up.
+// Dayhub Ops, the pure part: no Data Store here, so scripts/test-ops.mjs runs every rule on rows it makes up.
 // routes/ops.js reads the rows and hands them in. Rows come straight from ZCQL: numbers and booleans as strings.
 //
 // What Ops may know about a person is deliberately small: who they are (name, email, id), when they came and were last
@@ -128,7 +128,7 @@ function detectIssues(src, now, tz = 'UTC') {
         firstMs: first, lastMs: last,
         title: 'Fitbit disconnected', meta: `${daysText(Math.floor((now - first) / DAY))} · no steps since ${fmtDay(first, tz)}`,
         fix: 'send the reconnect message',
-        fixLong: 'Google ended the connection, as it does about every 7 days while Soma\'s Google app is unverified. They need to connect again in Settings → Fitbit · Google Health. This clears itself the moment they do.',
+        fixLong: 'Google ended the connection, as it does about every 7 days while Dayhub\'s Google app is unverified. They need to connect again in Settings → Fitbit · Google Health. This clears itself the moment they do.',
         template: `Hi {first}, your Fitbit stopped syncing on ${fmtDay(first, tz)}. Google ends the connection every so often: open Settings → Fitbit · Google Health and tap Connect, and your steps will catch up.`,
         timeline: dead.slice(0, 4).reverse().map((r) => ({ at: num(r.created_ms), text: `${fmtTime(num(r.created_ms), tz)} · token_dead · ${r.message ? 'Google ended the connection' : 'invalid_grant'}` }))
       });
@@ -144,8 +144,8 @@ function detectIssues(src, now, tz = 'UTC') {
         firstMs: num(unreadable[unreadable.length - 1].created_ms), lastMs: num(unreadable[0].created_ms),
         title: 'Journal entries won\'t open', meta: `${count ? `${count}${of ? ` of ${of}` : ''} entries` : 'some entries'} · since ${fmtDay(num(unreadable[unreadable.length - 1].created_ms), tz)}`,
         fix: 'ask them to reopen the home-screen app',
-        fixLong: 'Entries that fail on one device and open on another point at an old copy of the app on that device, not at the entries. Ask them to close Soma fully and open it again. If the same entries keep failing, their ids are in the log line.',
-        template: 'Hi {first}, some of your journal entries aren\'t opening on one of your devices. They\'re safe. Could you close Soma completely and open it again from your home screen?',
+        fixLong: 'Entries that fail on one device and open on another point at an old copy of the app on that device, not at the entries. Ask them to close Dayhub fully and open it again. If the same entries keep failing, their ids are in the log line.',
+        template: 'Hi {first}, some of your journal entries aren\'t opening on one of your devices. They\'re safe. Could you close Dayhub completely and open it again from your home screen?',
         timeline: unreadable.slice(0, 4).reverse().map((r) => { const x = parse(r.detail, {}); return { at: num(r.created_ms), text: `${fmtTime(num(r.created_ms), tz)} · entries_unreadable · ${num(x.count)} of ${num(x.of)}${x.reasons ? ` · ${String(x.reasons).replace(/[{}"]/g, '').slice(0, 60)}` : ''}` }; })
       });
     }
@@ -202,9 +202,9 @@ function detectIssues(src, now, tz = 'UTC') {
     add('Errors', r.user_id, id, {
       firstMs: num(r.first) || now, lastMs: num(r.last) || now,
       title: `Same error, ${n} times today`, meta: `${r.area} · ${r.event}`,
-      fix: others ? `${others} other ${others === 1 ? 'person has' : 'people have'} it too: see Errors` : 'check their errors and that part of Soma',
-      fixLong: others ? `${others + 1} people hit ${id} today, so this is Soma, not them. The Errors page has it grouped with a sample.` : 'Only they get it, so it is likely something in what they do or their device, not the service. Their errors are on their page, each with its detail.',
-      template: 'Hi {first}, something in Soma kept failing for you today. I\'m looking into it and will let you know.',
+      fix: others ? `${others} other ${others === 1 ? 'person has' : 'people have'} it too: see Errors` : 'check their errors and that part of Dayhub',
+      fixLong: others ? `${others + 1} people hit ${id} today, so this is Dayhub, not them. The Errors page has it grouped with a sample.` : 'Only they get it, so it is likely something in what they do or their device, not the service. Their errors are on their page, each with its detail.',
+      template: 'Hi {first}, something in Dayhub kept failing for you today. I\'m looking into it and will let you know.',
       timeline: [{ at: num(r.last) || now, text: `${n} times in 24 h · ${id}` }]
     });
   }
@@ -220,7 +220,7 @@ function detectIssues(src, now, tz = 'UTC') {
       fix: 'approve them, or leave them waiting',
       fixLong: 'Someone signed up without an invite link and is waiting on the "waiting for approval" screen. Approve them, or leave them pending.',
       template: '', approve: true,
-      timeline: [{ at: made, text: `${fmtTime(made, tz)} · signed up without an invite` }].concat(num(p.last_seen_ms) > made + HOUR ? [{ at: num(p.last_seen_ms), text: `${fmtTime(num(p.last_seen_ms), tz)} · opened Soma, still waiting` }] : [])
+      timeline: [{ at: made, text: `${fmtTime(made, tz)} · signed up without an invite` }].concat(num(p.last_seen_ms) > made + HOUR ? [{ at: num(p.last_seen_ms), text: `${fmtTime(num(p.last_seen_ms), tz)} · opened Dayhub, still waiting` }] : [])
     });
   }
 
@@ -233,7 +233,7 @@ function detectIssues(src, now, tz = 'UTC') {
       title: 'A regular went quiet', meta: `closed ${q.closed} of 21 days · nothing for ${daysText(q.quietDays)}`,
       fix: 'a short personal check-in',
       fixLong: 'People who stop after a long run often come back for a word from a person, not the app. Keep it short and about them.',
-      template: 'Hi {first}, I noticed you haven\'t been on Soma this week after a great run. Everything OK? If something in the app got in your way, I\'d love to know.',
+      template: 'Hi {first}, I noticed you haven\'t been on Dayhub this week after a great run. Everything OK? If something in the app got in your way, I\'d love to know.',
       timeline: [{ at: q.lastMs, text: `last closed day ${q.lastDay}` }]
     });
   }
@@ -249,7 +249,7 @@ function detectIssues(src, now, tz = 'UTC') {
       firstMs: list[list.length - 1].at, lastMs: list[0].at,
       title: list.length === 1 ? 'Wrote to you' : `Wrote to you ${list.length} times`, meta: `${fmtDay(list[0].at, tz)} · “${words.length > 70 ? words.slice(0, 67) + '…' : words}”`,
       fix: 'reply in Support',
-      fixLong: 'A reply shows in Soma as a message from you, and answering clears this.',
+      fixLong: 'A reply shows in Dayhub as a message from you, and answering clears this.',
       template: 'Hi {first}, thanks for writing. ',
       timeline: list.slice(0, 4).reverse().map((m) => ({ at: m.at, text: `${fmtTime(m.at, tz)} · ${m.via === 'feedback' ? 'feedback from Settings' : 'message'}` }))
     });
@@ -290,7 +290,7 @@ function quietOf(closed, lastSeenMs, now) {
   const lastMs = Date.parse(lastDay + 'T12:00:00Z');
   const quietDays = Math.floor((now - lastMs) / DAY);
   if (quietDays < 5 || quietDays > 30) return null;
-  if (lastSeenMs && lastSeenMs > now - 5 * DAY) return null; // still opening Soma: not gone, just not closing
+  if (lastSeenMs && lastSeenMs > now - 5 * DAY) return null; // still opening Dayhub: not gone, just not closing
   const from = utcDay(lastMs - 20 * DAY);
   const n = days.filter((d) => d >= from && d <= lastDay).length;
   return n >= 12 ? { closed: n, quietDays, lastDay, lastMs } : null;

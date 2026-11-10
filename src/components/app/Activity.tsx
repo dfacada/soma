@@ -199,7 +199,7 @@ function MainCard({ main, map, viewKey: k, todayKey, today, joined, goalOf, onLo
     const dg = goalOf(main, key);
     const l = loggedOf(map[key]?.activity, { ...main, goal: dg.goal });
     const p = progressOf({ ...main, goal: dg.goal }, l);
-    // A day before this person joined Soma is not a miss: it is left out of the count and cannot be opened.
+    // A day before this person joined Dayhub is not a miss: it is left out of the count and cannot be opened.
     const before = key !== todayKey && joined !== "" && key < joined;
     const hit = !dg.rest && (p === null ? l.done : p >= 1);
     return { key, d, l, p: p ?? (l.done ? 1 : 0), rest: dg.rest, before, hit };
@@ -520,7 +520,7 @@ function InviteSheet({ round, code: given, owner, say }: { round: RoundRow; code
   }, [round.id, given, rounds]);
 
   const url = invite ? inviteUrl(invite.code) : "";
-  const text = `Join ${kindOf(round.kind).round} on Soma: ${round.name}`;
+  const text = `Join ${kindOf(round.kind).round} on Dayhub: ${round.name}`;
   const share = async () => {
     haptic();
     if (navigator.share) {
@@ -538,7 +538,7 @@ function InviteSheet({ round, code: given, owner, say }: { round: RoundRow; code
   return (
     <div className={a.vaultForm}>
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
-        Anyone with this link can join {round.name}. Someone new to Soma signs up through it and is in straight away, without waiting for approval.
+        Anyone with this link can join {round.name}. Someone new to Dayhub signs up through it and is in straight away, without waiting for approval.
       </p>
       {failed && <p role="status" className={a.noteBad}>The link couldn&apos;t be loaded. Close this and try again.</p>}
       {invite && <p className={`m ${a.inviteLink}`} aria-label="Invite link">{url}</p>}
@@ -546,7 +546,7 @@ function InviteSheet({ round, code: given, owner, say }: { round: RoundRow; code
         <Button variant="activity" disabled={!invite} onClick={() => void share()}>{typeof navigator !== "undefined" && "share" in navigator ? "Share the link" : "Copy the link"}</Button>
         {owner && <Button variant="secondary" disabled={!invite || busy} onClick={replace}>New link</Button>}
       </div>
-      {invite && invite.maxUses !== null && <p className="muted" style={{ fontSize: 12 }}>It has let in {invite.uses} new {invite.uses === 1 ? "person" : "people"} of {invite.maxUses}. People already on Soma join with it any number of times.</p>}
+      {invite && invite.maxUses !== null && <p className="muted" style={{ fontSize: 12 }}>It has let in {invite.uses} new {invite.uses === 1 ? "person" : "people"} of {invite.maxUses}. People already on Dayhub join with it any number of times.</p>}
     </div>
   );
 }

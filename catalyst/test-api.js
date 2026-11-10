@@ -693,9 +693,9 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     await call('DELETE', '/links/todoist');
   }
 
-  // Soma Ops is admin only, route by route, and the synthetic members can never be admins. Messages: a member writes
+  // Dayhub Ops is admin only, route by route, and the synthetic members can never be admins. Messages: a member writes
   // to the admin and reads their own thread, never another member's.
-  console.log('Soma Ops and messages');
+  console.log('Dayhub Ops and messages');
   {
     const as2 = (method, route, body) => call(method, route, body, { 'x-test-member': '2' });
     const other = '999000000000000002';

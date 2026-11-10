@@ -37,17 +37,17 @@ const noise = new Uint8Array(70000).map((_, i) => (i * 2654435761) >>> 24);
 check("CRC-32 matches Node's on 70 KB of noise", crc32(noise) === nodeCrc(noise));
 
 console.log("an archive");
-const json = JSON.stringify({ app: "Soma", note: "Café, 読書, 🧘" }, null, 2);
+const json = JSON.stringify({ app: "Dayhub", note: "Café, 読書, 🧘" }, null, 2);
 const audio = new Blob([noise], { type: "audio/mp4" });
 const when = new Date(2026, 10, 8, 7, 12, 34);
 const zip = await makeZip([
-  { name: "soma-data.json", data: json, modified: when },
+  { name: "dayhub-data.json", data: json, modified: when },
   { name: "recordings/2026-11-08 07.12 Café.m4a", data: audio, modified: when },
   { name: "empty.txt", data: "" },
 ]);
 const buf = new Uint8Array(await zip.arrayBuffer());
 const files = unzip(buf);
-check("three files, in order", files.length === 3 && files[0].name === "soma-data.json" && files[2].name === "empty.txt", files.map((f) => f.name));
+check("three files, in order", files.length === 3 && files[0].name === "dayhub-data.json" && files[2].name === "empty.txt", files.map((f) => f.name));
 check("UTF-8 names survive (flag bit 11 set)", files[1].name === "recordings/2026-11-08 07.12 Café.m4a" && (files[1].flags & 0x0800) !== 0);
 check("stored, not compressed", files.every((f) => f.method === 0));
 check("the JSON comes back byte for byte", new TextDecoder().decode(files[0].data) === json);

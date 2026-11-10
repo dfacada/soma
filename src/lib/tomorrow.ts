@@ -1,5 +1,5 @@
 // Tomorrow's brief (David, 2026-11-02: "the hub of my day", starting with the next day laid out the night before).
-// Pure: what Morgen, Todoist and Soma say about tomorrow in; the day in order, the free time between, the tasks, one
+// Pure: what Morgen, Todoist and Dayhub say about tomorrow in; the day in order, the free time between, the tasks, one
 // line from Insights and the words for Telegram out. No React and no I/O, so scripts/test-tomorrow.mjs runs it as it is.
 // Facts only: nothing here suggests what to do with the day.
 
@@ -324,7 +324,7 @@ export function insightLine(lifts: Driver[], free: Block[] | null): Insight | nu
   return null;
 }
 
-/** Soma's side of the day, as the brief and its text show it. */
+/** Dayhub's side of the day, as the brief and its text show it. */
 export type SomaSide = {
   weighIn: boolean;
   /** The main move and its goal that day (the round's target when the round counts it), or null with no moves yet.
@@ -334,7 +334,7 @@ export type SomaSide = {
   kcal: number; protein: number;
 };
 
-/** What Soma already knows about the day: weigh-in when weight closes days, the main move's goal or a rest day (the
+/** What Dayhub already knows about the day: weigh-in when weight closes days, the main move's goal or a rest day (the
  *  round's, from `rounds.goalFor`), and the four planned meals. */
 export function somaSide(settings: Settings, move: SomaSide["move"]): SomaSide {
   const meals = MEALS.map((key) => {
@@ -395,7 +395,7 @@ const TELEGRAM_MAX = 3800;
 
 /** The brief as a Telegram message (HTML mode; David, 2026-11-03: "more visually appealing and easy to read"): a bold
  *  heading per part, one thing per line, the clock in monospace so the times line up, a coloured dot for Todoist's
- *  priorities. Times and titles, the free time, the tasks, Soma's side: never a description, an attendee or a link,
+ *  priorities. Times and titles, the free time, the tasks, Dayhub's side: never a description, an attendee or a link,
  *  because Telegram keeps whatever it is sent. Every word that came from Morgen, Todoist or the plan is escaped. */
 export function briefText(brief: Brief, soma: SomaSide, free: Block[] | null, insight: Insight | null): string {
   const lines: string[] = [`🌙 <b>${esc(dayTitle(brief.day))}</b>`];
@@ -416,7 +416,7 @@ export function briefText(brief: Brief, soma: SomaSide, free: Block[] | null, in
     if (!due.length) lines.push("<i>Nothing due</i>");
     for (const t of due) lines.push(`${PRIORITY_MARK[t.priority] || "▫️ "}${esc(t.text)}${t.time ? `  <code>${esc(taskClock(t) || "")}</code>` : ""}`);
   }
-  lines.push("", "💪 <b>Soma</b>");
+  lines.push("", "💪 <b>Dayhub</b>");
   if (soma.weighIn) lines.push("⚖️ Weigh in");
   if (soma.move) lines.push(soma.move.rest ? `😌 Rest day for ${soma.move.name.toLowerCase()}` : `🏃 ${soma.move.goal}${soma.move.dayNumber ? ` <i>· day ${soma.move.dayNumber}</i>` : ""}`);
   for (const m of soma.meals) lines.push(`${MEAL_MARK[m.key] || "🍽"} ${esc(m.name)}  <i>${m.kcal.toLocaleString("en-US")} kcal</i>`);

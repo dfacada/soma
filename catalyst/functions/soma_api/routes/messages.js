@@ -1,5 +1,5 @@
-// Messages between a member and the admin (David, 2026-11-08, Soma Ops: "Message them … It shows in Soma as a message
-// from you"). One thread a member. The admin writes from Soma Ops (routes/ops.js); the member reads and answers here,
+// Messages between a member and the admin (David, 2026-11-08, Dayhub Ops: "Message them … It shows in Dayhub as a message
+// from you"). One thread a member. The admin writes from Dayhub Ops (routes/ops.js); the member reads and answers here,
 // in Settings → Messages, and an unread message from the admin shows on Today.
 //
 //   GET  /messages        the caller's thread, oldest first, with their old feedback in it
@@ -18,7 +18,7 @@ const router = express.Router();
 const BODY_MAX = 2000;
 const PER_DAY = 30; // a person writing a lot is fine; a loop or a script is not
 const num = (v) => Number(v) || 0;
-const WROTE = 'Someone wrote to you in Soma. Read it in Soma Ops → Support.';
+const WROTE = 'Someone wrote to you in Dayhub. Read it in Dayhub Ops → Support.';
 const created = (t) => { const ms = Date.parse(String(t || '').replace(' ', 'T').replace(/:(\d{3})$/, '.$1') + 'Z'); return Number.isFinite(ms) ? ms : 0; };
 
 router.get('/messages', member, wrap(async (req, res) => {
@@ -31,9 +31,9 @@ router.get('/messages', member, wrap(async (req, res) => {
   const authors = new Map();
   if (authorIds.length) {
     const rows = await select(req.admin, 'profiles', `SELECT user_id, display_name FROM profiles WHERE user_id IN (${authorIds.join(', ')}) LIMIT 50`);
-    rows.forEach((p) => authors.set(String(p.user_id), String(p.display_name || '').trim().split(/\s+/)[0] || 'Soma'));
+    rows.forEach((p) => authors.set(String(p.user_id), String(p.display_name || '').trim().split(/\s+/)[0] || 'Dayhub'));
   }
-  const list = msgs.map((m) => ({ id: String(m.ROWID), sender: m.sender === 'admin' ? 'admin' : 'member', from: m.sender === 'admin' ? authors.get(String(m.author_id)) || 'Soma' : null, body: m.body || '', at: num(m.created_ms), read: Boolean(num(m.read_ms)) }))
+  const list = msgs.map((m) => ({ id: String(m.ROWID), sender: m.sender === 'admin' ? 'admin' : 'member', from: m.sender === 'admin' ? authors.get(String(m.author_id)) || 'Dayhub' : null, body: m.body || '', at: num(m.created_ms), read: Boolean(num(m.read_ms)) }))
     .concat(fb.map((f) => ({ id: 'f' + f.ROWID, sender: 'member', from: null, body: f.body || '', at: created(f.CREATEDTIME), read: true, feedback: true })))
     .sort((a, b) => a.at - b.at);
   res.json({ messages: list, unread: list.filter((m) => m.sender === 'admin' && !m.read).length });

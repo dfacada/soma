@@ -9,7 +9,7 @@ export type Said = { meal: Meal | "extra"; name: string; kcal: number; protein: 
 
 const KNOWN_MAX = 60;
 
-/** What Soma can answer without asking: the book, the plan, your snacks, and every off-plan item in the days
+/** What Dayhub can answer without asking: the book, the plan, your snacks, and every off-plan item in the days
  *  already loaded. Same name twice keeps the newest, so a correction you made yesterday is what comes back today. */
 export function knownFromDays(map: Record<string, { log?: { extras?: Extra[] } } | undefined> | null, settings: Pick<Settings, "snacks" | "plan">): Known[] {
   const seen = new Map<string, Extra>();

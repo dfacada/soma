@@ -1,8 +1,8 @@
 "use client";
 
-// The page David emails to a new member: how to put Soma on a phone's Home Screen (David, 2026-09-22).
+// The page David emails to a new member: how to put Dayhub on a phone's Home Screen (David, 2026-09-22).
 // Public, like /privacy/ and /terms/: it has to open for someone who has never signed in. The same words and
-// pictures appear inside the app the first time someone opens Soma in a browser (app/InstallSplash.tsx).
+// pictures appear inside the app the first time someone opens Dayhub in a browser (app/InstallSplash.tsx).
 //
 // It shows every platform's steps, so a printed or forwarded copy is complete, and marks the one that matches the
 // device it is read on. On an iPhone this is not decoration: the evening nudge only arrives for a Home Screen app,
@@ -29,9 +29,9 @@ export function Install() {
 
   return (
     <main className={s.page}>
-      <Link href="/" className={s.back}><span className={`d ${s.wordmark}`}>Soma</span></Link>
-      <h1 className={`d ${s.title}`}>Put Soma on your Home Screen</h1>
-      <p className={s.lead}>Soma lives in your browser, so there is nothing to download. Adding it to your Home Screen gives it an icon, opens it full screen without the browser bars, and on an iPhone it is the only way the evening reminder can reach you.</p>
+      <Link href="/" className={s.back}><span className={`d ${s.wordmark}`}>Dayhub</span></Link>
+      <h1 className={`d ${s.title}`}>Put Dayhub on your Home Screen</h1>
+      <p className={s.lead}>Dayhub lives in your browser, so there is nothing to download. Adding it to your Home Screen gives it an icon, opens it full screen without the browser bars, and on an iPhone it is the only way the evening reminder can reach you.</p>
 
       <div className={s.linkBox}>
         <span className="eb">The link</span>
@@ -79,7 +79,7 @@ export function Install() {
       <footer className={s.foot}>
         <Link href="/privacy/">Privacy</Link>
         <Link href="/terms/">Terms</Link>
-        <Link href="/">Open Soma</Link>
+        <Link href="/">Open Dayhub</Link>
       </footer>
     </main>
   );

@@ -1,4 +1,4 @@
-/* Soma tokens and base styles. Source of truth: docs/design/System.dc.html and the prototype's CSS.
+/* Dayhub tokens and base styles. Source of truth: docs/design/System.dc.html and the prototype's CSS.
    Components read these variables only, so theme and accent palettes can be swapped from one place. */
 
 :root {
@@ -58,7 +58,7 @@
   --closed-line: rgba(255, 255, 255, 0.12);
   --closed-chip: rgba(255, 255, 255, 0.1);
 
-  /* Soma Night pieces (2026-11-02), used by the redesigned components: a recessed well for tracks and toggles,
+  /* Dayhub Night pieces (2026-11-02), used by the redesigned components: a recessed well for tracks and toggles,
      frosted glass for floating bars, and the glow a lit hue casts. */
   --well: #EFEDE7;
   --glass: rgba(255, 255, 255, 0.78);
@@ -181,7 +181,7 @@
   --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-/* Soma's own hues at night are picked by hand, brighter than mixing toward white gets them. */
+/* Dayhub's own hues at night are picked by hand, brighter than mixing toward white gets them. */
 :root[data-theme="dark"]:not([data-palette]), :root:not([data-palette]) .night {
   --journal: #8F8AF7;
   --journal-soft: #B2AEFA;

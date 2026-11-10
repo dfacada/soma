@@ -1,4 +1,4 @@
-// Soma service worker. Two jobs: cache-first for Next's hashed build assets, and showing the evening nudge.
+// Dayhub service worker. Two jobs: cache-first for Next's hashed build assets, and showing the evening nudge.
 //
 // Slate serves every response with `cache-control: no-store` (the alternative it offers is a one-year max-age
 // on everything, HTML included, which would strand users on an old index.html; see catalyst/SPIKE.md). no-store
@@ -40,12 +40,12 @@ self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { /* not JSON */ }
   const tag = typeof data.tag === 'string' && /^soma-[a-z]+$/.test(data.tag) ? data.tag : 'soma-nudge';
-  event.waitUntil(self.registration.showNotification(data.title || 'Soma', {
+  event.waitUntil(self.registration.showNotification(data.title || 'Dayhub', {
     body: data.body || 'Your day is still open.', icon: '/icon-192.png', badge: '/icon-192.png', tag, data: { url: data.url || '/' }
   }));
 });
 
-// A tap opens the notification's page. When Soma is already open it is brought forward and asked to go there itself
+// A tap opens the notification's page. When Dayhub is already open it is brought forward and asked to go there itself
 // (NudgeKeeper listens), so it switches without a reload; before, it was only brought forward, wherever it was.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

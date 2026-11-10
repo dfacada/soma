@@ -1,7 +1,7 @@
 export const meta = {
   name: 'soma-polish',
-  description: 'Polish Soma screen by screen: harsh critics on real screenshots, one maker per area, blind before/after judging, repeated until every area passes',
-  whenToUse: 'When David asks to polish Soma or run the polish loop (docs/POLISH.md). Needs npm run dev on localhost:3000 and a clean git tree.',
+  description: 'Polish Dayhub screen by screen: harsh critics on real screenshots, one maker per area, blind before/after judging, repeated until every area passes',
+  whenToUse: 'When David asks to polish Dayhub or run the polish loop (docs/POLISH.md). Needs npm run dev on localhost:3000 and a clean git tree.',
   phases: [
     { title: 'Baseline', detail: 'screenshots of every screen, reference comparisons, the first critique' },
     { title: 'Fix', detail: 'the shared-system pass, then one maker per failing area, one at a time' },
@@ -101,7 +101,7 @@ function shoot(name, opts) {
   const o = opts || {}
   const cmd = `npm run shots -- --out ${DIR}/${name}${AT ? ` --at ${AT}` : ''}${o.against ? ` --against ${DIR}/${o.against}` : ''}`
   const lines = [
-    'Run Soma\'s screenshot rig and report exactly what it wrote. Change nothing, fix nothing, and don\'t start or stop any server. From the repo root:',
+    'Run Dayhub\'s screenshot rig and report exactly what it wrote. Change nothing, fix nothing, and don\'t start or stop any server. From the repo root:',
     '',
     ...(o.fresh ? [`rm -rf ${DIR}`, 'npm run shots -- --list'] : []),
     o.compare ? `npm run shots -- --compare ${DIR}/${o.compare[0]} ${DIR}/${o.compare[1]}` : cmd,
@@ -168,7 +168,7 @@ function byScene(changed) {
 function critique(area, round, shotsDir, prior) {
   const p = prior || {}
   const lines = [
-    `Critique Soma's "${area.title}" area (id ${area.id}), polish round ${round}.`,
+    `Critique Dayhub's "${area.title}" area (id ${area.id}), polish round ${round}.`,
     '',
     `Screenshots: ${shotsDir}/. Read every PNG of these scenes (files are <scene>.<theme>.png, <scene>.<theme>.2.png and so on; a <scene>.<theme>.failed.png means it failed to render):`,
     ...area.scenes.map((s) => `- ${s.id}: ${s.title}`),
@@ -179,7 +179,7 @@ function critique(area, round, shotsDir, prior) {
     ...(FOCUS ? ['', `David's focus for this run: ${FOCUS}`] : []),
     ...(p.open && p.open.length ? ['', 'Open issues from last round. Check each against the new screenshots and fill `previous` (resolved true or false, and what you saw):', JSON.stringify(p.open.map(({ id, severity, scene, theme, where, problem, fix }) => ({ id, severity, scene, theme, where, problem, fix })))] : []),
     ...(p.worse && p.worse.length ? ['', 'A blind judge preferred the previous version of these screens over this round\'s change. Raise each reason as an issue unless the screenshots already answer it:', ...p.worse.map((w) => `- ${w.scene}: ${w.beforeWon.join(' / ')}${w.afterKeep.length ? ` (the new version did do this better, keep it: ${w.afterKeep.join(' / ')})` : ''}`)] : []),
-    ...(p.steal && p.steal.length ? ['', 'Blind comparisons with apps David admires found these things they do better than this area. Raise the ones that fit Soma\'s design as issues:', ...p.steal.map((s) => `- ${s}`)] : []),
+    ...(p.steal && p.steal.length ? ['', 'Blind comparisons with apps David admires found these things they do better than this area. Raise the ones that fit Dayhub\'s design as issues:', ...p.steal.map((s) => `- ${s}`)] : []),
     ...(p.keep && p.keep.length ? ['', 'Earlier critics said to keep these:', ...p.keep.map((k) => `- ${k}`)] : []),
     '',
     `Number new issues ${area.id}-${round}-1, ${area.id}-${round}-2 and so on.`,
@@ -196,7 +196,7 @@ function openIssues(c, carried) {
 
 function makerPrompt(area, round, issues, st, prev) {
   return [
-    `You are fixing Soma's "${area.title}" area (${area.id}) in polish round ${round}. A harsh critic reviewed screenshots of it; fix what it found, then prove it with new screenshots.`,
+    `You are fixing Dayhub's "${area.title}" area (${area.id}) in polish round ${round}. A harsh critic reviewed screenshots of it; fix what it found, then prove it with new screenshots.`,
     '',
     'Issues (fix every blocking and major one; a minor one when the fix is small and safe):',
     JSON.stringify(issues),
@@ -216,7 +216,7 @@ function makerPrompt(area, round, issues, st, prev) {
 
 function systemPrompt(round, items, prev) {
   return [
-    `You own Soma's shared design system for polish round ${round}. The area critics found these problems that live in shared code, or that show on more than one area's screens. Several may be the same problem seen from different screens: fix each once, at the root.`,
+    `You own Dayhub's shared design system for polish round ${round}. The area critics found these problems that live in shared code, or that show on more than one area's screens. Several may be the same problem seen from different screens: fix each once, at the root.`,
     '',
     JSON.stringify(items),
     ...(FOCUS ? ['', `David's focus for this run: ${FOCUS}`] : []),
@@ -265,10 +265,10 @@ const problemsFor = (id, problems) => (problems || []).filter((p) => (AREAS.find
 
 // The bar to beat: each reference image David left in design-ref/<area>/, blind against the area's lead screen.
 const leadOf = (shot, id) => ((shot && shot.leads) || []).find((l) => l.area === id)
-// Soma sits in the `before` slot and the reference in `after`: "better" means the reference won both orders.
+// Dayhub sits in the `before` slot and the reference in `after`: "better" means the reference won both orders.
 const against = (shot, phaseName, tag) => parallel(AREAS.filter((a) => a.refs && a.refs.length && leadOf(shot, a.id)).flatMap((a) => a.refs.map((r) => () =>
   blind(a.title, [{ label: 'the screen', blind: leadOf(shot, a.id).blind }], [{ label: 'the screen', blind: r.blind }], 'reference', `${tag}:${a.id}`, phaseName)
-    .then((v) => ({ area: a.id, ref: r.file, result: v.verdict === 'better' ? 'reference wins' : v.verdict === 'worse' ? 'Soma wins' : 'split', steal: v.afterWon })))))
+    .then((v) => ({ area: a.id, ref: r.file, result: v.verdict === 'better' ? 'reference wins' : v.verdict === 'worse' ? 'Dayhub wins' : 'split', steal: v.afterWon })))))
 // A critic that dies gets one more try: a missing critique must never read as a pass.
 const critiqueOnce = async (a, round, dir, prior) => (await critique(a, round, dir, prior)) || (await critique(a, round, dir, prior))
 if (!RESUME) {

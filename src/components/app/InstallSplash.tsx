@@ -1,12 +1,12 @@
 "use client";
 
-// The first time someone opens Soma in a browser tab, this shows them how to put it on their Home Screen
+// The first time someone opens Dayhub in a browser tab, this shows them how to put it on their Home Screen
 // (David, 2026-09-22: "for any new user… a special splash screen that shows them the install page details.
 // I also want this for all current users to show once").
 //
-// Once per person, not per device: `settings.seenInstall`. It never shows when Soma is already running from a
+// Once per person, not per device: `settings.seenInstall`. It never shows when Dayhub is already running from a
 // Home Screen icon, and never on a computer — where it would be noise, and where not marking it seen means the
-// person still gets it the first time they open Soma on their phone.
+// person still gets it the first time they open Dayhub on their phone.
 //
 // One thing at a time on opening: the opening words, then this, then What's new, then the vault prompt. When this
 // shows, What's new waits for the next open rather than stacking behind it.
@@ -51,11 +51,11 @@ export function InstallSplash() {
   const block = show ? STEPS[show] : null;
 
   return (
-    <Sheet open={show !== null} title="Put Soma on your Home Screen" onClose={close}>
+    <Sheet open={show !== null} title="Put Dayhub on your Home Screen" onClose={close}>
       {show && block && (
         <div className={a.vaultForm}>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
-            It takes about twenty seconds and gives Soma its own icon, opens it full screen, and lets the evening
+            It takes about twenty seconds and gives Dayhub its own icon, opens it full screen, and lets the evening
             reminder reach you. {block.note}
           </p>
           <ol className={i.steps}>{block.steps.slice(1).map((step) => <li key={step}>{step}</li>)}</ol>

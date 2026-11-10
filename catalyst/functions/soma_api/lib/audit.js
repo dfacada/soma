@@ -1,5 +1,5 @@
 // The audit trail: every time an admin acts on someone else's account, or looks at more than Ops shows by default,
-// one row lands in ops_audit (who, what, to whom, why). Soma Ops → Audit reads it. Rows are never pruned and there is
+// one row lands in ops_audit (who, what, to whom, why). Dayhub Ops → Audit reads it. Rows are never pruned and there is
 // no route that changes or deletes them.
 
 'use strict';

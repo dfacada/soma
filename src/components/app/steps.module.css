@@ -1,5 +1,5 @@
 /* The steps sheet (Steps.tsx): the day against the goal, then 7 or 30 days as bars under a dashed goal line. In the
-   activity hue, the colour of steps everywhere in Soma; the days that reached the goal glow. Laid out like the sleep
+   activity hue, the colour of steps everywhere in Dayhub; the days that reached the goal glow. Laid out like the sleep
    sheet (sleep.module.css) so the two read as a pair. */
 
 .steps { display: flex; flex-direction: column; gap: 22px; padding-bottom: 6px; --hue: var(--activity); }

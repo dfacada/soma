@@ -1,6 +1,6 @@
 "use client";
 
-// Soma Ops' frame: the nav (a sidebar from 900px, a row of tabs on a phone), the person search, the environment pill,
+// Dayhub Ops' frame: the nav (a sidebar from 900px, a row of tabs on a phone), the person search, the environment pill,
 // and the counts on Issues and Support. Only admins get past it; every route behind it checks the role again.
 
 import Link from "next/link";
@@ -43,16 +43,16 @@ export function OpsShell({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => { if (me.profile.role === "admin") refresh(); }, [me.profile.role, refresh]);
   useEffect(() => { if (!toast) return; const t = window.setTimeout(() => setToast(null), 3200); return () => window.clearTimeout(t); }, [toast]);
-  useEffect(() => { document.title = "Soma Ops"; }, []);
+  useEffect(() => { document.title = "Dayhub Ops"; }, []);
 
   const value = useMemo<Ops>(() => ({ badges, refresh, say: setToast }), [badges, refresh]);
 
   if (me.profile.role !== "admin") {
     return (
       <main className={`${o.ops} ${o.center}`}>
-        <span className="d" style={{ fontSize: 28 }}>Soma Ops is for admins</span>
-        <p className="muted">This is where Soma is run. Your own days are in the app.</p>
-        <Link href="/" className={o.lnk}>Back to Soma</Link>
+        <span className="d" style={{ fontSize: 28 }}>Dayhub Ops is for admins</span>
+        <p className="muted">This is where Dayhub is run. Your own days are in the app.</p>
+        <Link href="/" className={o.lnk}>Back to Dayhub</Link>
       </main>
     );
   }
@@ -70,9 +70,9 @@ export function OpsShell({ children }: { children: ReactNode }) {
     <Ctx.Provider value={value}>
       <div className={o.ops}>
         <div className={o.frame}>
-          <nav aria-label="Soma Ops" className={o.nav}>
+          <nav aria-label="Dayhub Ops" className={o.nav}>
             <div className={o.brand}>
-              <span className={o.brandName}>Soma Ops</span>
+              <span className={o.brandName}>Dayhub Ops</span>
               {badges?.env && <span className={`${o.env} ${live ? o.envLive : ""}`}>{live ? "Live" : "Dev"}</span>}
             </div>
             {NAV.map((n) => {
@@ -89,7 +89,7 @@ export function OpsShell({ children }: { children: ReactNode }) {
                 <span className={o.ownerDot} aria-hidden="true">{initial(displayName, me.email)}</span>
                 <span className={o.ownerName}><span>{displayName || me.email}</span><span className="m muted" style={{ fontSize: 10 }}>admin</span></span>
               </div>
-              <Link href="/" className={o.back}>Back to Soma</Link>
+              <Link href="/" className={o.back}>Back to Dayhub</Link>
             </div>
           </nav>
           <main className={o.main}>

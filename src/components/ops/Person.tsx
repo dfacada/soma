@@ -1,6 +1,6 @@
 "use client";
 
-// Soma Ops · one person: who they are, fourteen days done or not (never the values), their issues and errors, the
+// Dayhub Ops · one person: who they are, fourteen days done or not (never the values), their issues and errors, the
 // thread with them, and their AI use today. Their food, weight and activity values open only with a reason, which is
 // written to the audit before anything is shown. Their journal is sealed with their passphrase: Ops counts entries.
 
@@ -25,7 +25,7 @@ function PersonById() {
 }
 
 const SAVED = [
-  { label: "Reopen the home-screen app", text: "could you close Soma completely and open it again from your home screen? That usually brings missing entries back." },
+  { label: "Reopen the home-screen app", text: "could you close Dayhub completely and open it again from your home screen? That usually brings missing entries back." },
   { label: "Reconnect Fitbit", text: "your Fitbit stopped syncing. Open Settings → Fitbit · Google Health and tap Connect, and your steps will catch up." },
   { label: "Turn reminders back on", text: "your evening reminders stopped reaching your phone. Turn Evening nudge off and on again in Settings and they'll come back." },
   { label: "Thanks for writing", text: "thanks for telling me. I've added it to the list." },
@@ -162,7 +162,7 @@ function PersonInner({ id }: { id: string }) {
               <div className={o.thread}>
                 {data.thread.map((m, i) => (
                   <div key={i} className={`${o.bubble} ${m.sender === "admin" ? o.bubbleMine : ""}`}>
-                    <span className={o.bubbleWho}>{m.sender === "admin" ? (m.who || "Soma") : p.first} · {fmtTime(m.at)}{m.feedback ? " · from the feedback form" : ""}{m.sender === "admin" ? (m.read ? " · read" : " · not read yet") : ""}</span>
+                    <span className={o.bubbleWho}>{m.sender === "admin" ? (m.who || "Dayhub") : p.first} · {fmtTime(m.at)}{m.feedback ? " · from the feedback form" : ""}{m.sender === "admin" ? (m.read ? " · read" : " · not read yet") : ""}</span>
                     <span className={o.bubbleBody}>{m.body}</span>
                   </div>
                 ))}
@@ -175,7 +175,7 @@ function PersonInner({ id }: { id: string }) {
                 </div>
                 <label className={o.label}>
                   <span className="eb">Reply</span>
-                  <textarea ref={composer} className={o.ta} rows={3} maxLength={2000} value={draft} placeholder={`Write to ${p.first}. It shows in Soma as a message from you.`} onChange={(e) => setDraft(e.target.value)} />
+                  <textarea ref={composer} className={o.ta} rows={3} maxLength={2000} value={draft} placeholder={`Write to ${p.first}. It shows in Dayhub as a message from you.`} onChange={(e) => setDraft(e.target.value)} />
                 </label>
                 <div><Button size="sm" variant="activity" disabled={busy !== null || !draft.trim()} onClick={send}>{busy === "send" ? "Sending…" : "Send"}</Button></div>
               </>

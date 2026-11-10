@@ -9,7 +9,7 @@ const { HttpError, select, needId, bool } = require('../lib/db');
 const { audit: record } = require('../lib/audit');
 
 // Every admin action on someone else's account, and every look at their activity, lands in the audit (lib/audit.js,
-// read in Soma Ops → Audit): with more than one admin, or more than a few members, there has to be a record of who
+// read in Dayhub Ops → Audit): with more than one admin, or more than a few members, there has to be a record of who
 // did what. `message` is kept for reading the code; the audit row carries the action, the person and the detail.
 const audit = (req, event, _message, detail) => void record(req, event, detail && detail.user, null, detail);
 

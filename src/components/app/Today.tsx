@@ -1,7 +1,7 @@
 "use client";
 
 // Today is the actionable screen: every daily task completes with a tap here (docs/HANDOFF.md).
-// Soma Night (2026-11-02): a greeting, the orb (one bead per task, the sphere lit by what is done), the week strip,
+// Dayhub Night (2026-11-02): a greeting, the orb (one bead per task, the sphere lit by what is done), the week strip,
 // and a bento of task cards in card order: weight, check-in, journal, food, activity. The activity card leads with the
 // person's main move (2026-11-08); their other moves sit under it, and any of them closes the day.
 //
@@ -41,7 +41,7 @@ import a from "./app.module.css";
 import t from "./today.module.css";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
-/** A sentence with its numbers in mono, as every number in Soma is (the week line's streak and best): "2 left to
+/** A sentence with its numbers in mono, as every number in Dayhub is (the week line's streak and best): "2 left to
  *  close the day", "↑ 0.9 lb since last", "3 meals left". The words keep the body face. */
 const nums = (text: string): ReactNode => text.split(/(\d[\d,.]*\d|\d)/).map((part, i) => (i % 2 ? <span key={i} className="m">{part}</span> : part));
 const BEADS: Record<TaskKey, Omit<OrbBead, "key" | "value">> = {
@@ -92,7 +92,7 @@ export function Today() {
   const st = dayStatus(days?.[k], settings);
   const run = days ? streak(days, settings, today, WINDOW_DAYS) : { now: 0, best: settings.bestStreak };
 
-  // The celebration: once, when today goes from open to closed while Soma is open on it. Never on opening the app
+  // The celebration: once, when today goes from open to closed while Dayhub is open on it. Never on opening the app
   // to a day already closed, and never for a past day being filled in. Adjusted during render.
   const todayKey = dayKey(today);
   const todayEntries = Math.max(map?.[todayKey]?.entries || 0, journal.countOn(todayKey) || 0);

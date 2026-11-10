@@ -67,7 +67,7 @@ check("off says nothing", n.briefDueNow({ day: "2026-11-02", minutes: 21 * 60 + 
 check("in the evening the brief is about the next day", n.briefDayOf({ day: "2026-11-02", minutes: 21 * 60 }), "2026-11-03");
 check("after midnight it is about the day just begun", n.briefDayOf({ day: "2026-11-03", minutes: 30 }), "2026-11-03");
 check("the message names the day and opens the brief", n.briefMessage({ day: "2026-11-02", minutes: 21 * 60 }),
-  { title: "Tomorrow's brief", body: "See what Tuesday looks like: your calendar, tasks and Soma's side of the day.", url: "/tomorrow/", tag: "soma-brief" });
+  { title: "Tomorrow's brief", body: "See what Tuesday looks like: your calendar, tasks and Dayhub's side of the day.", url: "/tomorrow/", tag: "soma-brief" });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

@@ -1,7 +1,7 @@
 "use client";
 
 // Tomorrow's brief, shared by the Today card (from 6 pm), the brief itself (/tomorrow/) and its Settings card.
-// Soma's side is worked out on this device from what the app already holds: the planned meals, the round's target or
+// Dayhub's side is worked out on this device from what the app already holds: the planned meals, the round's target or
 // rest day, whether weight closes days, and the habits that come with great days (src/lib/great-days.ts).
 //
 // The calendar (Morgen) and the tasks (Todoist) need keys, which live sealed with the vault key (src/lib/brief-api.ts
@@ -230,7 +230,7 @@ export function TomorrowProvider({ children }: { children: ReactNode }) {
   }, [vault, links, unseal, seal, read, day]);
 
   const todayKey = dayKey(today);
-  // The main move with today's goal (for the insight), and with the brief's day's goal (for Soma's side of it).
+  // The main move with today's goal (for the insight), and with the brief's day's goal (for Dayhub's side of it).
   const main = mainOf(settings);
   const goalToday = main ? rounds.goalFor(main, todayKey).goal : 0;
   const onDay = main ? rounds.goalFor(main, day) : null;
@@ -257,7 +257,7 @@ export function TomorrowProvider({ children }: { children: ReactNode }) {
   }, [brief, day, nights, lifts]);
 
   const send = useCallback(async (): Promise<string | null> => {
-    // With nothing connected the brief is still Soma's side of the day, and that can go too.
+    // With nothing connected the brief is still Dayhub's side of the day, and that can go too.
     const b = brief ?? { day, builtMs: Date.now(), events: null, tasks: null };
     try { await briefToTelegram(briefText(b, soma, shape.free, shape.insight)); return null; }
     catch (e) {

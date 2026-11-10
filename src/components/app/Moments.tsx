@@ -1,6 +1,6 @@
 "use client";
 
-// Full-screen moments (Soma Night, 2026-11-02). RecordMoment covers the app while a journal entry records and while
+// Full-screen moments (Dayhub Night, 2026-11-02). RecordMoment covers the app while a journal entry records and while
 // it is being kept safe, wherever recording started (Today, the Journal tab, the sidebar). FoodMoment is the Food
 // card's dictation, step by step. DayClosed is the celebration when today closes.
 
@@ -221,7 +221,7 @@ const DOTS = Array.from({ length: 30 }, (_, i) => {
   return { "--tx": `${Math.round(Math.cos(a) * d)}px`, "--ty": `${Math.round(Math.sin(a) * d)}px`, "--c": ["var(--journal)", "var(--food)", "var(--activity)"][i % 3], "--dl": `${(0.25 + (i % 5) * 0.04).toFixed(2)}s` } as CSSProperties;
 });
 
-/** Shown once when today closes while Soma is open. `week` is the last seven days, oldest first, today last. */
+/** Shown once when today closes while Dayhub is open. `week` is the last seven days, oldest first, today last. */
 export function DayClosed({ streak, beads, week, onClose }: { streak: number; beads: OrbBead[]; week: { label: string; full: boolean }[]; onClose: () => void }) {
   const lovely = useRef<HTMLButtonElement>(null);
   useEffect(() => { lovely.current?.focus(); }, []);
