@@ -2,10 +2,10 @@
 // tomorrow's brief (words only, sent from the phone once it has read the brief). One bot, @Soma_me_bot, and one chat
 // per person.
 //
-// Pairing without a webhook or any stored state: Settings shows a code, the person sends it to the bot, and this
-// function reads the bot's recent updates to find which chat said it. The code is an HMAC of the user id and a
-// ten-minute window (the same trick as the Face ID challenges), so nothing has to be kept between the two calls.
-// Only the chat id is stored, on the person's profile.
+// Pairing without a webhook: Settings shows a code, the person sends it to the bot, and this function reads the
+// bot's recent updates to find which chat said it. The code is an HMAC of the user id, a ten-minute window and the
+// number of pairings the person has made (lib/pair-code.js), so no code is kept between the two calls and a code
+// that has connected a chat never works again. The chat id and that count are all that is stored, on the profile.
 //
 // What goes to Telegram is the person's own weekly review, which is a reading of their journal. That is their
 // choice, made in Settings, and worth saying plainly: Telegram keeps whatever is sent to it.
@@ -18,16 +18,15 @@
 
 'use strict';
 
-const crypto = require('crypto');
 const express = require('express');
 const { member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, needId } = require('../lib/db');
 const { writeLog } = require('../lib/log');
 const { spend } = require('../lib/quota');
 const { join, seconds } = require('../lib/wav');
+const { pairCode, WINDOW_MS } = require('../lib/pair-code');
 
 const router = express.Router();
-const WINDOW_MS = 10 * 60 * 1000;
 const TEXT_MAX = 3900;        // Telegram's own limit is 4096; leave room for the title
 // Measured against the voice on 2026-10-07: 400 and 700 characters are read without complaint, 1,000 and more come
 // back as "request too large", and several large pieces in a row trip the per-minute limit for the whole account.
@@ -54,11 +53,8 @@ function secret() {
   return s;
 }
 
-/** A six-character code, true for this person for ten minutes, with nothing stored. */
-function codeFor(userId, window) {
-  const mac = crypto.createHmac('sha256', secret()).update(`telegram:${userId}:${window}`).digest('base64');
-  return 'DAYHUB-' + mac.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
-}
+/** A six-character code, true for this person for ten minutes and for one pairing (`seq`, lib/pair-code.js). */
+const codeFor = (userId, window, seq) => pairCode(secret(), userId, window, seq);
 
 async function telegram(method, body, isForm) {
   let res;
@@ -84,8 +80,10 @@ async function telegram(method, body, isForm) {
 // about and telegram_chat is not among them, which made every send answer "not connected" while the pairing sat
 // in the row (David, 2026-10-07).
 const mine = async (req) => (await select(req.admin, 'profiles',
-  `SELECT ROWID, telegram_chat FROM profiles WHERE user_id = ${needId(req.user.id)}`))[0] || null;
+  `SELECT ROWID, telegram_chat, telegram_seq FROM profiles WHERE user_id = ${needId(req.user.id)}`))[0] || null;
 const chatOf = (row) => (row && row.telegram_chat ? String(row.telegram_chat) : null);
+// How many pairings this person has made. Rows from before the column existed hold nothing, which counts as none.
+const seqOf = (row) => { const n = Number(row && row.telegram_seq); return Number.isInteger(n) && n > 0 ? n : 0; };
 
 router.get('/telegram', member, wrap(async (req, res) => {
   const row = await mine(req);
@@ -95,13 +93,16 @@ router.get('/telegram', member, wrap(async (req, res) => {
 
 router.post('/telegram/code', member, wrap(async (req, res) => {
   const window = Math.floor(Date.now() / WINDOW_MS);
-  res.json({ code: codeFor(req.user.id, window), bot: 'Soma_me_bot', expiresMs: (window + 1) * WINDOW_MS });
+  res.json({ code: codeFor(req.user.id, window, seqOf(await mine(req))), bot: 'Soma_me_bot', expiresMs: (window + 1) * WINDOW_MS });
 }));
 
 router.post('/telegram/pair', member, wrap(async (req, res) => {
   const window = Math.floor(Date.now() / WINDOW_MS);
+  const row = await mine(req);
+  if (!row) throw new HttpError(404, 'no profile');
+  const seq = seqOf(row);
   // This window and the one before it, so a code typed just as the clock turns still works.
-  const codes = [codeFor(req.user.id, window), codeFor(req.user.id, window - 1)];
+  const codes = [codeFor(req.user.id, window, seq), codeFor(req.user.id, window - 1, seq)];
   // Updates are not acknowledged: a second attempt can still see the message.
   const updates = await telegram('getUpdates', { limit: 100, timeout: 0, allowed_updates: ['message'] });
   const hit = (updates || []).filter((u) => u.message && typeof u.message.text === 'string')
@@ -114,13 +115,14 @@ router.post('/telegram/pair', member, wrap(async (req, res) => {
     throw new HttpError(409, 'that code was sent in a group. Send it to @Soma_me_bot in a private chat, then tap Connect again.');
   }
 
-  const chat = String(hit.message.chat.id).slice(0, 32);
-  const row = await mine(req);
-  if (!row) throw new HttpError(404, 'no profile');
+  // Telegram's chat id is a whole number. It goes into a query below, so it is held to that here.
+  const chat = String(hit.message.chat.id);
+  if (!/^-?\d{1,20}$/.test(chat)) throw new HttpError(502, 'Telegram sent a chat this cannot use');
   // One chat, one person: if someone else paired this chat, it moves here rather than serving two accounts.
   const others = await select(req.admin, 'profiles', `SELECT ROWID FROM profiles WHERE telegram_chat = '${chat}' AND user_id != ${needId(req.user.id)}`);
   for (const o of others) await req.admin.datastore().table('profiles').updateRow({ ROWID: o.ROWID, telegram_chat: null });
-  await req.admin.datastore().table('profiles').updateRow({ ROWID: row.ROWID, telegram_chat: chat });
+  // The count goes up with the chat, in one write: from here on the code that did this is no longer the code.
+  await req.admin.datastore().table('profiles').updateRow({ ROWID: row.ROWID, telegram_chat: chat, telegram_seq: seq + 1 });
   await telegram('sendMessage', { chat_id: chat, text: 'Dayhub is connected. Your week in review, and tomorrow\'s brief when you send it, will arrive here.' }).catch(() => undefined);
   console.log(JSON.stringify({ action: 'telegram_paired', user: req.user.id }));
   res.json({ connected: true, chat: '…' + chat.slice(-4) });

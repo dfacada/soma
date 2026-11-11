@@ -19,6 +19,7 @@ import { transcribeAudio, TranscribeError } from "@/lib/transcribe";
 import { createVault, decryptJson, encryptJson, exportKey, fromB64, importKey, newRecoveryCode, openWithRecovery, parseRecoveryCode, sealForRecovery, toB64, unlockVault, wrapForPassphrase, type VaultMeta } from "@/lib/vault-crypto";
 import { haptic } from "@/lib/haptics";
 import { enrolledHere, enrolPasskey, forgetThisDevice, passkeyName, passkeySupported, PasskeyError, prepareChallenge, unlockWithPasskey } from "@/lib/vault-passkey";
+import { SESSION_KEY } from "@/lib/vault-session";
 import { Button, Input, Sheet, Toast } from "@/components/ui";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -101,7 +102,6 @@ export function useJournal() {
   return j;
 }
 
-const SESSION_KEY = "soma-ck-v1.";
 // Set once the opening prompt has been shown in this tab, so a reload or a manual lock never asks twice.
 const ASKED_KEY = "soma-vault-asked.";
 function askOnce(userId: string): boolean {

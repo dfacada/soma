@@ -13,17 +13,18 @@ const express = require('express');
 const { member, wrap } = require('../lib/auth');
 const { HttpError, select, upsert, needId } = require('../lib/db');
 const { writeLog } = require('../lib/log');
+const { pushEndpoint } = require('../lib/push-endpoint');
 
 const router = express.Router();
 const MAX_DEVICES = 8;
-// The server will POST to whatever endpoint it is given, so only real push services are accepted.
-const PUSH_HOSTS = [/(^|\.)push\.apple\.com$/, /^fcm\.googleapis\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/];
 
+// The server will POST to whatever endpoint it is given, so only real push services are accepted, read the way the
+// sender reads them (lib/push-endpoint.js). What comes back is the address in its standard spelling: that is what
+// is stored, keyed and sent to.
 function needEndpoint(v) {
-  let url;
-  try { url = new URL(v); } catch (_e) { throw new HttpError(400, 'bad endpoint'); }
-  if (typeof v !== 'string' || v.length > 2000 || url.protocol !== 'https:' || !PUSH_HOSTS.some((h) => h.test(url.hostname))) throw new HttpError(400, 'endpoint is not a known push service');
-  return v;
+  const endpoint = pushEndpoint(v);
+  if (!endpoint) throw new HttpError(400, 'endpoint is not a known push service');
+  return endpoint;
 }
 const needKey = (v, what) => { if (typeof v !== 'string' || !/^[A-Za-z0-9_-]{16,200}={0,2}$/.test(v)) throw new HttpError(400, 'bad ' + what); return v; };
 function needZone(v) {

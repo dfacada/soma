@@ -16,6 +16,8 @@ export const CHANGES: Release[] = [
     date: "2026-11-10",
     title: "A new name: Dayhub",
     items: [
+      "Signing out now locks your journal on that device. Before, the browser tab you signed out in could go on holding your journal's key until you closed it. Now the key is forgotten the moment you sign out, so the next person to use that browser can't open your journal. You unlock it again the usual way when you sign back in.",
+      "A Telegram code now connects once. After a code has connected a chat it stops working, and Settings shows a new one if you connect again.",
       "Dayhub has a new address: dayhub-onkasary.onslate.com. The old address has stopped working, and so has an icon that was added to a Home Screen from it. Everything you've logged is where it was, but each phone or computer sees the new address as a new place. So on each one: sign in again, type your vault passphrase and turn Face ID unlock back on in Settings, add Dayhub to your Home Screen again and delete the old icon, then turn your reminders back on.",
       "Soma is now called Dayhub. It's the same app with a new name. Your account, your journal and everything you've logged are exactly where they were, and your vault passphrase is the same. You'll see the new name on the opening screen, in notifications and in Telegram messages.",
       "The code for connecting Telegram now starts with DAYHUB-. The bot is still @Soma_me_bot, and a chat that's already connected stays connected.",

@@ -77,7 +77,11 @@ for (const [name, store] of Object.entries(RESOURCES)) {
     res.json(row);
   }));
   router.put('/' + name + '/:day', member, wrap(async (req, res) => {
-    const body = Object.assign({}, req.body || {});
+    // The body's own keys, copied as plain data. Object.assign would run the "__proto__" setter for a body that
+    // carries that key, and the two fields deleted below would come straight back through the copy's prototype
+    // (found 2026-11-10: it let a member write their own frozen round count for any day).
+    const sent = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+    const body = Object.fromEntries(Object.entries(sent).filter(([k]) => k !== '__proto__'));
     if (name === 'activity') {
       delete body.roundPushups;
       delete body.roundJson;

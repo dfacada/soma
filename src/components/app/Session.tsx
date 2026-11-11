@@ -13,6 +13,7 @@ import { withMove } from "@/lib/moves";
 import { mergeSettings, type Settings } from "@/lib/settings";
 import { dayKey } from "@/lib/today";
 import { acceptInvite, cleanCode, forgetInvite, keptInvite } from "@/lib/invite";
+import { forgetVaultKeys } from "@/lib/vault-session";
 import { Button, Input, Toast, type StepProgress } from "@/components/ui";
 import { Splash, type OpenStep } from "./Splash";
 import a from "./app.module.css";
@@ -153,6 +154,9 @@ export function SessionGate({ children }: { children: ReactNode }) {
   }, [apply]);
 
   const signOut = useCallback(() => {
+    // The tab's copy of an open vault's key goes first. Catalyst's sign-out ends the session and nothing else:
+    // sessionStorage outlives it in the same tab, and the key would wait there for whoever uses this browser next.
+    forgetVaultKeys();
     if (isDevIdentity) return;
     void catalystAuth().then((auth) => auth.signOut(window.location.origin + "/"));
   }, []);

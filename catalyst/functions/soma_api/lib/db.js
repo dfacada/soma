@@ -99,13 +99,15 @@ function dayStore(table, columns) {
         `SELECT ${cols} FROM ${table} WHERE user_id = ${needId(userId)} AND day >= '${needDay(from)}' AND day <= '${needDay(to)}' ORDER BY day ASC LIMIT 300`);
       return rows.map(shape);
     },
-    // Partial update: only the fields present in `body` are written.
+    // Partial update: only the fields present in `body` are written. Present means the body's own: nothing that
+    // reaches it through a prototype (a "__proto__" key in JSON) is ever read.
     async put(admin, userId, day, body) {
       const key = ukey(userId, day);
       const values = { user_id: String(userId), day, ukey: key };
+      const own = body && typeof body === 'object' ? body : {};
       let touched = 0;
       for (const f of fields) {
-        if (body[f] === undefined) continue;
+        if (!Object.hasOwn(own, f) || body[f] === undefined) continue;
         values[columns[f].col] = columns[f].in(body[f]);
         touched++;
       }

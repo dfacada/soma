@@ -90,6 +90,12 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('PUT', '/activity/' + nowDay, { pushups: 40, roundPushups: 999 });
   check('push-ups logged on the day count for the round, and the client cannot set that', r.status === 200 && r.json.roundPushups === 40, r.json);
   await call('DELETE', '/activity/' + nowDay);
+  // The same two fields under a "__proto__" key: a careless copy of the body would bring them in through the
+  // prototype (it did until 2026-11-10). Sent as text, because JSON.stringify would not write that key from a literal.
+  r = await call('PUT', '/activity/' + day, '{"pushups":100,"__proto__":{"roundPushups":999,"roundJson":{"steps":999999}}}');
+  check('…nor smuggle the round fields in under a __proto__ key', r.status === 200 && r.json.pushups === 100 && r.json.roundPushups == null && r.json.roundJson == null, r.json);
+  r = await call('PUT', '/activity/' + day, '{"__proto__":{"pushups":7}}');
+  check('…and a body with nothing of its own saves nothing', r.status === 400, r.text);
   r = await call('PUT', '/day-logs/' + day, { meals: { breakfast: true }, extras: [{ name: 'Apple 🍎', kcal: 95 }] });
   check('day-log saves', r.status === 200 && r.json.meals.breakfast === true && r.json.extras[0].kcal === 95, r.json);
 
@@ -573,6 +579,11 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const keys = { p256dh: 'B' + 'x'.repeat(86), auth: 'y'.repeat(22) };
   r = await call('PUT', '/push/subscription', { endpoint: 'https://evil.example/push', keys, tz: 'America/New_York' });
   check('only real push services are accepted as endpoints', r.status === 400, r.text);
+  // A push service's name to the parser that checks, someone else's host to the one that sends (lib/push-endpoint.js).
+  for (const [why, address] of [['a semicolon in the host', 'https://evil.example;.push.apple.com/push'], ['a sign-in part', 'https://user:pw@web.push.apple.com/push'], ['a port', 'https://web.push.apple.com:8443/push']]) {
+    r = await call('PUT', '/push/subscription', { endpoint: address, keys, tz: 'America/New_York' });
+    check('…and not one that only looks like one: ' + why, r.status === 400, r.text);
+  }
   r = await call('PUT', '/push/subscription', { endpoint, keys, tz: 'Mars/Olympus' });
   check('an unknown time zone is refused', r.status === 400, r.text);
   r = await call('POST', '/push/test');
@@ -612,6 +623,15 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   check('the test member has no Telegram chat', r.status === 200 && r.json.connected === false, r.json);
   r = await call('POST', '/telegram/send', { text: 'Tomorrow · Tuesday 3 November\n\nDayhub\nWeigh in · 100 push-ups', speak: false, title: "Tomorrow's brief" });
   check('the brief cannot go to Telegram before a chat is paired (409, which the brief explains)', r.status === 409, r.text);
+  // The pairing code: one person's, for ten minutes and one pairing (lib/pair-code.js; scripts/test-security.mjs
+  // holds the "works once" rule, since a real pairing needs a message sent to the bot).
+  r = await call('POST', '/telegram/code');
+  const pairing = r.json && r.json.code;
+  check('a pairing code is DAYHUB- and six characters, good for under ten minutes', r.status === 200 && /^DAYHUB-[A-Z0-9]{6}$/.test(pairing) && r.json.expiresMs > Date.now() && r.json.expiresMs <= Date.now() + 600000, r.json);
+  r = await call('POST', '/telegram/code', undefined, { 'x-test-member': '2' });
+  check("…and is not another member's code", r.status === 200 && r.json.code !== pairing, r.json);
+  r = await call('POST', '/telegram/pair', {});
+  check('pairing with no message sent to the bot is a 404 that says what to do', r.status === 404 && /Send the code to the bot/.test(r.json && r.json.error), r.text);
 
   console.log('daily caps on the paid AI features');
   r = await call('POST', '/food/estimate', { text: 'an apple' }, { 'x-test-cap': '0' });

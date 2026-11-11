@@ -13,8 +13,12 @@
 const webpush = require('web-push');
 const { writeLog } = require('./log');
 const { closingRules, leftToday } = require('./closing');
+const { pushEndpoint } = require('./push-endpoint');
 
 const WINDOW_MIN = 120; // how long after the chosen time a late cron run may still nudge
+// A push service answers in well under a second. Without a limit one address that never answers would hold the
+// whole run, and everything the job does after the nudges, until the function's own fifteen minutes ran out.
+const SEND_TIMEOUT_MS = 10000;
 const SUBJECT = 'https://dayhub-onkasary.onslate.com/privacy/';
 const parse = (text, fallback) => { try { return text ? JSON.parse(text) : fallback; } catch (_e) { return fallback; } };
 
@@ -147,8 +151,17 @@ async function run(app, params) {
 
   /** One push to one device. True when it went; a dropped subscription is deleted, a failure counted and logged. */
   async function send(sub, uid, payload) {
+    // Checked again here, whatever the API accepted when the device subscribed: this is where the request is made.
+    // A row that fails is not a push service's address, so it is removed without anything being sent to it.
+    const endpoint = pushEndpoint(sub.endpoint);
+    if (!endpoint) {
+      tally.gone++; sub.gone = true;
+      await table.deleteRow(sub.ROWID).catch(() => undefined);
+      await writeLog(app, { level: 'warn', source: 'job', area: 'push', event: 'endpoint_refused', message: 'a stored reminder address is not a push service; removed without sending', userId: uid, test: /^99900000000000000[123]$/.test(uid) });
+      return false;
+    }
     try {
-      await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_secret } }, JSON.stringify(payload), { TTL: 3 * 3600, urgency: 'normal' });
+      await webpush.sendNotification({ endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_secret } }, JSON.stringify(payload), { TTL: 3 * 3600, urgency: 'normal', timeout: SEND_TIMEOUT_MS });
       tally.sent++;
       return true;
     } catch (e) {
