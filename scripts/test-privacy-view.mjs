@@ -4,56 +4,41 @@
 //   node --import ./scripts/ts-resolve.mjs scripts/test-privacy-view.mjs
 
 import fs from "node:fs";
-import { forMember, ISSUE_KINDS, MEMBER_ACTIONS } from "../catalyst/functions/soma_api/lib/audit.js";
-import { KINDS, keyOf } from "../catalyst/functions/soma_api/lib/ops.js";
-import { groupVisits, OPS_SEES, readFrom, READABLE, SEALED, sentOut, summaryOf, visitWords, whenOf } from "../src/lib/privacy-view.ts";
+import { forMember, MEMBER_ACTIONS } from "../catalyst/functions/soma_api/lib/audit.js";
+import { OPS_SEES, readFrom, READABLE, recent, SEALED, sentOut, summaryOf, visitWords, whenOf } from "../src/lib/privacy-view.ts";
 import { mergeSettings } from "../src/lib/settings.ts";
-import { ACTION_WORDS } from "../src/lib/ops.ts";
 
 let passed = 0; const failures = [];
 const check = (name, ok, detail) => { if (ok) { passed++; console.log("  ok   " + name); } else { failures.push(name); console.log("  FAIL " + name, detail === undefined ? "" : JSON.stringify(detail)); } };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-console.log("what a member reads of their own audit");
+console.log("what a member reads of their own audit: the looks at their values, with the reason");
 const me = "999000000000000001";
 const rows = [
   { created_ms: "1700000000500", actor_id: "120000000000000007", action: "values_shown", reason: "fix a wrong weight", detail: '{"days":14}' },
-  { created_ms: "1700000000400", actor_id: me, action: "person_viewed", reason: null, detail: null },
-  { created_ms: "1700000000300", actor_id: "120000000000000007", action: "issue_handled", reason: null, detail: '{"issue":"gone-quiet:999000000000000001"}' },
+  { created_ms: "1700000000400", actor_id: me, action: "values_shown", reason: "my own, checking", detail: null },
+  { created_ms: "1700000000300", actor_id: "120000000000000007", action: "person_viewed", reason: null, detail: null },
+  { created_ms: "1700000000250", actor_id: "120000000000000007", action: "issue_handled", reason: null, detail: '{"issue":"gone-quiet:999000000000000001"}' },
   { created_ms: "1700000000200", actor_id: "120000000000000007", action: "profile_status", reason: null, detail: '{"from":"pending","to":"active"}' },
-  { created_ms: "1700000000100", actor_id: "120000000000000007", action: "alerts_changed", reason: null, detail: '{"newProblem":true}' },
-  { created_ms: "1700000000050", actor_id: "120000000000000007", action: "issue_reopened", reason: "x".repeat(400), detail: '{"issue":"errors:999000000000000001:<script>"}' },
+  { created_ms: "1700000000150", actor_id: "120000000000000007", action: "message_sent", reason: null, detail: '{"chars":40}' },
+  { created_ms: "1700000000100", actor_id: "120000000000000007", action: "values_shown", reason: "x".repeat(400), detail: null },
 ];
 const got = forMember(rows, me, (id) => (id === "120000000000000007" ? "David F." : "?"));
-check("only the actions about a person are theirs to read", same(got.map((r) => r.action), ["values_shown", "person_viewed", "issue_handled", "profile_status", "issue_reopened"]), got.map((r) => r.action));
-check("when, what, who and the reason, and nothing else", same(got[0], { at: 1700000000500, action: "values_shown", by: "David F.", reason: "fix a wrong weight", about: null }), got[0]);
-check("an admin looking at their own page is 'you'", got[1].by === "you");
-check("of the detail, only which kind of issue it was", got[2].about === "gone-quiet" && !JSON.stringify(got[2]).includes("999000000000000001"), got[2]);
-check("…or what a status became", got[3].about === "active", got[3]);
-check("an issue key's other parts never reach the member, and a reason is cut to what the audit keeps", got[4].about === "errors" && !JSON.stringify(got[4]).includes("script") && got[4].reason.length === 255, got[4]);
-check("detail that is not JSON, or not an object, is nothing", forMember([{ action: "issue_handled", detail: "nope" }, { action: "profile_role", detail: '"admin"' }], me, () => "A").every((r) => r.about === null));
+check("for now, only the looks at their values (David, 2026-11-11)", same(MEMBER_ACTIONS, ["values_shown"]) && same(got.map((r) => r.at), [1700000000500, 1700000000400, 1700000000100]), got.map((r) => r.action));
+check("page opens, issues handled, status changes and messages stay in Ops", !got.some((r) => ["person_viewed", "issue_handled", "profile_status", "message_sent"].includes(r.action)));
+check("when, what, who and the reason, and never the detail", same(got[0], { at: 1700000000500, action: "values_shown", by: "David F.", reason: "fix a wrong weight" }), got[0]);
+check("an admin looking at their own values is 'you'", got[1].by === "you");
+check("a reason is cut to what the audit keeps", got[2].reason.length === 255);
 check("nothing, or not a list, is an empty record", forMember(null, me, () => "A").length === 0 && forMember("rows", me, () => "A").length === 0);
-check("every issue kind Ops can raise has a word for the member", same([...KINDS.map((k) => keyOf(k).split(":")[0])].sort(), [...ISSUE_KINDS].sort()), KINDS.map((k) => keyOf(k)));
-check("every action a member reads is one Ops' own audit words too", MEMBER_ACTIONS.every((a) => ACTION_WORDS[a]), MEMBER_ACTIONS.filter((a) => !ACTION_WORDS[a]));
+const route = fs.readFileSync(new URL("../catalyst/functions/soma_api/routes/account.js", import.meta.url), "utf8");
+check("the route asks only for the caller's rows of those actions, and never the detail column", /WHERE target_id = \$\{uid\} AND action IN \(\$\{actions\}\)/.test(route) && !/SELECT[^`]*detail[^`]*FROM ops_audit/.test(route));
 
 console.log("the record, in words");
-check("every action a member reads has its own sentence", MEMBER_ACTIONS.every((action) => !visitWords({ at: 0, action, by: "David F.", reason: null, about: null }).includes("did something")));
-check("…and an unknown one is still said plainly", visitWords({ at: 0, action: "something_new", by: "David F.", reason: null, about: null }) === "David F. did something on your account");
-check("opening the page", visitWords({ at: 0, action: "person_viewed", by: "David F.", reason: null, about: null }) === "David F. opened your page in Dayhub Ops");
-check("looking at the values", visitWords({ at: 0, action: "values_shown", by: "David F.", reason: "x", about: null }) === "David F. looked at your food, weight and activity for the last 14 days");
-check("an issue handled says which", visitWords({ at: 0, action: "issue_handled", by: "David F.", reason: null, about: "gone-quiet" }) === "David F. marked as handled that you hadn't opened Dayhub for a while");
-check("every issue kind reads as a sentence", ISSUE_KINDS.every((about) => !visitWords({ at: 0, action: "issue_handled", by: "D", reason: null, about }).includes("something")));
-check("an approval, a role", visitWords({ at: 0, action: "profile_status", by: "David F.", reason: null, about: "active" }) === "David F. let your account in" && visitWords({ at: 0, action: "profile_role", by: "David F.", reason: null, about: "admin" }) === "David F. made you an admin");
-check("yourself, as an admin", visitWords({ at: 0, action: "person_viewed", by: "you", reason: null, about: null }) === "You opened your page in Dayhub Ops");
-
+check("a look at the values", visitWords({ at: 0, action: "values_shown", by: "David F.", reason: "x" }) === "David F. looked at your food, weight and activity for the last 14 days");
+check("yourself, as an admin", visitWords({ at: 0, action: "values_shown", by: "you", reason: "x" }) === "You looked at your food, weight and activity for the last 14 days");
+check("anything else that ever arrives is still said plainly", visitWords({ at: 0, action: "something_new", by: "David F.", reason: null }) === "David F. looked at your account");
 const day = (d, h) => new Date(2026, 10, d, h, 0, 0).getTime();
-const v = (at, action = "person_viewed", reason = null, by = "David F.") => ({ at, action, by, reason, about: null });
-const groups = groupVisits([v(day(11, 10)), v(day(11, 9)), v(day(11, 8), "values_shown", "a fix"), v(day(11, 7)), v(day(10, 9)), v(day(10, 8), "person_viewed", null, "Sam K.")]);
-check("the same look by the same admin on one day is one line, counted", groups[0].times === 2 && groups[0].at === day(11, 10), groups);
-check("a look with a reason always stands alone, with its reason", groups[1].reason === "a fix" && groups[1].times === 1);
-check("…and does not swallow the looks around it", groups[2].times === 1 && groups[2].at === day(11, 7));
-check("another day, or another admin, is another line", groups.length === 5 && groups[4].words.startsWith("Sam K."), groups.map((g) => g.words));
-check("at most twenty lines", groupVisits(Array.from({ length: 50 }, (_, i) => v(day(1 + (i % 28), 9), "values_shown", "r" + i))).length === 20);
+check("newest first as sent, at most twenty", recent(Array.from({ length: 30 }, (_, i) => ({ at: day(28 - (i % 28), 9), action: "values_shown", by: "D", reason: "r" + i }))).length === 20 && recent([]).length === 0);
 check("when, short", /^Wed 11 Nov, \d{1,2}:\d{2} (am|pm)$/.test(whenOf(day(11, 14))), whenOf(day(11, 14)));
 
 console.log("what goes out, with their switches as they are");
@@ -76,6 +61,9 @@ check("everyone the screen sends to is on the page's list", ["Groq", "Anthropic"
 check("the sealed list leads with the journal and says what the server still sees of it", SEALED[0].id === "journal" && /exists, when, and how big/.test(SEALED[0].note));
 check("the readable list says who else sees a round", /Other members of a round see your name/.test(READABLE.find((r) => r.id === "rounds").note));
 check("Ops never shows a journal or a mood, and says so", /Never your journal, and never your check-in mood/.test(OPS_SEES));
+check("the page promises no more than members see: openings are recorded, looks at values are shown", /Every time an administrator opens your account is recorded/.test(page) && /Each time your values were shown, you can see when, by whom and the reason/.test(page));
+const person = fs.readFileSync(new URL("../src/components/ops/Person.tsx", import.meta.url), "utf8");
+check("Ops tells the admin the reason is read by the person, and no longer says a page open is", /can read that record in Settings → What Dayhub can see/.test(person) && !/sees that in Settings/.test(person));
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

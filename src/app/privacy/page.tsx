@@ -27,7 +27,7 @@ export default function Privacy() {
 
       <h2>What the administrator sees</h2>
       <p>Dayhub Ops is where David runs Dayhub. For each person it shows their name and email, when they joined and were last seen and on what kind of device, their moves by name, whether each of the five things was done on each of the last 14 days (never what was eaten, weighed or done), their messages, the errors their app reported, today&rsquo;s use of the AI features, and how many journal entries they have and when. It never shows a journal or a check-in mood.</p>
-      <p>Food, weight and activity values are shown only for a support reason, which is written down before anything is shown. Every time an administrator opens your account, and every reason given, is recorded, nobody can change that record, and you can read it yourself in Settings &rarr; What Dayhub can see, alongside what is sealed, what the server can read and which of your switches send anything out.</p>
+      <p>Food, weight and activity values are shown only for a support reason, which is written down before anything is shown. Every time an administrator opens your account is recorded, and nobody can change that record. Each time your values were shown, you can see when, by whom and the reason given in Settings &rarr; What Dayhub can see, alongside what is sealed, what the server can read and which of your switches send anything out.</p>
 
       <h2>What other members see</h2>
       <p>If you join a push-up round, the other members of that round see your display name, your daily target and how many days you hit it. A private round, started by a member, is seen only by the people in it. Nothing else you log is visible to other members.</p>

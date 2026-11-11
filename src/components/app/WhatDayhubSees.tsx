@@ -2,8 +2,9 @@
 
 // Settings → What Dayhub can see (David, 2026-11-11: "privacy people can see"). In plain words: what is sealed so only
 // you can open it, what Dayhub's server can read, what goes out and to whom with your own switches as they are now,
-// what an admin sees in Dayhub Ops, and every time an admin opened your account, with the reason when one was asked
-// for. The lists are in src/lib/privacy-view.ts, the in-app twin of the privacy page.
+// what an admin sees in Dayhub Ops, and every time an admin looked at your food, weight and activity, with the reason
+// they wrote down first (only those for now: David, the same day, "I'm not sure we need that granular transparency
+// right away"). The lists are in src/lib/privacy-view.ts, the in-app twin of the privacy page.
 //
 // Mounted only while the section is open, so the three reads below happen when someone looks, not on every visit to
 // Settings.
@@ -11,7 +12,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { report } from "@/lib/log";
-import { groupVisits, OPS_SEES, readFrom, READABLE, SEALED, sentOut, whenOf, type Kept, type Visit } from "@/lib/privacy-view";
+import { OPS_SEES, readFrom, READABLE, recent, SEALED, sentOut, visitWords, whenOf, type Kept, type Visit } from "@/lib/privacy-view";
 import { Field, Icon, type IconName } from "@/components/ui";
 import { useHealth } from "./Health";
 import { useSession } from "./Session";
@@ -64,7 +65,7 @@ export function PrivacySettings() {
 
   const out = sentOut(settings, telegram);
   const inbound = readFrom(health.status, links);
-  const groups = visits ? groupVisits(visits) : null;
+  const looks = visits ? recent(visits) : null;
 
   return (
     <>
@@ -95,17 +96,17 @@ export function PrivacySettings() {
       <span className="eb" style={{ paddingTop: 6 }}>What an admin sees in Dayhub Ops</span>
       <p style={{ fontSize: 13.5, lineHeight: 1.5 }}>{OPS_SEES}</p>
 
-      <span className="eb" style={{ paddingTop: 6 }}>Every time an admin opened your account</span>
+      <span className="eb" style={{ paddingTop: 6 }}>Every time an admin looked at your values</span>
       {failed ? <p role="alert" className={a.noteBad}>Couldn&apos;t load the record just now. Close this and open it again.</p>
-        : !groups ? <p className="muted" style={{ fontSize: 13 }}>Loading the record…</p>
-        : groups.length === 0 ? <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>None so far. If an admin ever opens your account in Dayhub Ops, it shows here, with the reason whenever one is asked for.</p>
+        : !looks ? <p className="muted" style={{ fontSize: 13 }}>Loading the record…</p>
+        : looks.length === 0 ? <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>None so far. An admin sees your food, weight and activity only for a reason, written down first, and each time shows here with that reason.</p>
         : (
           <ol className={a.seeVisits}>
-            {groups.map((g, i) => (
+            {looks.map((v, i) => (
               <li key={i} className={a.seeVisit}>
-                <span className={`m ${a.seeWhen}`}>{whenOf(g.at)}{g.times > 1 ? ` · ${g.times} times that day` : ""}</span>
-                <span className={a.seeName}>{g.words}</span>
-                {g.reason && <span className={a.seeNote}>Reason: “{g.reason}”</span>}
+                <span className={`m ${a.seeWhen}`}>{whenOf(v.at)}</span>
+                <span className={a.seeName}>{visitWords(v)}</span>
+                {v.reason && <span className={a.seeNote}>Reason: “{v.reason}”</span>}
               </li>
             ))}
           </ol>

@@ -1,7 +1,8 @@
 // What Dayhub can see (David, 2026-11-11: the third bet, "privacy people can see"). Settings → What Dayhub can see
 // says, in plain words, what is sealed so only the person can open it, what the server can read, what goes out and
 // to whom (with their own switches as they are right now), what an admin sees in Dayhub Ops, and every time an admin
-// opened their account (GET /account/audit). Pure: no React, no I/O; scripts/test-privacy-view.mjs runs it.
+// looked at their values, with the reason (GET /account/audit). Pure: no React, no I/O; scripts/test-privacy-view.mjs
+// runs it.
 //
 // This is the in-app twin of the privacy page (src/app/privacy/page.tsx). When what is sealed, readable or sent
 // changes, change both.
@@ -61,50 +62,19 @@ export function readFrom(health: string, links: { morgen: unknown; todoist: unkn
   ];
 }
 
-// ── Admin visits ──
-/** One row of GET /account/audit (soma_api/lib/audit.js forMember). */
-export type Visit = { at: number; action: string; by: string; reason: string | null; about: string | null };
+// ── Looks at the values ──
+/** One row of GET /account/audit (soma_api/lib/audit.js forMember): for now only looks at the values, each with its
+ *  reason. Page opens and the rest stay in Ops' own Audit (David, 2026-11-11). */
+export type Visit = { at: number; action: string; by: string; reason: string | null };
 
-const ISSUE_WORDS: Record<string, string> = {
-  fitbit: "your Fitbit connection had stopped", journal: "some journal entries wouldn't open", errors: "the same error kept coming up on your account",
-  reminders: "your reminders weren't arriving", "ai-limits": "you reached a daily AI limit", approval: "your sign-up was waiting to be approved",
-  "gone-quiet": "you hadn't opened Dayhub for a while", messages: "a message from you was waiting for a reply",
-};
-
-/** One visit in a sentence: "David F. opened your page in Dayhub Ops". */
+/** One look in a sentence: "David F. looked at your food, weight and activity for the last 14 days". */
 export function visitWords(v: Visit): string {
   const who = v.by === "you" ? "You" : v.by || "An admin";
-  const issue = v.about ? ISSUE_WORDS[v.about] : null;
-  switch (v.action) {
-    case "person_viewed": return `${who} opened your page in Dayhub Ops`;
-    case "activity_viewed": return `${who} looked at what you logged on your last days, in Settings → Admin`;
-    case "values_shown": return `${who} looked at your food, weight and activity for the last 14 days`;
-    case "message_sent": return `${who} wrote to you`;
-    case "issue_handled": return issue ? `${who} marked as handled that ${issue}` : `${who} marked something about your account as handled`;
-    case "issue_reopened": return issue ? `${who} looked again at that ${issue}` : `${who} reopened something about your account`;
-    case "profile_status": return v.about === "active" ? `${who} let your account in` : v.about === "disabled" ? `${who} turned your account off` : `${who} changed your account's status`;
-    case "profile_role": return v.about === "admin" ? `${who} made you an admin` : v.about === "member" ? `${who} made you a member` : `${who} changed your role`;
-    default: return `${who} did something on your account`;
-  }
+  return v.action === "values_shown" ? `${who} looked at your food, weight and activity for the last 14 days` : `${who} looked at your account`;
 }
 
-export type VisitGroup = { at: number; words: string; times: number; reason: string | null };
-
-const localDay = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
-
-/** Newest first, as the server sends them. The same thing by the same admin on the same day is one line ("3 times");
- *  a look with a reason always stands alone, so every reason is shown. */
-export function groupVisits(items: Visit[], max = 20): VisitGroup[] {
-  const out: (VisitGroup & { key: string })[] = [];
-  for (const v of items) {
-    const key = `${v.action}|${v.by}|${localDay(v.at)}`;
-    const last = out[out.length - 1];
-    if (last && !v.reason && !last.reason && last.key === key) { last.times++; continue; }
-    if (out.length >= max) break;
-    out.push({ key, at: v.at, words: visitWords(v), times: 1, reason: v.reason });
-  }
-  return out.map((g) => ({ at: g.at, words: g.words, times: g.times, reason: g.reason }));
-}
+/** Newest first, as the server sends them, at most `max`. */
+export const recent = (items: Visit[], max = 20) => items.slice(0, max);
 
 /** "Wed 11 Nov, 2:05 pm". */
 export function whenOf(ms: number): string {

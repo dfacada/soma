@@ -288,16 +288,13 @@ export function answer(w: World, method: string, path: string, body: unknown): {
       case "/admin/profiles": return ok({ profiles: [] });
       case "/admin/feedback": return ok({ items: [] });
       case "/messages": return ok({ messages: [], unread: 0 });
-      // Settings → What Dayhub can see: two looks this morning, and one yesterday with a reason (lib/audit.js forMember).
+      // Settings → What Dayhub can see: two looks at the values, each with its reason (lib/audit.js forMember).
       case "/account/audit": {
         if (w.me.profile.rowId !== "1") return ok({ items: [] });
         const at = (daysBack: number, h: number, m: number) => { const d = new Date(w.now); d.setDate(d.getDate() - daysBack); d.setHours(h, m, 0, 0); return d.getTime(); };
         return ok({ items: [
-          { at: at(0, 9, 41), action: "person_viewed", by: "David F.", reason: null, about: null },
-          { at: at(0, 9, 12), action: "person_viewed", by: "David F.", reason: null, about: null },
-          { at: at(1, 18, 5), action: "values_shown", by: "David F.", reason: "Alex asked me to fix a wrong weight on Monday", about: null },
-          { at: at(1, 18, 4), action: "person_viewed", by: "David F.", reason: null, about: null },
-          { at: at(9, 20, 30), action: "issue_handled", by: "David F.", reason: null, about: "fitbit" },
+          { at: at(1, 18, 5), action: "values_shown", by: "David F.", reason: "Alex asked me to fix a wrong weight on Monday" },
+          { at: at(16, 9, 40), action: "values_shown", by: "David F.", reason: "A run logged twice on the 26th" },
         ] });
       }
     }
