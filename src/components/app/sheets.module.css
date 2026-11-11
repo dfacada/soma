@@ -35,8 +35,11 @@
 .step { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--well); flex-shrink: 0; color: var(--ink); transition: transform 0.3s var(--spring); }
 .step:active { transform: scale(0.9); transition-duration: 0.06s; }
 .grow { flex: 1; }
-.buttons { display: flex; gap: 8px; }
-.buttons > * { flex: 1; }
+/* The move sheet's buttons stack, full width. "Hit your goal · 100 push-ups" and "Save push-ups · 60" never fit side by
+   side on a phone (Save ran off the sheet), and a move's own name can run to 40 letters, so a label that is still too
+   long wraps onto a second line instead of being cut off. `> button` outranks ui.module.css .btn whatever loads first. */
+.buttons { display: flex; flex-direction: column; gap: 8px; }
+.buttons > button { width: 100%; height: auto; min-height: 48px; padding-block: 12px; white-space: normal; overflow-wrap: anywhere; line-height: 1.25; text-align: center; }
 /* Clearing the day is a link (app.module.css .link), so it never reads as one more line of the hint above it. */
 .clear { align-self: center; min-height: 44px; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
 
