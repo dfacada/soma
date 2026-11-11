@@ -335,3 +335,22 @@ The second of the three bets. David said "Start bet 2" on the plan: Try it on a 
   The test member was left with no rows and empty settings.
 - **Not verified:** a whole experiment over three real days, and how the verdicts read on David's own data.
 - **Not built:** experiments on the journal-tone findings (they rest on how the journal reads); a notification on experiment days; more than one at a time; a length other than three days.
+
+## 16. What Dayhub can see (built 2026-11-11)
+
+The third bet, privacy people can see. David said "Go ahead and proceed" on the plan: a plain screen of what Dayhub can and cannot read, the person's own switches as they are now, and every time an admin opened their account, from the audit that already exists.
+
+- **Where.** Settings → Connections and privacy → **What Dayhub can see** (`/settings/#privacy`). Its row says how many of the six things that go out are on. The body (`PrivacySettings` in `WhatDayhubSees.tsx`) mounts only when the section opens, so its reads happen when someone looks.
+- **What it says** (`src/lib/privacy-view.ts`, the in-app twin of the privacy page):
+  - **Sealed** (`SEALED`): the journal (with what the server does see of it: that an entry exists, when, and its size), sleep, the week in review, the connection keys, tomorrow's brief, a sleep experiment, and the recovery code (never stored).
+  - **Readable by the server** (`READABLE`): check-ins, food, weight, moves and steps, rounds (and what other members see), settings, messages, the account and error reports.
+  - **Goes out only with a switch on** (`sentOut`): food estimates, cloud transcription, Say your day, journal reading for Insights, the week in review, Telegram. Each row shows On or Off from the person's settings now, with Change, which opens that section. Telegram counts as on only with a chat connected (`GET /telegram`).
+  - **Read from** (`readFrom`): Google Health, Morgen, Todoist, each on or off.
+  - **What an admin sees in Dayhub Ops** (`OPS_SEES`), said once.
+  - **Every time an admin opened your account.**
+- **The record of visits.** `GET /account/audit` (`routes/account.js`) selects `ops_audit` rows whose `target_id` is the caller and nothing else, and takes no one's id, so no one can read another person's. `lib/audit.js forMember` returns when, what and which admin (as Ops shortens names; "you" for an admin looking at their own), and the reason when one was written. Of the detail column, only which kind of issue was handled, or what a status or role became, goes to the member. The screen words each one (`visitWords`: "David F. opened your page in Dayhub Ops", "…looked at your food, weight and activity for the last 14 days · Reason: …"). The same look by the same admin on the same day is one line with a count, and a look with a reason always stands alone.
+- **Ops tells the admin.** A person's page says that opening it is recorded and that they see it. The values card says the reason they give is read by the person too.
+- **Fixed on the way.** The three old admin routes (`routes/admin.js`: activity viewed, status, role) passed a sentence where the audit's target goes. Their rows had no target and a reason of "[object Object]", so neither Ops' Audit nor the member could tell whose account they were. They now name the member. Rows already written stay as they are: the audit is never changed.
+- **The privacy page** has a new "What the administrator sees" section, and points to the screen.
+- **Verified.** Offline: `scripts/test-privacy-view.mjs`. Live: `catalyst/test-api.js` "the record of admin visits". The synthetic members can never be admins, so their record is empty. Rows were not inserted by hand to test it, because the audit is the real one and is never changed. The member view of real rows is held by the offline checks on `forMember`. On localhost as the test member, and in the screenshot rig on invented visits: `settings-privacy`.
+- **Not verified:** the record on David's real account, with his own Ops visits in it (it needs him signed in on the Slate address).

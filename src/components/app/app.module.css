@@ -387,3 +387,20 @@ button.changeHit:active { transform: scale(0.98); transition-duration: 0.06s; }
 .bubbleMine { align-self: flex-end; background: var(--journal-tint); }
 .bubbleWho { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
 .bubbleBody { font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Settings → What Dayhub can see (WhatDayhubSees.tsx): what is sealed, what the server reads, what goes out, and the
+   record of admin visits. Sealed rows wear the journal hue, the vault's colour; the rest stay quiet. */
+.seeList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.seeRow { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; align-items: start; }
+.seeIcon { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: var(--well); color: var(--muted); }
+.seeSealed .seeIcon { background: color-mix(in srgb, var(--journal) 16%, var(--surface)); color: var(--journal); }
+.seeText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.seeName { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.seeNote { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.seeSwitch { display: inline-flex; align-items: center; gap: 10px; }
+.seeState { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 9px; border-radius: var(--r-pill); background: var(--well); color: var(--muted); }
+.seeStateOn { background: color-mix(in srgb, var(--food) 18%, transparent); color: var(--ink); }
+.seeVisits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.seeVisit { display: flex; flex-direction: column; gap: 3px; padding: 10px 0; border-top: 1px solid var(--hairline-soft); }
+.seeVisit:first-child { border-top: 0; padding-top: 0; }
+.seeWhen { font-size: 11.5px; color: var(--muted); }

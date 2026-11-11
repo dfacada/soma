@@ -23,6 +23,8 @@ import { Button, ButtonLink, Chip, Field, Icon, Input, Pill, Segmented, Select, 
 import { Admin } from "./Admin";
 import { MessagesThread } from "./Messages";
 import { DataSettings } from "./AccountData";
+import { PrivacySettings } from "./WhatDayhubSees";
+import { sentOut, summaryOf } from "@/lib/privacy-view";
 import { useHealth } from "./Health";
 import { NudgeSettings } from "./Nudge";
 import { useJournal } from "./Journal";
@@ -42,7 +44,7 @@ const THEME_NAME: Record<ThemeMode, string> = { dark: "Night", light: "Light", s
 const SLEEP_GOALS = [360, 390, 420, 450, 480, 510, 540, 570, 600];
 const HEALTH_SHORT = { loading: "Checking…", unconfigured: "Not available yet", off: "Not connected", connected: "Connected", reconnect: "Needs reconnecting" } as const;
 /** The sections a link can open as /settings/#id: Activity's Fitbit link, Tomorrow's Open Settings, the return from Google. */
-const SECTIONS = ["account", "appearance", "opening", "checkin", "food", "weight", "activity", "nudge", "brief", "fitbit", "journal", "review", "data", "whats-new", "messages", "admin"];
+const SECTIONS = ["account", "appearance", "opening", "checkin", "food", "weight", "activity", "nudge", "brief", "fitbit", "journal", "review", "privacy", "data", "whats-new", "messages", "admin"];
 /** What the Opening words row says it is set to. */
 const openingSummary = (source: OpeningSource, mine: number) =>
   source === "soma" || mine === 0 ? "Dayhub's words" : source === "mine" ? `${mine} of yours` : `Dayhub's and ${mine} of yours`;
@@ -292,6 +294,9 @@ export function SettingsScreen() {
         </Section>
         <Section {...sec("review")} title="Week in review" summary={settings.weeklyReview.on ? `${WEEKDAY_NAMES[settings.weeklyReview.dayOfWeek]}s at ${clockOf(settings.weeklyReview.time)}${settings.weeklyReview.telegram ? " · Telegram" : ""}` : "Off"}>
           <ReviewSettings say={say} />
+        </Section>
+        <Section {...sec("privacy")} title="What Dayhub can see" summary={summaryOf(sentOut(settings, null))}>
+          <PrivacySettings />
         </Section>
         <Section {...sec("data")} title="Your data" summary="Download all of it, or delete your account">
           <DataSettings say={say} />

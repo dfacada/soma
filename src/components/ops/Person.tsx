@@ -101,7 +101,7 @@ function PersonInner({ id }: { id: string }) {
           <section aria-label="Last 14 days" className={o.panel}>
             <div className={o.panelHead}>
               <h2 className={o.h2}>Last 14 days</h2>
-              <span className={o.note}>Done or not. No values: what they ate, weighed or did stays theirs.</span>
+              <span className={o.note}>Done or not. No values: what they ate, weighed or did stays theirs. Opening this page is recorded, and {p.first} sees that in Settings → What Dayhub can see.</span>
             </div>
             <div className={o.scroll}>
               <div className={o.grid} role="img" aria-label={`Fourteen days of done or not. ${data.closed} closed.`}>
@@ -234,7 +234,7 @@ function Values({ userId, first, self }: { userId: string; first: string; self: 
       </div>
       {view === "locked" && (
         <>
-          <p className={o.note}>The server can read them so boards and fixes work, but nobody here looks without a reason. Opening them is written to Audit with your name and the reason.{self ? " These are your own." : ""}</p>
+          <p className={o.note}>The server can read them so boards and fixes work, but nobody here looks without a reason. Opening them is written to Audit with your name and the reason, and {self ? "you" : first} can read that record in Settings → What Dayhub can see.{self ? " These are your own." : ""}</p>
           <div><Button size="sm" variant="secondary" onClick={() => setView("asking")}>Show for support…</Button></div>
         </>
       )}

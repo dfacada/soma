@@ -35,7 +35,8 @@ router.get('/admin/profiles/:userId/activity', admin, wrap(async (req, res) => {
   if (!row) throw new HttpError(404, 'no such user');
   const uid = needId(String(row.user_id));
   const days = Math.min(Math.max(Number(req.query.days) || 14, 1), 60);
-  audit(req, 'activity_viewed', "looked at a member's activity", { user: uid, days });
+  // The row is about this member, who can read it (lib/audit.js forMember).
+  audit(req, 'activity_viewed', uid, null, { days });
   const from = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
   const fromMs = Date.parse(from + 'T00:00:00Z') - 14 * 3600 * 1000;
 
@@ -99,7 +100,7 @@ router.post('/admin/profiles/:userId/status', admin, wrap(async (req, res) => {
   const row = await target(req);
   await req.admin.datastore().table('profiles').updateRow({ ROWID: row.ROWID, status });
   console.log(JSON.stringify({ action: 'profile_status', by: req.user.id, user: String(row.user_id), from: row.status, to: status }));
-  audit(req, 'profile_status', "changed an account's status", { user: String(row.user_id), from: row.status, to: status });
+  audit(req, 'profile_status', String(row.user_id), null, { from: row.status, to: status });
   res.json({ userId: String(row.user_id), status });
 }));
 
@@ -110,7 +111,7 @@ router.post('/admin/profiles/:userId/role', admin, wrap(async (req, res) => {
   const row = await target(req);
   await req.admin.datastore().table('profiles').updateRow({ ROWID: row.ROWID, role });
   console.log(JSON.stringify({ action: 'profile_role', by: req.user.id, user: String(row.user_id), from: row.role, to: role }));
-  audit(req, 'profile_role', "changed an account's role", { user: String(row.user_id), from: row.role, to: role });
+  audit(req, 'profile_role', String(row.user_id), null, { from: row.role, to: role });
   res.json({ userId: String(row.user_id), role });
 }));
 

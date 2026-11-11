@@ -14,8 +14,10 @@ export const CHANGES: Release[] = [
   {
     id: "2026-11-11",
     date: "2026-11-11",
-    title: "Say your day, and experiments",
+    title: "Say your day, experiments, and what Dayhub sees",
     items: [
+      "See what Dayhub can see. Settings → What Dayhub can see lays it out in plain words: what is sealed so only you can open it, what Dayhub's server can read, what goes out to Groq, Claude or Telegram (with your own switches as they are right now, each a tap from where you change it), what an admin sees in Dayhub Ops, and every time an admin opened your account, with the reason whenever one was asked for.",
+      "Admin: what you do on someone's account is now theirs to read. A person's page in Dayhub Ops says that opening it is recorded and that they see it, and the reason you give before seeing their values is shown to them too. Approving someone, changing a role and looking at someone's activity in Settings → Admin are now recorded with whose account it was.",
       "Try it for 3 days. On Insights, each thing your great days have in common now has a Try it button. From the next day, Today shows a small row for those three days, and afterwards Insights shows each day, whether you did it, and how it went next to the two months before. One experiment at a time. Three days is a small test: it shows how it went, not what causes what. An experiment about sleep is sealed with your vault, like your sleep.",
       "Say your day. There's a new button under the orb on Today: tap it and talk through your day once. Say what you weighed, how you feel, what you ate and how you moved, along with whatever is on your mind, and Dayhub picks those out and shows you a list to check. Untick anything that isn't right, tap Fill in my day, and it's logged. The recording is saved as your journal entry, encrypted like every other.",
       "Say your day asks before it listens. It's off until you turn it on, and the first tap says what leaves your phone: that one recording goes to Groq to be written down, and the words go to Claude, which picks out your weight, mood, habits, food and moves. Dayhub sends both with nothing about your account and keeps neither. You can switch it off in Settings → Journal and vault, and use it up to 20 times a day.",

@@ -4,6 +4,8 @@
 //   GET    /account/export                   everything the server holds for the caller, as one document. The parts
 //                                            that are vault ciphertext come back exactly as stored; the browser opens
 //                                            them with the vault key before it saves the file.
+//   GET    /account/audit                    what admins did on this account (lib/audit.js forMember), newest first,
+//                                            for Settings → What Dayhub can see. Only rows about the caller.
 //   DELETE /account   { confirm: 'DELETE' }  deletes the account. The sign-in goes at once, so nothing more can be
 //                                            done as this person; the rows and files go in a background job
 //                                            (soma_jobs, type delete_account), because a long history takes longer
@@ -21,6 +23,8 @@ const catalyst = require('zcatalyst-sdk-node');
 const { withUser, member, wrap, isTestUser } = require('../lib/auth');
 const { HttpError, select, selectAll, needId, unpackJson, bool } = require('../lib/db');
 const { writeLog } = require('../lib/log');
+const { forMember } = require('../lib/audit');
+const { shortName } = require('../lib/ops');
 
 const router = express.Router();
 const POOL = 'soma_jobs';
@@ -75,6 +79,18 @@ router.get('/account/export', member, wrap(async (req, res) => {
     // Which services are linked, never the tokens: they are vault ciphertext that only opens on a device.
     linked: tokens.map((r) => ({ service: r.provider, since: num(r.created_ms) }))
   });
+}));
+
+// The caller's own audit rows: every admin look at this account and every admin action on it (2026-11-11, privacy
+// people can see). Selected by the caller's own id and nothing else, so no one reads another person's. The admins'
+// names are as Ops shortens them ("David F.").
+router.get('/account/audit', member, wrap(async (req, res) => {
+  const uid = needId(req.user.id);
+  const rows = await select(req.admin, 'ops_audit', `SELECT created_ms, actor_id, action, reason, detail FROM ops_audit WHERE target_id = ${uid} ORDER BY created_ms DESC LIMIT 100`);
+  const ids = [...new Set(rows.map((r) => String(r.actor_id)).filter((id) => /^\d{1,19}$/.test(id) && id !== uid))];
+  const people = ids.length ? await select(req.admin, 'profiles', `SELECT user_id, display_name, email FROM profiles WHERE user_id IN (${ids.join(', ')}) LIMIT 50`) : [];
+  const names = new Map(people.map((p) => [String(p.user_id), shortName(p.display_name, p.email)]));
+  res.json({ items: forMember(rows, uid, (id) => names.get(String(id)) || 'An admin who has since left') });
 }));
 
 // withUser rather than member: a deletion that was started and interrupted can be asked for again while the

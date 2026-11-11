@@ -714,6 +714,15 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     await call('PUT', '/settings', { settings: {} });
   }
 
+  // Settings → What Dayhub can see reads the record of what admins did on the caller's own account (lib/audit.js). The
+  // synthetic members can never be admins, so nobody has acted on them and the record is empty; the route takes no
+  // one's id, so there is no way to ask for another person's.
+  console.log('the record of admin visits');
+  r = await call('GET', '/account/audit');
+  check("a member reads their own record of admin visits (none for a synthetic member)", r.status === 200 && Array.isArray(r.json.items) && r.json.items.length === 0, r.json);
+  r = await call('GET', '/account/audit?userId=999000000000000001&target=999000000000000001', undefined, { 'x-test-member': '2' });
+  check("…and naming someone else in the address still reads only the caller's own", r.status === 200 && Array.isArray(r.json.items) && r.json.items.length === 0, r.json);
+
   // Data Store has no row-level security: every query is scoped by the caller in code. A second synthetic member
   // (x-test-member: 2) tries every way to see or change the first member's rows, which exist at this point.
   console.log('isolation between members');
