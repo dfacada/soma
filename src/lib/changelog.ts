@@ -16,6 +16,7 @@ export const CHANGES: Release[] = [
     date: "2026-11-10",
     title: "A new name: Dayhub",
     items: [
+      "Weight now moves a tenth of a pound at a time. The plus and minus buttons step by 0.1, and the ruler stops on every tenth, so 201.1, 201.2 and 201.3 are each one tap apart. Before, both moved in steps of 0.2 and could not land on every reading.",
       "Signing out now locks your journal on that device. Before, the browser tab you signed out in could go on holding your journal's key until you closed it. Now the key is forgotten the moment you sign out, so the next person to use that browser can't open your journal. You unlock it again the usual way when you sign back in.",
       "A Telegram code now connects once. After a code has connected a chat it stops working, and Settings shows a new one if you connect again.",
       "Dayhub has a new address: dayhub-onkasary.onslate.com. The old address has stopped working, and so has an icon that was added to a Home Screen from it. Everything you've logged is where it was, but each phone or computer sees the new address as a new place. So on each one: sign in again, type your vault passphrase and turn Face ID unlock back on in Settings, add Dayhub to your Home Screen again and delete the old icon, then turn your reminders back on.",

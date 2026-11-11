@@ -1,7 +1,9 @@
 "use client";
 
-// Today’s weight. One tap when nothing changed ("Same as last"); otherwise drag the ruler, nudge by 0.2, or type
+// Today’s weight. One tap when nothing changed ("Same as last"); otherwise drag the ruler, nudge by 0.1, or type
 // into the big number. The form only mounts while the sheet is open, so it is seeded fresh each time.
+// Everything moves in tenths of a pound (David, 2026-11-10: "201.1, 201.2, 201.3"): a scale reads to 0.1, and the
+// 0.2 steps this had before could not reach every reading.
 
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { Button, Icon, Sheet } from "@/components/ui";
@@ -19,6 +21,7 @@ export function WeightSheet({ open, onClose, ...form }: { open: boolean; onClose
 }
 
 const PX = 40; // per pound on the ruler
+const STEP = 0.1; // what one tap of plus or minus, or one arrow key, moves
 const round = (v: number) => Math.round(v * 10) / 10;
 const clamp = (v: number) => Math.min(2000, Math.max(1, v));
 /** The big number is as wide as what is in it, so the unit sits beside it: a condensed digit is 0.39em with its
@@ -42,16 +45,16 @@ function WeightForm({ current, last, onSave }: FormProps) {
   const drag = useRef<{ x: number; v: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const down = (e: PointerEvent<HTMLDivElement>) => { e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, v }; setDragging(true); };
-  // Moving the ruler left brings bigger numbers under the needle; snapped to 0.2.
+  // Moving the ruler left brings bigger numbers under the needle; it stops on every tenth (4px of travel each).
   const move = (e: PointerEvent<HTMLDivElement>) => {
     if (!drag.current) return;
-    const nv = Math.round((drag.current.v - (e.clientX - drag.current.x) / PX) * 5) / 5;
+    const nv = round(drag.current.v - (e.clientX - drag.current.x) / PX);
     if (Math.floor(nv) !== Math.floor(v)) haptic();
     set(nv);
   };
   const up = () => { drag.current = null; setDragging(false); };
   const key = (e: KeyboardEvent<HTMLDivElement>) => {
-    const by = e.shiftKey ? 1 : 0.2;
+    const by = e.shiftKey ? 1 : STEP;
     if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); set(v + by); }
     if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); set(v - by); }
   };
@@ -74,9 +77,9 @@ function WeightForm({ current, last, onSave }: FormProps) {
         <span className={w.needle} />
       </div>
       <div className={w.steps}>
-        <button type="button" className={w.step} onClick={() => { haptic(); set(v - 0.2); }} aria-label="Minus 0.2"><Icon name="minus" size={20} /></button>
+        <button type="button" className={w.step} onClick={() => { haptic(); set(v - STEP); }} aria-label={`Minus ${STEP}`}><Icon name="minus" size={20} /></button>
         <Button type="submit" className={w.grow} disabled={!valid}>Save weight</Button>
-        <button type="button" className={w.step} onClick={() => { haptic(); set(v + 0.2); }} aria-label="Plus 0.2"><Icon name="plus" size={20} /></button>
+        <button type="button" className={w.step} onClick={() => { haptic(); set(v + STEP); }} aria-label={`Plus ${STEP}`}><Icon name="plus" size={20} /></button>
       </div>
       {last !== null && current === null && <Button variant="food" block onClick={() => onSave(last)}>Same as last · {last} lb</Button>}
       <p className={w.note}>Same time of day gives the cleanest line.</p>

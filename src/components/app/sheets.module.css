@@ -19,8 +19,9 @@
 /* A note that leads a sheet, straight under its title: on the title's left edge. */
 .lead { text-align: left; }
 
-/* Drag the ruler sideways; the needle stays in the middle. 40px a pound, a tick every 0.2. */
-.ruler { position: relative; height: 74px; overflow: hidden; touch-action: none; cursor: grab; border-radius: 14px;
+/* Drag the ruler sideways; the needle stays in the middle. 40px a pound, a tick every 0.2; the needle stops on
+   every 0.1, so an odd tenth rests halfway between two ticks. */
+.ruler { position: relative; height: 74px; overflow: hidden; touch-action: none; cursor: grab; border-radius: 14px; user-select: none; -webkit-user-select: none;
   -webkit-mask: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent); mask: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent); }
 .ruler:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .strip { position: absolute; left: 50%; top: 6px; width: 802px; height: 62px; transition: transform 0.35s var(--spring); }
