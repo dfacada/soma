@@ -45,6 +45,8 @@ export type Theme = "night" | "light";
  *  minutes ago: nothing logged, no vault, Fitbit not connected, settings as the app makes them), or someone who has
  *  just signed up and is waiting for approval. Everyone who joins Dayhub starts as the last two. */
 export type Who = "settled" | "new" | "pending";
+/** An experiment in hand (src/lib/experiment.ts): on its second day, or finished yesterday. */
+export type Trying = "running" | "finished";
 
 export type World = {
   now: Date;
@@ -136,7 +138,7 @@ function newcomer(now: Date, theme: Theme, who: "new" | "pending"): World {
   };
 }
 
-export async function buildWorld({ now, theme, day, who = "settled" }: { now: Date; theme: Theme; day: DayShape; who?: Who }): Promise<World> {
+export async function buildWorld({ now, theme, day, who = "settled", trying }: { now: Date; theme: Theme; day: DayShape; who?: Who; trying?: Trying }): Promise<World> {
   if (who !== "settled") return newcomer(now, theme, who);
   const todayKey = dayKey(now);
   const r = rng(hash(todayKey));
@@ -235,6 +237,11 @@ export async function buildWorld({ now, theme, day, who = "settled" }: { now: Da
       seenChanges: seenMark(), seenInstall: true, bestStreak: 21, cloudTranscription: true,
       // The opening words and the unlock prompt are once-a-day moments with their own scenes; off for the rest.
       opening: { on: false, source: "both", phrases: [] }, unlockOnOpen: false,
+      // Reading, tried for three days: begun yesterday (today is its second day), or ended yesterday.
+      ...(trying ? { experiment: {
+        key: "habit:read", ask: "Read", label: "Read",
+        from: dayKey(addDays(now, trying === "running" ? -1 : -3)), to: dayKey(addDays(now, trying === "running" ? 1 : -1)),
+      } } : {}),
     },
     days: { checkins, dayLogs, activity, weight },
     entries,
@@ -249,7 +256,7 @@ export async function buildWorld({ now, theme, day, who = "settled" }: { now: Da
 }
 
 /** What the API would answer. `unknown` marks a route the fixture does not know, so the capture can say so. */
-export function answer(w: World, method: string, path: string, body: unknown): { status: number; json: unknown; unknown?: true } {
+export function answer(w: World, method: string, path: string, body: unknown): { status: number; json: unknown; unknown?: true; leak?: string } {
   const [route, query = ""] = path.split("?");
   const q = new URLSearchParams(query);
   const ok = (json: unknown = {}) => ({ status: 200, json });
@@ -298,6 +305,8 @@ export function answer(w: World, method: string, path: string, body: unknown): {
   // Say your day: the transcription job is done as soon as it is queued, and the words are read as DAY_HEARD.
   if (method === "POST" && route === "/jobs") return { status: 201, json: { id: "1", type: "transcribe", status: "done", error: null, result: DAY_RESULT } };
   if (method === "POST" && route === "/day/describe") return ok(DAY_HEARD);
+  // An experiment on sleep rests on what the vault seals, so it must only ever reach settings sealed (experiment.ts).
+  if (method === "PUT" && route === "/settings" && /"key":"sleep"/.test(JSON.stringify(body))) return { ...ok(), leak: "a sleep experiment reached settings in the clear" };
   // Saves succeed and change nothing: a scene that taps sees the app's own optimistic state.
   const known = /^\/(checkins|day-logs|weight|activity)\/\d{4}-\d{2}-\d{2}$/.test(route) || /^\/(entries|jobs|drafts)\/[\w-]+$/.test(route) || ["/settings"].includes(route);
   return known ? ok() : { ...ok(), unknown: true };

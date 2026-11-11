@@ -45,6 +45,18 @@
 .sayDay:active { transform: scale(0.95); transition-duration: 0.08s; }
 .sayDay:disabled { opacity: 0.5; }
 
+/* The experiment in hand (Experiment.tsx): one slim row over the cards. The dots are its days: lit when that day had
+   it, ringed for today. */
+.trial { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--hairline-soft); box-shadow: var(--shadow-card); text-align: left; --hue: var(--journal); transition: transform 0.3s var(--spring); }
+.trial:active { transform: scale(0.98); transition-duration: 0.08s; }
+.trialIcon { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; background: color-mix(in srgb, var(--hue) 16%, var(--surface)); color: var(--hue); }
+.trialText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.trialAsk { font-size: 16px; font-weight: 600; line-height: 1.2; }
+.trialDots { display: flex; gap: 5px; flex-shrink: 0; }
+.trialDots i { width: 10px; height: 10px; border-radius: 50%; background: var(--well); border: 1.5px solid var(--hairline-strong); }
+.trialDots .trialOn { background: var(--hue); border-color: var(--hue); box-shadow: 0 0 8px color-mix(in srgb, var(--hue) 50%, transparent); }
+.trialDots .trialNow { border-color: var(--hue); }
+
 /* The week: today and the six days before it, each a button that picks the day to fill in. */
 /* The streak sits along the bottom of the same card, under a hairline. Positioned, as .lede is, so the card paints over
    the orb's halo: on a closed day it sits inside the glow's reach, and the glow stops at its edge instead of staining it. */

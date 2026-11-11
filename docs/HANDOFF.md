@@ -315,3 +315,23 @@ David asked what would make Dayhub stand apart and liked three bets "a lot": say
 - **Not verified:** a real voice on a real phone. The microphone, Groq hearing a real spoken day (the job and its gate were checked with stand-in audio), how long the wait feels on a phone network, and iOS putting the app in the background part-way.
 - **Not built:** trying again when the words could not be written down (the entry is saved; the day is filled in by hand); filling in from an entry recorded earlier; saying your day from the Journal tab or the sidebar.
 - **For the move to Production:** nothing to create. `ai_usage` takes the new kind as it is.
+
+## 15. Insights that become experiments (built 2026-11-11)
+
+The second of the three bets. David said "Start bet 2" on the plan: Try it on a finding, a small card on Today for three days, then whether it held; one at a time, kept in settings, worked out on the phone with no model and no cap.
+
+- **What it is.** Under What makes a great day, each finding has **Try it for 3 days**. It starts the next day, so the day it was chosen never counts, and runs three days, one experiment at a time. While it runs, Today shows one slim row over the cards (`ExperimentToday`): day N of 3, done today or not yet, three dots. A tap opens Insights. Insights shows the experiment card first (`ExperimentPanel`): a row a day (did it, didn't, not known, to come, with the mood), then, once it is over, how it went, with Try it again and Done. Today stops showing a finished one after three days; Insights keeps it until Done. While one is going, the great-days card offers no Try it and says why.
+- **The verdict** (`trialOf` in `src/lib/experiment.ts`). It counts the days it was done and a mood was picked, and how many were great. That is set against the same person's days *without* it in the 60 days before it began (`sidesFor`), with the 15-point margin Insights asks of a finding. Within the margin it is "about the same"; with no days without it to compare against, half is the line. The other outcomes are not tried, no mood picked, and nothing to go on (no day could say, which is never read as "didn't"). The words say three days is a small test and not a cause.
+- **What is stored.** `settings.experiment` is `{ key, ask, label, from, to }`: the finding's key, its words and its dates. Never a count: the figures it is compared against are counted again on the device each time, because some findings rest on sealed data.
+- **Sealed when the finding is.** An experiment on a finding that rests on what the vault seals (`SEALED_KEYS`: sleep) is stored as `{ sealed }`, vault ciphertext of the same object. That way the server never learns even which finding it is. It shows only with the vault open: Insights shows a sealed card with Unlock, and Today shows nothing while the vault is locked.
+- **Code.** `src/lib/experiment.ts` is pure, with its own few date helpers, because `settings.ts` imports it and `today.ts` imports `settings.ts`. In `src/lib/great-days.ts`, every test now has `ask` (the finding as something to do: "Read", "Do your 100 push-ups", "Keep drinks to 4 or fewer"), and `testFor` and `sidesFor` look one finding up by key. `src/components/app/Experiment.tsx` holds the hook and both cards, wired into `Insights.tsx` and `Today.tsx`. No server change.
+- **A limit, said in the plan.** Dayhub records whether a thing was done on a day, not when, so an experiment is about doing it, never about timing ("a walk before noon" cannot be checked).
+- **Verified.** Offline: `scripts/test-experiment.mjs` (52). Screenshots: `npm run shots` scenes `insights-experiment`, `insights-experiment-done`, `insights-try-sleep` and `today-experiment`. The rig now reports a sleep experiment that reaches settings in the clear as a privacy problem, and starting one reported none. On localhost as the test member, against the Development API:
+  - a sleep experiment sealed in Node with the app's own crypto was stored as 172 characters of base64, with no "sleep" anywhere in the settings;
+  - Insights showed it sealed, then opened it after the vault was unlocked;
+  - Today showed day 2 of 3, and Stop cleared it on the server;
+  - a plain Read experiment showed on Today and turned to "Done today" the moment Read was ticked.
+
+  The test member was left with no rows and empty settings.
+- **Not verified:** a whole experiment over three real days, and how the verdicts read on David's own data.
+- **Not built:** experiments on the journal-tone findings (they rest on how the journal reads); a notification on experiment days; more than one at a time; a length other than three days.

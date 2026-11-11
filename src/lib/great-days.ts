@@ -16,8 +16,10 @@ export const MIN_CHECKINS = 6;
 /** A difference smaller than this (share of great days, or tone on a -1…1 scale) is not worth a line. */
 export const MIN_LIFT = 0.15;
 
-/** Something a day either had or did not. Undefined when the day cannot say (no food logged, no night recorded). */
-type Test = { key: string; label: string; phrase?: string; test: (day: string) => boolean | undefined };
+/** Something a day either had or did not. Undefined when the day cannot say (no food logged, no night recorded).
+ *  `label` finishes "On your great days, you more often…"; `ask` is the same thing as something to do, for an
+ *  experiment (experiment.ts): "Meditate", "Do your 100 push-ups". */
+type Test = { key: string; label: string; ask: string; phrase?: string; test: (day: string) => boolean | undefined };
 
 /** The main move with its goal (the round's target when the round counts it): "Did your 5 km run". */
 export type MainGoal = { move: Move; goal: number };
@@ -28,12 +30,12 @@ function mainTest(map: DayMap, main: MainGoal | null): Test[] {
   if (!main || main.move.key === "steps") return [];
   const mv = { ...main.move, goal: main.goal };
   const name = mv.name.toLowerCase();
-  const label = mv.unit === "session" ? `Did your ${name} session`
-    : mv.key === "pushups" ? `Did your ${goalText(mv)}`
-    : mv.unit === "km" ? `Did your ${goalText(mv)} ${name}`
-    : `Did your ${goalText(mv)} of ${name}`;
+  const what = mv.unit === "session" ? `your ${name} session`
+    : mv.key === "pushups" ? `your ${goalText(mv)}`
+    : mv.unit === "km" ? `your ${goalText(mv)} ${name}`
+    : `your ${goalText(mv)} of ${name}`;
   return [{
-    key: "move", label, phrase: `your ${mv.key === "pushups" ? "push-ups" : name}`,
+    key: "move", label: `Did ${what}`, ask: `Do ${what}`, phrase: `your ${mv.key === "pushups" ? "push-ups" : name}`,
     test: (k) => { const l = loggedOf(map[k]?.activity, mv); const p = progressOf(mv, l); return p === null ? l.done : p >= 1; },
   }];
 }
@@ -42,25 +44,25 @@ function tests(map: DayMap, settings: Settings, main: MainGoal | null, nights: N
   const st = (k: string) => dayStatus(map[k], settings);
   const checkin = (k: string) => map[k]?.checkin;
   return [
-    { key: "protein", label: `Hit your ${settings.goals.protein} g protein`, test: (k) => (st(k).meals > 0 ? st(k).protein >= settings.goals.protein : undefined) },
-    { key: "meals", label: "Logged all four meals", test: (k) => st(k).foodDone },
-    { key: "active", label: "Moved", test: (k) => st(k).activityDone },
+    { key: "protein", label: `Hit your ${settings.goals.protein} g protein`, ask: `Hit your ${settings.goals.protein} g protein`, test: (k) => (st(k).meals > 0 ? st(k).protein >= settings.goals.protein : undefined) },
+    { key: "meals", label: "Logged all four meals", ask: "Log all four meals", test: (k) => st(k).foodDone },
+    { key: "active", label: "Moved", ask: "Get a move in", test: (k) => st(k).activityDone },
     ...mainTest(map, main),
-    { key: "journal", label: "Talked to your journal", test: (k) => (map[k]?.entries || 0) > 0 },
-    { key: "steps", label: `Walked ${settings.goals.steps.toLocaleString("en-US")} steps`, test: (k) => { const s = map[k]?.activity?.steps; return s === null || s === undefined ? undefined : s >= settings.goals.steps; } },
-    { key: "sleep", label: "Slept 7 hours", test: (k) => { const n = nights?.[k]; return n ? n.asleep >= 420 : undefined; } },
+    { key: "journal", label: "Talked to your journal", ask: "Talk to your journal", test: (k) => (map[k]?.entries || 0) > 0 },
+    { key: "steps", label: `Walked ${settings.goals.steps.toLocaleString("en-US")} steps`, ask: `Walk ${settings.goals.steps.toLocaleString("en-US")} steps`, test: (k) => { const s = map[k]?.activity?.steps; return s === null || s === undefined ? undefined : s >= settings.goals.steps; } },
+    { key: "sleep", label: "Slept 7 hours", ask: "Sleep 7 hours", test: (k) => { const n = nights?.[k]; return n ? n.asleep >= 420 : undefined; } },
     ...settings.habits.filter((h) => h.type === "daily").map((h): Test => ({
-      key: "habit:" + h.id, label: h.label, test: (k) => { const c = checkin(k); return c ? Boolean(c.habits[h.id]) : undefined; },
+      key: "habit:" + h.id, label: h.label, ask: h.label, test: (k) => { const c = checkin(k); return c ? Boolean(c.habits[h.id]) : undefined; },
     })),
     ...settings.habits.filter((h) => h.type === "counter" && h.dir === "at_most" && h.goal).map((h): Test => ({
-      key: "limit:" + h.id, label: `Kept ${h.label.toLowerCase()} to ${h.goal} or fewer`, test: (k) => { const c = checkin(k); return c ? (c.counts[h.id] || 0) <= (h.goal || 0) : undefined; },
+      key: "limit:" + h.id, label: `Kept ${h.label.toLowerCase()} to ${h.goal} or fewer`, ask: `Keep ${h.label.toLowerCase()} to ${h.goal} or fewer`, test: (k) => { const c = checkin(k); return c ? (c.counts[h.id] || 0) <= (h.goal || 0) : undefined; },
     })),
   ];
 }
 
 export type Side = { days: number; hits: number };
 /** Great days: the share of great days when you did it against when you did not. */
-export type Driver = { key: string; label: string; did: Side; didnt: Side; lift: number; phrase?: string };
+export type Driver = { key: string; label: string; ask: string; did: Side; didnt: Side; lift: number; phrase?: string };
 /** Journal tone: the mean tone (-1…1) of the days you did it against the days you did not. */
 export type ToneDriver = { key: string; label: string; did: { days: number; mean: number }; didnt: { days: number; mean: number }; lift: number };
 
@@ -95,12 +97,36 @@ export function greatDays(map: DayMap, days: string[], settings: Settings, main:
   }
   const scored: Driver[] = all
     .filter((t) => t.did.days >= MIN_SIDE && t.didnt.days >= MIN_SIDE)
-    .map(({ key, label, phrase, did, didnt }) => ({ key, label, ...(phrase ? { phrase } : {}), did, didnt, lift: did.hits / did.days - didnt.hits / didnt.days }));
+    .map(({ key, label, ask, phrase, did, didnt }) => ({ key, label, ask, ...(phrase ? { phrase } : {}), did, didnt, lift: did.hits / did.days - didnt.hits / didnt.days }));
   return {
     checkedIn, great,
     lifts: scored.filter((d) => d.lift >= MIN_LIFT).sort((a, b) => b.lift - a.lift),
     drags: scored.filter((d) => d.lift <= -MIN_LIFT).sort((a, b) => a.lift - b.lift),
   };
+}
+
+/** One finding by its key, for an experiment on it (experiment.ts): whether a day had it, and what it is called
+ *  now. Null when it is no longer one of this person's (a habit taken off the list, say). */
+export function testFor(key: string, map: DayMap, settings: Settings, main: MainGoal | null, nights: Nights | null): { label: string; ask: string; test: (day: string) => boolean | undefined } | null {
+  const t = tests(map, settings, main, nights).find((x) => x.key === key);
+  return t ? { label: t.label, ask: t.ask, test: t.test } : null;
+}
+
+/** One finding's two sides over some days, counted as greatDays counts them but with no minimum: how often a
+ *  checked-in day was great when it had this, and when it did not. Null when the finding is no longer theirs. */
+export function sidesFor(key: string, map: DayMap, days: string[], settings: Settings, main: MainGoal | null, nights: Nights | null): { did: Side; didnt: Side } | null {
+  const t = testFor(key, map, settings, main, nights);
+  if (!t) return null;
+  const did = { days: 0, hits: 0 }, didnt = { days: 0, hits: 0 };
+  for (const k of days) {
+    const mood = map[k]?.checkin?.mood;
+    const had = mood ? t.test(k) : undefined;
+    if (had === undefined) continue;
+    const side = had ? did : didnt;
+    side.days++;
+    if (isGreat(mood, settings.moods)) side.hits++;
+  }
+  return { did, didnt };
 }
 
 export type JournalTone = {

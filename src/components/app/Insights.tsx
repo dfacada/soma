@@ -14,8 +14,12 @@ import { greatDays, journalTone, MIN_CHECKINS, progress, TASK_LABEL, weekCompare
 import { dayLog, type LogRow } from "@/lib/insights";
 import { trailingAverage, weighIns } from "@/lib/patterns";
 import { addDays, dayKey, indexDays, streak, WEEKDAYS, type DayMap } from "@/lib/today";
-import { Button, Card, Icon, Segmented } from "@/components/ui";
+import { Button, Card, Icon, Segmented, Toast } from "@/components/ui";
+import { span } from "@/lib/experiment";
+import { haptic } from "@/lib/haptics";
+import { report } from "@/lib/log";
 import { useDays } from "./Days";
+import { ExperimentPanel, useExperiment, type ExperimentState } from "./Experiment";
 import { useHealth } from "./Health";
 import { useJournal } from "./Journal";
 import { useJournalTone } from "./JournalTone";
@@ -49,6 +53,11 @@ export function InsightsScreen() {
   const [year, setYear] = useState<DayMap | null>(null);
   const [yearError, setYearError] = useState(false);
   const todayKey = dayKey(today);
+  // A finding can be tried for three days (Experiment.tsx): one at a time, shown first while there is one.
+  const experiment = useExperiment();
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | undefined>(undefined);
+  const say = (m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(null), 2600); };
 
   useEffect(() => {
     if (range !== "365" || year) return;
@@ -91,7 +100,8 @@ export function InsightsScreen() {
         options={[{ value: "30", label: "30 days" }, { value: "60", label: "60 days" }, { value: "365", label: "1 year" }]} />
       {yearError && <div className={a.unsaved} role="alert"><span>Couldn&apos;t load the year. Showing the last 60 days.</span><Button size="sm" variant="secondary" onClick={() => { setYearError(false); setYear(null); }}>Retry</Button></div>}
 
-      <GreatDaysCard g={g} />
+      <ExperimentPanel e={experiment} say={say} />
+      <GreatDaysCard g={g} experiment={experiment} say={say} />
       <WeightCard data={data} days={days} label={RANGE_LABEL[range]} week={week} />
       <DayByDay log={log} todayKey={todayKey} proteinGoal={settings.goals.protein} />
       <JournalCard jt={jt} tone={tone} />
@@ -106,6 +116,7 @@ export function InsightsScreen() {
       </Card>
 
       <p className={s.footnote}>All of this is worked out on this phone from what you logged. It shows what tends to go together in your own days, not what causes what.</p>
+      <Toast message={toast} />
     </div>
   );
 }
@@ -120,10 +131,19 @@ function Compare({ did, didnt, hue, unit }: { did: number; didnt: number; hue: s
   );
 }
 
-function GreatDaysCard({ g }: { g: ReturnType<typeof greatDays> }) {
+function GreatDaysCard({ g, experiment, say }: { g: ReturnType<typeof greatDays>; experiment: ExperimentState; say: (message: string) => void }) {
   const goTab = useGoTab();
   const enough = g.checkedIn >= MIN_CHECKINS;
   const share = (d: Driver["did"]) => d.hits / d.days;
+  const [starting, setStarting] = useState(false);
+  // Try it: three days of this finding, from tomorrow. One at a time, so the buttons go while one is in hand.
+  const tryIt = async (d: Driver) => {
+    haptic();
+    setStarting(true);
+    try { await experiment.start(d); say("Starts tomorrow, for three days"); }
+    catch (e) { report("insights", "experiment_start_failed", e); say("Couldn't start that. Try again."); }
+    finally { setStarting(false); }
+  };
   return (
     <Card className={s.hero}>
       <span className="eb">What makes a great day</span>
@@ -144,10 +164,17 @@ function GreatDaysCard({ g }: { g: ReturnType<typeof greatDays> }) {
                 <span className={s.itemTitle}>{d.label}</span>
                 <Compare did={share(d.did)} didnt={share(d.didnt)} hue="var(--journal)" unit={(v) => `${pct(v)}%`} />
                 <span className={s.itemSub}>Great on {d.did.hits} of {d.did.days} days you did, {d.didnt.hits} of {d.didnt.days} when you didn&apos;t.</span>
+                {experiment.has
+                  ? experiment.x?.key === d.key && <span className={s.trying}><Icon name="spark" size={13} />You&apos;re trying this · {span(experiment.x)}</span>
+                  : <div><Button size="sm" variant="secondary" disabled={starting} onClick={() => void tryIt(d)} aria-label={`Try it for three days: ${d.ask}`}>Try it for 3 days</Button></div>}
               </li>
             ))}
           </ol>
           {g.drags[0] && <p className={s.note}><span className={s.dragDot} />Days you {lowerFirst(g.drags[0].label)} are less often great ({pct(share(g.drags[0].did))}% against {pct(share(g.drags[0].didnt))}%).</p>}
+          {/* One experiment at a time: say why there is no Try it while one is going and it is not one of these. */}
+          {experiment.has && !g.lifts.slice(0, 3).some((d) => d.key === experiment.x?.key) && (
+            <p className={s.note}>{experiment.x ? `You're trying “${experiment.ask}” now.` : "You have an experiment going."} One at a time: when it&apos;s done, you can try one of these.</p>
+          )}
         </>
       )}
     </Card>

@@ -4,6 +4,7 @@
 import { BOWL_VARIANTS, MEAL_PLANS, SNACK_PRESETS, type BowlId, type MealPlanId } from "./food-data";
 import { isPalette, MOTION_MODES, THEME_MODES, type MotionMode, type PaletteId, type ThemeMode } from "./look";
 import { NOTE_MAX, OPENING_SOURCES, PHRASE_MAX, PHRASES_MAX, type OpeningSource, type Phrase } from "./opening";
+import { cleanExperiment, type StoredExperiment } from "./experiment";
 import { cleanMoves, legacyMoves, type MoveSetting } from "./moves";
 import { cleanMoods, type Mood } from "./moods";
 
@@ -54,6 +55,10 @@ export type Settings = {
   sayDay: boolean;
   /** Let Claude estimate calories and macros for food typed in plain words. Known food is matched on the device first. */
   foodEstimate: boolean;
+  /** The experiment in progress, or the last one until its result is put away (src/lib/experiment.ts): one finding
+   *  from Insights, tried for three days. Its dates and words only, never a count; sealed with the vault key when the
+   *  finding rests on what the vault seals (sleep). */
+  experiment: StoredExperiment | null;
   /** Logging weight is one of the things that closes the day. On unless the user switches it off. */
   requireWeight: boolean;
   /** Ask for the vault passphrase when the app opens, once per tab, dismissible. The vault gates the journal, sleep and the health sync. */
@@ -110,6 +115,7 @@ export const DEFAULT_SETTINGS: Settings = {
   journalInsights: "phone",
   sayDay: false,
   foodEstimate: true,
+  experiment: null,
   requireWeight: true,
   unlockOnOpen: true,
   // Night ("dark") for everyone who never picked: only what a user changed is stored, so a stored "light" or
@@ -176,6 +182,7 @@ export function mergeSettings(stored: unknown): Settings {
     journalInsights: s.journalInsights === "claude" ? "claude" : "phone",
     sayDay: s.sayDay === true,
     foodEstimate: s.foodEstimate !== false,
+    experiment: cleanExperiment(s.experiment),
     requireWeight: s.requireWeight !== false,
     unlockOnOpen: s.unlockOnOpen !== false,
     theme: THEME_MODES.includes(s.theme as ThemeMode) ? (s.theme as ThemeMode) : d.theme,

@@ -115,3 +115,23 @@
 .missed { font-size: 12px; color: var(--muted); }
 /* The system's small secondary Button, as every other secondary action in a card is; only its place is set here. */
 .more { align-self: center; }
+
+/* The experiment (Experiment.tsx): one finding tried for three days. A row a day (the date, whether it was done, how
+   the day was checked in), then how it went. */
+.trial { border-color: color-mix(in srgb, var(--journal) 40%, var(--hairline-soft)); }
+.trialAsk { font-size: 26px; line-height: 1.1; }
+.trialDays { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.trialDays li { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 42px; border-top: 1px solid var(--hairline-soft); font-size: 13.5px; }
+.trialDays li :global(.m) { font-size: 12.5px; color: var(--muted); }
+.trialDid { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.trialYes { color: var(--ink); font-weight: 600; }
+.trialYes svg { color: var(--journal); }
+.trialMood { font-size: 12.5px; color: var(--muted); }
+.trialGreat { color: var(--journal); font-weight: 600; }
+.trialAhead { opacity: 0.55; }
+.trialResult { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid var(--hairline-soft); }
+.trialResult .lead { margin-top: 0; }
+.trialActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* On a finding: that it is the one being tried. */
+.trying { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--journal) 16%, transparent); color: var(--ink); font-size: 12.5px; font-weight: 600; }
+.trying svg { color: var(--journal); }

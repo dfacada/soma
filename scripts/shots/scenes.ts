@@ -4,7 +4,7 @@
 // Steps are Playwright locators by role and accessible name, so a renamed button breaks the scene loudly (the
 // capture names the step that failed) instead of quietly shooting the wrong screen.
 
-import type { DayShape, Who } from "./world";
+import type { DayShape, Trying, Who } from "./world";
 
 export type Step =
   | { click: string; role?: "button" | "link" | "tab" | "switch" | "checkbox"; exact?: boolean; nth?: number }
@@ -28,6 +28,8 @@ export type Scene = {
   reduced?: boolean;
   /** Whose screen: the settled member (the default), someone on their first day, or someone waiting for approval. */
   who?: Who;
+  /** The settled member with an experiment in hand (Read, tried for three days): on its second day, or just over. */
+  experiment?: Trying;
   /** A window size other than the phone's, for screens made for a computer first (Dayhub Ops). */
   view?: { width: number; height: number };
 };
@@ -79,6 +81,10 @@ export const SCENES: Scene[] = [
   { id: "food", area: "food", title: "Food: breakfast, lunch and the snack logged, dinner to go", path: "/food/", frames: 1 },
   { id: "activity", area: "activity", title: "Activity: 60 of 100 push-ups, a walk, day 20 of a round", path: "/activity/", frames: 1 },
   { id: "insights", area: "insights", title: "Insights over two months of days", path: "/insights/", frames: 2 },
+  { id: "insights-experiment", area: "insights", experiment: "running", title: "Insights on day two of an experiment (Read, yesterday to tomorrow): the experiment card first, a row a day (yesterday and today with whether Read was ticked and the mood, tomorrow to come); the great-days card under it offers no Try it, and says why: one at a time", path: "/insights/", frames: 1 },
+  { id: "insights-try-sleep", area: "insights", title: "Insights a moment after Try it for 3 days was tapped on Slept 7 hours: the experiment card says it starts tomorrow, and the sleep finding is marked as the one being tried (a sleep experiment is sealed with the vault; the rig reports one that is not)", path: "/insights/", steps: [{ click: "Try it for three days: Sleep 7 hours" }, { wait: 1500 }], frames: 1 },
+  { id: "insights-experiment-done", area: "insights", experiment: "finished", title: "Insights the day after an experiment ended (Read, three days): each day, then how it went in plain words, with Try it again and Done", path: "/insights/" },
+  { id: "today-experiment", area: "today", experiment: "running", title: "Today on day two of an experiment: a slim row over the cards says day 2 of 3, Read, not yet today, with three dots (the first lit, today ringed)", path: "/", frames: 1 },
   { id: "tomorrow", area: "tomorrow", title: "Tomorrow's brief", path: "/tomorrow/" },
   { id: "settings", area: "settings", title: "Settings, top of the page", path: "/settings/", frames: 1 },
   { id: "settings-appearance", area: "settings", title: "Settings with Appearance open", path: "/settings/", steps: [{ click: "Appearance" }] },

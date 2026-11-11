@@ -18,7 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
-import { answer, buildWorld, STRATUS, USER_ID, type DayShape, type Theme, type Who, type World } from "./world";
+import { answer, buildWorld, STRATUS, USER_ID, type DayShape, type Theme, type Trying, type Who, type World } from "./world";
 import { AREAS, SCENES, SYSTEM_FILES, type Scene, type Step } from "./scenes";
 
 const ROOT = process.cwd();
@@ -114,6 +114,7 @@ async function serve(ctx: BrowserContext, w: World, origin: string, note: (kind:
       try { body = req.postData() ? JSON.parse(req.postData()!) : null; } catch { /* not JSON */ }
       const a = answer(w, method, p, body);
       if (a.unknown) note("fixture", `no fixture for ${method} ${p.split("?")[0]}`);
+      if (a.leak) note("privacy", a.leak);
       if (p.startsWith("/logs")) { const b = body as { area?: string; event?: string; message?: string } | null; note("report", `${b?.area}/${b?.event}: ${String(b?.message ?? "").slice(0, 160)}`); }
       return route.fulfill({ status: a.status, contentType: "application/json", headers: CORS, body: JSON.stringify(a.json) });
     }
@@ -232,9 +233,9 @@ async function main() {
   fs.mkdirSync(o.out, { recursive: true });
   const shots: Shot[] = [], problems: Problem[] = [];
   const worlds = new Map<string, Promise<World>>();
-  const world = (theme: Theme, day: DayShape, who: Who) => {
-    const k = theme + day + who;
-    if (!worlds.has(k)) worlds.set(k, buildWorld({ now: o.at, theme, day, who }));
+  const world = (theme: Theme, day: DayShape, who: Who, trying?: Trying) => {
+    const k = theme + day + who + (trying || "");
+    if (!worlds.has(k)) worlds.set(k, buildWorld({ now: o.at, theme, day, who, trying }));
     return worlds.get(k)!;
   };
 
@@ -249,7 +250,7 @@ async function main() {
     for (const scene of scenes) {
       for (const theme of o.themes) {
         const note = (kind: string, detail: string) => { if (!problems.some((p) => p.scene === scene.id && p.theme === theme && p.detail === detail)) problems.push({ scene: scene.id, theme, kind, detail }); };
-        const w = await world(theme, scene.day || "open", scene.who || "settled");
+        const w = await world(theme, scene.day || "open", scene.who || "settled", scene.experiment);
         const ctx = await browser.newContext({
           viewport: scene.view || VIEW, deviceScaleFactor: scene.view ? 1 : 2, isMobile: !scene.view, hasTouch: !scene.view, locale: "en-US",
           colorScheme: theme === "night" ? "dark" : "light", reducedMotion: scene.reduced ? "reduce" : "no-preference",

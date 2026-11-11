@@ -29,6 +29,7 @@ import { useJournal } from "./Journal";
 import { describeError, mmss, useSayRecorder } from "./FoodSay";
 import { applySaid, knownFromDays, saidLine, type Said } from "@/lib/food-say";
 import { describeFood } from "@/lib/say-api";
+import { ExperimentToday } from "./Experiment";
 import { DayClosed, FoodMoment } from "./Moments";
 import { MoodFace } from "./MoodFace";
 import { MoveSheet, moveIcon } from "./MoveSheet";
@@ -381,6 +382,9 @@ export function Today() {
                 onClick={() => { haptic(); setSleepSheet(true); }} />)}
         </div>
       )}
+
+      {/* A finding from Insights being tried for three days: one slim row, on today only. */}
+      {isToday && <ExperimentToday />}
 
       {unsaved && (
         <div className={a.unsaved} role="alert">
