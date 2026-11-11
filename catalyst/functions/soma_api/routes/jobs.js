@@ -49,14 +49,17 @@ router.post('/jobs', member, wrap(async (req, res) => {
   const bucket = req.admin.stratus().bucket(BUCKET);
   const source = `${req.user.id}/drafts/${b.source}`;
 
-  // A journal recording leaves the device only with cloud transcription switched on (Settings → Journal & vault).
-  // The browser asks first; this is the server keeping the same promise. Food said aloud (entry ids food_…) is a tap
-  // of its own on Food, not the journal.
+  // A journal recording leaves the device only with a switch the person has turned on (Settings → Journal & vault):
+  // cloud transcription for an ordinary entry, Say your day for a recording made to fill in the day (entry ids
+  // day_…, routes/day.js). The browser asks first; this is the server keeping the same promise. Food said aloud
+  // (entry ids food_…) is a tap of its own on Food, not the journal.
   if (!b.entryId.startsWith('food_')) {
     const rows = await select(req.admin, 'profiles', `SELECT settings_json FROM profiles WHERE user_id = ${needId(req.user.id)}`);
-    if (unpackJson(rows[0] && rows[0].settings_json, {}).cloudTranscription !== true) {
+    const settings = unpackJson(rows[0] && rows[0].settings_json, {}) || {};
+    const day = b.entryId.startsWith('day_');
+    if ((day ? settings.sayDay : settings.cloudTranscription) !== true) {
       await shred(bucket, source);
-      throw new HttpError(403, 'cloud transcription is switched off in Settings');
+      throw new HttpError(403, day ? 'Say your day is switched off in Settings' : 'cloud transcription is switched off in Settings');
     }
   }
 

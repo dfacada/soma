@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Privacy · Dayhub", description: "Wh
 
 export default function Privacy() {
   return (
-    <LegalPage title="Privacy policy" updated="10 November 2026">
+    <LegalPage title="Privacy policy" updated="11 November 2026">
       <p>Dayhub is a small, invitation-only app for keeping a voice journal and tracking food, weight and activity. It is a personal project run by David, not a company. There are no ads, no analytics trackers, and nothing here is sold or used to build a profile of you for anyone else.</p>
       <p>Dayhub was called Soma until 10 November 2026. Only the name changed: what it stores and who can read it are the same.</p>
 
@@ -49,13 +49,15 @@ export default function Privacy() {
       </ul>
 
       <h2>Transcription</h2>
-      <p>Transcription is off unless you switch it on in Settings. While it is on, each new recording is decrypted on your device and sent to Groq, a speech-to-text provider, to be transcribed. The audio is blanked and deleted from Dayhub&rsquo;s server as soon as Groq has answered, and the transcript is encrypted into your journal on your device. Journal content leaves your device unencrypted only here and in the two Claude features below that read your journal, and each only happens with its own switch on.</p>
+      <p>Transcription is off unless you switch it on in Settings. While it is on, each new recording is decrypted on your device and sent to Groq, a speech-to-text provider, to be transcribed. The audio is blanked and deleted from Dayhub&rsquo;s server as soon as Groq has answered, and the transcript is encrypted into your journal on your device. Journal content leaves your device unencrypted only here and in the three Claude features below that read your journal, and each only happens with its own switch on.</p>
+      <p>Say your day has a switch of its own, off until you turn it on. While it is on, a recording you make with the Say your day button is sent to Groq in the same way, whatever transcription is set to for your other entries.</p>
       <p>Groq also turns food you say aloud (on Food, or the Food card on Today) into words, and reads the week in review aloud when you tap Listen or send its audio to Telegram.</p>
 
       <h2>Claude</h2>
-      <p>Three features send text to Claude, Anthropic&rsquo;s AI model. Dayhub sends it under its own key, with nothing about your account attached.</p>
+      <p>Four features send text to Claude, Anthropic&rsquo;s AI model. Dayhub sends it under its own key, with nothing about your account attached.</p>
       <ul>
         <li><strong>Food estimates</strong> (on unless you switch them off in Settings): what you type or say you ate, along with foods you&rsquo;ve logged before so your own numbers come back. Claude returns calories, protein, carbs and fat.</li>
+        <li><strong>Say your day</strong> (off until you switch it on): the words of that one recording, along with your own mood words, habit names, move names and foods you&rsquo;ve logged before. Claude returns what it heard about your weight, mood, habits, food and activity, and you check that list before anything is logged. Dayhub&rsquo;s server keeps neither the words nor the list; the recording and its words are stored only in your journal, encrypted.</li>
         <li><strong>Week in review</strong> (off until you switch it on and agree): that week&rsquo;s journal entries, decrypted on your device, with their dates and moods. The review that comes back is encrypted with your vault key before it is stored; Dayhub&rsquo;s server keeps neither the entries nor the review in the clear.</li>
         <li><strong>Reading your journal for Insights</strong> (only if you choose With Claude): names, places, emails, phone numbers, addresses and links are taken out on your device first, and the days are sent shuffled with no dates. Only a tone and a few general themes come back.</li>
       </ul>
@@ -66,8 +68,8 @@ export default function Privacy() {
         <li><strong>Google</strong>, only if you connect Google Health.</li>
         <li><strong>Morgen</strong> and <strong>Todoist</strong>, only if you connect them for tomorrow&rsquo;s brief.</li>
         <li><strong>Telegram</strong>, only if you connect it: the week in review, and tomorrow&rsquo;s brief when you send it, arrive there as messages.</li>
-        <li><strong>Groq</strong>, for speech: transcription if you switch it on, food you say aloud, and the week in review read aloud when you ask for it.</li>
-        <li><strong>Anthropic</strong> (Claude), for food estimates, the week in review if you switch it on, and reading your journal for Insights if you choose it.</li>
+        <li><strong>Groq</strong>, for speech: transcription if you switch it on, Say your day if you switch it on, food you say aloud, and the week in review read aloud when you ask for it.</li>
+        <li><strong>Anthropic</strong> (Claude), for food estimates, Say your day and the week in review if you switch them on, and reading your journal for Insights if you choose it.</li>
       </ul>
       <p>That is the complete list.</p>
 

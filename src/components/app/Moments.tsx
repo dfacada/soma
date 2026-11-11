@@ -2,7 +2,8 @@
 
 // Full-screen moments (Dayhub Night, 2026-11-02). RecordMoment covers the app while a journal entry records and while
 // it is being kept safe, wherever recording started (Today, the Journal tab, the sidebar). FoodMoment is the Food
-// card's dictation, step by step. DayClosed is the celebration when today closes.
+// card's dictation, step by step. DayMoment is Say your day after its recording: the words read, then the list to
+// check. DayClosed is the celebration when today closes.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { Icon, Orb, type OrbBead } from "@/components/ui";
@@ -11,6 +12,8 @@ import type { Meter } from "@/lib/meter";
 import { haptic } from "@/lib/haptics";
 import { promptFor } from "@/lib/prompts";
 import type { Said } from "@/lib/food-say";
+import { listed, type DayRow } from "@/lib/say-day";
+import { MEALS } from "@/lib/settings";
 import { cap } from "@/lib/today";
 import { useJournal } from "./Journal";
 import m from "./moments.module.css";
@@ -111,7 +114,11 @@ export function RecordMoment() {
   // After a recording lands, "Saved" shows for a moment. Adjusted during render when a new one is counted.
   const [seen, setSeen] = useState(j.lastSaved.n);
   const [saved, setSaved] = useState(false);
-  if (seen !== j.lastSaved.n) { setSeen(j.lastSaved.n); setSaved(true); }
+  // A Say your day recording goes on to its own screen (DayMoment) instead of "Saved".
+  if (seen !== j.lastSaved.n) { setSeen(j.lastSaved.n); setSaved(!j.lastSaved.day); }
+  // Say your day: the same recording, with what is still open that day as a cue.
+  const cues = j.dayCues;
+  const what = cues ? "Your day" : "Journal";
   useEffect(() => {
     if (!saved) return;
     const t = window.setTimeout(() => setSaved(false), 1800);
@@ -127,12 +134,12 @@ export function RecordMoment() {
   const phase = j.recording ? "rec" : j.sealing ? "seal" : saved ? "saved" : null;
   if (!phase) return null;
   return (
-    <div className={m.moment} style={hue("journal")} role="dialog" aria-modal="true" aria-label={phase === "rec" ? "Recording a journal entry" : "Saving your entry"}>
+    <div className={m.moment} style={hue("journal")} role="dialog" aria-modal="true" aria-label={phase === "rec" ? (cues ? "Saying your day" : "Recording a journal entry") : "Saving your entry"}>
       <div className={m.glow} />
       <div className={m.inner}>
         <div className={m.bar}>
           <span style={{ width: 44 }} />
-          <span className="eb">{phase === "rec" ? "Journal · recording" : phase === "seal" ? "Journal · sealing" : "Journal · saved"}</span>
+          <span className="eb">{phase === "rec" ? `${what} · recording` : phase === "seal" ? `${what} · sealing` : `${what} · saved`}</span>
           <span className={`m ${m.timer}`}>{clock(phase === "rec" ? j.seconds : j.lastSaved.seconds)}</span>
         </div>
         <Vox live={phase === "rec"} levels={j.levels}>
@@ -141,7 +148,12 @@ export function RecordMoment() {
             : <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path className={m.check} d="M5 12l5 5 9-10" /></svg>}
         </Vox>
         <div className={m.text} key={phase} aria-live="polite">
-          {phase === "rec" && <><span className={`d ${m.head}`}>Say how today went</span><span className={m.sub}>Not sure where to start? <span className={m.ask}>{promptFor(new Date())}</span></span></>}
+          {phase === "rec" && !cues && <><span className={`d ${m.head}`}>Say how today went</span><span className={m.sub}>Not sure where to start? <span className={m.ask}>{promptFor(new Date())}</span></span></>}
+          {phase === "rec" && cues && <>
+            <span className={`d ${m.head}`}>Say your day</span>
+            <span className={m.sub}>{cues.length ? "Whatever is on your mind, and what's still open:" : "Whatever is on your mind. It all goes in your journal."}</span>
+            {cues.length > 0 && <span className={m.dayCues}>{cues.map((c) => <span key={c} className={m.dayCue}>{c}</span>)}</span>}
+          </>}
           {phase === "seal" && <><span className={`d ${m.head}`}>Sealing it</span><span className={`m ${m.hex}`} aria-hidden>{hex}</span><span className={m.sub}>Kept on this phone, and encrypted with your vault key before it uploads.</span></>}
           {phase === "saved" && <><span className={`d ${m.head}`}>Saved · {clock(j.lastSaved.seconds)}</span><span className={m.sub}>Only your passphrase opens it.</span></>}
         </div>
@@ -208,6 +220,119 @@ export function FoodMoment({ phase, seconds, heard, items, onStop, onClose, leve
             <div className={m.foot}>
               <button type="button" className={m.lovely} onClick={onClose}>Done</button>
               <span className={m.sub}>Already logged. Change anything on Food.</span>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export type DayPhase = "writing" | "reading" | "review" | "failed";
+/** The first words of what was said, for the reading screen: a day's talk is too long to show whole. */
+const SAID_WORDS = 30;
+
+/**
+ * Say your day, after the recording (SayDay.tsx drives it): the words being written down, then read, then the list
+ * to check. Each row is a tick over one thing heard; nothing is logged until Fill in my day. The entry itself is
+ * already saved, and closing this screen at any point leaves it in the journal.
+ */
+export function DayMoment({ phase, seconds, heard, rows, cut, replaces, message, onToggle, onMeal, onFill, onRetry, onClose }: {
+  phase: DayPhase; seconds: number;
+  /** What was said, once it is written down. */
+  heard: string | null;
+  rows: DayRow[];
+  /** The recording ran past what one reading takes, so only its first part was read. */
+  cut: boolean;
+  /** Meals the ticked food rows would replace. */
+  replaces: string[];
+  /** What went wrong, for the failed phase. */
+  message: string | null;
+  onToggle: (id: string) => void;
+  onMeal: (id: string, meal: Said["meal"]) => void;
+  onFill: () => void;
+  /** Read the same words again. Absent when there are no words to read (they could not be written down). */
+  onRetry?: () => void;
+  onClose: () => void;
+}) {
+  const words = heard ? heard.split(/\s+/).filter(Boolean) : [];
+  const ticked = rows.filter((r) => r.on).length;
+  const label = phase === "writing" ? "Your day · writing it down" : phase === "reading" ? "Your day · picking it out" : phase === "review" ? "Your day · check it" : "Your day";
+  return (
+    <div className={m.moment} style={hue("journal")} role="dialog" aria-modal="true" aria-label="Say your day">
+      <div className={m.glow} />
+      <div className={m.inner}>
+        <div className={m.bar}>
+          {/* Always a way out: closing logs nothing, and the entry is already saved. */}
+          <button type="button" className={m.x} onClick={onClose} aria-label="Close without logging anything"><Icon name="close" size={18} /></button>
+          <span className="eb">{label}</span>
+          <span className={`m ${m.timer}`}>{clock(seconds)}</span>
+        </div>
+        {(phase === "writing" || phase === "reading") && (
+          <>
+            {phase === "reading" && words.length > 0
+              ? <div className={`d ${m.said} ${m.dim}`}>{words.slice(0, SAID_WORDS).map((w, i) => <span key={i} style={{ animationDelay: `${Math.min(i * 0.05, 1.5)}s` }}>{w}</span>)}{words.length > SAID_WORDS && <span>…</span>}</div>
+              : <div className={m.text} style={{ marginTop: 40 }}><span className={`d ${m.head}`}>Writing it down…</span><span className={m.sub}>Your recording is safe, and on its way to your journal.</span></div>}
+            <div className={m.skel} role="status" aria-label={phase === "reading" ? "Picking out your day" : "Writing it down"}><i /><i style={{ animationDelay: "0.15s" }} /><i style={{ animationDelay: "0.3s" }} /></div>
+          </>
+        )}
+        {phase === "review" && (
+          <>
+            <div className={`${m.text} ${m.steady} ${m.dayHead}`}>
+              <span className={`d ${m.head}`}>{rows.length ? "Check your day" : "Nothing to fill in"}</span>
+              <span className={m.sub}>{rows.length ? "Untick anything that isn't right. Nothing is logged until you tap." : "No weight, mood, food or move in that one. It's saved in your journal all the same."}</span>
+            </div>
+            <div className={m.items}>
+              <div className={`${m.item} ${m.dayKept}`}>
+                <span className={m.itemTick}><Icon name="lock" size={14} strokeWidth={2.2} /></span>
+                <span className={m.itemText}><span className="eb">Journal</span><span className={m.itemName}>Entry saved</span></span>
+                <span className="m">{clock(seconds)}</span>
+              </div>
+              {rows.map((r, i) => (
+                <div key={r.id} className={`${m.item} ${m.dayRow} ${r.on ? "" : m.dayOff}`} style={{ ...hue(r.domain), animationDelay: `${0.08 + i * 0.07}s` }}>
+                  <button type="button" className={m.dayHit} role="checkbox" aria-checked={r.on} onClick={() => { haptic(); onToggle(r.id); }}>
+                    <span className={m.dayTick}>{r.on && <Icon name="check" size={14} strokeWidth={2.6} />}</span>
+                    <span className={m.itemText}>
+                      <span className="eb">{r.eyebrow}</span>
+                      <span className={m.itemName}>{r.title}</span>
+                      {(r.amount || r.note) && <span className={m.dayMeta}>{r.amount && <span className="m">{r.amount}</span>}{r.amount && r.note ? " · " : ""}{r.note}</span>}
+                    </span>
+                  </button>
+                  {/* The meal it is filed under: a small pill, with the phone's own picker laid over it. */}
+                  {r.kind === "food" && (
+                    <label className={m.dayMeal}>
+                      <span>{r.said.meal === "extra" ? "Something else" : cap(r.said.meal)}</span><Icon name="chevron" size={12} strokeWidth={2.4} />
+                      <select aria-label={`Meal for ${r.title}`} value={r.said.meal} onChange={(e) => { haptic(); onMeal(r.id, e.target.value as Said["meal"]); }}>
+                        {MEALS.map((meal) => <option key={meal} value={meal}>{cap(meal)}</option>)}
+                        <option value="extra">Something else</option>
+                      </select>
+                    </label>
+                  )}
+                </div>
+              ))}
+            </div>
+            {replaces.length > 0 && <p className={`${m.sub} ${m.dayAside}`}>Replaces what&apos;s logged for {listed(replaces)}.</p>}
+            {cut && <p className={`${m.sub} ${m.dayAside}`}>That was a long one: only the first twenty minutes or so were read.</p>}
+            <div className={`${m.foot} ${m.dayFoot}`}>
+              {rows.length > 0
+                ? <>
+                  <button type="button" className={m.lovely} disabled={!ticked} onClick={onFill}>{ticked ? `Fill in my day · ${ticked}` : "Nothing ticked"}</button>
+                  <button type="button" className={m.dayLater} onClick={onClose}>Not now</button>
+                </>
+                : <button type="button" className={m.lovely} onClick={onClose}>Done</button>}
+            </div>
+          </>
+        )}
+        {phase === "failed" && (
+          <>
+            <div className={m.text} style={{ marginTop: 40 }}>
+              <span className={`d ${m.head}`}>{onRetry ? "Couldn't read that" : "Couldn't write that down"}</span>
+              <span className={m.sub} role="alert">{message}</span>
+              <span className={m.sub}>Your recording is saved in your journal either way.</span>
+            </div>
+            <div className={m.foot}>
+              {onRetry && <button type="button" className={m.lovely} onClick={onRetry}>Try again</button>}
+              <button type="button" className={onRetry ? m.dayLater : m.lovely} onClick={onClose}>{onRetry ? "Not now" : "Close"}</button>
             </div>
           </>
         )}

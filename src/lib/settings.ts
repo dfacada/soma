@@ -48,6 +48,10 @@ export type Settings = {
    *  (the default). "claude": names and details taken out on the device, then read by Claude with nothing about the
    *  account attached (src/lib/journal-read.ts, catalyst/functions/soma_api/routes/insights.js). */
   journalInsights: "phone" | "claude";
+  /** Say your day (src/lib/say-day.ts): one recording that fills in the day. Off until the person switches it on,
+   *  because that recording goes to Groq to be written down and its words to Claude to be read, whatever cloud
+   *  transcription is set to. The server checks it too (routes/day.js, routes/jobs.js). */
+  sayDay: boolean;
   /** Let Claude estimate calories and macros for food typed in plain words. Known food is matched on the device first. */
   foodEstimate: boolean;
   /** Logging weight is one of the things that closes the day. On unless the user switches it off. */
@@ -104,6 +108,7 @@ export const DEFAULT_SETTINGS: Settings = {
   weeklyReview: { on: false, dayOfWeek: 0, time: "19:00", consent: false, telegram: false, speak: true },
   cloudTranscription: false,
   journalInsights: "phone",
+  sayDay: false,
   foodEstimate: true,
   requireWeight: true,
   unlockOnOpen: true,
@@ -169,6 +174,7 @@ export function mergeSettings(stored: unknown): Settings {
     },
     cloudTranscription: s.cloudTranscription === true,
     journalInsights: s.journalInsights === "claude" ? "claude" : "phone",
+    sayDay: s.sayDay === true,
     foodEstimate: s.foodEstimate !== false,
     requireWeight: s.requireWeight !== false,
     unlockOnOpen: s.unlockOnOpen !== false,

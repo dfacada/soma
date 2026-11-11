@@ -1,7 +1,8 @@
 // A day's food said in one go (David, 2026-11-02), shared by the box on Food and the one-tap Food card on Today.
-// No React: what goes to POST /food/describe, and how its items land in the day's log.
+// No React and no network: what goes along to POST /food/describe (the call itself is in say-api.ts), and how its
+// items land in the day's log. Say your day (say-day.ts) lands its food the same way.
 
-import { api, type DayLog, type Extra } from "./api";
+import type { DayLog, Extra } from "./api";
 import { knownFoods, type Known } from "./food-match";
 import type { Meal, PlannedMeal, Settings } from "./settings";
 
@@ -17,12 +18,11 @@ export function knownFromDays(map: Record<string, { log?: { extras?: Extra[] } }
   return knownFoods({ logged: [...seen.values()], snacks: settings.snacks, plan: Object.values(settings.plan) });
 }
 
-/** Splits the words into items with the meal each was for. Your own foods, newest logged first, go along so "my
- *  shake" comes back with your numbers; the recipe book stays home. */
-export async function describeFood(text: string, known: Known[]): Promise<Said[]> {
-  const mine = known.filter((k) => k.source !== "recipe").reverse().slice(0, KNOWN_MAX)
+/** The foods that go along with what was said: your own, newest logged first, so "my shake" comes back with your
+ *  numbers; the recipe book stays home. */
+export function knownToSend(known: Known[]) {
+  return known.filter((k) => k.source !== "recipe").reverse().slice(0, KNOWN_MAX)
     .map(({ name, kcal, protein, carbs, fat }) => ({ name, kcal, protein, carbs, fat }));
-  return (await api<{ items: Said[] }>("POST", "/food/describe", { text, known: mine })).items;
 }
 
 /** Writes the items into a day's log: items for the same meal become one snapshot (names joined, numbers summed)

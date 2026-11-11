@@ -38,6 +38,12 @@
 .todos { position: relative; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .todo { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--hairline-soft); font-size: 12.5px; font-weight: 500; animation: pop 0.5s var(--spring) both; }
 .todo i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+/* Say your day (SayDay.tsx): one recording for everything still open, so it sits with the orb, under what is left.
+   Positioned, as the caption and chips are, so it paints over the orb's halo. */
+.sayDay { position: relative; display: inline-flex; align-items: center; gap: 9px; min-height: 46px; margin-top: 4px; padding: 0 20px 0 15px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--journal) 16%, var(--surface)); border: 1px solid color-mix(in srgb, var(--journal) 45%, transparent); font-size: 14.5px; font-weight: 600; color: var(--ink); transition: transform 0.3s var(--spring), opacity 0.3s ease; }
+.sayDay svg { color: var(--journal); }
+.sayDay:active { transform: scale(0.95); transition-duration: 0.08s; }
+.sayDay:disabled { opacity: 0.5; }
 
 /* The week: today and the six days before it, each a button that picks the day to fill in. */
 /* The streak sits along the bottom of the same card, under a hairline. Positioned, as .lede is, so the card paints over

@@ -7,7 +7,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { describeFood, type Said } from "@/lib/food-say";
+import type { Said } from "@/lib/food-say";
+import { describeFood } from "@/lib/say-api";
 import type { Known } from "@/lib/food-match";
 import { haptic } from "@/lib/haptics";
 import { report } from "@/lib/log";

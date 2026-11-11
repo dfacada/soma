@@ -14,6 +14,7 @@ import type { HealthLink, Night, Nights } from "../../src/lib/health";
 import type { JournalEntry } from "../../src/lib/recovery";
 import type { Log, Member, Round } from "../../src/lib/round";
 import type { RoundRow } from "../../src/components/app/Rounds";
+import type { Heard } from "../../src/lib/say-day";
 import type { Settings } from "../../src/lib/settings";
 import { seenMark } from "../../src/lib/changelog";
 import { SNACK_PRESETS } from "../../src/lib/food-data";
@@ -21,6 +22,19 @@ import { addDays, dayKey } from "../../src/lib/today";
 import { createVault, encryptBytes, encryptJson, exportKey, toB64, type VaultMeta } from "../../src/lib/vault-crypto";
 
 export const USER_ID = "fixture-member";
+
+// Say your day (scenes moment-day and moment-day-check): what the member "said" at 7:30 pm, and what was heard in it.
+// The recording is written down the moment it is asked for, so the scene reaches the list without waiting.
+const DAY_RESULT = "tx-result-1.json";
+const DAY_SAID = "Long one today. The demo went better than I expected, and I finally got out for a walk at lunch. Dinner was salmon with rice and broccoli, with a glass of red wine. I finished my push-ups, a hundred in the end, and read for half an hour before this.";
+const DAY_HEARD: Heard = {
+  weight: null, mood: null, habits: ["read"], counts: [],
+  food: [
+    { meal: "dinner", name: "Salmon with rice and broccoli", kcal: 650, protein: 45, carbs: 60, fat: 18, note: "" },
+    { meal: "extra", name: "Glass of red wine", kcal: 125, protein: 0, carbs: 4, fat: 0, note: "" },
+  ],
+  moves: [{ key: "pushups", n: 100, u: "reps", label: "" }],
+};
 /** Where signed Stratus URLs point in the fixture. The page asks for them; shoot.ts answers from `blobs`. */
 export const STRATUS = "https://stratus.fixture.test";
 
@@ -189,6 +203,7 @@ export async function buildWorld({ now, theme, day, who = "settled" }: { now: Da
     nights[k] = night;
   }
   entries.sort((a, b) => b.createdMs - a.createdMs);
+  blobs.set("drafts/" + DAY_RESULT, new TextEncoder().encode(JSON.stringify({ text: DAY_SAID })));
 
   const months = [...new Set(Object.keys(nights).map((d) => d.slice(0, 7)))].sort();
   const sealedMonths = await Promise.all(months.map(async (month) => ({ month, ciphertext: await seal(Object.fromEntries(Object.entries(nights).filter(([d]) => d.startsWith(month)))) })));
@@ -280,7 +295,10 @@ export function answer(w: World, method: string, path: string, body: unknown): {
     return ok({ urls: (names || []).map((name) => ({ name, url: `${STRATUS}/${kind}/${name}` })) });
   }
   if (method === "POST" && route === "/logs") return { status: 201, json: {} };
+  // Say your day: the transcription job is done as soon as it is queued, and the words are read as DAY_HEARD.
+  if (method === "POST" && route === "/jobs") return { status: 201, json: { id: "1", type: "transcribe", status: "done", error: null, result: DAY_RESULT } };
+  if (method === "POST" && route === "/day/describe") return ok(DAY_HEARD);
   // Saves succeed and change nothing: a scene that taps sees the app's own optimistic state.
-  const known = /^\/(checkins|day-logs|weight|activity)\/\d{4}-\d{2}-\d{2}$/.test(route) || ["/settings"].includes(route);
+  const known = /^\/(checkins|day-logs|weight|activity)\/\d{4}-\d{2}-\d{2}$/.test(route) || /^\/(entries|jobs|drafts)\/[\w-]+$/.test(route) || ["/settings"].includes(route);
   return known ? ok() : { ...ok(), unknown: true };
 }

@@ -41,7 +41,7 @@ export type Area = {
 };
 
 export const AREAS: Area[] = [
-  { id: "today", title: "Today: the orb, the day's tasks and the week strip", files: ["src/components/app/Today.tsx", "src/components/app/today.module.css", "src/components/app/DayBanner.tsx", "src/components/ui/Orb.tsx"] },
+  { id: "today", title: "Today: the orb, the day's tasks and the week strip", files: ["src/components/app/Today.tsx", "src/components/app/SayDay.tsx", "src/components/app/today.module.css", "src/components/app/DayBanner.tsx", "src/components/ui/Orb.tsx"] },
   { id: "sheets", title: "Today's sheets: weight, check-in, a move, steps and sleep", files: ["src/components/app/WeightSheet.tsx", "src/components/app/MoveSheet.tsx", "src/components/app/moves.module.css", "src/components/app/sheets.module.css", "src/components/app/Steps.tsx", "src/components/app/steps.module.css", "src/components/app/Sleep.tsx", "src/components/app/sleep.module.css"] },
   { id: "journal", title: "Journal: entries, search, the vault", files: ["src/components/app/JournalScreen.tsx"] },
   { id: "food", title: "Food: the day's meals, macros and saying what you ate", files: ["src/components/app/Food.tsx", "src/components/app/FoodSay.tsx"] },
@@ -68,6 +68,7 @@ const DESK = { width: 1280, height: 900 };
 export const SCENES: Scene[] = [
   { id: "today", area: "today", title: "Today at 7:30 pm: 3 of 5 done, journal and dinner left, a 12-day streak (best 21)", path: "/", frames: 1 },
   { id: "today-closed", area: "today", title: "Today with all five done: the day is closed and the streak is 13", path: "/", day: "closed" },
+  { id: "sheet-say-day", area: "today", title: "Say your day tapped for the first time: before anything is recorded, a sheet says what it does and what leaves the phone, with Turn on and start", path: "/", steps: [{ click: "Say your day" }] },
   { id: "sheet-weight", area: "sheets", title: "The weight sheet, opened from Today", path: "/", steps: [{ click: "Log today" }] },
   { id: "sheet-checkin", area: "sheets", title: "The check-in sheet: mood and habits", path: "/", steps: [{ click: "Check-in:" }] },
   { id: "sheet-pushups", area: "sheets", title: "The push-ups sheet at 60 of 100", path: "/", steps: [{ click: "Push-ups:" }] },
@@ -86,6 +87,8 @@ export const SCENES: Scene[] = [
   { id: "moment-closed-reduced", area: "moments", title: "The same day-closing moment as someone with Reduce Motion on sees it: no animation, but it must still end showing 13 and the full week", path: "/", day: "last", reduced: true, steps: [{ click: "Dinner:" }, { wait: 600 }] },
   { id: "moment-record", area: "moments", title: "Recording a journal entry, full screen", path: "/", steps: [{ click: "Record a journal entry" }, { wait: 1500 }] },
   { id: "moment-food", area: "moments", title: "Saying what you ate, full screen, listening", path: "/", steps: [{ click: "Say what you ate" }, { wait: 1500 }] },
+  { id: "moment-day", area: "moments", title: "Saying your day, full screen, recording: the cue under the heading is what is still open today, which is dinner", path: "/", steps: [{ click: "Say your day" }, { click: "Turn on and start" }, { wait: 1500 }] },
+  { id: "moment-day-check", area: "moments", title: "Say your day, after the recording: the list to check. The entry is saved (a lock, no tick); reading, the salmon dinner, a glass of wine filed under Something else and 100 push-ups (replacing 60) are ticked; nothing is logged until Fill in my day", path: "/", steps: [{ click: "Say your day" }, { click: "Turn on and start" }, { wait: 1500 }, { click: "Stop and save" }, { wait: 4000 }] },
 
   // Day one. Everyone who joins starts here, and Dayhub starts empty for all of them (no data is migrated): the account
   // is minutes old, nothing is logged, there is no vault yet and Fitbit is not connected. A round is under way and open.

@@ -81,6 +81,39 @@
 .itemText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .itemName { font-size: 15px; line-height: 1.25; }
 
+/* Say your day. While recording, what is still open that day sits under the heading as a cue. */
+.dayCues { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 330px; }
+.dayCue { display: inline-flex; align-items: center; height: 28px; padding: 0 11px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--hairline-soft); font-size: 12.5px; font-weight: 500; }
+/* Then the list to check: a row is a tick over one thing heard, in its own domain's colour (each row sets --hue), and
+   the whole row is the tap. Unticked, it stays in place, dimmed, so it can be ticked again. A food row also carries
+   the meal it is filed under. */
+.dayHead { margin-top: 18px; align-self: stretch; align-items: flex-start; text-align: left; }
+.dayHead .sub { max-width: none; }
+.dayRow { padding: 4px 10px 4px 4px; gap: 6px; }
+.dayHit { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 4px 6px 10px; border-radius: 16px; text-align: left; }
+.dayTick { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: var(--hue); color: var(--on-hue); border: 1.5px solid var(--hue); transition: background 0.25s ease, border-color 0.25s ease, transform 0.3s var(--spring); }
+.dayHit:active .dayTick { transform: scale(0.85); transition-duration: 0.08s; }
+.dayOff .dayTick { background: transparent; border-color: var(--hairline-strong); }
+.dayRow .itemText { transition: opacity 0.25s ease; }
+.dayOff .itemText { opacity: 0.45; }
+.dayMeta { font-size: 12.5px; line-height: 1.35; color: var(--muted); }
+/* A food row's meal: a small pill saying where it is filed, with the phone's own picker laid over it, unseen (and at
+   16px, so iOS does not zoom in when it opens). */
+.dayMeal { position: relative; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; min-height: 44px; padding: 0 12px 0 14px; border-radius: var(--r-pill); background: var(--well); font-size: 13px; font-weight: 600; white-space: nowrap; transition: opacity 0.25s ease; }
+.dayMeal svg { transform: rotate(90deg); color: var(--muted); }
+.dayMeal select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; -webkit-appearance: none; appearance: none; }
+.dayMeal:focus-within { outline: 2px solid var(--hue); outline-offset: 2px; }
+.dayOff .dayMeal { opacity: 0.45; }
+/* The journal entry is already saved, whatever is ticked: a lock where the others have a tick, and no tap. */
+.dayKept .itemTick { background: color-mix(in srgb, var(--hue) 18%, var(--surface)); color: var(--hue); }
+.dayAside { align-self: stretch; max-width: none; margin-top: 10px; font-size: 12.5px; }
+/* Fill in my day stays in reach under a long list: it sticks above the home indicator, with the page colour behind
+   and below it so rows pass out of sight instead of showing through. */
+.dayFoot { position: sticky; bottom: calc(6px + var(--inset-bottom)); z-index: 2; gap: 4px; padding-top: 26px; background: linear-gradient(to top, var(--bone) 74%, transparent); }
+.dayFoot::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: calc(40px + var(--inset-bottom)); background: var(--bone); }
+.dayLater { min-height: 44px; padding: 0 20px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.lovely:disabled { opacity: 0.4; }
+
 /* The day closing: the orb blooms, light bursts out of it, and the streak rolls over. Always dark: DayClosed wears
    the global .night class, Night's whole token set (globals.css), so Light shows the same moment as Night. */
 /* --day: the day's three hues, on the streak number and today's dot. Its ends sit 12% in, because the figures fill

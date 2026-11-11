@@ -4,6 +4,7 @@
 // Dayhub Night (2026-11-02): a greeting, the orb (one bead per task, the sphere lit by what is done), the week strip,
 // and a bento of task cards in card order: weight, check-in, journal, food, activity. The activity card leads with the
 // person's main move (2026-11-08); their other moves sit under it, and any of them closes the day.
+// Under the orb, Say your day (2026-11-11, SayDay.tsx): one recording that fills in whatever is still open.
 //
 // Backfill: tap one of the six earlier days in the week strip and every card edits that day instead, under a header
 // that says so. The streak and the round stay on today. On a past day the journal can also be written, not only
@@ -26,12 +27,14 @@ import { StepsSheet } from "./Steps";
 import { clock } from "@/lib/journal";
 import { useJournal } from "./Journal";
 import { describeError, mmss, useSayRecorder } from "./FoodSay";
-import { applySaid, describeFood, knownFromDays, saidLine, type Said } from "@/lib/food-say";
+import { applySaid, knownFromDays, saidLine, type Said } from "@/lib/food-say";
+import { describeFood } from "@/lib/say-api";
 import { DayClosed, FoodMoment } from "./Moments";
 import { MoodFace } from "./MoodFace";
 import { MoveSheet, moveIcon } from "./MoveSheet";
 import { MovesChooser } from "./MovesChooser";
 import { OTHER_MOVE, amountText, applyMove, closesDay, goalText, loggedOf, mainOf, movesOf, num, progressOf, savedLine, unitWord, type Move, type MoveSave } from "@/lib/moves";
+import { SayDay } from "./SayDay";
 import { TomorrowCard } from "./Tomorrow";
 import { WeightSheet } from "./WeightSheet";
 import { useRounds } from "./Rounds";
@@ -330,6 +333,8 @@ export function Today() {
             {head.todos.map((x, i) => <span key={x.label} className={`${t.todo} ${todoKeys[i] === next ? t.todoNext : ""}`} style={{ "--c": x.color, animationDelay: `${0.3 + i * 0.06}s` } as CSSProperties}><i />{x.label}</span>)}
           </div>
         )}
+        {/* One recording for everything still open: it fills the list above, and is the journal entry too. */}
+        <SayDay st={st} say={say} />
       </section>
 
       <div className={t.week}>

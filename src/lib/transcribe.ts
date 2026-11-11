@@ -1,6 +1,8 @@
-// Cloud transcription. This is the one place plaintext leaves the device, so it only runs when the user has
-// switched it on. The audio goes to a short-lived object, a job sends it to Groq and blanks it, and the transcript
-// comes back here to be encrypted into the entry. Nothing readable is kept on the server afterwards.
+// Cloud transcription. Plaintext audio leaves the device here, so it only runs when the user has switched it on:
+// cloud transcription for a journal entry, Say your day for a recording made to fill in the day (ids day_…); food
+// said aloud (ids food_…) is a tap of its own. The audio goes to a short-lived object, a job sends it to Groq and
+// blanks it, and the transcript comes back here to be encrypted into the entry. Nothing readable is kept on the
+// server afterwards.
 
 import { api, ApiError } from "./api";
 import { PUT_HEADERS } from "./journal";
@@ -60,7 +62,8 @@ export async function transcribe(entryId: string, audio: Blob): Promise<string> 
     // the queue being full (Journal waits and tries again).
     if (e instanceof ApiError && e.status === 429 && (e.body as { limit?: string } | null)?.limit) throw new TranscribeError("daily_limit", e.message);
     if (e instanceof ApiError && e.status === 429) throw new TranscribeError("queue_busy", "Several transcriptions are already running. Try again shortly.");
-    if (e instanceof ApiError && e.status === 403) throw new TranscribeError("switched_off", "Cloud transcription is off. Turn it on in Settings → Journal & vault.");
+    // Each kind of recording has its own switch: a Say your day recording (ids day_…) is not held to cloud transcription.
+    if (e instanceof ApiError && e.status === 403) throw new TranscribeError("switched_off", entryId.startsWith("day_") ? "Say your day is off. Turn it on in Settings → Journal and vault." : "Cloud transcription is off. Turn it on in Settings → Journal & vault.");
     throw new TranscribeError("queue_failed", "The transcription could not be started.");
   }
 

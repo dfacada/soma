@@ -22,7 +22,8 @@ const LIMITS = {
   tone: { max: 20, what: 'journal readings' },
   review: { max: 6, what: 'weekly reviews' },
   speech: { max: 15000, what: 'reading aloud' }, // characters, not calls: the voice is priced by the character
-  transcribe: { max: 40, what: 'transcriptions' }
+  transcribe: { max: 40, what: 'transcriptions' },
+  day: { max: 20, what: 'saying your day' } // Claude reading one recording's words (routes/day.js); the recording's transcription counts above
 };
 
 const utcDay = () => new Date().toISOString().slice(0, 10);

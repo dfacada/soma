@@ -58,6 +58,7 @@ app.use(require('./routes/days'));
 app.use(require('./routes/journal'));
 app.use(require('./routes/passkeys'));
 app.use(require('./routes/food'));
+app.use(require('./routes/day'));
 app.use(require('./routes/review'));
 app.use(require('./routes/insights'));
 app.use(require('./routes/telegram'));

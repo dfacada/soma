@@ -651,6 +651,69 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   r = await call('POST', '/insights/journal-tone', { items: [{ id: 'a1', text: 'A test day.' }] });
   check('journal insights are refused unless With Claude is chosen', r.status === 403, r.text);
 
+  // Say your day: one recording that fills in the day (routes/day.js). Its recording goes to Groq and its words to
+  // Claude, so both wait on a switch of its own, which is not cloud transcription's and does not open it either.
+  console.log('Say your day');
+  {
+    const said = {
+      text: 'This morning I weighed 181.4 pounds. I feel great today. For breakfast I had two scrambled eggs and a slice of toast, and for lunch a chicken burrito bowl. '
+        + 'I did forty push-ups and went for a thirty minute walk. I also meditated, and I had two drinks with dinner. '
+        + 'Work was busy and I am behind on the report for Samira, which is on my mind.',
+      moods: ['Down', 'Tired', 'Normal', 'Great', 'Focused', 'Peaceful'],
+      habits: [{ id: 'meditate', label: 'Meditate', counter: false }, { id: 'read', label: 'Read', counter: false }, { id: 'drinks', label: 'Drinks', counter: true }],
+      moves: [{ key: 'pushups', name: 'Push-ups', unit: 'reps' }, { key: 'walk', name: 'Walk', unit: 'min' }, { key: 'gym', name: 'Gym', unit: 'session' }]
+    };
+    const dayJob = { type: 'transcribe', entryId: 'day_test-entry-0001', source: 'tx-day_test-entry-0001.webm' };
+    const uploadDay = async (name) => {
+      const s = await call('POST', '/sign', { kind: 'drafts', method: 'PUT', names: [name] });
+      await fetch(s.json.urls[0].url, { method: 'PUT', body: new Uint8Array(2048), headers: { 'Content-Type': 'application/octet-stream', overwrite: 'true' } });
+    };
+
+    await call('PUT', '/settings', { settings: { cloudTranscription: true } });
+    r = await call('POST', '/day/describe', said);
+    check('the words of a day are refused until Say your day is switched on', r.status === 403 && /Say your day/.test(r.json && r.json.error), r.text);
+    await uploadDay(dayJob.source);
+    r = await call('POST', '/jobs', dayJob);
+    check('…and so is its recording, even with cloud transcription on', r.status === 403 && /Say your day/.test(r.json && r.json.error), r.text);
+    check('…and the audio it refused is shredded at once', (await leftOf(dayJob.source)) <= 1);
+
+    await call('PUT', '/settings', { settings: { sayDay: true } });
+    await upload();
+    r = await call('POST', '/jobs', { type: 'transcribe', entryId: 'test-entry-0001', source: 'tx-test-entry-0001.webm' });
+    check('Say your day being on does not send an ordinary journal recording anywhere', r.status === 403 && (await leftOf('tx-test-entry-0001.webm')) <= 1, r.text);
+    await uploadDay(dayJob.source);
+    r = await call('POST', '/jobs', dayJob);
+    check('with it on, a Say your day recording queues', r.status === 201 && r.json.status === 'queued', r.json);
+    const dayJobId = r.json && r.json.id;
+    let dj = null;
+    for (let i = 0; i < 30 && dayJobId; i++) {
+      await new Promise((res) => setTimeout(res, 2000));
+      dj = (await call('GET', '/jobs/' + dayJobId)).json;
+      if (dj.status === 'done' || dj.status === 'failed') break;
+    }
+    check('…and ends with a recorded outcome and its audio unreadable', dj && dj.status === 'failed' && ['not_configured', 'provider_error'].includes(dj.error) && (await leftOf(dayJob.source)) <= 1, dj);
+    if (dayJobId) await call('DELETE', '/jobs/' + dayJobId);
+
+    r = await call('POST', '/day/describe', { text: '   ', moods: said.moods });
+    check('no words is a 400', r.status === 400, r.text);
+    r = await call('POST', '/day/describe', { text: 'a'.repeat(20001) });
+    check('more than one reading takes is a 413', r.status === 413, r.text);
+    r = await call('POST', '/day/describe', said, { 'x-test-cap': '0' });
+    check("past the day's cap it is a 429 that names the cap, and no model is called", r.status === 429 && r.json && r.json.limit === 'day' && /daily limit/.test(r.json.error), r.json);
+    r = await call('POST', '/day/describe', said, { 'x-test-member': '2' });
+    check("one member's switch is not another's", r.status === 403, r.text);
+
+    r = await call('POST', '/day/describe', said, { 'x-test-cap': '1000' });
+    const h = r.json || {};
+    check('under the cap, Claude Haiku 5.5 reads a day', r.status === 200 && Array.isArray(h.food) && Array.isArray(h.moves), r.json);
+    check('…the weight and the mood, in the person\'s own word', h.weight === 181.4 && h.mood === 'Great', { weight: h.weight, mood: h.mood });
+    check('…the habit they did and the count they gave, and no habit they did not mention', same(h.habits, ['meditate']) && same(h.counts, [{ id: 'drinks', n: 2 }]), { habits: h.habits, counts: h.counts });
+    check('…the food, each under the meal they said', (h.food || []).some((x) => x.meal === 'breakfast' && x.kcal > 100) && (h.food || []).some((x) => x.meal === 'lunch' && x.kcal > 200) && (h.food || []).every((x) => !/drink/i.test(x.name) || x.meal === 'dinner' || x.meal === 'extra'), h.food);
+    check('…the moves they have, with the amounts they said', (h.moves || []).some((m) => m.key === 'pushups' && m.n === 40 && m.u === 'reps') && (h.moves || []).some((m) => m.key === 'walk' && m.n === 30 && m.u === 'min') && !(h.moves || []).some((m) => m.key === 'gym'), h.moves);
+    check('…and nothing of the rest of what they said', !/samira|report|busy/i.test(JSON.stringify(h)), h);
+    await call('PUT', '/settings', { settings: {} });
+  }
+
   // Data Store has no row-level security: every query is scoped by the caller in code. A second synthetic member
   // (x-test-member: 2) tries every way to see or change the first member's rows, which exist at this point.
   console.log('isolation between members');

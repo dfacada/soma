@@ -73,7 +73,7 @@ function createdMs(p) {
 
 const KINDS = ['Fitbit', 'Journal', 'Errors', 'Reminders', 'AI limits', 'Approval', 'Gone quiet', 'Messages'];
 const SEV_OF = { Fitbit: 'needs', Journal: 'needs', Errors: 'needs', Reminders: 'needs', Approval: 'needs', 'AI limits': 'watching', 'Gone quiet': 'watching', Messages: 'watching' };
-const AI_WHAT = { food: 'food estimate', tone: 'journal reading', review: 'weekly review', speech: 'reading aloud', transcribe: 'transcription' };
+const AI_WHAT = { food: 'food estimate', tone: 'journal reading', review: 'weekly review', speech: 'reading aloud', transcribe: 'transcription', day: 'Say your day' };
 
 /** The log events the issue rules read, for routes/ops.js to ask for (and nothing else). */
 const ISSUE_EVENTS = [

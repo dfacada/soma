@@ -277,6 +277,9 @@ export function SettingsScreen() {
           <Field name="Cloud transcription" help="Off by default. When on, each recording is sent to Groq to be transcribed, then blanked and deleted from the server; the transcript is encrypted into the entry on this device.">
             <Switch checked={settings.cloudTranscription} label="Cloud transcription" onChange={(v) => void save({ cloudTranscription: v }, v ? "Cloud transcription on" : "Cloud transcription off")} />
           </Field>
+          <Field name="Say your day" help="Off by default. When on, the Say your day button on Today sends that one recording to Groq to be written down, and the words to Claude, which picks out your weight, mood, habits, food and moves for you to check before anything is logged. Dayhub sends both under its own key with nothing about your account, and keeps neither. The recording is saved as a journal entry, encrypted like every other. It works whatever cloud transcription is set to.">
+            <Switch checked={settings.sayDay} label="Say your day" onChange={(v) => void save({ sayDay: v }, v ? "Say your day is on" : "Say your day is off")} />
+          </Field>
           <Field name="Read my journal for Insights"
             help={settings.journalInsights === "claude"
               ? "With Claude: before anything leaves this phone, names, places, emails, phone numbers, addresses and links are taken out, and the days go out shuffled with no dates. Dayhub sends them under its own key with nothing about your account; only a tone and a few general themes come back, kept encrypted on this phone. Nothing is stored on the server. Taking names out is careful but not perfect."

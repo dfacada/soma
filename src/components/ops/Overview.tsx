@@ -11,7 +11,9 @@ import { fmtClock, fmtIsoDay, fmtLong, localMidnight, n, pct, zone, type Overvie
 import { useOps } from "./OpsShell";
 import o from "./ops.module.css";
 
-const AI_NAMES: Record<string, string> = { food: "food", tone: "journal readings", review: "weekly reviews", transcribe: "transcriptions" };
+const AI_NAMES: Record<string, string> = { food: "food", tone: "journal readings", review: "weekly reviews", transcribe: "transcriptions", day: "Say your day" };
+/** The kinds counted as calls (reading aloud is counted in characters, and shown apart). */
+const AI_CALLS = ["food", "tone", "review", "transcribe", "day"];
 
 export function Overview() {
   const { badges } = useOps();
@@ -29,8 +31,8 @@ export function Overview() {
   if (!data) return <p className={o.empty}>Counting…</p>;
 
   const t = data.tiles;
-  const calls = ["food", "tone", "review", "transcribe"].reduce((sum, k) => sum + (t.ai[k] || 0), 0);
-  const split = ["food", "tone", "review", "transcribe"].filter((k) => t.ai[k]).sort((a, b) => (t.ai[b] || 0) - (t.ai[a] || 0)).slice(0, 2).map((k) => `${AI_NAMES[k]} ${pct(t.ai[k] || 0, calls)}`).join(", ");
+  const calls = AI_CALLS.reduce((sum, k) => sum + (t.ai[k] || 0), 0);
+  const split = AI_CALLS.filter((k) => t.ai[k]).sort((a, b) => (t.ai[b] || 0) - (t.ai[a] || 0)).slice(0, 2).map((k) => `${AI_NAMES[k]} ${pct(t.ai[k] || 0, calls)}`).join(", ");
   const weekday = new Date().toLocaleDateString("en-US", { weekday: "long" });
   const tiles: { label: string; value: string; note: string; tone?: "hot" | "bad" }[] = [
     { label: "Active today", value: n(t.seenToday), note: `of ${n(t.seenWeek)} this week` },

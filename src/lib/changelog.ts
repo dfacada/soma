@@ -12,6 +12,15 @@ export type Release = { id: string; date: string; title: string; items: string[]
 
 export const CHANGES: Release[] = [
   {
+    id: "2026-11-11",
+    date: "2026-11-11",
+    title: "Say your day",
+    items: [
+      "Say your day. There's a new button under the orb on Today: tap it and talk through your day once. Say what you weighed, how you feel, what you ate and how you moved, along with whatever is on your mind, and Dayhub picks those out and shows you a list to check. Untick anything that isn't right, tap Fill in my day, and it's logged. The recording is saved as your journal entry, encrypted like every other.",
+      "Say your day asks before it listens. It's off until you turn it on, and the first tap says what leaves your phone: that one recording goes to Groq to be written down, and the words go to Claude, which picks out your weight, mood, habits, food and moves. Dayhub sends both with nothing about your account and keeps neither. You can switch it off in Settings → Journal and vault, and use it up to 20 times a day.",
+    ],
+  },
+  {
     id: "2026-11-10",
     date: "2026-11-10",
     title: "A new name: Dayhub",
