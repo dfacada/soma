@@ -11,6 +11,10 @@
     {
       "name": "soma",
       "source": "../out"
+    },
+    {
+      "name": "dayhub",
+      "source": "../out"
     }
   ]
 }

@@ -23,7 +23,8 @@ const TARGETS = {
     project: '120218000000187219',
     api: 'https://dayhub-939530195.development.catalystserverless.com/server/soma_api/execute',
     bucket: 'dayhub-drafts',
-    origins: ['http://localhost:3000'],
+    // dayhub-ucekgwbl: the test copy's address, given by Catalyst when its Slate app was made (2026-11-11).
+    origins: ['https://dayhub-ucekgwbl.onslate.com', 'http://localhost:3000'],
   },
 };
 

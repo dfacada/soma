@@ -5,7 +5,17 @@ import { authToken, forgetToken, DEV_TEST_KEY, isDevIdentity } from "./catalyst"
 import { report } from "./log";
 import type { MoveTypes } from "./moves";
 
-export const API_BASE = "https://soma-939530195.development.catalystserverless.com/server/soma_api/execute";
+// Each copy of Dayhub talks to its own Catalyst project's API, chosen by the address the app was opened at
+// (catalyst/targets.js keeps the same projects for the deploy and test scripts). Anywhere else, such as localhost
+// under `next dev` or the screenshot rig (scripts/shots/shoot.ts reads the default from the next line), uses the default.
+const DEFAULT_API_BASE = "https://soma-939530195.development.catalystserverless.com/server/soma_api/execute";
+const API_BY_HOST: Record<string, string> = {
+  // soma: David's live app until move day (2026-11-18)
+  "dayhub-onkasary.onslate.com": DEFAULT_API_BASE,
+  // Dayhub's test copy (the Dayhub project's Development)
+  "dayhub-ucekgwbl.onslate.com": "https://dayhub-939530195.development.catalystserverless.com/server/soma_api/execute",
+};
+export const API_BASE = (typeof window !== "undefined" && API_BY_HOST[window.location.host]) || DEFAULT_API_BASE;
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public body?: unknown) { super(message); }
