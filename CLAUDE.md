@@ -54,7 +54,7 @@ node scripts/test-round.mjs        # push-up round rules: streaks, rest days, po
 npm run check      # types + lint + offline rule suites; run before every commit
 npm run test:live  # API and vault suites against the Development environment
 npm run dev        # Next.js dev server
-npm run build      # static export to out/
+npm run build      # static export to out/, then the landing page (site/README.md) copied to out/landing/
 npm run shots      # iPhone-size screenshots of every screen, Night and Light, on fixture data (needs npm run dev): docs/POLISH.md
 node scripts/shots/status.mjs   # live page of a polish run at localhost:3100 (preview_start polish-status)
 node docs/checks/prototype-smoke-mobile.js docs/prototype/soma-prototype.html   # prototype tap-through (fake DOM)

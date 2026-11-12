@@ -3,8 +3,11 @@
 The public page for Dayhub: what it is, its best parts to try on the page, and a way in. It is a plain static site,
 separate from the Next.js app in `src/`. `site/public/` is exactly what gets served; there is no build step.
 
-Not deployed anywhere yet. It waits for Dayhub's own domain (see "Deploying it" below). Until then it is previewed as a
-private Artifact on claude.ai.
+Until Dayhub has its own domain, the page is also served at the app's address, https://dayhub-onkasary.onslate.com/landing/
+(David, 2026-11-11). `npm run build` copies it there after `next build` (the `postbuild` script, `tools/into-app.mjs`),
+so every deploy of the app carries the page as `site/public` has it. The copy gets three lines in its head: a base path
+(Slate answers `/landing` without the slash too), a hop from `/landing` to `/landing/`, and noindex. The app's front
+page is unchanged. It is also previewed as a private Artifact on claude.ai.
 
 ## What's where
 
@@ -17,11 +20,14 @@ private Artifact on claude.ai.
 - `public/shots/`: real screens of the app, Night and Light, from the screenshot rig's made-up member.
 - `public/fonts/`: the app's three typefaces, the Latin files the app itself ships, with their licence (`OFL.txt`).
 - `public/.catalyst/slate-config.toml`: tells Slate this is a static site.
-- `tools/serve.mjs`, `tools/shots.mjs`, `tools/preview.mjs`: below.
+- `tools/serve.mjs`, `tools/shots.mjs`, `tools/preview.mjs`, `tools/into-app.mjs`: below.
 
 ## Looking at it
 
-- On this machine: `node site/tools/serve.mjs`, then http://localhost:4400 (or `preview_start dayhub-site`).
+- On the web: https://dayhub-onkasary.onslate.com/landing/, after the next deploy of the app once the page changes.
+- On this machine: `node site/tools/serve.mjs`, then http://localhost:4400 (or `preview_start dayhub-site`). After
+  `npm run build`, `node site/tools/serve.mjs --root out --port 4401` serves the app's build, with the page at
+  /landing/ as Slate serves it.
 - On a phone, before there is an address: `node site/tools/preview.mjs <folder>` writes an Artifact version of the page
   (the head, the stylesheet with its fonts inlined, and both scripts in one fragment) and copies the screens beside it.
   Publish `<folder>/index.html` as an Artifact with every `<folder>/shots/*` file as one of its `files`. The current
@@ -58,3 +64,5 @@ day (18 November).
    `cache-control: public, max-age=31536000` on every file, the page included, and a visitor's browser keeps a stale
    copy for a year (`catalyst/SPIKE.md`). Then map the bare domain under Domain Mapping.
 5. Nothing in the app's allow-lists needs this address: the page calls no API, signs nobody in and fetches nothing.
+6. Decide whether the app's address keeps /landing/. Once the bare domain serves the page, take the `postbuild` line out
+   of package.json, or keep it as a second copy.

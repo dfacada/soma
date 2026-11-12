@@ -350,7 +350,9 @@ svg { display: block; flex-shrink: 0; }
 
 /* Say your day */
 .say-clock { font-size: 15px; color: var(--ink); }
-.say-stage { position: relative; margin-top: 16px; min-height: 236px; }
+.say-stage { position: relative; margin-top: 16px; }
+/* Room for the words while they come in, so the card doesn't jump; none before it starts. */
+.say[data-phase] .say-stage { min-height: 236px; }
 .say-start { display: flex; align-items: center; gap: 16px; }
 .say-mic {
   position: relative; flex: none; width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; color: var(--on-hue);
