@@ -1,6 +1,6 @@
 // What closes a day.  node --import ./scripts/ts-resolve.mjs scripts/test-today.mjs
 import { dayStatus, headline, since, streak } from "../src/lib/today.ts";
-import { DEFAULT_SETTINGS } from "../src/lib/settings.ts";
+import { DEFAULT_SETTINGS, NEWCOMER_FOOD, mergeSettings } from "../src/lib/settings.ts";
 
 let passed = 0; const failures = [];
 const check = (name, got, want) => { if (JSON.stringify(got) === JSON.stringify(want)) { passed++; console.log("  ok   " + name); } else { failures.push(name); console.log("  FAIL " + name, "\n       got ", JSON.stringify(got), "\n       want", JSON.stringify(want)); } };
@@ -31,6 +31,14 @@ check("switched off: four tasks, closed without weight, four segments", [st.done
 st = dayStatus(full("d", 182.4), optional);
 check("switched off: a logged weight is kept but does not count", [st.doneCount, st.taskCount, st.weightDone], [4, 4, true]);
 check("a fresh day says how many things close it", [headline(dayStatus(undefined, required), 0, 9).sub, headline(dayStatus(undefined, optional), 0, 9).sub], ["Good morning. Five things close it.", "Good morning. Four things close it."]);
+
+console.log("their own meals, and meals with no numbers");
+const own = mergeSettings(NEWCOMER_FOOD);
+const ticked = { name: "", kcal: 0, protein: 0 };
+st = dayStatus({ log: { day: "d", meals: { breakfast: ticked, lunch: meal, snack: true, dinner: false }, extras: [] }, entries: 0 }, own);
+check("a meal ticked with no numbers is eaten; a bare tick with no usual meal adds nothing", [st.meals, st.kcal, st.protein, st.leftMeals], [3, 500, 40, ["dinner"]]);
+st = dayStatus({ log: { day: "d", meals: { breakfast: ticked, lunch: ticked, snack: ticked, dinner: ticked }, extras: [] }, entries: 0 }, own);
+check("four ticked meals close food, with nothing counted", [st.foodDone, st.kcal], [true, 0]);
 
 console.log("streak");
 const today = new Date(2026, 8, 17, 12);

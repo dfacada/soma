@@ -14,13 +14,20 @@ export type Meal = "breakfast" | "lunch" | "snack" | "dinner";
 export type PlannedMeal = { name: string; kcal: number; protein: number; carbs?: number; fat?: number };
 export type Snack = { name: string; kcal: number; protein?: number; carbs?: number; fat?: number; portion?: string };
 
+/** Which of the Macros plans the four meals came from, or "own": the person's own usual meals, which fill in as they
+ *  log (everyone who joins from 2026-11-11 starts there, Session.tsx). */
+export type PlanChoice = MealPlanId | "own";
+
 export type Settings = {
   moods: Mood[];
   habits: Habit[];
   /** Which of the Macros plans the four meals came from, and which bowl build fills the Standard plan's two bowls. */
-  mealPlan: MealPlanId;
+  mealPlan: PlanChoice;
   bowl: BowlId;
-  plan: Record<Meal, PlannedMeal>;
+  /** The four meals one tap logs: a plan's, or the person's own usual meals. null is no usual meal there yet, so a
+   *  tap asks what it was (MealSheet.tsx) and can keep the answer as the usual. */
+  plan: Record<Meal, PlannedMeal | null>;
+  /** Daily targets. A food target of 0 is no target: nothing is measured against it and nothing says "left". */
   goals: { kcal: number; protein: number; carbs: number; fat: number; steps: number };
   /** Sleep to aim for, in minutes: the sleep pill fills toward it. 8 hours unless changed, as Fitbit's own default. */
   sleepGoal: number;
@@ -129,6 +136,22 @@ export const DEFAULT_SETTINGS: Settings = {
   brief: { on: false, time: "21:00", telegram: false, sent: "" },
 };
 
+/** No usual meals yet: each fills in the first time the person logs that meal and keeps it. */
+export const OWN_PLAN: Record<Meal, PlannedMeal | null> = { breakfast: null, lunch: null, snack: null, dinner: null };
+
+/** What a new account stores on its first open (Session.tsx; David, 2026-11-11: "their own meals"): no plan, no
+ *  targets and no quick snacks, all of them David's. Nothing stored still reads as his Macros setup above, so nobody
+ *  already on Dayhub sees a change. */
+export const NEWCOMER_FOOD: Pick<Settings, "mealPlan" | "plan" | "goals" | "snacks"> = {
+  mealPlan: "own",
+  plan: OWN_PLAN,
+  goals: { ...DEFAULT_SETTINGS.goals, kcal: 0, protein: 0, carbs: 0, fat: 0 },
+  snacks: [],
+};
+
+/** Whether a food target is set: 0 is none. */
+export const hasTarget = (n: number) => Number.isFinite(n) && n > 0;
+
 /** A plan's four meals as the day's plan, with the chosen bowl build in the Standard plan's two bowl slots. */
 export function planMeals(planId: MealPlanId, bowl: BowlId): Record<Meal, PlannedMeal> {
   const pick = ({ name, kcal, protein, carbs, fat }: PlannedMeal): PlannedMeal => ({ name, kcal, protein, carbs, fat });
@@ -155,12 +178,18 @@ export function mergeSettings(stored: unknown): Settings {
   const d = DEFAULT_SETTINGS;
   const list = <T,>(v: T[] | undefined, fallback: T[]) => (Array.isArray(v) && v.length ? v : fallback);
   const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback);
+  const mealPlan: PlanChoice = s.mealPlan === "own" || (s.mealPlan && s.mealPlan in MEAL_PLANS) ? s.mealPlan : d.mealPlan;
   return {
     moods: cleanMoods(s.moods, d.moods),
     habits: list(s.habits, d.habits),
-    mealPlan: s.mealPlan && s.mealPlan in MEAL_PLANS ? s.mealPlan : d.mealPlan,
+    mealPlan,
     bowl: s.bowl && s.bowl in BOWL_VARIANTS ? s.bowl : d.bowl,
-    plan: Object.fromEntries(MEALS.map((m) => { const kept = s.plan?.[m]; return [m, kept && kept.name && !SAMPLE_MEALS.includes(kept.name) ? kept : d.plan[m]]; })) as Record<Meal, PlannedMeal>,
+    // A meal kept as null is a usual meal not made yet; on their own meals a missing one is too, never David's.
+    plan: Object.fromEntries(MEALS.map((m) => {
+      const kept = s.plan?.[m];
+      if (kept === null) return [m, null];
+      return [m, kept && kept.name && !SAMPLE_MEALS.includes(kept.name) ? kept : mealPlan === "own" ? null : d.plan[m]];
+    })) as Record<Meal, PlannedMeal | null>,
     goals: { ...d.goals, ...(s.goals || {}) },
     sleepGoal: typeof s.sleepGoal === "number" && s.sleepGoal >= 240 && s.sleepGoal <= 720 ? Math.round(s.sleepGoal) : d.sleepGoal,
     snacks: Array.isArray(s.snacks) && !(s.snacks.length > 0 && s.snacks.every((x) => SAMPLE_SNACKS.includes(x?.name))) ? s.snacks : d.snacks,

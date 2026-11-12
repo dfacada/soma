@@ -13,7 +13,7 @@
 import { useGoTab } from "./tabs";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Overlay, Sheet, StatPill, Toast, type MedallionState, type OrbBead } from "@/components/ui";
-import { MEALS } from "@/lib/settings";
+import { hasTarget, MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
 import { hm } from "@/lib/sleep";
 import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS, type TaskKey } from "@/lib/today";
 import { haptic } from "@/lib/haptics";
@@ -32,6 +32,7 @@ import { describeFood } from "@/lib/say-api";
 import { ExperimentToday } from "./Experiment";
 import { DayClosed, FoodMoment } from "./Moments";
 import { MoodFace } from "./MoodFace";
+import { MealSheet } from "./MealSheet";
 import { MoveSheet, moveIcon } from "./MoveSheet";
 import { MovesChooser } from "./MovesChooser";
 import { OTHER_MOVE, amountText, applyMove, closesDay, goalText, loggedOf, mainOf, movesOf, num, progressOf, savedLine, unitWord, type Move, type MoveSave } from "@/lib/moves";
@@ -69,6 +70,9 @@ export function Today() {
   const [moveSheet, setMoveSheet] = useState<string | null | false>(false);
   const [chooser, setChooser] = useState(false);
   const [weightSheet, setWeightSheet] = useState(false);
+  // A meal with no usual yet (their own meals): its tap asks what it was.
+  const [mealSheet, setMealSheet] = useState<Meal | null>(null);
+  const closeMealSheet = useCallback(() => setMealSheet(null), []);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const say = useCallback((m: string, ms = 1800) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(null), ms); }, []);
@@ -186,11 +190,26 @@ export function Today() {
   const listening = voice.state === "listening";
   const foodBusy = voice.state === "transcribing" || reading;
   const foodState: MedallionState = listening ? "rec" : st.foodDone ? "done" : st.meals ? "part" : "idle";
+  const kcalSet = hasTarget(settings.goals.kcal);
+  const lastUsual = st.leftMeals.length === 1 ? settings.plan[st.leftMeals[0]] : null;
   const foodSub = st.foodDone
-    ? `All four eaten · ${fmt(settings.goals.kcal)} kcal goal`
+    ? `All four eaten · ${kcalSet ? `${fmt(settings.goals.kcal)} kcal goal` : `${fmt(st.kcal)} kcal`}`
     : st.leftMeals.length === 1
-      ? `${cap(st.leftMeals[0])} left: ${settings.plan[st.leftMeals[0]].name}`
+      ? `${cap(st.leftMeals[0])} left${lastUsual ? `: ${lastUsual.name}` : ""}`
       : `${st.leftMeals.length} meals left${sayFood ? " · tap to say what you ate" : ""}`;
+  // A meal tap: the usual meal in one tap, or, with no usual yet, the sheet that asks what it was.
+  const tapMeal = (m: Meal) => {
+    const usual = settings.plan[m];
+    if (!eaten[m] && !usual) return setMealSheet(m);
+    haptic(!eaten[m] && st.leftMeals.length === 1 ? "done" : "tap");
+    change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] || !usual ? false : { ...usual }; });
+  };
+  const logMeal = (m: Meal, x: PlannedMeal, usual: boolean) => {
+    change("day-logs", k, (d) => { d.log.meals[m] = { ...x }; });
+    setMealSheet(null);
+    say(x.name ? `${cap(m)} · ${fmt(x.kcal)} kcal` : `${cap(m)} ticked`);
+    if (usual) void saveSettings({ plan: { ...settings.plan, [m]: { ...x } } }).catch((e) => { report("food", "usual_save_failed", e); say("Logged, but couldn't keep it as your usual", 3500); });
+  };
   const foodLine = listening ? "Listening. Say what you ate, then tap again."
     : voice.state === "transcribing" ? "Writing it down…"
     : reading ? "Working out what you ate…"
@@ -451,7 +470,7 @@ export function Today() {
                   </span>
                   {sayFood && <span className={`${t.act} ${listening ? t.actRec : ""}`}><Icon name={listening ? "pause" : "mic"} size={24} strokeWidth={2} /></span>}
                 </span>
-                <span className={t.bar}><i style={{ width: `${Math.min(100, (st.kcal / Math.max(1, settings.goals.kcal)) * 100).toFixed(1)}%` }} /></span>
+                {kcalSet && <span className={t.bar}><i style={{ width: `${Math.min(100, (st.kcal / Math.max(1, settings.goals.kcal)) * 100).toFixed(1)}%` }} /></span>}
               </>
             );
             return sayFood
@@ -462,8 +481,8 @@ export function Today() {
           {/* The meal taps are their own: they never start a recording. */}
           <div className={t.toggles}>
             {MEALS.map((m) => (
-              <button key={m} type="button" className={`${t.toggle} ${eaten[m] ? t.toggleOn : ""}`} aria-pressed={Boolean(eaten[m])} aria-label={`${cap(m)}: ${settings.plan[m].name}`}
-                onClick={() => { haptic(!eaten[m] && st.leftMeals.length === 1 ? "done" : "tap"); change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; }); }}>
+              <button key={m} type="button" className={`${t.toggle} ${eaten[m] ? t.toggleOn : ""}`} aria-pressed={Boolean(eaten[m])}
+                aria-label={`${cap(m)}: ${settings.plan[m]?.name ?? (eaten[m] ? "eaten" : "say what it was")}`} onClick={() => tapMeal(m)}>
                 <Icon name={m} size={18} /><span>{cap(m)}</span>
               </button>
             ))}
@@ -544,6 +563,8 @@ export function Today() {
         <Button block onClick={closeCheckin}>Done</Button>
       </Sheet>
       <WeightSheet open={weightSheet} onClose={closeWeight} current={st.weight} last={lastWeight} onSave={saveWeight} />
+      <MealSheet meal={mealSheet} onClose={closeMealSheet} known={mealSheet ? knownFromDays(map, settings) : []} estimateOn={settings.foodEstimate}
+        closes={mealSheet !== null && st.leftMeals.length === 1 && st.leftMeals[0] === mealSheet} onLog={logMeal} />
       <SleepSheet open={sleepSheet} onClose={closeSleep} day={k} isToday={isToday} />
       <StepsSheet open={stepsSheet} onClose={closeSteps} day={k} />
       <MoveSheet open={moveSheet !== false} onClose={closeMove} moves={moves} start={moveSheet || null} activity={act} goalFor={goalOf}

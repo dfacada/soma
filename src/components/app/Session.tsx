@@ -10,7 +10,7 @@ import { catalystAuth, currentUser, isDevIdentity } from "@/lib/catalyst";
 import { applyLook } from "@/lib/look";
 import { BUILD, isInstalled, report } from "@/lib/log";
 import { withMove } from "@/lib/moves";
-import { mergeSettings, type Settings } from "@/lib/settings";
+import { mergeSettings, NEWCOMER_FOOD, type Settings } from "@/lib/settings";
 import { dayKey } from "@/lib/today";
 import { acceptInvite, cleanCode, forgetInvite, keptInvite } from "@/lib/invite";
 import { forgetVaultKeys } from "@/lib/vault-session";
@@ -114,9 +114,11 @@ export function SessionGate({ children }: { children: ReactNode }) {
       // A first open: no release ever seen and no day joined yet (a new account's settings are empty). Today becomes
       // the day this person joined, so the week strips never count the days before it as missed. An empty list of
       // moves says they have not chosen how they move yet: without it they would get the push-ups and activity types
-      // of settings from before moves (settings.ts), and nobody new starts with push-ups.
+      // of settings from before moves (settings.ts), and nobody new starts with push-ups. Their food starts as their
+      // own (NEWCOMER_FOOD): no plan, no targets, no quick snacks, where nothing stored would read as David's.
       const fresh = !r.stored.seenChanges && !r.stored.joined;
-      stored = fresh ? { ...r.stored, joined: dayKey(new Date()), ...(Array.isArray(r.stored.moves) ? {} : { moves: [] }) } : r.stored;
+      const food = Object.fromEntries(Object.entries(NEWCOMER_FOOD).filter(([key]) => !(key in r.stored)));
+      stored = fresh ? { ...r.stored, joined: dayKey(new Date()), ...(Array.isArray(r.stored.moves) ? {} : { moves: [] }), ...food } : r.stored;
       // Joining a round with a link adds the move it counts (made main for someone with none), so a new person who
       // came in through a push-up round has push-ups to log.
       const more = r.joinedKind ? withMove(mergeSettings(stored), r.joinedKind) : null;

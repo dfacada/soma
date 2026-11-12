@@ -8,17 +8,20 @@
 // (food-match.ts) and asks the estimator (routes/food.js) only for something new.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, ApiError, type Extra } from "@/lib/api";
-import { matchFood, type Known } from "@/lib/food-match";
+import { api, type Extra } from "@/lib/api";
+import type { Known } from "@/lib/food-match";
+import { lookUp, type FoodDraft } from "@/lib/food-lookup";
 import { applySaid, knownFromDays, saidLine, type Said } from "@/lib/food-say";
 import { haptic } from "@/lib/haptics";
 import { report } from "@/lib/log";
-import { BOWL_VARIANTS, MEAL_PLANS, RECIPES, type Recipe } from "@/lib/food-data";
-import { MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
+import { BOWL_VARIANTS, MEAL_PLANS, RECIPES, type MealPlanId, type Recipe } from "@/lib/food-data";
+import { hasTarget, MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
 import { cap, dayStatus } from "@/lib/today";
-import { Button, ButtonLink, Card, Chip, Icon, Input, Row, Sheet, Toast } from "@/components/ui";
+import { Button, Card, Chip, Icon, Input, Row, Sheet, Toast } from "@/components/ui";
 import { DayBanner } from "./DayBanner";
 import { FoodSay } from "./FoodSay";
+import { FoodSetUp } from "./FoodSetUp";
+import { MealSheet } from "./MealSheet";
 import { useDays } from "./Days";
 import { useSession } from "./Session";
 import a from "./app.module.css";
@@ -49,6 +52,9 @@ export function Food() {
   const [toast, setToast] = useState<string | null>(null);
   const say = useCallback((m: string) => { setToast(m); window.setTimeout(() => setToast(null), 1800); }, []);
   const closeSwap = useCallback(() => setSwap(null), []);
+  // A meal with no usual yet asks what it was (their own meals).
+  const [mealSheet, setMealSheet] = useState<Meal | null>(null);
+  const closeMealSheet = useCallback(() => setMealSheet(null), []);
 
   const known = useMemo(() => knownFromDays(map, settings), [map, settings]);
 
@@ -64,14 +70,30 @@ export function Food() {
     void saveSettings({ foodSetUp: true }).catch((e) => report("food", "food_setup_save_failed", e, undefined, "warn"));
   };
   const left = g.kcal - st.kcal;
+  const kcalSet = hasTarget(g.kcal);
   const mealsEaten = MEALS.filter((m) => eaten[m]).length;
+  // Their own meals: no plan, no recipe book, and a meal with no usual yet asks what it was.
+  const own = settings.mealPlan === "own";
 
   const addExtra = (x: Extra) => { change("day-logs", k, (d) => { d.log.extras = [...d.log.extras, x]; }); say(`Added · ${x.kcal} kcal`); };
   // What you ate in place of the plan: the slot holds a snapshot, so the plan itself is untouched and the meal counts.
+  // A snapshot with no name is a meal ticked with no numbers.
   const setMeal = (m: Meal, x: PlannedMeal) => {
     const had = eaten[m];
     change("day-logs", k, (d) => { d.log.meals[m] = { ...x }; });
-    say(had ? `${cap(m)} replaced · ${x.kcal} kcal` : `${cap(m)} · ${x.kcal} kcal`);
+    say(!x.name ? `${cap(m)} ticked` : had ? `${cap(m)} replaced · ${x.kcal} kcal` : `${cap(m)} · ${x.kcal} kcal`);
+  };
+  // Keep a meal as the usual one: the next time, one tap logs it.
+  const keepUsual = (m: Meal, x: PlannedMeal) => {
+    void saveSettings({ plan: { ...settings.plan, [m]: { ...x } } }).then(
+      () => say(`Your usual ${m} now`),
+      (e) => { report("food", "usual_save_failed", e); say("Couldn't keep it as your usual"); },
+    );
+  };
+  const logMeal = (m: Meal, x: PlannedMeal, usual: boolean) => {
+    setMealSheet(null);
+    setMeal(m, x);
+    if (usual) keepUsual(m, x);
   };
 
   // A day said in one go, in one save.
@@ -99,41 +121,42 @@ export function Food() {
       {!isToday && <DayBanner view={view} onBack={() => setView(null)} />}
       {unsaved && <div className={a.unsaved} role="alert"><span>Some changes are not saved yet.</span><Button size="sm" variant="secondary" onClick={retry}>Retry</Button></div>}
 
-      {/* A newcomer starts on Dayhub's standard plan and targets, which were made for one particular person. Until they
-          say otherwise, say so plainly, once: set their own, or keep these (settings.foodSetUp). */}
+      {/* Someone new says how they want to log food: their own meals, with targets if they want them, or a ready-made
+          plan chosen knowingly (settings.foodSetUp). Nobody starts on David's plan (2026-11-11). */}
       {isToday && settings.joined !== "" && !settings.foodSetUp && (
         <Card>
-          <span className="eb">Your plan</span>
-          <p className="muted" style={{ fontSize: 14, lineHeight: 1.5 }}>
-            Everyone starts on the same plan and targets: <span className="m">{g.kcal.toLocaleString("en-US")}</span> kcal
-            and <span className="m">{g.protein}</span> g protein a day. Make them yours in Settings, or keep these.
-          </p>
-          <div className={a.rowButtons}>
-            <ButtonLink href="/settings/#food" size="sm" variant="food" onClick={() => { haptic(); markFoodSetUp(); }}>Set my targets</ButtonLink>
-            <Button size="sm" variant="secondary" onClick={() => { haptic(); markFoodSetUp(); }}>Keep these</Button>
-          </div>
+          <span className="eb">Your food</span>
+          <FoodSetUp say={say} onDone={markFoodSetUp} />
         </Card>
       )}
 
       {/* The day's calories, the bar split by what was eaten (each meal, then anything else), and the macros. Every
-          portion is the same green, notched apart, so the bar reads as one total and not as a key to the three macros. */}
+          portion is the same green, notched apart, so the bar reads as one total and not as a key to the three macros.
+          With no target there is nothing to fill or be left of: the numbers alone. */}
       <Card>
         <span className="eb">{isToday ? "Eaten today" : "Eaten that day"}</span>
         <div className={sc.kcal}>
-          <span key={st.kcal} className={`dc ${sc.roll}`}>{fmt(st.kcal)}</span><span className="m muted" style={{ fontSize: 13 }}>/ {fmt(g.kcal)} kcal</span>
-          <span className={`m ${sc.left} ${left < 0 ? sc.over : ""}`}>{left < 0 ? `${fmt(-left)} over` : `${fmt(left)} left`}</span>
+          <span key={st.kcal} className={`dc ${sc.roll}`}>{fmt(st.kcal)}</span><span className="m muted" style={{ fontSize: 13 }}>{kcalSet ? `/ ${fmt(g.kcal)} kcal` : "kcal"}</span>
+          {kcalSet && <span className={`m ${sc.left} ${left < 0 ? sc.over : ""}`}>{left < 0 ? `${fmt(-left)} over` : `${fmt(left)} left`}</span>}
         </div>
-        <div className={sc.split} role="img" aria-label={`${fmt(st.kcal)} of ${fmt(g.kcal)} kcal`}>
-          {[...MEALS.filter((m) => eaten[m]).map((m) => (typeof eaten[m] === "object" ? (eaten[m] as PlannedMeal).kcal : settings.plan[m].kcal)), ...extras.map((x) => x.kcal)].map((kc, i) => (
-            <i key={i} style={{ width: `${Math.min(100, (kc / Math.max(1, g.kcal)) * 100).toFixed(1)}%` }} />
-          ))}
-        </div>
+        {kcalSet && (
+          <div className={sc.split} role="img" aria-label={`${fmt(st.kcal)} of ${fmt(g.kcal)} kcal`}>
+            {[...MEALS.filter((m) => eaten[m]).map((m) => (typeof eaten[m] === "object" ? (eaten[m] as PlannedMeal).kcal : settings.plan[m]?.kcal ?? 0)), ...extras.map((x) => x.kcal)].map((kc, i) => (
+              <i key={i} style={{ width: `${Math.min(100, (kc / Math.max(1, g.kcal)) * 100).toFixed(1)}%` }} />
+            ))}
+          </div>
+        )}
         <div className={sc.macros}>
-          {([["Protein", st.protein, g.protein], ["Carbs", st.carbs, g.carbs], ["Fat", st.fat, g.fat]] as const).map(([label, v, max]) => (
+          {([["Protein", st.protein, g.protein], ["Carbs", st.carbs, g.carbs], ["Fat", st.fat, g.fat]] as const).map(([label, v, max]) => hasTarget(max) ? (
             <div key={label} role="progressbar" aria-label={label} aria-valuenow={v} aria-valuemin={0} aria-valuemax={max}>
               <div className="eb">{label}</div>
               <div className={`m ${sc.macroValue}`}>{v}<span className="muted" style={{ fontSize: 12 }}> / {max} g</span></div>
               <div className={sc.macroTrack}><i style={{ width: `${Math.min(100, (v / Math.max(1, max)) * 100).toFixed(1)}%` }} /></div>
+            </div>
+          ) : (
+            <div key={label}>
+              <div className="eb">{label}</div>
+              <div className={`m ${sc.macroValue}`}>{v}<span className="muted" style={{ fontSize: 12 }}> g</span></div>
             </div>
           ))}
         </div>
@@ -152,29 +175,43 @@ export function Food() {
           {MEALS.map((m) => {
             const slot = eaten[m];
             const done = Boolean(slot);
-            // Show what was actually eaten if it differs from today's plan.
-            const shown: PlannedMeal = typeof slot === "object" ? slot : settings.plan[m];
-            const book = findRecipe(shown.name, settings.mealPlan);
+            const usual = settings.plan[m];
+            // Show what was actually eaten if it differs from today's plan. A meal ticked with no numbers has no name,
+            // and on their own meals a meal can have no usual yet.
+            const shown: PlannedMeal | null = typeof slot === "object" ? slot : usual;
+            const named = Boolean(shown?.name);
+            const book = !own && shown && named ? findRecipe(shown.name, settings.mealPlan as MealPlanId) : null;
             const open = openMeal === m;
+            // Logged differently from the usual meal (or with none yet): offer to keep it.
+            const keepable = own && done && named && typeof slot === "object" && slot.name !== usual?.name;
+            const tap = () => {
+              if (!done && !usual) return setMealSheet(m);
+              haptic(done ? "tap" : "done");
+              change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] || !usual ? false : { ...usual }; });
+            };
             return (
               <div key={m} className={`${sc.meal} ${done ? sc.mealOn : ""}`}>
                 <div className={sc.mealRow}>
-                  <button type="button" className={sc.mealCheck} aria-pressed={done} aria-label={done ? `${cap(m)} eaten. Undo` : `Mark ${m} eaten`}
-                    onClick={() => { haptic(done ? "tap" : "done"); change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] ? false : { ...settings.plan[m] }; }); }}>
+                  <button type="button" className={sc.mealCheck} aria-pressed={done} aria-label={done ? `${cap(m)} eaten. Undo` : usual ? `Mark ${m} eaten` : `Log ${m}`}
+                    onClick={tap}>
                     <Icon name={done ? "check" : m} size={18} strokeWidth={done ? 2.6 : 1.75} />
                   </button>
-                  <button type="button" className={sc.mealMain} aria-expanded={open} onClick={() => setOpenMeal(open ? null : m)}>
-                    <span className={sc.mealText}><span className="eb">{cap(m)}</span><span className={sc.mealName}>{shown.name}</span></span>
-                    <span className={`m ${sc.mealKcal}`}>{shown.kcal}</span>
+                  <button type="button" className={sc.mealMain} aria-expanded={!done && !usual ? undefined : open} onClick={() => (!done && !usual ? setMealSheet(m) : setOpenMeal(open ? null : m))}>
+                    <span className={sc.mealText}>
+                      <span className="eb">{cap(m)}</span>
+                      <span className={sc.mealName} style={named ? undefined : { color: "var(--muted)" }}>{named ? shown!.name : done ? "Eaten, no numbers" : "Tap to log it"}</span>
+                    </span>
+                    <span className={`m ${sc.mealKcal}`}>{named ? shown!.kcal : done ? "—" : ""}</span>
                     <span className={sc.mealMore} aria-hidden><Icon name="chevron" size={14} /></span>
                   </button>
                 </div>
-                {open && (
+                {open && (done || usual) && (
                   <div className={sc.mealOpen}>
-                    <span className="muted" style={{ fontSize: 13 }}>{shown.protein} g protein{shown.carbs !== undefined ? ` · ${shown.carbs} g carbs · ${shown.fat ?? 0} g fat` : ""}</span>
+                    {named && <span className="muted" style={{ fontSize: 13 }}>{shown!.protein} g protein{shown!.carbs !== undefined ? ` · ${shown!.carbs} g carbs · ${shown!.fat ?? 0} g fat` : ""}</span>}
                     <div className={a.rowButtons}>
-                      {!done && <Button size="sm" variant="secondary" onClick={() => setSwap(m)}>Swap meal</Button>}
-                      <Button size="sm" variant="secondary" onClick={() => ateSomethingElse(m)}>Ate something else</Button>
+                      {!own && !done && <Button size="sm" variant="secondary" onClick={() => setSwap(m)}>Swap meal</Button>}
+                      <Button size="sm" variant="secondary" onClick={() => (own ? setMealSheet(m) : ateSomethingElse(m))}>{done && !named ? "Add what it was" : "Ate something else"}</Button>
+                      {keepable && <Button size="sm" variant="secondary" onClick={() => { haptic(); keepUsual(m, slot as PlannedMeal); }}>Make it my usual</Button>}
                       {book && <Button size="sm" variant="secondary" onClick={() => setRecipe(book)}>Recipe</Button>}
                     </div>
                   </div>
@@ -189,7 +226,7 @@ export function Food() {
         <div className={a.entryHead}>
           <span className="eb">Something else</span>
           {/* Mono for the number, the body face for the words, as the other cards' notes. */}
-          <span className={extras.length ? "m muted" : "muted"} style={{ fontSize: 12 }}>{extras.length ? `${extras.reduce((n, x) => n + x.kcal, 0)} kcal` : "off-plan items"}</span>
+          <span className={extras.length ? "m muted" : "muted"} style={{ fontSize: 12 }}>{extras.length ? `${extras.reduce((n, x) => n + x.kcal, 0)} kcal` : own ? "snacks and extras" : "off-plan items"}</span>
         </div>
         {extras.map((x, i) => (
           <Row key={i} name={x.name} sub={x.protein ? `${x.protein} g protein` : undefined} value={x.kcal}
@@ -203,22 +240,27 @@ export function Food() {
         <ExtraForm onAdd={addExtra} onMeal={setMeal} eaten={eaten} known={known} estimateOn={settings.foodEstimate} slot={slot} onSlot={setSlot} fieldRef={field} />
       </Card>
 
-      <Card>
-        <div className={a.entryHead}>
-          <span className="eb">Recipes</span>
-          <span className="muted" style={{ fontSize: 12 }}>{MEAL_PLANS[settings.mealPlan].name} plan and any-plan dishes</span>
-        </div>
-        {RECIPES.filter((r) => r.group === settings.mealPlan || r.group === "general").map((r) => (
-          <button key={r.id} type="button" className={`${a.pickRow} ${a.bookRow}`} onClick={() => setRecipe(r)}>
-            <span className={a.pickName}><span style={{ fontWeight: 500 }}>{r.name}</span><span className="muted" style={{ fontSize: 12 }}>{r.isMealPrep ? `Meal prep · makes ${r.servings}` : r.servings > 1 ? `Makes ${r.servings}` : "Single serving"}{r.time ? ` · ${r.time}` : ""}</span></span>
-            <span className="m" style={{ fontSize: 13 }}>{r.kcal}</span>
-          </button>
-        ))}
-      </Card>
+      {/* The recipe book goes with a plan: its dishes are the plan's meals. */}
+      {!own && (
+        <Card>
+          <div className={a.entryHead}>
+            <span className="eb">Recipes</span>
+            <span className="muted" style={{ fontSize: 12 }}>{MEAL_PLANS[settings.mealPlan as MealPlanId].name} plan and any-plan dishes</span>
+          </div>
+          {RECIPES.filter((r) => r.group === settings.mealPlan || r.group === "general").map((r) => (
+            <button key={r.id} type="button" className={`${a.pickRow} ${a.bookRow}`} onClick={() => setRecipe(r)}>
+              <span className={a.pickName}><span style={{ fontWeight: 500 }}>{r.name}</span><span className="muted" style={{ fontSize: 12 }}>{r.isMealPrep ? `Meal prep · makes ${r.servings}` : r.servings > 1 ? `Makes ${r.servings}` : "Single serving"}{r.time ? ` · ${r.time}` : ""}</span></span>
+              <span className="m" style={{ fontSize: 13 }}>{r.kcal}</span>
+            </button>
+          ))}
+        </Card>
+      )}
 
       <Sheet open={swap !== null} title={swap ? `Swap ${swap}` : ""} onClose={closeSwap}>
-        {swap && <RecipePicker current={settings.plan[swap].name} onPick={(r) => void pick(swap, r)} />}
+        {swap && <RecipePicker current={settings.plan[swap]?.name ?? ""} onPick={(r) => void pick(swap, r)} />}
       </Sheet>
+      <MealSheet meal={mealSheet} onClose={closeMealSheet} known={known} estimateOn={settings.foodEstimate}
+        closes={mealSheet !== null && st.leftMeals.length === 1 && st.leftMeals[0] === mealSheet} onLog={logMeal} />
       <Sheet open={recipe !== null} title={recipe?.name || ""} onClose={closeRecipe}>
         {recipe && <RecipeBody r={recipe} />}
       </Sheet>
@@ -251,12 +293,6 @@ function RecipeBody({ r }: { r: Recipe }) {
   );
 }
 
-type Draft = { name: string; kcal: string; protein: string; carbs: string; fat: string; from: string };
-
-const FROM: Record<Known["source"], string> = { logged: "from what you logged before", snack: "from your quick snacks", plan: "from your plan", recipe: "from the recipe book" };
-const draftOf = (item: { name: string; kcal: number; protein?: number; carbs?: number; fat?: number }, from: string): Draft =>
-  ({ name: item.name, kcal: String(item.kcal), protein: String(item.protein ?? ""), carbs: String(item.carbs ?? ""), fat: String(item.fat ?? ""), from });
-
 /**
  * Type what you ate; the four numbers come back filled and editable, and nothing is logged until you tap Add.
  * Known food answers instantly and offline; only something new goes to the estimator, and only with it switched on.
@@ -276,7 +312,7 @@ function ExtraForm({ onAdd, onMeal, eaten, known, estimateOn, slot, onSlot, fiel
   fieldRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const [text, setText] = useState("");
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraft] = useState<FoodDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -285,17 +321,11 @@ function ExtraForm({ onAdd, onMeal, eaten, known, estimateOn, slot, onSlot, fiel
     const said = text.trim();
     if (!said || busy) return;
     setError(null);
-    const hit = matchFood(said, known);
-    if (hit?.exact) return setDraft(draftOf(hit.item, FROM[hit.item.source]));
-    if (!estimateOn) return setDraft(hit ? draftOf(hit.item, `close to ${hit.item.name}`) : { name: said.slice(0, 80), kcal: "", protein: "", carbs: "", fat: "", from: "your numbers" });
     setBusy(true);
     try {
-      const got = await api<{ name: string; kcal: number; protein: number; carbs: number; fat: number; note: string }>("POST", "/food/estimate", { text: said });
-      setDraft(draftOf(got, got.note || "estimated"));
-    } catch (err) {
-      report("food", "estimate_failed", err, undefined, err instanceof ApiError && err.status < 500 ? "warn" : "error");
-      setError(err instanceof ApiError ? err.message : "Couldn't estimate that. Type the numbers instead.");
-      setDraft(hit ? draftOf(hit.item, `close to ${hit.item.name}`) : { name: said.slice(0, 80), kcal: "", protein: "", carbs: "", fat: "", from: "your numbers" });
+      const got = await lookUp(said, known, estimateOn);
+      setDraft(got.draft);
+      setError(got.error);
     } finally { setBusy(false); }
   }
 

@@ -68,5 +68,11 @@ check("steps show when known", dayLog(big, DEFAULT_SETTINGS, today, 14)[0].did, 
 check("a gap inside the record stays in as an empty day", dayLog({ [day(0)]: map[day(0)], [day(2)]: map[day(2)] }, DEFAULT_SETTINGS, today, 14).map((r) => r.empty), [false, true, false]);
 check("weight not required: it is not listed as missed", dayLog(map, { ...DEFAULT_SETTINGS, requireWeight: false }, today, 14)[1].missed, ["Journal", "3 meals", "Activity"]);
 
+console.log("no food targets (someone on their own meals)");
+const noTargets = { ...DEFAULT_SETTINGS, goals: { ...DEFAULT_SETTINGS.goals, kcal: 0, protein: 0, carbs: 0, fat: 0 } };
+check("no calorie target: no day is on or off target", insights(map, noTargets, today, 14, 100).food.onTarget, 0);
+check("no calorie target: nothing reads as over", dayLog(map, noTargets, today, 14)[0].food, { meals: 4, kcal: 2100, protein: 170, proteinHit: null, kcalOk: null });
+check("with targets the day says how it went", [dayLog(map, DEFAULT_SETTINGS, today, 14)[0].food.proteinHit, dayLog(map, DEFAULT_SETTINGS, today, 14)[0].food.kcalOk], [false, true]);
+
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

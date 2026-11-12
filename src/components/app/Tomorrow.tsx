@@ -119,7 +119,7 @@ export function TomorrowScreen() {
               </>
               : <>
                 {soma.move && <Stat value={soma.move.rest ? "Rest" : soma.move.goal.split(" ")[0]} label={soma.move.rest ? `no ${soma.move.name.toLowerCase()}` : soma.move.goal.split(" ").slice(1).join(" ") || soma.move.name.toLowerCase()} />}
-                <Stat value={fmt(soma.kcal)} label="kcal" />
+                {soma.kcal > 0 && <Stat value={fmt(soma.kcal)} label="kcal" />}
                 <Stat value={String(soma.weighIn ? 5 : 4)} label="to close" />
               </>}
           </div>
@@ -270,7 +270,9 @@ function SomaCard({ soma }: { soma: SomaSide }) {
       <span className="eb">Dayhub</span>
       {soma.weighIn && <Row domain="food" icon="scale" title="Weigh in" sub="One of the five things that close the day." />}
       <Row domain="journal" icon="heart" title="Check in and journal" sub="A mood, your habits, and a few words." />
-      <Row domain="food" icon="leaf" title="Four meals planned" sub={`${fmt(soma.kcal)} kcal · ${fmt(soma.protein)} g protein`}>
+      {/* Their own meals: as many usual meals as they have so far, or a word on how food is logged. */}
+      <Row domain="food" icon="leaf" title={!soma.own ? "Four meals planned" : soma.meals.length ? "Your usual meals" : "Four meals"}
+        sub={soma.meals.length ? `${fmt(soma.kcal)} kcal · ${fmt(soma.protein)} g protein` : "Say, type or tick each one as you go."}>
         <div className={s.meals}>
           {soma.meals.map((m) => (
             <div key={m.key} className={s.meal}>

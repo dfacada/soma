@@ -133,6 +133,7 @@ async function step(page: Page, s: Step) {
   if ("wait" in s) return page.waitForTimeout(s.wait);
   if ("scroll" in s) return scrollBy(page, s.scroll);
   if ("text" in s) return page.getByText(s.text, { exact: false }).first().click({ timeout: 10_000 });
+  if ("fill" in s) return page.getByRole("textbox", { name: s.fill }).first().fill(s.value, { timeout: 10_000 });
   const target = page.getByRole(s.role || "button", { name: s.click, exact: s.exact ?? false });
   return target.nth(s.nth ?? 0).click({ timeout: 10_000 });
 }

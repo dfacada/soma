@@ -10,13 +10,20 @@ export type Said = { meal: Meal | "extra"; name: string; kcal: number; protein: 
 
 const KNOWN_MAX = 60;
 
-/** What Dayhub can answer without asking: the book, the plan, your snacks, and every off-plan item in the days
- *  already loaded. Same name twice keeps the newest, so a correction you made yesterday is what comes back today. */
-export function knownFromDays(map: Record<string, { log?: { extras?: Extra[] } } | undefined> | null, settings: Pick<Settings, "snacks" | "plan">): Known[] {
+/** What Dayhub can answer without asking: the book, the plan, your snacks, and every meal and off-plan item in the
+ *  days already loaded. Same name twice keeps the newest, so a correction you made yesterday is what comes back today.
+ *  A meal ticked with no numbers has no name, and is no food to know. */
+export function knownFromDays(map: Record<string, { log?: { meals?: Record<string, unknown>; extras?: Extra[] } } | undefined> | null, settings: Pick<Settings, "snacks" | "plan">): Known[] {
   const seen = new Map<string, Extra>();
-  for (const day of Object.keys(map || {}).sort()) for (const x of map![day]?.log?.extras || []) seen.set(x.name.toLowerCase(), x);
-  return knownFoods({ logged: [...seen.values()], snacks: settings.snacks, plan: Object.values(settings.plan) });
+  for (const day of Object.keys(map || {}).sort()) {
+    const log = map![day]?.log;
+    for (const m of Object.values(log?.meals || {})) if (isEaten(m) && m.name) seen.set(m.name.toLowerCase(), m);
+    for (const x of log?.extras || []) seen.set(x.name.toLowerCase(), x);
+  }
+  return knownFoods({ logged: [...seen.values()], snacks: settings.snacks, plan: Object.values(settings.plan).filter((p): p is PlannedMeal => p !== null) });
 }
+
+const isEaten = (m: unknown): m is PlannedMeal => Boolean(m) && typeof m === "object" && typeof (m as PlannedMeal).name === "string" && Number.isFinite((m as PlannedMeal).kcal);
 
 /** The foods that go along with what was said: your own, newest logged first, so "my shake" comes back with your
  *  numbers; the recipe book stays home. */

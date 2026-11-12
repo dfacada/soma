@@ -57,8 +57,9 @@ export function dayStatus(data: DayData | undefined, settings: Settings): DaySta
   const eaten = d.log?.meals || {};
   const leftMeals = MEALS.filter((m) => !eaten[m]);
   const meals = 4 - leftMeals.length;
-  // What was eaten: the snapshot when there is one, the current plan for a bare `true` from before snapshots.
-  const ate = [...MEALS.filter((m) => eaten[m]).map((m) => (typeof eaten[m] === "object" ? eaten[m] : settings.plan[m]) as { kcal: number; protein?: number; carbs?: number; fat?: number }), ...(d.log?.extras || [])];
+  // What was eaten: the snapshot when there is one, the current plan for a bare `true` from before snapshots (nothing,
+  // where there is no usual meal). A meal ticked with no numbers is a snapshot of zeros: eaten, counting nothing.
+  const ate = [...MEALS.filter((m) => eaten[m]).map((m) => (typeof eaten[m] === "object" ? eaten[m] : settings.plan[m] ?? { kcal: 0 }) as { kcal: number; protein?: number; carbs?: number; fat?: number }), ...(d.log?.extras || [])];
   const total = (f: "kcal" | "protein" | "carbs" | "fat") => Math.round(ate.reduce((n, x) => n + (Number(x[f]) || 0), 0));
   const kcal = total("kcal");
   const pushups = d.activity?.pushups || 0;

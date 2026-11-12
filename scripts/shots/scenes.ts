@@ -8,6 +8,8 @@ import type { DayShape, Trying, Who } from "./world";
 
 export type Step =
   | { click: string; role?: "button" | "link" | "tab" | "switch" | "checkbox"; exact?: boolean; nth?: number }
+  /** Types into the text field with this accessible name. */
+  | { fill: string; value: string }
   | { text: string }
   | { scroll: number }
   | { wait: number };
@@ -103,7 +105,10 @@ export const SCENES: Scene[] = [
   { id: "new-vault", area: "welcome", who: "new", title: "Day one: the Journal card tapped for the first time, which asks to create the vault", path: "/", steps: [{ click: "Record a journal entry" }] },
   { id: "new-today", area: "today", who: "new", title: "Today on day one, minutes after approval: nothing logged, no streak yet, no vault, Fitbit not connected", path: "/", frames: 1 },
   { id: "new-journal", area: "journal", who: "new", title: "Journal on day one: no vault made yet and no entries", path: "/journal/" },
-  { id: "new-food", area: "food", who: "new", title: "Food on day one: the default plan, nothing logged yet", path: "/food/", frames: 1 },
+  { id: "new-food", area: "food", who: "new", title: "Food on day one: no plan and no targets (never David's), a Your food card asking for optional calorie and protein targets or a ready-made plan, four meals saying Tap to log it, nothing logged yet", path: "/food/", frames: 1 },
+  { id: "new-food-plan", area: "food", who: "new", title: "Food on day one with the Standard plan opened in the Your food card: its four meals and Use the Standard plan, nothing chosen yet", path: "/food/", steps: [{ click: "Standard" }] },
+  { id: "new-meal-sheet", area: "sheets", who: "new", title: "Day one: Breakfast tapped on Today with no usual breakfast yet: a sheet asks what it was (say it or type it), with Just tick it, no numbers", path: "/", steps: [{ click: "Breakfast:" }] },
+  { id: "new-meal-draft", area: "sheets", who: "new", title: "The breakfast sheet after typing and Look it up: the estimate (410 kcal) to check, Keep as my usual breakfast on, and Log breakfast", path: "/", steps: [{ click: "Breakfast:" }, { fill: "What you had for breakfast", value: "oats with berries and a coffee" }, { click: "Look it up" }, { wait: 600 }] },
   { id: "new-activity", area: "activity", who: "new", title: "Activity on day one: no push-ups yet, and a round on its twentieth day that is open to join", path: "/activity/", frames: 1 },
   { id: "new-insights", area: "insights", who: "new", title: "Insights on day one: not one day logged yet", path: "/insights/" },
   { id: "new-tomorrow", area: "tomorrow", who: "new", title: "Tomorrow's brief on day one: nothing connected", path: "/tomorrow/" },

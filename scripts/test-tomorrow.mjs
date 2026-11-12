@@ -148,6 +148,9 @@ check("the four planned meals, in order, with their total", soma.meals.map((m) =
 check("weighing in follows the setting", somaSide({ ...DEFAULT_SETTINGS, requireWeight: false }, { name: "Push-ups", goal: "100 push-ups", rest: false, dayNumber: null }).weighIn === false);
 check("someone with no moves yet has no move in the brief", somaSide(DEFAULT_SETTINGS, null).move === null && summaryLine({ day: "2026-11-03", builtMs: 0, events: null, tasks: null }, somaSide(DEFAULT_SETTINGS, null)) === "", summaryLine({ day: "2026-11-03", builtMs: 0, events: null, tasks: null }, somaSide(DEFAULT_SETTINGS, null)));
 check("a run as the main move", summaryLine({ day: "2026-11-03", builtMs: 0, events: [], tasks: [] }, somaSide(DEFAULT_SETTINGS, { name: "Run", goal: "5 km", rest: false, dayNumber: null })) === "Nothing on the calendar · 5 km");
+const ownSide = somaSide({ ...DEFAULT_SETTINGS, mealPlan: "own", plan: { breakfast: null, lunch: { name: "Soup", kcal: 300, protein: 12 }, snack: null, dinner: null } }, null);
+check("their own meals: only the usual ones so far, said as theirs", ownSide.meals.map((m) => m.name).join() === "Soup" && ownSide.own === true && ownSide.kcal === 300, ownSide);
+check("a plan is not their own", soma.own === false);
 const brief = { day: D, builtMs: 0, events: ev, tasks };
 const text0 = () => briefText(brief, soma, fb, null);
 check("the Today line counts the day's events and names the first to start on it", summaryLine(brief, soma) === "5 events, first at 9 am · 4 tasks · 100 push-ups", summaryLine(brief, soma));

@@ -3,7 +3,7 @@
 
 import type { Nights } from "./health";
 import { toneOf, type Mood } from "./moods";
-import type { Settings } from "./settings";
+import { hasTarget, type Settings } from "./settings";
 import { dayStatus, type DayMap } from "./today";
 
 export type WeighIn = { day: string; weight: number };
@@ -74,7 +74,7 @@ const side = (): SplitSide => ({ days: 0, good: 0, other: 0, hard: 0 });
 export function moodSplit(map: DayMap, days: string[], settings: Settings, nights: Nights | null): { checkedIn: number; rows: SplitRow[] } {
   const limit = settings.habits.find((h) => h.type === "counter" && h.dir === "at_most" && h.goal);
   const tests: { label: string; test: (day: string) => boolean | undefined }[] = [
-    { label: `Hit your ${settings.goals.protein} g protein goal`, test: (k) => { const st = dayStatus(map[k], settings); return st.meals > 0 ? st.protein >= settings.goals.protein : undefined; } },
+    ...(hasTarget(settings.goals.protein) ? [{ label: `Hit your ${settings.goals.protein} g protein goal`, test: (k: string) => { const st = dayStatus(map[k], settings); return st.meals > 0 ? st.protein >= settings.goals.protein : undefined; } }] : []),
     { label: "10,000 steps+", test: (k) => { const s = map[k]?.activity?.steps; return s === null || s === undefined ? undefined : s >= 10000; } },
     { label: "Activity day", test: (k) => dayStatus(map[k], settings).activityDone },
     { label: "All meals logged", test: (k) => dayStatus(map[k], settings).foodDone },

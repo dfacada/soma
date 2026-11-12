@@ -79,5 +79,12 @@ check("labels carry no date and map back on the phone", sent.items.every((x) => 
 check("the order is shuffled", sent.items.map((x) => x.text).join() !== days.slice(0, 6).join());
 check("a fingerprint changes with the words", fingerprint("a b") !== fingerprint("a c") && fingerprint("a b") === fingerprint("a b"));
 
+console.log("no food targets (someone on their own meals)");
+const noTargets = { ...DEFAULT_SETTINGS, goals: { ...DEFAULT_SETTINGS.goals, kcal: 0, protein: 0, carbs: 0, fat: 0 } };
+const lowProtein = Object.fromEntries(Object.entries(map).map(([k, d], i) => [k, { ...d, log: { ...d.log, meals: { ...d.log.meals, breakfast: { ...meal, protein: i < 6 ? 200 : 0 } } } }]));
+check("with a target, protein can be a finding", [...greatDays(lowProtein, days, DEFAULT_SETTINGS, main, null).lifts].some((d) => d.key === "protein"));
+check("without one, protein is never a finding", ![...greatDays(lowProtein, days, noTargets, main, null).lifts, ...greatDays(lowProtein, days, noTargets, main, null).drags].some((d) => d.key === "protein"));
+check("…and the week's comparison has no protein row", !weekCompare(wk, noTargets, "2026-10-14").rows.some((r) => r.label === "Protein goal hit"));
+
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

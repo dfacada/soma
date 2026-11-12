@@ -257,7 +257,7 @@ function Values({ userId, first, self }: { userId: string; first: string; self: 
           <div className={o.values}>
             {values.weight.map((w) => <span key={"w" + w.day} className={o.value}><span>Weight, {w.day.slice(5)}</span><span>{w.value} {values.unit}</span></span>)}
             {values.activity.map((x) => { const t = [x.pushups ? `${x.pushups} push-ups` : "", x.steps ? `${n(x.steps)} steps` : "", moveText(x.types)].filter(Boolean).join(", "); return t ? <span key={"a" + x.day} className={o.value}><span>Moves, {x.day.slice(5)}</span><span>{t}</span></span> : null; })}
-            {values.food.map((f) => { const t = Object.entries(f.meals).filter(([, m]) => m).map(([k, m]) => `${k}: ${m!.name}${m!.kcal ? ` ${m!.kcal} kcal` : ""}`).join("; "); return t ? <span key={"f" + f.day} className={o.value}><span>Food, {f.day.slice(5)}</span><span>{t}</span></span> : null; })}
+            {values.food.map((f) => { const t = Object.entries(f.meals).filter(([, m]) => m).map(([k, m]) => `${k}: ${m!.name || "ticked, no numbers"}${m!.kcal ? ` ${m!.kcal} kcal` : ""}`).join("; "); return t ? <span key={"f" + f.day} className={o.value}><span>Food, {f.day.slice(5)}</span><span>{t}</span></span> : null; })}
             {!values.weight.length && !values.activity.length && !values.food.length && <span className={o.note}>Nothing logged in the last 14 days.</span>}
           </div>
           <div><Button size="sm" variant="secondary" onClick={hide}>Hide again</Button></div>

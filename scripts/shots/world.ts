@@ -314,6 +314,8 @@ export function answer(w: World, method: string, path: string, body: unknown): {
   // Say your day: the transcription job is done as soon as it is queued, and the words are read as DAY_HEARD.
   if (method === "POST" && route === "/jobs") return { status: 201, json: { id: "1", type: "transcribe", status: "done", error: null, result: DAY_RESULT } };
   if (method === "POST" && route === "/day/describe") return ok(DAY_HEARD);
+  // One food typed on Food or in a meal's sheet, as the estimator would answer it (routes/food.js).
+  if (method === "POST" && route === "/food/estimate") return ok({ name: "Oats with berries and a coffee", kcal: 410, protein: 14, carbs: 66, fat: 9, note: "estimated" });
   // An experiment on sleep rests on what the vault seals, so it must only ever reach settings sealed (experiment.ts).
   if (method === "PUT" && route === "/settings" && /"key":"sleep"/.test(JSON.stringify(body))) return { ...ok(), leak: "a sleep experiment reached settings in the clear" };
   // Saves succeed and change nothing: a scene that taps sees the app's own optimistic state.

@@ -6,7 +6,7 @@
 import { goalText, loggedOf, progressOf, type Move } from "./moves";
 import { toneOf, type Mood } from "./moods";
 import type { Nights } from "./health";
-import type { Settings } from "./settings";
+import { hasTarget, type Settings } from "./settings";
 import { dayStatus, type DayMap } from "./today";
 
 /** Both sides of a comparison need this many days before it is shown at all. */
@@ -44,7 +44,8 @@ function tests(map: DayMap, settings: Settings, main: MainGoal | null, nights: N
   const st = (k: string) => dayStatus(map[k], settings);
   const checkin = (k: string) => map[k]?.checkin;
   return [
-    { key: "protein", label: `Hit your ${settings.goals.protein} g protein`, ask: `Hit your ${settings.goals.protein} g protein`, test: (k) => (st(k).meals > 0 ? st(k).protein >= settings.goals.protein : undefined) },
+    // Only with a protein target to hit: someone with none set has no such finding.
+    ...(hasTarget(settings.goals.protein) ? [{ key: "protein", label: `Hit your ${settings.goals.protein} g protein`, ask: `Hit your ${settings.goals.protein} g protein`, test: (k: string) => (st(k).meals > 0 ? st(k).protein >= settings.goals.protein : undefined) }] : []),
     { key: "meals", label: "Logged all four meals", ask: "Log all four meals", test: (k) => st(k).foodDone },
     { key: "active", label: "Moved", ask: "Get a move in", test: (k) => st(k).activityDone },
     ...mainTest(map, main),
@@ -214,7 +215,7 @@ export function weekCompare(map: DayMap, settings: Settings, todayKey: string): 
   const limit = settings.habits.find((h) => h.type === "counter" && h.dir === "at_most" && h.goal);
   const rows: WeekRow[] = [
     { label: "Calories a day", now: mean(ate(now).map((k) => st(k).kcal)), before: mean(ate(before).map((k) => st(k).kcal)), unit: "kcal", better: "down" },
-    { label: "Protein goal hit", now: count(now, (k) => st(k).meals > 0 && st(k).protein >= settings.goals.protein), before: count(before, (k) => st(k).meals > 0 && st(k).protein >= settings.goals.protein), unit: "days", better: "up" },
+    ...(hasTarget(settings.goals.protein) ? [{ label: "Protein goal hit", now: count(now, (k) => st(k).meals > 0 && st(k).protein >= settings.goals.protein), before: count(before, (k) => st(k).meals > 0 && st(k).protein >= settings.goals.protein), unit: "days", better: "up" as const }] : []),
     { label: "All four meals logged", now: count(now, (k) => st(k).foodDone), before: count(before, (k) => st(k).foodDone), unit: "days", better: "up" },
     { label: "Active days", now: count(now, (k) => st(k).activityDone), before: count(before, (k) => st(k).activityDone), unit: "days", better: "up" },
     ...(steps(now).length || steps(before).length ? [{ label: "Steps a day", now: mean(steps(now)), before: mean(steps(before)), unit: "steps", better: "up" as const }] : []),

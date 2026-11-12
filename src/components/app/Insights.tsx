@@ -371,7 +371,8 @@ function DayByDay({ log, todayKey, proteinGoal }: { log: LogRow[]; todayKey: str
       <div className={s.days}>
         {(all ? log : log.slice(0, LOG_PREVIEW)).map((r) => {
           const d = new Date(r.day + "T12:00:00");
-          const met = !!r.food && r.food.meals === 4 && r.food.proteinHit && r.food.kcalOk;
+          // Every eating goal there is: all four meals, and the protein and calorie targets that are set.
+          const met = !!r.food && r.food.meals === 4 && r.food.proteinHit !== false && r.food.kcalOk !== false;
           return (
             <div key={r.day} className={`${s.day} ${r.empty ? s.dayEmpty : ""}`}>
               <div className={s.dayDate}><span className="eb">{r.day === todayKey ? "Today" : WEEKDAYS[d.getDay()]}</span><span className="dc">{d.getDate()}</span></div>
@@ -384,9 +385,9 @@ function DayByDay({ log, todayKey, proteinGoal }: { log: LogRow[]; todayKey: str
                 {(r.food || r.did.length > 0) && (
                   <div className={s.dayChips}>
                     {r.food && (
-                      <span className={`${s.food} ${met ? s.foodMet : ""}`} aria-label={`${r.food.meals} of 4 meals, ${r.food.kcal} calories, ${r.food.protein} of ${proteinGoal} grams protein${met ? ", every eating goal met" : ""}`}>
+                      <span className={`${s.food} ${met ? s.foodMet : ""}`} aria-label={`${r.food.meals} of 4 meals, ${r.food.kcal} calories, ${r.food.protein}${r.food.proteinHit === null ? "" : ` of ${proteinGoal}`} grams protein${met ? ", every eating goal met" : ""}`}>
                         {met && <Icon name="check" size={12} strokeWidth={2.6} />}
-                        {r.food.meals}/4 meals · <span className={r.food.kcalOk ? "" : s.over}>{r.food.kcal.toLocaleString("en-US")} kcal</span> · <span className={r.food.proteinHit ? s.hit : ""}>{r.food.protein}/{proteinGoal} g</span>
+                        {r.food.meals}/4 meals · <span className={r.food.kcalOk === false ? s.over : ""}>{r.food.kcal.toLocaleString("en-US")} kcal</span> · <span className={r.food.proteinHit ? s.hit : ""}>{r.food.proteinHit === null ? `${r.food.protein} g` : `${r.food.protein}/${proteinGoal} g`}</span>
                       </span>
                     )}
                     {r.did.map((x) => <span key={x} className={s.did}>{x}</span>)}

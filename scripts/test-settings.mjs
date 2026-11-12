@@ -1,6 +1,6 @@
 // Settings defaults and merging: David's Macros setup is the default, and the old sample data is replaced.
 //   node --import ./scripts/ts-resolve.mjs scripts/test-settings.mjs
-import { DEFAULT_SETTINGS, mergeSettings, planMeals } from "../src/lib/settings.ts";
+import { DEFAULT_SETTINGS, NEWCOMER_FOOD, OWN_PLAN, mergeSettings, planMeals } from "../src/lib/settings.ts";
 import { MEAL_PLANS, RECIPES, SNACK_PRESETS } from "../src/lib/food-data.ts";
 
 let passed = 0; const failures = [];
@@ -31,6 +31,19 @@ check("an unknown plan or bowl falls back", [mergeSettings({ mealPlan: "carnivor
 check("tomorrow's brief: off, at 21:00, not to Telegram, unless chosen", mergeSettings({}).brief, { on: false, time: "21:00", telegram: false, sent: "" });
 check("tomorrow's brief: choices are kept, a bad time or sent day falls back", mergeSettings({ brief: { on: true, time: "9pm", telegram: true, sent: "yesterday" } }).brief, { on: true, time: "21:00", telegram: true, sent: "" });
 check("tomorrow's brief: the day it was last sent is kept", mergeSettings({ brief: { sent: "2026-11-03" } }).brief.sent, "2026-11-03");
+
+console.log("a newcomer's own food (2026-11-11: nobody new starts on David's plan)");
+const mine = mergeSettings(JSON.parse(JSON.stringify(NEWCOMER_FOOD)));
+check("their own meals, none of them David's", [mine.mealPlan, Object.values(mine.plan)], ["own", [null, null, null, null]]);
+check("…with no targets", [mine.goals.kcal, mine.goals.protein, mine.goals.carbs, mine.goals.fat], [0, 0, 0, 0]);
+check("…the steps goal everyone starts with", mine.goals.steps, DEFAULT_SETTINGS.goals.steps);
+check("…and no quick snacks", mine.snacks, []);
+const learned = mergeSettings({ ...NEWCOMER_FOOD, plan: { ...OWN_PLAN, lunch: { name: "Chicken salad", kcal: 520, protein: 38 } } });
+check("a usual meal they made is kept beside the empty ones", [learned.plan.breakfast, learned.plan.lunch?.name], [null, "Chicken salad"]);
+check("own meals with a slot missing read as empty, never as David's", mergeSettings({ mealPlan: "own", plan: { lunch: { name: "Soup", kcal: 300, protein: 12 } } }).plan.breakfast, null);
+check("nothing stored is still David's plan", [mergeSettings({}).mealPlan, mergeSettings({}).plan.breakfast?.name], ["standard", "Post-Workout Shake"]);
+check("a target set to none stays none", mergeSettings({ goals: { kcal: 2000, protein: 0 } }).goals, { kcal: 2000, protein: 0, carbs: 150, fat: 75, steps: 8000 });
+check("a plan chosen later replaces the empty meals", Object.values(mergeSettings({ ...NEWCOMER_FOOD, mealPlan: "keto", plan: planMeals("keto", "beef-rice") }).plan).every((m) => m && m.kcal > 0), true);
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

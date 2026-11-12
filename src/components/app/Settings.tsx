@@ -18,7 +18,7 @@ import { MoodFace } from "./MoodFace";
 import { MovesChooser } from "./MovesChooser";
 import { SOMA_PHRASES } from "@/lib/opening-words";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
-import { planMeals, type Habit, type Settings } from "@/lib/settings";
+import { hasTarget, OWN_PLAN, planMeals, type Habit, type PlanChoice, type Settings } from "@/lib/settings";
 import { Button, ButtonLink, Chip, Field, Icon, Input, Pill, Segmented, Select, Sheet, Switch, Toast, useTabVisible } from "@/components/ui";
 import { Admin } from "./Admin";
 import { MessagesThread } from "./Messages";
@@ -75,10 +75,10 @@ export function SettingsScreen() {
   const [editMoods, setEditMoods] = useState(false);
 
   const g = settings.goals;
-  // Which plan the four targets currently match, if any.
-  const active = MEAL_PLANS[settings.mealPlan];
-  const t = active.targets;
-  const onPlanTargets = t.kcal === g.kcal && t.protein === g.protein && t.carbs === g.carbs && t.fat === g.fat;
+  // Which plan the four meals came from (none on their own meals), and whether the targets still match it.
+  const active = settings.mealPlan === "own" ? null : MEAL_PLANS[settings.mealPlan];
+  const t = active?.targets;
+  const onPlanTargets = !t || (t.kcal === g.kcal && t.protein === g.protein && t.carbs === g.carbs && t.fat === g.fat);
   const moodsOn = settings.moods.filter((m) => m.on).length;
   const health = useHealth();
 
@@ -200,10 +200,13 @@ export function SettingsScreen() {
             onAdd={(label) => { if (settings.habits.some((h) => h.label.toLowerCase() === label.toLowerCase())) return say("That habit is already there"); void save({ habits: [...settings.habits, { id: slug(label) + "-" + Date.now().toString(36), label, type: "daily" }] }, `Added ${label}`); }} />
         </Section>
 
-        <Section {...sec("food")} title="Food" summary={`${active.name} plan · ${g.kcal.toLocaleString("en-US")} kcal · ${g.protein} g protein`}>
-          <Field name="Meal plan" help={`${active.badge}. Sets the four planned meals; your targets stay as they are.`}>
-            <Segmented label="Meal plan" value={settings.mealPlan} onChange={(p) => void save({ mealPlan: p as MealPlanId, plan: planMeals(p as MealPlanId, settings.bowl) }, `${MEAL_PLANS[p as MealPlanId].name} plan`)}
-              options={(Object.keys(MEAL_PLANS) as MealPlanId[]).map((id) => ({ value: id, label: MEAL_PLANS[id].name }))} />
+        <Section {...sec("food")} title="Food" summary={`${active ? `${active.name} plan` : "Your own meals"} · ${hasTarget(g.kcal) ? `${g.kcal.toLocaleString("en-US")} kcal` : "no calorie target"}${hasTarget(g.protein) ? ` · ${g.protein} g protein` : ""}`}>
+          <Field name="Meal plan" help={active ? `${active.badge}. Sets the four planned meals; your targets stay as they are.` : "Your usual meals fill in as you log them. A plan sets four meals for you instead; your targets stay as they are."}>
+            <Segmented label="Meal plan" value={settings.mealPlan}
+              onChange={(p) => void (p === "own"
+                ? save({ mealPlan: "own", plan: OWN_PLAN }, "Your own meals")
+                : save({ mealPlan: p, plan: planMeals(p, settings.bowl) }, `${MEAL_PLANS[p].name} plan`))}
+              options={[{ value: "own" as PlanChoice, label: "Your own" }, ...(Object.keys(MEAL_PLANS) as MealPlanId[]).map((id) => ({ value: id as PlanChoice, label: MEAL_PLANS[id].name }))]} />
           </Field>
           {settings.mealPlan === "standard" && (
             <Field name="Bowl build" help={BOWL_VARIANTS[settings.bowl].desc}>
@@ -211,16 +214,16 @@ export function SettingsScreen() {
                 options={(Object.keys(BOWL_VARIANTS) as BowlId[]).map((id) => ({ value: id, label: BOWL_VARIANTS[id].short }))} />
             </Field>
           )}
-          {!onPlanTargets && <div><button type="button" className={a.lnk} style={{ minHeight: 44 }} onClick={() => void save({ goals: { ...g, ...t } }, `Targets set to the ${active.name} plan`)}>Use the {active.name} plan&apos;s targets: {t.kcal.toLocaleString("en-US")} kcal · {t.protein} P · {t.carbs} C · {t.fat} F</button></div>}
+          {active && t && !onPlanTargets && <div><button type="button" className={a.lnk} style={{ minHeight: 44 }} onClick={() => void save({ goals: { ...g, ...t } }, `Targets set to the ${active.name} plan`)}>Use the {active.name} plan&apos;s targets: {t.kcal.toLocaleString("en-US")} kcal · {t.protein} P · {t.carbs} C · {t.fat} F</button></div>}
           <div className={a.chips}>
             {KCAL_PRESETS.map((n) => (
               <Chip key={n} kind="habit" label={n.toLocaleString("en-US")} on={g.kcal === n}
-                onClick={() => { const r = n / (g.kcal || 2100); void save({ goals: { ...g, kcal: n, protein: Math.round(g.protein * r), carbs: Math.round(g.carbs * r), fat: Math.round(g.fat * r) } }, `${n} kcal · macros rescaled`); }} />
+                onClick={() => { const r = n / (g.kcal || 2100); void save({ goals: { ...g, kcal: n, protein: Math.round(g.protein * r), carbs: Math.round(g.carbs * r), fat: Math.round(g.fat * r) } }, `${n} kcal${g.protein || g.carbs || g.fat ? " · macros rescaled" : " a day"}`); }} />
             ))}
           </div>
           {(["kcal", "protein", "carbs", "fat"] as const).map((f) => (
-            <Field key={f} name={f === "kcal" ? "Calories" : f[0].toUpperCase() + f.slice(1)} help={f === "kcal" ? "kcal a day" : "grams a day"}>
-              <Commit numeric value={String(g[f])} label={f} onCommit={(v) => { const n = Number(v); if (n >= 1 && n <= 20000 && n !== g[f]) void save({ goals: { ...g, [f]: n } }); }} />
+            <Field key={f} name={f === "kcal" ? "Calories" : f[0].toUpperCase() + f.slice(1)} help={`${f === "kcal" ? "kcal a day" : "grams a day"}${hasTarget(g[f]) ? "" : ": no target"} · 0 for none`}>
+              <Commit numeric value={String(g[f])} label={f} onCommit={(v) => { const n = Number(v); if (v !== "" && n >= 0 && n <= 20000 && n !== g[f]) void save({ goals: { ...g, [f]: n } }); }} />
             </Field>
           ))}
           <span className="eb" style={{ paddingTop: 6 }}>Quick snacks</span>

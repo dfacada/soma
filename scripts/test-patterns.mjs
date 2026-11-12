@@ -65,6 +65,7 @@ const nights = Object.fromEntries(moodDays.slice(0, 10).map((d, i) => [d, { asle
 const slept = moodSplit(moodMap, moodDays, s200, nights).rows.find((r) => r.label.startsWith("Slept"));
 check("with nights, sleep is a row on the nights there are", slept && slept.yes.days === 5 && slept.no.days === 5 && slept.enough, slept);
 check(`fewer than ${MIN_SIDE} on a side is never enough`, split.rows.every((r) => r.enough === (r.yes.days >= MIN_SIDE && r.no.days >= MIN_SIDE)));
+check("no protein target, no protein row", !moodSplit(moodMap, moodDays, { ...s200, goals: { ...s200.goals, protein: 0 } }, null).rows.some((r) => r.label.includes("protein")));
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

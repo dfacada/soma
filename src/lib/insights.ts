@@ -7,7 +7,7 @@ import { toneOf } from "./moods";
 import { amountText, loggedOf, movesOf } from "./moves";
 import { addDays, dayKey, dayStatus, type DayMap } from "./today";
 import type { Nights } from "./health";
-import type { Settings } from "./settings";
+import { hasTarget, type Settings } from "./settings";
 
 // Dayhub's own words for good and hard days live with the moods (moods.ts); a day's mood is read through the person's
 // own list first (toneOf), so a renamed mood, or one of their own, still counts the way they said.
@@ -91,7 +91,7 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
 
     if (st.meals > 0 || (d?.log?.extras || []).length) {
       out.food.loggedDays++; kcal += st.kcal; protein += st.protein;
-      if (Math.abs(st.kcal - settings.goals.kcal) <= settings.goals.kcal * 0.1) out.food.onTarget++;
+      if (hasTarget(settings.goals.kcal) && Math.abs(st.kcal - settings.goals.kcal) <= settings.goals.kcal * 0.1) out.food.onTarget++;
     }
     if (st.pushups > 0) {
       out.pushups.days++; out.pushups.total += st.pushups; out.pushups.best = Math.max(out.pushups.best, st.pushups);
@@ -116,7 +116,7 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
     }
     note("Journaled", isGood, st.journalDone);
     note("Ate all four meals", isGood, st.foodDone);
-    note(`${Math.round(settings.goals.protein * 0.9)} g of protein or more`, isGood, st.meals > 0 ? st.protein >= settings.goals.protein * 0.9 : undefined);
+    if (hasTarget(settings.goals.protein)) note(`${Math.round(settings.goals.protein * 0.9)} g of protein or more`, isGood, st.meals > 0 ? st.protein >= settings.goals.protein * 0.9 : undefined);
     note(`${settings.goals.steps.toLocaleString("en-US")} steps or more`, isGood, steps === null || steps === undefined ? undefined : steps >= settings.goals.steps);
     note("Slept 7 hours or more", isGood, night ? night.asleep >= 420 : undefined);
     // "23:41" is before midnight, "00:30" is after; anything from noon on counts as the evening before.
@@ -160,7 +160,8 @@ export type LogRow = {
   did: string[];
   /** What was eaten: meals out of four, calories and protein, and whether the day met the calorie and protein goals
    *  (calories within 5% over the goal counts as met). Null when nothing was eaten. */
-  food: { meals: number; kcal: number; protein: number; proteinHit: boolean; kcalOk: boolean } | null;
+  /** `proteinHit` and `kcalOk` are null with no such target set. */
+  food: { meals: number; kcal: number; protein: number; proteinHit: boolean | null; kcalOk: boolean | null } | null;
   /** Nothing at all was logged that day. */
   empty: boolean;
 };
@@ -189,7 +190,12 @@ export function dayLog(map: DayMap, settings: Settings, today: Date, windowDays:
     if (steps !== null && steps !== undefined && steps > 0) did.push(`${steps.toLocaleString("en-US")} steps`);
     const empty = st.doneCount === 0 && st.meals === 0 && st.weight === null && did.length === 0;
     const ate = st.meals > 0 || (d?.log?.extras?.length || 0) > 0;
-    const food = ate ? { meals: st.meals, kcal: st.kcal, protein: st.protein, proteinHit: st.protein >= settings.goals.protein, kcalOk: st.kcal <= settings.goals.kcal * 1.05 } : null;
+    // Measured only against targets that are set: null says there was nothing to hit.
+    const food = ate ? {
+      meals: st.meals, kcal: st.kcal, protein: st.protein,
+      proteinHit: hasTarget(settings.goals.protein) ? st.protein >= settings.goals.protein : null,
+      kcalOk: hasTarget(settings.goals.kcal) ? st.kcal <= settings.goals.kcal * 1.05 : null,
+    } : null;
     rows.push({ day, weight: st.weight, mood: d?.checkin?.mood ?? null, closed: st.closed, done: st.doneCount, total: st.taskCount, missed, did, food, empty });
   }
   while (rows.length && rows[rows.length - 1].empty) rows.pop();
