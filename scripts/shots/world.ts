@@ -15,7 +15,7 @@ import type { JournalEntry } from "../../src/lib/recovery";
 import type { Log, Member, Round } from "../../src/lib/round";
 import type { RoundRow } from "../../src/components/app/Rounds";
 import type { Heard } from "../../src/lib/say-day";
-import type { Settings } from "../../src/lib/settings";
+import { NEWCOMER_FOOD, type Settings } from "../../src/lib/settings";
 import { seenMark } from "../../src/lib/changelog";
 import { SNACK_PRESETS } from "../../src/lib/food-data";
 import { addDays, dayKey } from "../../src/lib/today";
@@ -44,8 +44,9 @@ export type Theme = "night" | "light";
 /** Whose screens these are: the settled member with two months behind them, someone on their first day (approved
  *  minutes ago: nothing logged, no vault, Fitbit not connected, settings as the app makes them), or someone who has
  *  just signed up and is waiting for approval. Everyone who joins Dayhub starts as the last two. */
-/** "visitor": nobody signed in, at the front page (`?signedout` under the test identity); it needs no account at all. */
-export type Who = "settled" | "new" | "pending" | "visitor";
+/** "visitor": nobody signed in, at the front page (`?signedout` under the test identity); it needs no account at all.
+ *  "week": someone who joined six days ago, so today is their seventh day: the week-one question's day. */
+export type Who = "settled" | "new" | "pending" | "visitor" | "week";
 /** An experiment in hand (src/lib/experiment.ts): on its second day, or finished yesterday. */
 export type Trying = "running" | "finished";
 
@@ -119,7 +120,7 @@ function wav(seconds: number, rate = 8000) {
 /** Day one. The account is minutes old: nothing logged, no vault, Fitbit not connected, and settings holding only
  *  the look, as a new profile does (the app fills the rest from its defaults, What's new included: never seen). A
  *  round is under way and open to join, because the admin made it before this person arrived. */
-function newcomer(now: Date, theme: Theme, who: "new" | "pending"): World {
+function newcomer(now: Date, theme: Theme, who: "new" | "pending" | "week"): World {
   const round: Round = {
     id: "round_fx", name: "November round", startDate: dayKey(addDays(now, -19)), lengthDays: 30, restDays: [7, 14, 21, 28],
     bonusHit: 30, bonusStreak: 10, badgeStreak: 7, badgeHits: 30, joinOpen: true, archived: false,
@@ -128,7 +129,12 @@ function newcomer(now: Date, theme: Theme, who: "new" | "pending"): World {
     now,
     me: { id: USER_ID, email: "sam@fixture.test", name: "Sam Okafor", profile: { rowId: "2", displayName: "Sam Okafor", role: "member", status: who === "pending" ? "pending" : "active" } },
     displayName: "Sam Okafor",
-    settings: { theme: theme === "night" ? "dark" : "light" },
+    // A week in: set up as a newcomer would be (their own meals, a walk as their move), What's new and the install
+    // tip seen, the opening words off; nothing logged, since the question is what is being shot.
+    settings: who === "week"
+      ? { theme: theme === "night" ? "dark" : "light", joined: dayKey(addDays(now, -6)), seenChanges: seenMark(), seenInstall: true, ...NEWCOMER_FOOD, foodSetUp: true,
+        moves: [{ key: "walk", goal: 30 }], mainMove: "walk", opening: { on: false, source: "both", phrases: [] }, unlockOnOpen: false }
+      : { theme: theme === "night" ? "dark" : "light" },
     days: { checkins: [], dayLogs: [], activity: [], weight: [] },
     entries: [], vault: null, keyB64: "",
     health: { configured: true, link: null },

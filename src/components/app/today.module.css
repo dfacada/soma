@@ -150,3 +150,18 @@ div.hit:active { transform: none; }
 .habits { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
 
 :global(:root[data-motion="calm"]) .act::after { animation: none; }
+
+/* Someone new (FirstDay.tsx): the first-day card on day one and two, and the week-one question. A card like the week's,
+   its rows the size of a settings row, each opening the screen that already does the thing. */
+.firstDay { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--hairline-soft); box-shadow: var(--shadow-card); }
+.firstTitle { margin: 0; font-size: 26px; line-height: 1.05; letter-spacing: -0.02em; text-wrap: balance; }
+.firstSub { font-size: 14px; line-height: 1.5; color: var(--muted); text-wrap: pretty; }
+.firstList { display: flex; flex-direction: column; margin: 2px 0; }
+.firstRow { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 0; text-align: left; border-top: 1px solid var(--hairline-soft); color: var(--muted); }
+.firstRow:first-child { border-top: none; }
+.firstRow:active { opacity: 0.6; }
+.firstText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.firstName { font-weight: 600; font-size: 15px; color: var(--ink); }
+.firstHint { font-size: 13px; line-height: 1.4; color: var(--muted); }
+.firstFoot { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); }
+.firstFoot p { font-size: 13px; line-height: 1.45; color: var(--muted); }

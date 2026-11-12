@@ -30,6 +30,7 @@ import { describeError, mmss, useSayRecorder } from "./FoodSay";
 import { applySaid, knownFromDays, saidLine, type Said } from "@/lib/food-say";
 import { describeFood } from "@/lib/say-api";
 import { ExperimentToday } from "./Experiment";
+import { FirstDayCard, WeekOneCard } from "./FirstDay";
 import { DayClosed, FoodMoment } from "./Moments";
 import { MoodFace } from "./MoodFace";
 import { MealSheet } from "./MealSheet";
@@ -73,6 +74,8 @@ export function Today() {
   // A meal with no usual yet (their own meals): its tap asks what it was.
   const [mealSheet, setMealSheet] = useState<Meal | null>(null);
   const closeMealSheet = useCallback(() => setMealSheet(null), []);
+  // Say your day's own tap, for the first-day card's offer of it.
+  const sayDayRef = useRef<{ open: () => void } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const say = useCallback((m: string, ms = 1800) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(null), ms); }, []);
@@ -338,6 +341,10 @@ export function Today() {
         <h1 className={`d ${t.hello}`}>{hello}</h1>
       </header>
 
+      {/* Someone new: make Dayhub yours on day one and two, and one question at the end of the first week. */}
+      {isToday && <FirstDayCard today={today} say={say} onSayDay={() => sayDayRef.current?.open()} />}
+      {isToday && <WeekOneCard today={today} say={say} />}
+
       <section className={`${t.hero} ${lede ? "" : t.heroBare}`} aria-label={isToday ? "Today's progress" : `Progress on ${longDay(view)}`}>
         <Orb beads={beads} closed={st.closed} label={`${st.doneCount} of ${st.taskCount} done`}>
           {st.closed
@@ -354,7 +361,7 @@ export function Today() {
           </div>
         )}
         {/* One recording for everything still open: it fills the list above, and is the journal entry too. */}
-        <SayDay st={st} say={say} />
+        <SayDay ref={sayDayRef} st={st} say={say} />
       </section>
 
       <div className={t.week}>

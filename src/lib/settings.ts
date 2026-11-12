@@ -46,8 +46,12 @@ export type Settings = {
   /** The local day this person first opened Dayhub (YYYY-MM-DD), set on that open (Session.tsx). Days before it are
    *  not missed days, so the week strips leave them out. "" for everyone who joined before this existed. */
   joined: string;
-  /** Whether a newcomer has answered Food's "make the plan yours" card (set their own targets, or kept these). */
+  /** Whether a newcomer has answered Food's "Your food" card (their own meals and targets, or a ready-made plan). */
   foodSetUp: boolean;
+  /** The first-day card on Today was put away (src/lib/first-days.ts). */
+  firstDayAway: boolean;
+  /** The week-one question ("What almost made you stop?"): "" not yet asked, "sent" answered, "skipped" put away. */
+  weekOne: "" | "sent" | "skipped";
   /** The week in review: when it is written, whether the journal may be read to write it, and where it is sent. */
   weeklyReview: { on: boolean; dayOfWeek: number; time: string; consent: boolean; telegram: boolean; speak: boolean };
   /** Off until the user opts in: transcription is the one thing that sends plaintext audio off the device. */
@@ -116,6 +120,8 @@ export const DEFAULT_SETTINGS: Settings = {
   seenInstall: false,
   joined: "",
   foodSetUp: false,
+  firstDayAway: false,
+  weekOne: "",
   // Off until asked for: this is the one feature where journal text leaves the device.
   weeklyReview: { on: false, dayOfWeek: 0, time: "19:00", consent: false, telegram: false, speak: true },
   cloudTranscription: false,
@@ -199,6 +205,8 @@ export function mergeSettings(stored: unknown): Settings {
     seenInstall: s.seenInstall === true,
     joined: typeof s.joined === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.joined) ? s.joined : "",
     foodSetUp: s.foodSetUp === true,
+    firstDayAway: s.firstDayAway === true,
+    weekOne: s.weekOne === "sent" || s.weekOne === "skipped" ? s.weekOne : "",
     weeklyReview: {
       on: s.weeklyReview?.on === true,
       dayOfWeek: [0, 1, 2, 3, 4, 5, 6].includes(Number(s.weeklyReview?.dayOfWeek)) ? Number(s.weeklyReview!.dayOfWeek) : d.weeklyReview.dayOfWeek,

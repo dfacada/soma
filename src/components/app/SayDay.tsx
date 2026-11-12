@@ -9,7 +9,7 @@
 // It is off until the person turns it on, because that one recording goes to Groq to be written down and its words
 // to Claude to be read: the first tap says so and asks. The server checks the same switch (routes/day.js, jobs.js).
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { ApiError } from "@/lib/api";
 import { knownFromDays, type Said } from "@/lib/food-say";
 import { haptic } from "@/lib/haptics";
@@ -36,10 +36,12 @@ type Take = { day: string; seconds: number; text: string } & (
 /** A sentence from the server reads as one: capital first, a full stop last. */
 const sentence = (m: string) => { const s = cap(m.trim()); return /[.!?]$/.test(s) ? s : s + "."; };
 
-export function SayDay({ st, say }: {
+export function SayDay({ st, say, ref }: {
   /** The status of the day on screen: what is still open is the cue, and a closed day has no button. */
   st: DayStatus;
   say: (message: string, ms?: number) => void;
+  /** `open()` is the button's own tap, for another card offering it (FirstDay.tsx): the same consent sheet first. */
+  ref?: Ref<{ open: () => void }>;
 }) {
   const { settings, saveSettings } = useSession();
   const journal = useJournal();
@@ -95,6 +97,7 @@ export function SayDay({ st, say }: {
     setIntroError(null);
     setIntro(true);
   };
+  useImperativeHandle(ref, () => ({ open: tap }));
   const turnOn = async () => {
     haptic();
     setTurningOn(true);
