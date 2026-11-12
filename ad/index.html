@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dayhub ad</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="ad.css">
+</head>
+<body>
+<!--
+  Dayhub's animated ad, a frame at a time (README.md). ?cut=30|15 &shape=vertical|wide &t=seconds.
+  The icons are the landing page's (site/public/index.html), the screens the screenshot rig's (shots/site).
+-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="hblurf" x="-20%" y="0" width="140%" height="100%"><feGaussianBlur id="hblur" stdDeviation="0 0"/></filter>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8.5 10.5a4 4 0 0 1 7 0M12 10.5l1.6-2.2"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14ZM5 19l8-8"/></symbol>
+    <symbol id="i-run" viewBox="0 0 24 24"><circle cx="15.5" cy="4.5" r="2"/><path d="M14 8l-3 5.5M13.5 9l3 2 2.5-1.5M13.5 9H10l-2 2.5M11 13.5l3.5 2.5-1 4.5M11 13.5l-2 3.5H5"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-1.9"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+    <symbol id="i-pushup" viewBox="0 0 24 24"><path d="M3 17h18M5 13h10l3-3M8 13v4M13 13v4"/><circle cx="19.5" cy="7.5" r="1.6"/></symbol>
+    <symbol id="i-walker" viewBox="0 0 24 24"><circle cx="12.5" cy="4.5" r="1.8"/><path d="M12.5 8l-2 5.5 3 3 1 4.5M10.5 13.5L8 16M13 9.5l3 2.5"/></symbol>
+    <symbol id="i-yoga" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M12 8v6M5 10.5c2 1.5 4.5 2.2 7 2.2s5-.7 7-2.2M6.5 19.5c1.6-2.2 3.4-3.3 5.5-3.3s3.9 1.1 5.5 3.3"/></symbol>
+    <symbol id="i-swim" viewBox="0 0 24 24"><circle cx="16.5" cy="6.5" r="1.8"/><path d="M5.5 12l4-3.5 3.5 2M2.5 15.5c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0M2.5 19.5c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/></symbol>
+    <symbol id="i-barbell" viewBox="0 0 24 24"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"/></symbol>
+  </defs>
+</svg>
+<div id="stage"></div>
+<script src="art.js"></script>
+<script src="orb.js"></script>
+<script src="ad.js"></script>
+</body>
+</html>

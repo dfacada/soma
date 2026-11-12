@@ -1,0 +1,145 @@
+/* The ad's look: Dayhub Night, on the app's own tokens (src/app/globals.css, as the landing page has them) and its
+   three typefaces, vendored with the landing page. Nothing here animates by itself: ad.js sets every frame. */
+
+@font-face { font-family: "Bricolage Grotesque"; font-style: normal; font-weight: 200 800; font-stretch: 75% 100%; src: url("../site/public/fonts/bricolage-grotesque-latin.woff2") format("woff2"); }
+@font-face { font-family: "Figtree"; font-style: normal; font-weight: 300 900; src: url("../site/public/fonts/figtree-latin.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800; src: url("../site/public/fonts/jetbrains-mono-latin.woff2") format("woff2"); }
+
+:root {
+  --page: #0B0A09; --surface: #161513; --surface-2: #211F1B; --hairline: #2A2723; --hairline-strong: #3A3631;
+  --ink: #F5F2EB; --ink-2: #D2CDC3; --muted: #A39E94; --faint: #8A857B;
+  --journal: #8F8AF7; --journal-ink: #C9C6FC; --food: #4BCF93; --food-ink: #9BE5C2; --activity: #F39A57; --activity-ink: #F8C49C;
+  --on-hue: #14130F;
+  --frame-a: #3A3530; --frame-b: #121110;
+  --font-display: "Bricolage Grotesque", "Arial Narrow", sans-serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --all: linear-gradient(100deg, var(--journal), var(--food) 52%, var(--activity));
+}
+.journal { --hue: var(--journal); --hue-ink: var(--journal-ink); }
+.food { --hue: var(--food); --hue-ink: var(--food-ink); }
+.activity { --hue: var(--activity); --hue-ink: var(--activity-ink); }
+
+* { box-sizing: border-box; animation: none !important; transition: none !important; }
+html, body { margin: 0; background: #000; overflow: hidden; }
+body { -webkit-font-smoothing: antialiased; }
+#stage { position: relative; overflow: hidden; background: var(--page); color: var(--ink); font-family: var(--font-body); }
+#stage > * { position: absolute; left: 0; top: 0; }
+.scene { width: 100%; height: 100%; overflow: hidden; }
+.scene > * { position: absolute; left: 0; top: 0; }
+.layer { position: absolute; left: 0; top: 0; display: block; }
+svg { display: block; overflow: visible; }
+.ic { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Type roles, as the app's. */
+.d { font-family: var(--font-display); font-weight: 650; letter-spacing: -0.032em; line-height: 0.98; font-optical-sizing: auto; }
+.dc { font-family: var(--font-display); font-weight: 700; font-variation-settings: "wdth" 76; letter-spacing: -0.025em; line-height: 0.9; font-variant-numeric: tabular-nums; }
+.m { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eb { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+
+/* Supers: the narrator's lines, word by word. */
+.super { width: var(--w); }
+.super .ln { display: block; white-space: normal; }
+.super .w { display: inline-block; will-change: auto; }
+.super .hl { color: var(--hue-ink); }
+.super .all { background: var(--all); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: 0.06em; }
+.kick { display: flex; align-items: center; gap: 0.7em; color: var(--hue-ink, var(--ink-2)); }
+.kick i { width: 0.62em; height: 0.62em; border-radius: 50%; background: var(--hue, var(--ink)); box-shadow: 0 0 0.9em color-mix(in srgb, var(--hue, var(--ink)) 60%, transparent); }
+.kick.allhue i { background: conic-gradient(var(--journal), var(--food), var(--activity), var(--journal)); }
+.fine { font: 400 var(--fs, 23px)/1.42 var(--font-body); color: var(--muted); width: var(--w); }
+.fine b { color: var(--ink-2); font-weight: 600; }
+
+/* The member's words, as Say your day hears them. */
+.said { width: var(--w); font: 600 var(--fs, 64px)/1.17 var(--font-display); letter-spacing: -0.018em; color: var(--ink); }
+.said .w { display: inline-block; }
+.said mark { background: none; color: inherit; border-radius: 0.16em; padding: 0 0.08em; margin: 0 -0.08em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+/* The phone: the landing page's slab, flat, with a real screen of the app in it. Body 400 × 833. */
+.phone { width: 400px; height: 833px; transform-origin: 200px 416.5px; }
+.phone > * { position: absolute; }
+.ph-shadow { left: -40px; right: -40px; top: 40px; bottom: -60px; border-radius: 120px; background: radial-gradient(closest-side, rgba(0, 0, 0, 0.65), transparent); filter: blur(30px); }
+.ph-body { left: 0; top: 0; width: 400px; height: 833px; border-radius: 60px; padding: 13px;
+  background: linear-gradient(150deg, var(--frame-a), var(--frame-b) 38%, var(--frame-b) 70%, var(--frame-a));
+  box-shadow: 0 2px 0 rgba(255, 255, 255, 0.07) inset, 0 0 0 1.5px #000, 0 60px 90px -40px rgba(0, 0, 0, 0.85); }
+.ph-btn { width: 5px; border-radius: 3px; background: linear-gradient(90deg, #2A2622, #4A443D); }
+.ph-screen { position: relative; width: 374px; height: 807px; border-radius: 48px; overflow: hidden; background: #000; }
+.ph-screen > * { position: absolute; left: 0; top: 0; }
+.scr-layer { width: 374px; height: 807px; overflow: hidden; transform-origin: 50% 40%; opacity: 0; }
+.scr-layer img { position: absolute; left: 0; top: 0; display: block; }
+.scr-layer img.scr { width: 374px; height: 809.4px; }
+.ph-ovl { width: 780px; height: 1688px; transform-origin: 0 0; transform: scale(0.4795); }
+.ph-ovl > * { position: absolute; }
+.ph-glare { left: 13px; top: 13px; width: 374px; height: 807px; border-radius: 48px; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.07) 46%, transparent 58%); background-size: 260% 100%; mix-blend-mode: screen; }
+.ph-island { left: 157px; top: 26px; width: 86px; height: 25px; border-radius: 13px; background: #000; }
+.hand { position: absolute; pointer-events: none; }
+
+/* Things drawn over a screen, in the screenshot's own pixels (780 × 1688). */
+.patch { background: var(--bg, #0B0A09); }
+.clock { font: 400 32px/1 var(--font-mono); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.tap { width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: radial-gradient(closest-side, rgba(245, 242, 235, 0.55), rgba(245, 242, 235, 0.18) 70%, transparent); }
+.tap-ring { width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 4px solid rgba(245, 242, 235, 0.7); }
+.glowdot { border-radius: 50%; background: radial-gradient(closest-side, var(--hue), transparent); mix-blend-mode: screen; }
+
+/* Today's orb, as the landing page builds it (a 280 box, scaled). */
+.orb-stage { width: var(--s); height: var(--s); }
+.orb-stage > * { position: absolute; }
+.orb-gl { left: -18%; top: -18%; width: 136%; height: 136%; }
+.orb-track { inset: 7.86%; border-radius: 50%; border: 1.5px dashed var(--hairline-strong); }
+.orb-ring { inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.orb-ring circle { fill: none; stroke-width: 3; stroke-linecap: round; }
+.orb-glow { inset: 6.79%; border-radius: 50%; background: conic-gradient(from 0deg, var(--journal), var(--food), var(--activity), var(--journal));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); }
+.orb-rays { left: -60%; top: -60%; width: 220%; height: 220%; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(143, 138, 247, 0.16) 0deg 3deg, transparent 3deg 12deg, rgba(75, 207, 147, 0.13) 12deg 15deg, transparent 15deg 24deg, rgba(243, 154, 87, 0.14) 24deg 27deg, transparent 27deg 36deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 22%, #000 32%, transparent 100%); mask: radial-gradient(closest-side, transparent 22%, #000 32%, transparent 100%); }
+.orb-core { inset: 0; display: grid; place-content: center; justify-items: center; gap: calc(var(--s) * 0.012); text-align: center; }
+.orb-open { display: flex; align-items: flex-end; color: var(--ink); text-shadow: 0 0 22px var(--page), 0 0 6px var(--page); }
+.orb-n { font-size: calc(var(--s) * 0.3); }
+.orb-of { font-size: calc(var(--s) * 0.1); color: var(--ink-2); margin: 0 0 calc(var(--s) * 0.02) 2px; }
+.orb-word { color: var(--ink); text-shadow: 0 0 10px var(--page), 0 0 4px var(--page); font-size: calc(var(--s) * 0.036); letter-spacing: 0.14em; }
+.orb-tick { position: absolute; left: 50%; top: 47%; width: calc(var(--s) * 0.16); height: calc(var(--s) * 0.16); margin: calc(var(--s) * -0.08) 0 0 calc(var(--s) * -0.08); fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 10px var(--page)); }
+.bead { width: calc(var(--s) * 0.107); height: calc(var(--s) * 0.107); margin: calc(var(--s) * -0.0535) 0 0 calc(var(--s) * -0.0535); border-radius: 50%;
+  display: grid; place-items: center; background: var(--page); border: 1.5px solid var(--hairline-strong); color: var(--muted); }
+.bead svg { width: 46%; height: 46%; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+.bead .bead-glow { position: absolute; inset: -40%; border-radius: 50%; background: radial-gradient(closest-side, var(--hue), transparent); opacity: 0; }
+
+/* The streak, as the day-closing moment shows it. */
+.streak { display: grid; justify-items: center; text-align: center; }
+.streak .n { background: var(--all); -webkit-background-clip: text; background-clip: text; color: transparent; padding: 0 0.04em; }
+.streak .u { color: var(--muted); font: 400 var(--us, 34px)/1.2 var(--font-body); margin-top: 0.2em; }
+
+/* The wordmark: its little orb holds the three hues in a dark glass bead. */
+.brand { display: inline-flex; align-items: center; gap: 0.36em; font: 650 var(--bs, 120px)/1 var(--font-display); letter-spacing: -0.03em; color: var(--ink); }
+.mark { position: relative; width: 0.82em; height: 0.82em; border-radius: 50%; overflow: hidden; isolation: isolate; background: radial-gradient(circle at 50% 28%, #211F1B, #0B0A09 80%); border: 2px solid var(--hairline-strong); }
+.mark i { position: absolute; width: 0.63em; height: 0.63em; border-radius: 50%; mix-blend-mode: screen; }
+.mark i:nth-child(1) { left: -0.1em; top: -0.06em; background: radial-gradient(closest-side, var(--journal), transparent); }
+.mark i:nth-child(2) { left: 0.28em; top: 0.06em; background: radial-gradient(closest-side, var(--food), transparent); }
+.mark i:nth-child(3) { left: 0.1em; top: 0.31em; background: radial-gradient(closest-side, var(--activity), transparent); }
+.cta { display: inline-flex; align-items: center; gap: 0.6em; padding: 0 1.1em; height: 2.4em; border-radius: 999px; background: var(--ink); color: var(--page); font: 600 var(--cs, 36px)/1 var(--font-body); }
+.chip { display: inline-flex; align-items: center; gap: 0.5em; padding: 0 0.85em; height: 2.1em; border-radius: 999px; border: 1.5px solid var(--hairline-strong); background: rgba(22, 21, 19, 0.82); color: var(--ink-2); font: 600 var(--cs, 28px)/1 var(--font-body); }
+.chip i { width: 0.5em; height: 0.5em; border-radius: 50%; background: var(--hue); box-shadow: 0 0 0.6em var(--hue); }
+.movechip { width: var(--mc); height: var(--mc); border-radius: 30%; display: grid; place-items: center; background: color-mix(in srgb, var(--activity) 20%, #161513); border: 1.5px solid color-mix(in srgb, var(--activity) 45%, #3A3631); color: var(--activity); }
+.movechip svg { width: 52%; height: 52%; }
+
+/* The sealed line: words turn into what the server would hold. */
+.sealcard { width: var(--w); padding: 0.9em 1em; border-radius: 0.8em; background: rgba(22, 21, 19, 0.9); border: 1.5px solid color-mix(in srgb, var(--journal) 40%, #3A3631); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.9); font-size: var(--fs, 30px); }
+.sealcard .top { display: flex; justify-content: space-between; align-items: center; font: 400 0.62em/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--journal-ink); margin-bottom: 0.6em; }
+.sealcard .top svg { width: 1.5em; height: 1.5em; }
+.sealcard .txt { font: 500 1em/1.35 var(--font-body); color: var(--ink); word-break: break-all; min-height: 2.7em; }
+.sealcard .txt.cipher { font-family: var(--font-mono); font-size: 0.86em; color: var(--journal-ink); }
+
+/* Over everything: a little grain (keeps dark gradients from banding once the platforms compress them) and a vignette. */
+.grain { width: 100%; height: 100%; opacity: 0.045; mix-blend-mode: overlay; background-size: 256px 256px; }
+.vignette { width: 100%; height: 100%; background: radial-gradient(ellipse 75% 70% at 50% 48%, transparent 55%, rgba(0, 0, 0, 0.42)); }
+.flash { width: 100%; height: 100%; background: radial-gradient(circle at var(--fx, 50%) var(--fy, 50%), rgba(245, 242, 235, 0.95), rgba(201, 198, 252, 0.55) 22%, rgba(75, 207, 147, 0.2) 44%, rgba(243, 154, 87, 0.08) 58%, rgba(11, 10, 9, 0) 72%); }
+.shade { width: 100%; height: 100%; background: #000; }
+
+/* Plates (?plate=1): only the screen, square-cornered, filling the frame. No hand, frame, words or taps: the actor's
+   own thumb does the tapping. */
+.plate #stage { background: #000; }
+.plate #stage * { visibility: hidden; }
+.plate #stage .phone, .plate #stage .phone * { visibility: visible; }
+.plate #stage .hand, .plate #stage .ph-btn, .plate #stage .ph-shadow, .plate #stage .ph-glare, .plate #stage .tap, .plate #stage .tap-ring { display: none; }
+.plate #stage .ph-body { background: none; box-shadow: none; border-radius: 0; }
+.plate #stage .ph-screen { border-radius: 0; }
