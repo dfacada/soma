@@ -9,7 +9,7 @@
 
 const { writeLog } = require('./log');
 
-const BUCKET = 'soma-drafts';
+const BUCKET = process.env.STRATUS_BUCKET || 'soma-drafts'; // each project's own (deploy.js, catalyst/targets.js)
 // Every table with a user_id column. ai_usage and logs included: nothing that names the person stays behind.
 const BY_USER = ['checkins', 'day_logs', 'activity', 'weight', 'entries', 'recipes', 'reviews', 'health_months',
   'vault_tokens', 'vault_meta', 'push_subs', 'jobs', 'round_members', 'feedback', 'errors', 'ai_usage', 'logs', 'messages'];

@@ -18,7 +18,7 @@ const { writeLog } = require('../lib/log');
 const { spend } = require('../lib/quota');
 
 const router = express.Router();
-const BUCKET = 'soma-drafts';
+const BUCKET = process.env.STRATUS_BUCKET || 'soma-drafts'; // each project's own (deploy.js, catalyst/targets.js)
 const POOL = 'soma_jobs';
 const SOURCE = /^tx-[A-Za-z0-9_-]{8,40}\.(webm|m4a|mp4|ogg|wav)$/;
 const MAX_OPEN = 5;

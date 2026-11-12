@@ -1,12 +1,13 @@
 // Vault crypto checks, plus one end-to-end pass through the real Development API and Stratus:
 // passphrase → key → encrypt → signed PUT → signed GET → decrypt. Runs the app's own src/lib/vault-crypto.ts.
 //
-//   node scripts/test-vault.mjs
+//   node scripts/test-vault.mjs      (--to dayhub, or TARGET=dayhub, for another project in catalyst/targets.js)
 
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import { createVault, unlockVault, encryptBytes, decryptBytes, encryptJson, decryptJson, exportKey, importKey, checkKey, newDeviceKey, sealForDevice, openOnDevice } from "../src/lib/vault-crypto.ts";
 
-const BASE = "https://soma-939530195.development.catalystserverless.com/server/soma_api/execute";
+const BASE = createRequire(import.meta.url)("../catalyst/targets.js").pick().api;
 const KEY = JSON.parse(fs.readFileSync(new URL("../catalyst/secrets.json", import.meta.url), "utf8")).soma_api.TEST_KEY;
 let passed = 0; const failures = [];
 const check = (name, ok, detail) => { if (ok) { passed++; console.log("  ok   " + name); } else { failures.push(name); console.log("  FAIL " + name, detail ?? ""); } };

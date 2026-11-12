@@ -1,14 +1,18 @@
 // End-to-end checks against the deployed Development API, as the synthetic test member
 // (TEST_KEY in secrets.json; see functions/soma_api/lib/auth.js). Cleans up after itself.
 //
-//   node test-api.js
+//   node test-api.js                 the default project in targets.js
+//   node test-api.js --to dayhub     another one (or TARGET=dayhub)
 
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
 
-const BASE = 'https://soma-939530195.development.catalystserverless.com/server/soma_api/execute';
+const TARGET = require('./targets').pick();
+const BASE = TARGET.api;
+// The address the app is served from, as the API should allow it (its first in targets.js).
+const SITE = TARGET.origins[0];
 const KEY = JSON.parse(fs.readFileSync(path.join(__dirname, 'secrets.json'), 'utf8')).soma_api.TEST_KEY;
 
 let passed = 0;
@@ -34,6 +38,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 (async () => {
   let r;
   const day = '2001-02-03', day2 = '2001-02-05';
+  console.log(`target: ${TARGET.name} (${BASE})`);
 
   console.log('identity');
   r = await call('GET', '/me');
@@ -533,9 +538,9 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   check('auth-url refuses a redirect that is not ours', r.status === 400, r.text);
   r = await call('POST', '/google-health/auth-url', { redirectUri: 'https://soma-onkasary.onslate.com/settings/', state });
   check('auth-url refuses the address Dayhub left', r.status === 400, r.text);
-  r = await call('POST', '/google-health/auth-url', { redirectUri: 'https://dayhub-onkasary.onslate.com/settings/', state: 'short' });
+  r = await call('POST', '/google-health/auth-url', { redirectUri: SITE + '/settings/', state: 'short' });
   check('auth-url refuses a weak state', r.status === 400, r.text);
-  r = await call('POST', '/google-health/auth-url', { redirectUri: 'https://dayhub-onkasary.onslate.com/settings/', state });
+  r = await call('POST', '/google-health/auth-url', { redirectUri: SITE + '/settings/', state });
   check(configured ? 'auth-url asks for offline, read-only activity' : 'auth-url is 503 until the keys are set',
     configured ? r.status === 200 && r.json.url.includes('access_type=offline') && r.json.url.includes('googlehealth.activity_and_fitness.readonly') && r.json.url.includes('googlehealth.sleep.readonly') && r.json.url.includes('state=' + state) && !r.json.url.includes('secret') : r.status === 503, r.json);
   r = await call('POST', '/google-health/sync', { refreshToken: 'not-a-real-token-0000', from: day2, to: day });

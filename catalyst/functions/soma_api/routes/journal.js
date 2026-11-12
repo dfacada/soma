@@ -10,7 +10,7 @@ const { HttpError, select, upsert, needId, needToken, fitText, bool } = require(
 
 // One bucket, one key layout: <user_id>/<kind>/<name>. Bucket CORS is console-only and per bucket, so a single
 // bucket means one allow-list per origin instead of four. (The bucket's name predates this; it holds every kind.)
-const BUCKET = 'soma-drafts';
+const BUCKET = process.env.STRATUS_BUCKET || 'soma-drafts'; // each project's own (deploy.js, catalyst/targets.js)
 const KINDS = ['entries', 'audio', 'photos', 'drafts'];
 const ENTRY_KINDS = ['entries', 'audio', 'photos'];
 const NAME = /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,79}$/;

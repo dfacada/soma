@@ -2,13 +2,15 @@
 // API and Stratus, as the synthetic test member: segments encrypted and uploaded in order, listed by GET /drafts,
 // rebuilt byte for byte, then deleted by DELETE /drafts/:id. Runs the app's own draft-stream.ts and vault-crypto.ts.
 //
-//   node --import ./scripts/ts-resolve.mjs scripts/test-drafts.mjs
+//   node --import ./scripts/ts-resolve.mjs scripts/test-drafts.mjs   (TARGET=dayhub for another project in
+//   catalyst/targets.js)
 
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import { createVault } from "../src/lib/vault-crypto.ts";
 import { DraftStream, rebuildDraft, segmentName } from "../src/lib/draft-stream.ts";
 
-const BASE = "https://soma-939530195.development.catalystserverless.com/server/soma_api/execute";
+const BASE = createRequire(import.meta.url)("../catalyst/targets.js").pick().api;
 const KEY = JSON.parse(fs.readFileSync(new URL("../catalyst/secrets.json", import.meta.url), "utf8")).soma_api.TEST_KEY;
 let passed = 0; const failures = [];
 const check = (name, ok, detail) => { if (ok) { passed++; console.log("  ok   " + name); } else { failures.push(name); console.log("  FAIL " + name, detail ?? ""); } };

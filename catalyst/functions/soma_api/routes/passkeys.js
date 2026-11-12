@@ -27,8 +27,9 @@ const router = express.Router();
 const PROVIDER = 'passkey';
 const MAX_PASSKEYS = 8;
 const TTL_MS = 5 * 60 * 1000;
-// The pages allowed to ask. The rp id is the origin's host, as the browser sets it when rp.id is left out.
-const ORIGINS = ['https://dayhub-onkasary.onslate.com', 'http://localhost:3000'];
+// The pages allowed to ask. The rp id is the origin's host, as the browser sets it when rp.id is left out. The app's
+// addresses come from deploy.js (catalyst/targets.js), so each project allows only its own; the default is soma's.
+const ORIGINS = (process.env.APP_ORIGINS || 'https://dayhub-onkasary.onslate.com,http://localhost:3000').split(',');
 const ALGS = { '-7': 'sha256', '-257': 'sha256', '-8': null }; // ES256, RS256, Ed25519
 const CRED_ID = /^[A-Za-z0-9_-]{16,512}$/;
 const B64URL = /^[A-Za-z0-9_-]*$/;

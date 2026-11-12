@@ -37,8 +37,9 @@ const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const STEPS_URL = 'https://health.googleapis.com/v4/users/me/dataTypes/steps/dataPoints:dailyRollUp';
-// Must match the OAuth client's Authorized redirect URIs exactly. A Production hostname joins this list.
-const REDIRECTS = ['https://dayhub-onkasary.onslate.com/settings/', 'http://localhost:3000/settings/'];
+// Must match the OAuth client's Authorized redirect URIs exactly. The app's addresses come from deploy.js
+// (catalyst/targets.js), so each project allows only its own; the default is the soma project's.
+const REDIRECTS = (process.env.APP_ORIGINS || 'https://dayhub-onkasary.onslate.com,http://localhost:3000').split(',').map((o) => o + '/settings/');
 const MAX_DAYS = 85; // dailyRollUp allows 90 for steps; stay clear of the edge
 
 const config = () => {

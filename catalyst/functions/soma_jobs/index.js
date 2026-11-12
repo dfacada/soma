@@ -53,7 +53,7 @@ async function pruneUsage(app) {
   if (removed) console.log(JSON.stringify({ action: 'usage_pruned', rows: removed }));
 }
 
-const BUCKET = 'soma-drafts';
+const BUCKET = process.env.STRATUS_BUCKET || 'soma-drafts'; // each project's own (deploy.js, catalyst/targets.js)
 const GROQ_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 const GROQ_LIMIT = 25 * 1024 * 1024;
 const MIME = { webm: 'audio/webm', m4a: 'audio/mp4', mp4: 'audio/mp4', ogg: 'audio/ogg', wav: 'audio/wav' };
