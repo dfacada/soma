@@ -129,11 +129,13 @@ function newcomer(now: Date, theme: Theme, who: "new" | "pending" | "week"): Wor
     now,
     me: { id: USER_ID, email: "sam@fixture.test", name: "Sam Okafor", profile: { rowId: "2", displayName: "Sam Okafor", role: "member", status: who === "pending" ? "pending" : "active" } },
     displayName: "Sam Okafor",
-    // A week in: set up as a newcomer would be (their own meals, a walk as their move), What's new and the install
-    // tip seen, the opening words off; nothing logged, since the question is what is being shot.
+    // A week in: set up as a newcomer would be (their own meals, a walk as their move, and their own rule: no journal,
+    // three meals), What's new and the install tip seen, the opening words off; nothing logged, since the question is
+    // what is being shot.
     settings: who === "week"
       ? { theme: theme === "night" ? "dark" : "light", joined: dayKey(addDays(now, -6)), seenChanges: seenMark(), seenInstall: true, ...NEWCOMER_FOOD, foodSetUp: true,
-        moves: [{ key: "walk", goal: 30 }], mainMove: "walk", opening: { on: false, source: "both", phrases: [] }, unlockOnOpen: false }
+        moves: [{ key: "walk", goal: 30 }], mainMove: "walk", opening: { on: false, source: "both", phrases: [] }, unlockOnOpen: false,
+        closes: { checkin: true, journal: false, food: true, activity: true, meals: ["breakfast", "lunch", "dinner"], chosen: true } }
       : { theme: theme === "night" ? "dark" : "light" },
     days: { checkins: [], dayLogs: [], activity: [], weight: [] },
     entries: [], vault: null, keyB64: "",

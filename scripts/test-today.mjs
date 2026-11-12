@@ -1,5 +1,6 @@
 // What closes a day.  node --import ./scripts/ts-resolve.mjs scripts/test-today.mjs
-import { dayStatus, headline, since, streak } from "../src/lib/today.ts";
+import { createRequire } from "node:module";
+import { dayStatus, headline, mealsWord, since, streak } from "../src/lib/today.ts";
 import { DEFAULT_SETTINGS, NEWCOMER_FOOD, mergeSettings } from "../src/lib/settings.ts";
 
 let passed = 0; const failures = [];
@@ -39,6 +40,35 @@ st = dayStatus({ log: { day: "d", meals: { breakfast: ticked, lunch: meal, snack
 check("a meal ticked with no numbers is eaten; a bare tick with no usual meal adds nothing", [st.meals, st.kcal, st.protein, st.leftMeals], [3, 500, 40, ["dinner"]]);
 st = dayStatus({ log: { day: "d", meals: { breakfast: ticked, lunch: ticked, snack: ticked, dinner: ticked }, extras: [] }, entries: 0 }, own);
 check("four ticked meals close food, with nothing counted", [st.foodDone, st.kcal], [true, 0]);
+
+console.log("each person's own rule (settings.closes)");
+const rule = (stored) => mergeSettings(stored);
+st = dayStatus({ ...full("d", 180), entries: 0 }, rule({ closes: { journal: false } }));
+check("a journal that doesn't count: closed without an entry, four things, no journal bead", [st.closed, st.taskCount, st.ring.map((r) => r.key).includes("journal"), st.counts.journal], [true, 4, false, false]);
+const twoMeals = { ...full("d", 180), log: { day: "d", meals: { breakfast: meal, dinner: meal }, extras: [] } };
+st = dayStatus(twoMeals, rule({ closes: { meals: ["breakfast", "dinner"] } }));
+check("only the meals that count: breakfast and dinner close food", [st.foodDone, st.closed, st.leftMeals, st.meals, st.mealsNeeded], [true, true, [], 2, ["breakfast", "dinner"]]);
+st = dayStatus({ ...twoMeals, log: { day: "d", meals: { breakfast: meal }, extras: [] } }, rule({ closes: { meals: ["breakfast", "dinner"] } }));
+check("…the food bead fills by the meals that count", [st.ring.find((r) => r.key === "food").value, st.leftMeals], [0.5, ["dinner"]]);
+check("…and the headline asks for the one left", headline(st, 0, 19).todos.map((t) => t.label), ["Dinner"]);
+st = dayStatus({ entries: 0 }, rule({ requireWeight: false, closes: { checkin: false, journal: false, food: false, activity: false } }));
+check("nothing at all counting reads as the check-in", [st.taskCount, st.counts.checkin, st.closed], [1, true, false]);
+check("a fresh day says how many things close it, in words", [headline(dayStatus(undefined, rule({ closes: { journal: false, food: false } })), 0, 9).sub, headline(st, 0, 9).sub], ["Good morning. Three things close it.", "Good morning. One thing closes it."]);
+check("what is not counted is still done or not", dayStatus({ entries: 2 }, rule({ closes: { journal: false } })).journalDone, true);
+check("the meals in words", [mealsWord(["breakfast", "lunch", "snack", "dinner"]), mealsWord(["breakfast", "lunch", "dinner"]), mealsWord(["dinner"])], ["all four meals", "breakfast, lunch and dinner", "dinner"]);
+
+console.log("the app and the server judge a day the same way, whatever closes it");
+const server = createRequire(import.meta.url)("../catalyst/functions/soma_jobs/closing.js");
+const choices = [{}, { requireWeight: false }, { closes: { journal: false } }, { closes: { food: false, activity: false } }, { closes: { meals: ["breakfast", "dinner"] } }, { requireWeight: false, closes: { meals: ["lunch"], checkin: false } }, { requireWeight: false, closes: { checkin: false, journal: false, food: false, activity: false } }];
+const shapes = [full("d", 180), full("d", undefined), { entries: 0 }, twoMeals, { ...twoMeals, weight: undefined, entries: 0 }, { checkin: { day: "d", mood: "Down", habits: {}, counts: {} }, log: { day: "d", meals: { lunch: meal }, extras: [] }, entries: 0, weight: 179 }];
+let agree = 0, cases = 0;
+for (const c of choices) for (const d of shapes) {
+  cases++;
+  const r = server.closingRules(c);
+  const facts = { weight: d.weight !== undefined, mood: d.checkin?.mood ?? null, entries: d.entries, meals: d.log?.meals || {}, pushups: d.activity?.pushups || 0, types: d.activity?.types || {}, steps: d.activity?.steps ?? null };
+  if ((server.leftToday(facts, r.requireWeight, r.stepsGoal, r.counts).length === 0) === dayStatus(d, rule(c)).closed) agree++;
+}
+check(`all ${cases} cases agree`, agree, cases);
 
 console.log("streak");
 const today = new Date(2026, 8, 17, 12);

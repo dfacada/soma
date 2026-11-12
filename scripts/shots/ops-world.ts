@@ -69,11 +69,12 @@ function person(now: number, id: string) {
   const pattern = ["11111", "11111", "10111", "11111", "01101", "11111", "11111", "00100", "11111", "11011", "11111", "11111", "11111", "11101"];
   const days = pattern.map((row, i) => {
     const [w, c, j, f, m] = row.split("").map((x) => x === "1");
-    return { day: iso(now - (13 - i) * DAY), weight: w, checkin: c, journal: j ? 1 : 0, meals: f ? 4 : 2, move: m, closed: w && c && j && f && m };
+    return { day: iso(now - (13 - i) * DAY), weight: w, checkin: c, journal: j ? 1 : 0, meals: f ? 4 : 2, food: f, move: m, closed: w && c && j && f && m };
   }).reverse();
   return {
     person: { userId: p.id, name: p.name, email: p.email, role: "member", status: "active", joinedMs: now - p.joined * DAY, lastSeenMs: now - 11 * HOUR, invitedBy: "800000000000000107", device: p.device,
-      shortName: short(p.name), first: first(p.name), invitedByName: "Jordan K.", zone: "America/Chicago", moves: { moves: ["run (main)", "push-ups", "yoga"], legacy: false }, requireWeight: true },
+      shortName: short(p.name), first: first(p.name), invitedByName: "Jordan K.", zone: "America/Chicago", moves: { moves: ["run (main)", "push-ups", "yoga"], legacy: false }, requireWeight: true,
+      counts: { weight: true, checkin: true, journal: true, food: true, activity: true, meals: 4 } },
     days, closed: days.filter((d) => d.closed).length, streak: 3,
     journal: { entries: 41, lastMs: now - 11 * HOUR },
     issues: issues(now).filter((it) => it.userId === p.id),

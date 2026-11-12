@@ -1,6 +1,9 @@
 // Pure Today logic, ported from the prototype's dayStatus / streakInfo / viewToday. No React, no I/O.
-// A day closes when every task is done: check-in (a mood), a journal entry, all four meals, and any activity, plus weight
-// first of all unless the user has switched that requirement off. Order here is the order of the cards on Today.
+// A day closes when every task that counts is done: weight first (settings.requireWeight), then a check-in (a mood), a
+// journal entry, the meals that count (all four unless chosen otherwise) and any activity. Each person chooses which
+// count (settings.closes, since 2026-11-11); all five do unless switched off. The tasks that don't count are still
+// there and still logged, they just don't hold the day open. Order here is the order of the cards on Today.
+// The server's copy of this rule is catalyst/functions/soma_jobs/closing.js: change one, change the other.
 
 import type { ActivityDay, Checkin, DayLog, EntryMeta } from "./api";
 import { loggedOf, movedOn, movesOf } from "./moves";
@@ -34,11 +37,17 @@ export function indexDays(days: { checkins: Checkin[]; dayLogs: DayLog[]; activi
 }
 
 export type DayStatus = {
+  /** Each task done or not, whether or not it counts. Food is done when every meal that counts is eaten. */
   checkinDone: boolean; journalDone: boolean; foodDone: boolean; weightDone: boolean; activityDone: boolean;
   /** Whether weight counts toward closing this day (settings.requireWeight). */
   weightRequired: boolean;
+  /** Which tasks close this person's day (settings.requireWeight and settings.closes). */
+  counts: Record<TaskKey, boolean>;
   weight: number | null;
+  /** `meals`: how many of the four were eaten. `leftMeals`: the meals that count and are not eaten yet. */
   meals: number; leftMeals: Meal[]; kcal: number; protein: number; carbs: number; fat: number;
+  /** The meals that count toward food, in card order. */
+  mealsNeeded: Meal[];
   /** Push-ups logged, and how many of the person's moves were logged out of how many they have. */
   pushups: number; acts: number; actTotal: number;
   doneCount: number;
@@ -55,8 +64,10 @@ export type TaskKey = "checkin" | "journal" | "food" | "weight" | "activity";
 export function dayStatus(data: DayData | undefined, settings: Settings): DayStatus {
   const d = data || emptyDay();
   const eaten = d.log?.meals || {};
-  const leftMeals = MEALS.filter((m) => !eaten[m]);
-  const meals = 4 - leftMeals.length;
+  const c = settings.closes;
+  const mealsNeeded = c.meals;
+  const leftMeals = mealsNeeded.filter((m) => !eaten[m]);
+  const meals = MEALS.filter((m) => eaten[m]).length;
   // What was eaten: the snapshot when there is one, the current plan for a bare `true` from before snapshots (nothing,
   // where there is no usual meal). A meal ticked with no numbers is a snapshot of zeros: eaten, counting nothing.
   const ate = [...MEALS.filter((m) => eaten[m]).map((m) => (typeof eaten[m] === "object" ? eaten[m] : settings.plan[m] ?? { kcal: 0 }) as { kcal: number; protein?: number; carbs?: number; fat?: number }), ...(d.log?.extras || [])];
@@ -69,22 +80,23 @@ export function dayStatus(data: DayData | undefined, settings: Settings): DaySta
 
   const checkinDone = Boolean(d.checkin?.mood);
   const journalDone = d.entries > 0;
-  const foodDone = meals === 4;
+  const foodDone = leftMeals.length === 0;
   // Any move logged, even one no longer on the list; steps only at their goal (moves.ts movedOn, and nudge.js).
   const activityDone = movedOn(d.activity, settings);
   const weightRequired = settings.requireWeight;
   const weightDone = d.weight !== undefined;
+  const counts: Record<TaskKey, boolean> = { weight: weightRequired, checkin: c.checkin, journal: c.journal, food: c.food, activity: c.activity };
   const ring: DayStatus["ring"] = [
-    ...(weightRequired ? [{ key: "weight" as const, value: weightDone ? 1 : 0, color: "var(--food-bar)" }] : []),
-    { key: "checkin", value: checkinDone ? 1 : 0, color: "var(--journal)" },
-    { key: "journal", value: journalDone ? 1 : 0, color: "var(--journal-soft)" },
-    { key: "food", value: meals / 4, color: "var(--food)" },
-    { key: "activity", value: activityDone ? 1 : 0, color: "var(--activity)" },
+    ...(counts.weight ? [{ key: "weight" as const, value: weightDone ? 1 : 0, color: "var(--food-bar)" }] : []),
+    ...(counts.checkin ? [{ key: "checkin" as const, value: checkinDone ? 1 : 0, color: "var(--journal)" }] : []),
+    ...(counts.journal ? [{ key: "journal" as const, value: journalDone ? 1 : 0, color: "var(--journal-soft)" }] : []),
+    ...(counts.food ? [{ key: "food" as const, value: (mealsNeeded.length - leftMeals.length) / mealsNeeded.length, color: "var(--food)" }] : []),
+    ...(counts.activity ? [{ key: "activity" as const, value: activityDone ? 1 : 0, color: "var(--activity)" }] : []),
   ];
   const taskCount = ring.length;
-  const doneCount = [checkinDone, journalDone, foodDone, activityDone, weightRequired && weightDone].filter(Boolean).length;
+  const doneCount = [counts.checkin && checkinDone, counts.journal && journalDone, counts.food && foodDone, counts.activity && activityDone, counts.weight && weightDone].filter(Boolean).length;
   return {
-    checkinDone, journalDone, foodDone, weightDone, weightRequired, weight: d.weight ?? null, activityDone, meals, leftMeals, kcal, protein: total("protein"), carbs: total("carbs"), fat: total("fat"), pushups, acts, actTotal,
+    checkinDone, journalDone, foodDone, weightDone, weightRequired, counts, weight: d.weight ?? null, activityDone, meals, leftMeals, mealsNeeded, kcal, protein: total("protein"), carbs: total("carbs"), fat: total("fat"), pushups, acts, actTotal,
     doneCount, taskCount, closed: doneCount === taskCount,
     progress: ring.reduce((n, r) => n + r.value, 0) / taskCount,
     ring,
@@ -103,22 +115,33 @@ export function streak(map: DayMap, settings: Settings, today: Date, windowDays:
 
 export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+const COUNT_WORD = ["No", "One", "Two", "Three", "Four", "Five"];
+/** "Five things close the day.", "One thing closes it." */
+export const closesLine = (n: number, what = "the day") => (n === 1 ? `One thing closes ${what}.` : `${COUNT_WORD[n] ?? n} things close ${what}.`);
+
+/** The meals that count, in words: "all four meals", or "breakfast, lunch and dinner". */
+export function mealsWord(meals: Meal[]): string {
+  if (meals.length === 4) return "all four meals";
+  if (meals.length === 1) return meals[0];
+  return `${meals.slice(0, -1).join(", ")} and ${meals[meals.length - 1]}`;
+}
+
 export type Todo = { label: string; color: string };
 
 /** Hero headline, sub-line and the chips for what is left. */
 export function headline(st: DayStatus, streakNow: number, hour: number): { big: string; sub: string; todos: Todo[] } {
-  // Each dot is its task's domain colour, the same as its bead on the orb.
+  // Each dot is its task's domain colour, the same as its bead on the orb. Only what counts is asked for.
   const todos: Todo[] = [];
-  if (st.weightRequired && !st.weightDone) todos.push({ label: "Weight", color: "var(--food)" });
-  if (!st.checkinDone) todos.push({ label: "Check in", color: "var(--journal)" });
-  if (!st.journalDone) todos.push({ label: "Journal", color: "var(--journal)" });
-  if (!st.foodDone) todos.push({ label: st.leftMeals.length === 1 ? cap(st.leftMeals[0]) : `${st.leftMeals.length} meals`, color: "var(--food)" });
-  if (!st.activityDone) todos.push({ label: "Any activity", color: "var(--activity)" });
+  if (st.counts.weight && !st.weightDone) todos.push({ label: "Weight", color: "var(--food)" });
+  if (st.counts.checkin && !st.checkinDone) todos.push({ label: "Check in", color: "var(--journal)" });
+  if (st.counts.journal && !st.journalDone) todos.push({ label: "Journal", color: "var(--journal)" });
+  if (st.counts.food && !st.foodDone) todos.push({ label: st.leftMeals.length === 1 ? cap(st.leftMeals[0]) : `${st.leftMeals.length} meals`, color: "var(--food)" });
+  if (st.counts.activity && !st.activityDone) todos.push({ label: "Any activity", color: "var(--activity)" });
 
   if (st.closed) return { big: "Day closed", sub: streakNow <= 1 ? "First full day of a new run." : `${streakNow} full days in a row.`, todos };
   if (st.progress === 0) {
     const hello = hour < 12 ? "Good morning." : hour < 17 ? "Good afternoon." : "Good evening.";
-    return { big: "Fresh day", sub: `${hello} ${st.taskCount === 5 ? "Five" : "Four"} things close it.`, todos };
+    return { big: "Fresh day", sub: `${hello} ${closesLine(st.taskCount, "it")}`, todos };
   }
   if (todos.length === 1) return { big: "One to go", sub: `${todos[0].label} closes the day.`, todos };
   return { big: `${todos.length} to go`, sub: "Tap them below.", todos };

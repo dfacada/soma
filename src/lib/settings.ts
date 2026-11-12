@@ -72,6 +72,10 @@ export type Settings = {
   experiment: StoredExperiment | null;
   /** Logging weight is one of the things that closes the day. On unless the user switches it off. */
   requireWeight: boolean;
+  /** Which of the other four close this person's day, and which meals food asks for (David, 2026-11-11: each person
+   *  chooses). Weight stays requireWeight, as it always was. All on and all four meals unless switched off, and at least
+   *  one thing always counts (cleanCloses). The server reads the same: catalyst/functions/soma_jobs/closing.js. */
+  closes: Closes;
   /** Ask for the vault passphrase when the app opens, once per tab, dismissible. The vault gates the journal, sleep and the health sync. */
   unlockOnOpen: boolean;
   /** Appearance. The colours are in globals.css; src/lib/look.ts applies these. */
@@ -90,6 +94,21 @@ export type Settings = {
 };
 
 export const MEALS: Meal[] = ["breakfast", "lunch", "snack", "dinner"];
+
+/** What closes a day besides weight (settings.closes). `chosen`: the person has said, on the first-day card or in
+ *  Settings; nothing about the rule depends on it. */
+export type Closes = { checkin: boolean; journal: boolean; food: boolean; activity: boolean; meals: Meal[]; chosen: boolean };
+
+/** Stored → what closes the day: everything unless switched off, the meals in card order (all four when none is
+ *  left). Nothing at all closing a day is not a choice Dayhub offers: with weight off too, the check-in counts. The
+ *  server's countsOf (soma_jobs/closing.js) reads stored settings the same way. */
+export function cleanCloses(v: unknown, weight: boolean): Closes {
+  const c = (v && typeof v === "object" && !Array.isArray(v) ? v : {}) as Partial<Closes>;
+  const meals = Array.isArray(c.meals) ? MEALS.filter((m) => c.meals!.includes(m)) : [];
+  const out: Closes = { checkin: c.checkin !== false, journal: c.journal !== false, food: c.food !== false, activity: c.activity !== false, meals: meals.length ? meals : [...MEALS], chosen: c.chosen === true };
+  if (!weight && !out.checkin && !out.journal && !out.food && !out.activity) out.checkin = true;
+  return out;
+}
 
 export const DEFAULT_SETTINGS: Settings = {
   moods: [
@@ -130,6 +149,7 @@ export const DEFAULT_SETTINGS: Settings = {
   foodEstimate: true,
   experiment: null,
   requireWeight: true,
+  closes: { checkin: true, journal: true, food: true, activity: true, meals: ["breakfast", "lunch", "snack", "dinner"], chosen: false },
   unlockOnOpen: true,
   // Night ("dark") for everyone who never picked: only what a user changed is stored, so a stored "light" or
   // "system" was a choice and stays.
@@ -221,6 +241,7 @@ export function mergeSettings(stored: unknown): Settings {
     foodEstimate: s.foodEstimate !== false,
     experiment: cleanExperiment(s.experiment),
     requireWeight: s.requireWeight !== false,
+    closes: cleanCloses(s.closes, s.requireWeight !== false),
     unlockOnOpen: s.unlockOnOpen !== false,
     theme: THEME_MODES.includes(s.theme as ThemeMode) ? (s.theme as ThemeMode) : d.theme,
     palette: isPalette(s.palette) ? s.palette : d.palette,

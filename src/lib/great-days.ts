@@ -7,7 +7,7 @@ import { goalText, loggedOf, progressOf, type Move } from "./moves";
 import { toneOf, type Mood } from "./moods";
 import type { Nights } from "./health";
 import { hasTarget, type Settings } from "./settings";
-import { dayStatus, type DayMap } from "./today";
+import { cap, dayStatus, mealsWord, type DayMap } from "./today";
 
 /** Both sides of a comparison need this many days before it is shown at all. */
 export const MIN_SIDE = 3;
@@ -46,7 +46,7 @@ function tests(map: DayMap, settings: Settings, main: MainGoal | null, nights: N
   return [
     // Only with a protein target to hit: someone with none set has no such finding.
     ...(hasTarget(settings.goals.protein) ? [{ key: "protein", label: `Hit your ${settings.goals.protein} g protein`, ask: `Hit your ${settings.goals.protein} g protein`, test: (k: string) => (st(k).meals > 0 ? st(k).protein >= settings.goals.protein : undefined) }] : []),
-    { key: "meals", label: "Logged all four meals", ask: "Log all four meals", test: (k) => st(k).foodDone },
+    { key: "meals", label: `Logged ${mealsWord(settings.closes.meals)}`, ask: `Log ${mealsWord(settings.closes.meals)}`, test: (k) => st(k).foodDone },
     { key: "active", label: "Moved", ask: "Get a move in", test: (k) => st(k).activityDone },
     ...mainTest(map, main),
     { key: "journal", label: "Talked to your journal", ask: "Talk to your journal", test: (k) => (map[k]?.entries || 0) > 0 },
@@ -170,6 +170,8 @@ export function journalTone(map: DayMap, days: string[], settings: Settings, mai
 
 export type TaskKey = "weight" | "checkin" | "journal" | "food" | "activity";
 export const TASK_LABEL: Record<TaskKey, string> = { weight: "Weight", checkin: "Check-in", journal: "Journal", food: "All four meals", activity: "Activity" };
+/** A task's name for this person: food is the meals that count for them. */
+export const taskLabel = (key: TaskKey, settings: Pick<Settings, "closes">) => (key === "food" ? cap(mealsWord(settings.closes.meals)) : TASK_LABEL[key]);
 export type Progress = { days: number; closed: number; rates: { key: TaskKey; rate: number }[]; weakest: TaskKey | null; perDay: { day: string; done: number; total: number }[] };
 
 /** How the window went: days closed, how often each task got done, and which one most often kept a day open. Counted
@@ -178,7 +180,8 @@ export function progress(map: DayMap, all: string[], settings: Settings): Progre
   const logged = (k: string) => { const d = map[k]; return !!d && (!!d.checkin || !!d.log || !!d.activity || d.weight !== undefined || d.entries > 0); };
   const first = all.findIndex(logged);
   const days = first < 0 ? all.slice(-1) : all.slice(first);
-  const keys: TaskKey[] = settings.requireWeight ? ["weight", "checkin", "journal", "food", "activity"] : ["checkin", "journal", "food", "activity"];
+  // The tasks that close this person's day (settings.requireWeight and settings.closes), in card order.
+  const keys = (["weight", "checkin", "journal", "food", "activity"] as TaskKey[]).filter((k) => (k === "weight" ? settings.requireWeight : settings.closes[k]));
   const done: Record<TaskKey, number> = { weight: 0, checkin: 0, journal: 0, food: 0, activity: 0 };
   let closed = 0;
   const perDay = days.map((k) => {
@@ -216,7 +219,7 @@ export function weekCompare(map: DayMap, settings: Settings, todayKey: string): 
   const rows: WeekRow[] = [
     { label: "Calories a day", now: mean(ate(now).map((k) => st(k).kcal)), before: mean(ate(before).map((k) => st(k).kcal)), unit: "kcal", better: "down" },
     ...(hasTarget(settings.goals.protein) ? [{ label: "Protein goal hit", now: count(now, (k) => st(k).meals > 0 && st(k).protein >= settings.goals.protein), before: count(before, (k) => st(k).meals > 0 && st(k).protein >= settings.goals.protein), unit: "days", better: "up" as const }] : []),
-    { label: "All four meals logged", now: count(now, (k) => st(k).foodDone), before: count(before, (k) => st(k).foodDone), unit: "days", better: "up" },
+    { label: `${cap(mealsWord(settings.closes.meals))} logged`, now: count(now, (k) => st(k).foodDone), before: count(before, (k) => st(k).foodDone), unit: "days", better: "up" },
     { label: "Active days", now: count(now, (k) => st(k).activityDone), before: count(before, (k) => st(k).activityDone), unit: "days", better: "up" },
     ...(steps(now).length || steps(before).length ? [{ label: "Steps a day", now: mean(steps(now)), before: mean(steps(before)), unit: "steps", better: "up" as const }] : []),
     ...(limit ? [{ label: limit.label, now: now.reduce((n, k) => n + (map[k]?.checkin?.counts[limit.id] || 0), 0), before: before.reduce((n, k) => n + (map[k]?.checkin?.counts[limit.id] || 0), 0), unit: "this week", better: "down" as const }] : []),

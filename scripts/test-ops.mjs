@@ -161,6 +161,9 @@ console.log("a person's days, done or not, no values");
   check("steps only count for someone who chose Steps", g.days[0].move === false && ops.doneGrid(rows, days, { moves: [{ key: "steps" }] }, (ms) => new Date(ms).toISOString().slice(0, 10)).days[0].move === true);
   check("nothing in the grid says what was eaten, weighed or done", !JSON.stringify(g).includes("kcal") && !JSON.stringify(g).includes("Great") && !JSON.stringify(g).includes("km"));
   check("the streak counts back from yesterday when today is open", ops.streakOf(g.days) === 1);
+  const mine = ops.doneGrid(rows, days, { moves: [{ key: "run" }], closes: { meals: ["breakfast"], journal: false, activity: false } }, (ms) => new Date(ms).toISOString().slice(0, 10));
+  check("their own rule: breakfast the one meal that counts, no journal and no move", mine.days[2].food === true && mine.days[2].closed === true && mine.counts.journal === false && mine.counts.meals === 1, mine);
+  check("…and what counts says no more than which", JSON.stringify(mine.counts) === JSON.stringify({ weight: true, checkin: true, journal: false, food: true, activity: false, meals: 1 }));
 }
 
 console.log("people and support");
@@ -186,6 +189,7 @@ console.log("closed days, kept by the job");
   check("at most 60 kept, the newest", job.nextClosed(JSON.stringify(many), "2026-11-08", true).c.length === 60);
   const facts = job.factsByPerson({ weight: [{ user_id: "1" }], checkins: [{ user_id: "1", mood: "Great" }], logs: [{ user_id: "1", meals_json: JSON.stringify({ breakfast: 1, lunch: 1, snack: 1, dinner: 1 }) }], activity: [{ user_id: "1", pushups: "20", types_json: "{}", steps: "0" }], entries: [{ user_id: "1", created_ms: String(Date.parse("2026-11-08T02:00:00Z")) }] }, "2026-11-07", () => "2026-11-07");
   check("a person's rows become the closing rule's facts", closing.leftToday(facts.get("1"), true, null).length === 0, facts.get("1"));
+  check("…and their own rule is passed to it", closing.leftToday({ ...facts.get("1"), entries: 0 }, true, null, closing.closingRules({ closes: { journal: false } }).counts).length === 0);
 }
 
 console.log("cohorts and the funnel");

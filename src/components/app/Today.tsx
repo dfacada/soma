@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Reac
 import { Button, Chip, DayGlyph, Icon, Medallion, Orb, Overlay, Sheet, StatPill, Toast, type MedallionState, type OrbBead } from "@/components/ui";
 import { hasTarget, MEALS, type Meal, type PlannedMeal } from "@/lib/settings";
 import { hm } from "@/lib/sleep";
-import { addDays, cap, dayKey, dayStatus, headline, streak, WEEKDAYS, type TaskKey } from "@/lib/today";
+import { addDays, cap, closesLine, dayKey, dayStatus, headline, mealsWord, streak, WEEKDAYS, type TaskKey } from "@/lib/today";
 import { haptic } from "@/lib/haptics";
 import { report } from "@/lib/log";
 import { longDay } from "./DayBanner";
@@ -155,12 +155,16 @@ export function Today() {
   const lede = !isToday
     ? (st.closed ? "Closed. Nothing left to fill in." : `${st.doneCount} of ${st.taskCount} done. Fill in what is missing.`)
     : st.closed ? null
-    : st.progress === 0 ? `${st.taskCount === 5 ? "Five" : "Four"} things close the day.`
+    : st.progress === 0 ? closesLine(st.taskCount)
     : head.todos.length === 1 ? `${head.todos[0].label} closes the day.`
     : `${head.todos.length} left to close the day.`;
   // Said after the lede when there is an Up next (below).
   const NEXT_LABEL: Record<TaskKey, string> = { weight: "your weight", checkin: "check in", journal: "your journal", food: "food", activity: "move" };
-  const beads: OrbBead[] = st.ring.map((r) => ({ key: r.key, value: r.value, ...BEADS[r.key] }));
+  // The meals bead says which meals count: "All four meals", or "Breakfast, lunch and dinner".
+  const bead = (key: TaskKey) => ({ ...BEADS[key], ...(key === "food" ? { label: cap(mealsWord(st.mealsNeeded)) } : {}) });
+  const beads: OrbBead[] = st.ring.map((r) => ({ key: r.key, value: r.value, ...bead(r.key) }));
+  // A card whose task does not close this person's day still works; its label says it is optional (settings.closes).
+  const optional = (key: TaskKey) => (st.counts[key] ? "" : " · optional");
 
   // ── Check-in ──
   const moods = settings.moods.filter((m) => m.on);
@@ -196,7 +200,7 @@ export function Today() {
   const kcalSet = hasTarget(settings.goals.kcal);
   const lastUsual = st.leftMeals.length === 1 ? settings.plan[st.leftMeals[0]] : null;
   const foodSub = st.foodDone
-    ? `All four eaten · ${kcalSet ? `${fmt(settings.goals.kcal)} kcal goal` : `${fmt(st.kcal)} kcal`}`
+    ? `${st.mealsNeeded.length === 4 ? "All four" : cap(mealsWord(st.mealsNeeded))} eaten · ${kcalSet ? `${fmt(settings.goals.kcal)} kcal goal` : `${fmt(st.kcal)} kcal`}`
     : st.leftMeals.length === 1
       ? `${cap(st.leftMeals[0])} left${lastUsual ? `: ${lastUsual.name}` : ""}`
       : `${st.leftMeals.length} meals left${sayFood ? " · tap to say what you ate" : ""}`;
@@ -298,7 +302,7 @@ export function Today() {
   // One open task, picked by the time of day, glows and is the only one whose button rings; the rest stay quiet
   // (David, 2026-11-03: "a unique experience that's efficient"). Weight first thing, food through the day, the
   // journal in the evening. Only on today, and not while something is recording.
-  const open: Record<TaskKey, boolean> = { weight: st.weightRequired && !st.weightDone, checkin: !st.checkinDone, journal: !st.journalDone, food: !st.foodDone, activity: !st.activityDone };
+  const open: Record<TaskKey, boolean> = { weight: st.counts.weight && !st.weightDone, checkin: st.counts.checkin && !st.checkinDone, journal: st.counts.journal && !st.journalDone, food: st.counts.food && !st.foodDone, activity: st.counts.activity && !st.activityDone };
   const order: TaskKey[] = hour < 11 ? ["weight", "checkin", "food", "activity", "journal"]
     : hour < 17 ? ["food", "activity", "checkin", "weight", "journal"]
     : ["journal", "food", "activity", "checkin", "weight"];
@@ -434,7 +438,7 @@ export function Today() {
         <button type="button" className={`${tile(st.checkinDone, false, false, "checkin")} ${t.hit}`} style={hue("journal")} onClick={() => setCheckinSheet(true)}
           aria-label={st.checkinDone ? `Check-in: ${checkin!.mood}. Change it` : "Check in"}>
           <span className={t.tint} /><span className={t.sweep} />
-          <span className={t.th}><Medallion domain="journal" icon="heart" state={st.checkinDone ? "done" : "idle"} /><span className="eb">Check-in</span></span>
+          <span className={t.th}><Medallion domain="journal" icon="heart" state={st.checkinDone ? "done" : "idle"} /><span className="eb">Check-in{optional("checkin")}</span></span>
           <span className={`d ${t.title}`}>{st.checkinDone ? checkin!.mood : "How's today?"}</span>
           <span className={t.sub}>{st.checkinDone ? nums([...habitsOn, ...countsOn].join(" · ") || "No habits ticked") : "Mood and habits, ten seconds"}</span>
         </button>
@@ -446,7 +450,7 @@ export function Today() {
             aria-label={recording ? "Stop recording" : isToday ? "Record a journal entry" : `Record a journal entry for ${longDay(view)}`}>
             <span className={t.row}>
               <span className={t.grow}>
-                <span className={t.th}><Medallion domain="journal" icon="mic" state={recording ? "rec" : st.journalDone ? "done" : "idle"} /><span className="eb">Journal</span></span>
+                <span className={t.th}><Medallion domain="journal" icon="mic" state={recording ? "rec" : st.journalDone ? "done" : "idle"} /><span className="eb">Journal{optional("journal")}</span></span>
                 <span className={`d ${t.title} ${recording ? `m ${t.recTime}` : ""}`}>{journalTitle}</span>
                 <span className={t.sub}>{journalSub}</span>
               </span>
@@ -468,7 +472,7 @@ export function Today() {
               <>
                 <span className={t.row}>
                   <span className={t.grow}>
-                    <span className={t.th}><Medallion domain="food" icon={listening ? "mic" : "leaf"} state={foodState} /><span className="eb">Food</span></span>
+                    <span className={t.th}><Medallion domain="food" icon={listening ? "mic" : "leaf"} state={foodState} /><span className="eb">Food{optional("food")}</span></span>
                     {/* The day's kcal is a hero number like the weight and the push-ups; words and the timer stay titles. */}
                     {!listening && st.meals
                       ? <span className={t.big}><span className="dc">{fmt(st.kcal)}</span><span className={t.unit}>kcal</span></span>
@@ -501,7 +505,7 @@ export function Today() {
             <span className={t.tint} /><span className={t.sweep} />
             <button type="button" className={t.hit} onClick={() => setMoveSheet(null)}
               aria-label={`${main.name}: ${amountText(main, mainLogged)}${main.unit === "session" || rest ? "" : `, goal ${goalText(mainAt)}`}. Log it`}>
-              <span className={t.th}><Medallion domain="activity" icon={moveIcon(main)} state={st.activityDone ? "done" : "idle"} /><span className="eb">Activity · {main.name}</span></span>
+              <span className={t.th}><Medallion domain="activity" icon={moveIcon(main)} state={st.activityDone ? "done" : "idle"} /><span className="eb">Activity · {main.name}{optional("activity")}</span></span>
               {/* The goal is mono, like Food's "/ 2,100 kcal"; a session is done or not, in words. */}
               {main.unit === "session"
                 ? <span className={t.big}><span className={`d ${t.roll}`} style={{ fontSize: 30 }}>{mainLogged.done ? "Done" : "Not yet"}</span><span className={t.unit}>{mainLogged.done ? "today" : "a session"}</span></span>
@@ -535,7 +539,7 @@ export function Today() {
           <div className={tile(st.activityDone, true, false, "activity")} style={hue("activity")}>
             <span className={t.tint} /><span className={t.sweep} />
             <button type="button" className={t.hit} onClick={() => { haptic(); setChooser(true); }} aria-label="Choose how you move">
-              <span className={t.th}><Medallion domain="activity" icon="run" state={st.activityDone ? "done" : "idle"} /><span className="eb">Activity</span></span>
+              <span className={t.th}><Medallion domain="activity" icon="run" state={st.activityDone ? "done" : "idle"} /><span className="eb">Activity{optional("activity")}</span></span>
               <span className="d" style={{ fontSize: 22, lineHeight: 1.15 }}>How do you like to move?</span>
               <span className={t.sub}>Pick what you actually do: a walk, a run, yoga, push-ups. Any of them closes your day.</span>
             </button>
@@ -593,7 +597,7 @@ export function Today() {
       )}
       {celebrate && (
         <Overlay>
-          <DayClosed streak={run.now} beads={st.ring.map((r) => ({ key: r.key, value: 1, ...BEADS[r.key] }))}
+          <DayClosed streak={run.now} beads={st.ring.map((r) => ({ key: r.key, value: 1, ...bead(r.key) }))}
             week={[6, 5, 4, 3, 2, 1, 0].map((i) => { const d = addDays(today, -i); return { label: WEEKDAYS[d.getDay()].charAt(0), full: dayStatus(days[dayKey(d)], settings).closed }; })}
             onClose={() => { setCelebrate(false); say(`${run.now} full day${run.now === 1 ? "" : "s"} in a row`); }} />
         </Overlay>

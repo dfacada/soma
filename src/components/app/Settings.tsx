@@ -16,6 +16,7 @@ import { mainOf, movesOf } from "@/lib/moves";
 import { MOOD_LABEL_MAX, MOODS_MAX, moodId, moodTone, type Mood, type MoodTone } from "@/lib/moods";
 import { MoodFace } from "./MoodFace";
 import { MovesChooser } from "./MovesChooser";
+import { ClosingChooser, closingSummary } from "./Closing";
 import { SOMA_PHRASES } from "@/lib/opening-words";
 import { BOWL_VARIANTS, MEAL_PLANS, type BowlId, type MealPlanId } from "@/lib/food-data";
 import { hasTarget, OWN_PLAN, planMeals, type Habit, type PlanChoice, type Settings } from "@/lib/settings";
@@ -236,10 +237,10 @@ export function SettingsScreen() {
           </Field>
         </Section>
 
-        <Section {...sec("weight")} title="Weight" summary={settings.requireWeight ? "One of the things that close the day" : "Optional"}>
-          <Field name="Weight closes the day" help="On: logging your weight is one of the five things that close a day and keep the streak. Off: four things, and the weight card is still there.">
-            <Switch checked={settings.requireWeight} label="Weight closes the day" onChange={(v) => void save({ requireWeight: v }, v ? "Weight is required to close the day" : "Weight is optional")} />
-          </Field>
+        {/* Each person chooses what closes their day (2026-11-11). It was the Weight section, so it keeps its address
+            (/settings/#weight); weight is the first of its switches. */}
+        <Section {...sec("weight")} title="What closes your day" summary={closingSummary(settings)}>
+          <ClosingChooser say={say} />
         </Section>
 
         <Section {...sec("activity")} title="Your moves" summary={movesSummary(settings)}>

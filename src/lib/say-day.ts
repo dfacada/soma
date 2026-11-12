@@ -202,12 +202,14 @@ export function fillDay(rows: DayRow[], change: ChangeDay, day: string): number 
 }
 
 /** What is still open that day, as things to mention: shown on the recording screen as a cue. */
-export function cuesOf(st: Pick<DayStatus, "weightRequired" | "weightDone" | "checkinDone" | "foodDone" | "activityDone" | "leftMeals">): string[] {
+export function cuesOf(st: Pick<DayStatus, "weightRequired" | "weightDone" | "checkinDone" | "foodDone" | "activityDone" | "leftMeals"> & Partial<Pick<DayStatus, "counts" | "mealsNeeded">>): string[] {
+  // Only what closes this person's day (settings.closes): everything, when the status does not say.
+  const counts = (key: "checkin" | "food" | "activity") => st.counts?.[key] ?? true;
   const cues: string[] = [];
   if (st.weightRequired && !st.weightDone) cues.push("Your weight");
-  if (!st.checkinDone) cues.push("How you feel");
-  if (!st.foodDone) cues.push(st.leftMeals.length === 4 ? "What you ate" : st.leftMeals.map(cap).join(", "));
-  if (!st.activityDone) cues.push("How you moved");
+  if (counts("checkin") && !st.checkinDone) cues.push("How you feel");
+  if (counts("food") && !st.foodDone) cues.push(st.leftMeals.length === (st.mealsNeeded?.length ?? 4) ? "What you ate" : st.leftMeals.map(cap).join(", "));
+  if (counts("activity") && !st.activityDone) cues.push("How you moved");
   return cues;
 }
 

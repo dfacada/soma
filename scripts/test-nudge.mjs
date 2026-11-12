@@ -12,8 +12,8 @@ check("…and in Tokyo (already 09:45 on the 18th)", n.localNow(at, "Asia/Tokyo"
 check("an unknown zone is null, not a crash", n.localNow(at, "Mars/Olympus"), null);
 
 console.log("settings");
-check("off by default, 20:30, weight required", n.nudgeSettings({}), { on: false, minutes: 1230, requireWeight: true, stepsGoal: null });
-check("the stored time and weight choice are read", n.nudgeSettings({ nudge: { on: true, time: "21:15" }, requireWeight: false }), { on: true, minutes: 1275, requireWeight: false, stepsGoal: null });
+check("off by default, 20:30, weight required, everything counting", n.nudgeSettings({}), { on: false, minutes: 1230, requireWeight: true, stepsGoal: null, counts: { checkin: true, journal: true, food: true, activity: true, meals: ["breakfast", "lunch", "snack", "dinner"] } });
+check("the stored time and weight choice are read", n.nudgeSettings({ nudge: { on: true, time: "21:15" }, requireWeight: false }), { on: true, minutes: 1275, requireWeight: false, stepsGoal: null, counts: { checkin: true, journal: true, food: true, activity: true, meals: ["breakfast", "lunch", "snack", "dinner"] } });
 check("a nonsense time falls back", n.nudgeSettings({ nudge: { on: true, time: "25:99" } }).minutes, 1230);
 
 console.log("when");
@@ -35,6 +35,17 @@ check("a cleared move is not", n.leftToday({ ...full, types: { walk: false, run:
 check("steps do not close the day for someone who did not choose them", n.leftToday({ ...full, types: {}, steps: 20000 }, true), ["Activity"]);
 check("steps close it at the goal for someone who chose them", n.leftToday({ ...full, types: {}, steps: 8000 }, true, 8000), []);
 check("…and not below it", n.leftToday({ ...full, types: {}, steps: 7999 }, true, 8000), ["Activity"]);
+
+console.log("what closes the day is each person's (settings.closes)");
+const mine = (closes, requireWeight = true) => n.nudgeSettings({ closes, requireWeight }).counts;
+check("a journal they don't count is not asked for", n.leftToday({ ...full, entries: 0 }, true, null, mine({ journal: false })), []);
+check("…nor food, nor a move, nor a check-in", n.leftToday({ weight: true, entries: 1 }, true, null, mine({ food: false, activity: false, checkin: false })), []);
+check("only the meals that count are asked for", n.leftToday({ ...full, meals: { breakfast: {}, dinner: {} } }, true, null, mine({ meals: ["breakfast", "dinner"] })), []);
+check("…a missing one is named by number", n.leftToday({ ...full, meals: { breakfast: {} } }, true, null, mine({ meals: ["breakfast", "lunch", "dinner"] })), ["2 meals"]);
+check("…and none of them is Food", n.leftToday({ ...full, meals: { snack: {} } }, true, null, mine({ meals: ["breakfast", "dinner"] })), ["Food"]);
+check("unknown meals are dropped, and none left means all four", [mine({ meals: ["brunch"] }).meals.length, mine({ meals: ["dinner", "breakfast"] }).meals.join()], [4, "breakfast,dinner"]);
+check("nothing at all counting reads as the check-in", mine({ checkin: false, journal: false, food: false, activity: false }, false).checkin, true);
+check("…but with weight on, weight alone can close a day", mine({ checkin: false, journal: false, food: false, activity: false }, true).checkin, false);
 check("chose Steps: the goal comes from settings", n.nudgeSettings({ moves: [{ key: "steps", goal: 1 }], goals: { steps: 6000 } }).stepsGoal, 6000);
 check("no moves stored (settings from before moves): steps never count", n.nudgeSettings({ goals: { steps: 6000 } }).stepsGoal, null);
 check("one thing left reads as a sentence", n.message(["Journal"]), { title: "One to go", body: "Journal closes the day.", url: "/", tag: "soma-nudge" });

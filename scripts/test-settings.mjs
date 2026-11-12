@@ -45,5 +45,11 @@ check("nothing stored is still David's plan", [mergeSettings({}).mealPlan, merge
 check("a target set to none stays none", mergeSettings({ goals: { kcal: 2000, protein: 0 } }).goals, { kcal: 2000, protein: 0, carbs: 150, fat: 75, steps: 8000 });
 check("a plan chosen later replaces the empty meals", Object.values(mergeSettings({ ...NEWCOMER_FOOD, mealPlan: "keto", plan: planMeals("keto", "beef-rice") }).plan).every((m) => m && m.kcal > 0), true);
 
+console.log("what closes the day (2026-11-11: each person chooses)");
+check("nothing stored: all five, all four meals, not chosen yet", mergeSettings({}).closes, { checkin: true, journal: true, food: true, activity: true, meals: ["breakfast", "lunch", "snack", "dinner"], chosen: false });
+check("a choice is kept, meals in card order, unknown ones dropped", mergeSettings({ closes: { journal: false, meals: ["dinner", "brunch", "breakfast"], chosen: true } }).closes, { checkin: true, journal: false, food: true, activity: true, meals: ["breakfast", "dinner"], chosen: true });
+check("no meal left counts all four", mergeSettings({ closes: { meals: [] } }).closes.meals.length, 4);
+check("nothing counting at all reads as the check-in (as the server reads it)", mergeSettings({ requireWeight: false, closes: { checkin: false, journal: false, food: false, activity: false } }).closes.checkin, true);
+
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) process.exit(1);

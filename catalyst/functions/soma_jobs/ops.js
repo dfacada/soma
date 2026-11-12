@@ -137,7 +137,7 @@ async function rollupDay(app, day) {
     if (!p || p.status !== 'active') continue;
     logged++;
     const rules = closingRules(parse(p.settings_json, {}));
-    const isClosed = leftToday(facts.get(uid) || {}, rules.requireWeight, rules.stepsGoal).length === 0;
+    const isClosed = leftToday(facts.get(uid) || {}, rules.requireWeight, rules.stepsGoal, rules.counts).length === 0;
     if (isClosed) closed++;
     const next = JSON.stringify(nextClosed(p.closed_json, day, isClosed));
     if (next !== (p.closed_json || JSON.stringify({ c: [], f: null }))) updates.push({ ROWID: p.ROWID, closed_json: next });

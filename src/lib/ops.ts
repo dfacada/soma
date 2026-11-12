@@ -28,10 +28,13 @@ export type Overview = {
 };
 
 export type PersonRow = { userId: string; name: string; email: string; role: "admin" | "member"; status: "pending" | "active" | "disabled" | "deleting"; joinedMs: number | null; lastSeenMs: number | null; invitedBy: string | null; device: string | null };
-export type DoneDay = { day: string; weight: boolean; checkin: boolean; journal: number; meals: number; move: boolean; closed: boolean };
+/** `food`: every meal that counts for them was eaten. */
+export type DoneDay = { day: string; weight: boolean; checkin: boolean; journal: number; meals: number; food: boolean; move: boolean; closed: boolean };
+/** Which of the five close this person's day (settings.closes, since 2026-11-11), and how many meals food asks for. */
+export type Counts = { weight: boolean; checkin: boolean; journal: boolean; food: boolean; activity: boolean; meals: number };
 export type ThreadMessage = { at: number; sender: "admin" | "member"; who: string | null; body: string; read: boolean; feedback?: boolean };
 export type PersonView = {
-  person: PersonRow & { shortName: string; first: string; invitedByName: string | null; zone: string; moves: { moves: string[]; legacy: boolean }; requireWeight: boolean };
+  person: PersonRow & { shortName: string; first: string; invitedByName: string | null; zone: string; moves: { moves: string[]; legacy: boolean }; requireWeight: boolean; counts: Counts };
   days: DoneDay[]; closed: number; streak: number;
   journal: { entries: number; lastMs: number | null };
   issues: Issue[];

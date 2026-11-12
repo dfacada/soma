@@ -259,7 +259,7 @@ router.get('/ops/people/:userId', admin, wrap(async (req, res) => {
     person: Object.assign(shapePerson(p), {
       shortName: ops.shortName(p.display_name, p.email), first: ops.firstName(p.display_name, p.email),
       invitedByName: inviter ? ops.shortName(inviter.display_name, inviter.email) : null,
-      zone: tz, moves: movesOf(settings), requireWeight: grid.requireWeight
+      zone: tz, moves: movesOf(settings), requireWeight: grid.requireWeight, counts: grid.counts
     }),
     days: grid.days, closed: grid.days.filter((d) => d.closed).length, streak: ops.streakOf(grid.days),
     journal: { entries: num((entryCount[0] || {})['COUNT(ROWID)']), lastMs: num((entryCount[0] || {})['MAX(created_ms)']) || null },

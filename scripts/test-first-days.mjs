@@ -13,13 +13,13 @@ check("across the end of daylight saving it is still whole days", daysIn("2026-1
 check("no joined day, no count", daysIn("", "2026-11-11"), null);
 
 console.log("the first-day card");
-check("asks for moves, food and the reminder, none done yet", setUpItems(fresh), [{ key: "moves", done: false }, { key: "food", done: false }, { key: "nudge", done: false }]);
+check("asks what closes the day, then moves, food and the reminder, none done yet", setUpItems(fresh), [{ key: "closes", done: false }, { key: "moves", done: false }, { key: "food", done: false }, { key: "nudge", done: false }]);
 check("shows on day one", showFirstDay(fresh, "2026-11-11"), true);
 check("…and day two", showFirstDay(fresh, "2026-11-12"), true);
 check("…not on day three", showFirstDay(fresh, "2026-11-13"), false);
 check("never to someone who joined before it existed (David included)", showFirstDay(mergeSettings({ moves: [] }), "2026-11-11"), false);
 check("put away, it stays away", showFirstDay({ ...fresh, firstDayAway: true }, "2026-11-11"), false);
-const done = mergeSettings({ joined: "2026-11-11", moves: [{ key: "walk", goal: 30 }], foodSetUp: true, nudge: { on: true, time: "20:30" } });
+const done = mergeSettings({ joined: "2026-11-11", closes: { chosen: true }, moves: [{ key: "walk", goal: 30 }], foodSetUp: true, nudge: { on: true, time: "20:30" } });
 check("everything on it done, it goes", [setUpItems(done).every((x) => x.done), showFirstDay(done, "2026-11-11")], [true, false]);
 
 console.log("the week-one question");

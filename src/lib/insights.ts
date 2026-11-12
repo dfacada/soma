@@ -5,7 +5,7 @@
 
 import { toneOf } from "./moods";
 import { amountText, loggedOf, movesOf } from "./moves";
-import { addDays, dayKey, dayStatus, type DayMap } from "./today";
+import { addDays, dayKey, dayStatus, mealsWord, type DayMap } from "./today";
 import type { Nights } from "./health";
 import { hasTarget, type Settings } from "./settings";
 
@@ -115,7 +115,7 @@ export function insights(map: DayMap, settings: Settings, today: Date, windowDay
       else if (h.goal) { const c = d?.checkin?.counts[h.id] || 0; note(`${h.label} ${h.dir === "at_most" ? "at or under" : "at least"} ${h.goal}`, isGood, h.dir === "at_most" ? c <= h.goal : c >= h.goal); }
     }
     note("Journaled", isGood, st.journalDone);
-    note("Ate all four meals", isGood, st.foodDone);
+    note(`Ate ${mealsWord(settings.closes.meals)}`, isGood, st.foodDone);
     if (hasTarget(settings.goals.protein)) note(`${Math.round(settings.goals.protein * 0.9)} g of protein or more`, isGood, st.meals > 0 ? st.protein >= settings.goals.protein * 0.9 : undefined);
     note(`${settings.goals.steps.toLocaleString("en-US")} steps or more`, isGood, steps === null || steps === undefined ? undefined : steps >= settings.goals.steps);
     note("Slept 7 hours or more", isGood, night ? night.asleep >= 420 : undefined);

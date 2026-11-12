@@ -8,7 +8,7 @@
 
 'use strict';
 
-const { closingRules, moved, MEALS } = require('./closing');
+const { closingRules, fed, moved, MEALS } = require('./closing');
 
 const HOUR = 3600000, DAY = 86400000;
 const num = (v) => Number(v) || 0;
@@ -347,21 +347,23 @@ function groupProblems(rows, history, states, now) {
 // ── One person's days ──
 
 /**
- * The five things, done or not, for each of `days` (YYYY-MM-DD, newest first). rows: { weight: [{day}],
+ * The five things, done or not, for each of `days` (YYYY-MM-DD, newest first), and which of them close this person's
+ * day (closing.js: weight, and what they chose of the rest). `food` is every meal that counts for them eaten. rows: { weight: [{day}],
  * checkins: [{day, mood}], logs: [{day, meals_json}], activity: [{day, pushups, types_json, steps}],
  * entries: [{created_ms}] }. `entryDay` turns an entry's time into the person's day. No values leave here.
  */
 function doneGrid(rows, days, settings, entryDay) {
   const rules = closingRules(settings);
-  const at = new Map(days.map((d) => [d, { day: d, weight: false, checkin: false, journal: 0, meals: 0, move: false, closed: false }]));
+  const c = rules.counts;
+  const at = new Map(days.map((d) => [d, { day: d, weight: false, checkin: false, journal: 0, meals: 0, food: false, move: false, closed: false }]));
   for (const r of rows.weight || []) if (at.has(r.day)) at.get(r.day).weight = true;
   for (const r of rows.checkins || []) if (at.has(r.day) && r.mood) at.get(r.day).checkin = true;
-  for (const r of rows.logs || []) if (at.has(r.day)) { const m = parse(r.meals_json, {}); at.get(r.day).meals = MEALS.filter((k) => m[k]).length; }
+  for (const r of rows.logs || []) if (at.has(r.day)) { const m = parse(r.meals_json, {}); const g = at.get(r.day); g.meals = MEALS.filter((k) => m[k]).length; g.food = fed(m, c.meals); }
   for (const r of rows.activity || []) if (at.has(r.day)) at.get(r.day).move = moved({ pushups: r.pushups, types: parse(r.types_json, {}), steps: r.steps }, rules.stepsGoal);
   for (const r of rows.entries || []) { const d = entryDay(num(r.created_ms)); if (at.has(d)) at.get(d).journal++; }
   const out = days.map((d) => at.get(d));
-  for (const g of out) g.closed = (g.weight || !rules.requireWeight) && g.checkin && g.journal > 0 && g.meals === 4 && g.move;
-  return { days: out, requireWeight: rules.requireWeight };
+  for (const g of out) g.closed = (g.weight || !rules.requireWeight) && (g.checkin || !c.checkin) && (g.journal > 0 || !c.journal) && (g.food || !c.food) && (g.move || !c.activity);
+  return { days: out, requireWeight: rules.requireWeight, counts: { weight: rules.requireWeight, checkin: c.checkin, journal: c.journal, food: c.food, activity: c.activity, meals: c.meals.length } };
 }
 
 /** Closed days in a row, counting back from yesterday (today counts once it is closed). `days` newest first. */

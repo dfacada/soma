@@ -327,6 +327,8 @@ export function insightLine(lifts: Driver[], free: Block[] | null): Insight | nu
 /** Dayhub's side of the day, as the brief and its text show it. */
 export type SomaSide = {
   weighIn: boolean;
+  /** How many things close this person's day (settings.requireWeight and settings.closes). */
+  toClose: number;
   /** The main move and its goal that day (the round's target when the round counts it), or null with no moves yet.
    *  `goal` reads as words: "100 push-ups", "5 km", "a session". */
   move: { name: string; goal: string; rest: boolean; dayNumber: number | null } | null;
@@ -346,6 +348,7 @@ export function somaSide(settings: Settings, move: SomaSide["move"]): SomaSide {
   });
   return {
     weighIn: settings.requireWeight, move, meals, own: settings.mealPlan === "own",
+    toClose: (settings.requireWeight ? 1 : 0) + (["checkin", "journal", "food", "activity"] as const).filter((k) => settings.closes[k]).length,
     kcal: meals.reduce((n, m) => n + m.kcal, 0), protein: meals.reduce((n, m) => n + m.protein, 0),
   };
 }

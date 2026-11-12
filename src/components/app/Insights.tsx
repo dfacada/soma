@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import Link from "next/link";
 import { api, type Days } from "@/lib/api";
-import { greatDays, journalTone, MIN_CHECKINS, progress, TASK_LABEL, weekCompare, type Driver, type ToneDriver, type WeekCompare } from "@/lib/great-days";
+import { greatDays, journalTone, MIN_CHECKINS, progress, taskLabel, weekCompare, type Driver, type ToneDriver, type WeekCompare } from "@/lib/great-days";
 import { dayLog, type LogRow } from "@/lib/insights";
 import { trailingAverage, weighIns } from "@/lib/patterns";
 import { addDays, dayKey, indexDays, streak, WEEKDAYS, type DayMap } from "@/lib/today";
@@ -244,6 +244,7 @@ function JournalCard({ jt, tone }: { jt: ReturnType<typeof journalTone>; tone: R
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
 function ProgressCard({ p, now, best }: { p: ReturnType<typeof progress>; now: number; best: number }) {
+  const { settings } = useSession();
   // Up to two months: fifteen days a row. A year: a column a week, seven rows, like a wall calendar turned sideways.
   const year = p.perDay.length > 60;
   return (
@@ -259,13 +260,13 @@ function ProgressCard({ p, now, best }: { p: ReturnType<typeof progress>; now: n
       <div className={s.rates}>
         {p.rates.map((r) => (
           <div key={r.key} className={`${s.rate} ${p.weakest === r.key ? s.rateLow : ""}`}>
-            <span>{TASK_LABEL[r.key]}</span>
+            <span>{taskLabel(r.key, settings)}</span>
             <span className={s.rateTrack}><i style={{ width: `${pct(r.rate)}%` }} /></span>
             <span className="m">{pct(r.rate)}%</span>
           </div>
         ))}
       </div>
-      {p.weakest && <p className={s.note}>{TASK_LABEL[p.weakest]} is what most often keeps a day open.</p>}
+      {p.weakest && <p className={s.note}>{taskLabel(p.weakest, settings)} {p.weakest === "food" ? "are" : "is"} what most often keeps a day open.</p>}
     </Card>
   );
 }

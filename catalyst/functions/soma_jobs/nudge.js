@@ -221,7 +221,7 @@ async function run(app, params) {
 
     if (!user.active || !user.settings.on || !due(local, user.settings.minutes, sub.last_day)) { tally.notDue++; continue; }
     if (!user.facts.has(local.day)) user.facts.set(local.day, await dayFacts(app, uid, local, now));
-    const left = leftToday(user.facts.get(local.day), user.settings.requireWeight, user.settings.stepsGoal);
+    const left = leftToday(user.facts.get(local.day), user.settings.requireWeight, user.settings.stepsGoal, user.settings.counts);
     // Either way this device is settled for today: a closed day stays quiet, an open one is nudged exactly once.
     if (!left.length) { tally.closed++; await table.updateRow({ ROWID: sub.ROWID, last_day: local.day }); continue; }
     if (await send(sub, uid, message(left))) await table.updateRow({ ROWID: sub.ROWID, last_day: local.day, fails: 0 });

@@ -14,6 +14,7 @@ import { haptic } from "@/lib/haptics";
 import { report } from "@/lib/log";
 import { dayKey } from "@/lib/today";
 import { Button, Icon, Medallion, Sheet, type IconName } from "@/components/ui";
+import { ClosingChooser } from "./Closing";
 import { FoodSetUp } from "./FoodSetUp";
 import { MovesChooser } from "./MovesChooser";
 import { NudgeSettings } from "./Nudge";
@@ -22,6 +23,7 @@ import a from "./app.module.css";
 import t from "./today.module.css";
 
 const ITEMS: Record<SetUpKey, { title: string; sub: string; icon: IconName; domain: "journal" | "food" | "activity" }> = {
+  closes: { title: "What closes your day", sub: "Five things by default: keep the ones that fit you", icon: "today", domain: "journal" },
   moves: { title: "Your moves", sub: "What you actually do, each with a daily goal", icon: "run", domain: "activity" },
   food: { title: "Your food", sub: "Your own meals, and targets only if you want them", icon: "leaf", domain: "food" },
   nudge: { title: "An evening reminder", sub: "One nudge when the day is still open", icon: "moon", domain: "journal" },
@@ -49,7 +51,7 @@ export function FirstDayCard({ today, onSayDay, say }: { today: Date; onSayDay: 
     <section className={t.firstDay} aria-labelledby="first-day">
       <span className="eb">{daysIn(settings.joined, k) === 0 ? "Day one" : "Day two"}</span>
       <h2 id="first-day" className={`d ${t.firstTitle}`}>Make Dayhub yours</h2>
-      <p className={t.firstSub}>{left === 1 ? "One thing left, a minute at most." : `${left === 2 ? "Two" : "Three"} things, a minute each.`} Change any of it later in Settings.</p>
+      <p className={t.firstSub}>{left === 1 ? "One thing left, a minute at most." : `${["", "", "Two", "Three", "Four"][left] || left} things, a minute each.`} Change any of it later in Settings.</p>
       <div className={t.firstList}>
         {items.map((x) => (
           <button key={x.key} type="button" className={t.firstRow} onClick={() => { haptic(); setOpen(x.key); }}
@@ -66,6 +68,9 @@ export function FirstDayCard({ today, onSayDay, say }: { today: Date; onSayDay: 
       </div>
       <button type="button" className={a.lnk} style={{ alignSelf: "center", minHeight: 44 }} onClick={putAway}>Put this away</button>
 
+      <Sheet open={open === "closes"} title="What closes your day" onClose={close}>
+        {open === "closes" && <ClosingChooser say={say} onDone={close} />}
+      </Sheet>
       <Sheet open={open === "moves"} title="Your moves" onClose={close}>
         {open === "moves" && <MovesChooser first={settings.moves.length === 0} say={say} onSaved={close} />}
       </Sheet>

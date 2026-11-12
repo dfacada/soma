@@ -13,10 +13,11 @@ export function daysIn(joined: string, today: string): number | null {
   return Math.round((fromKey(today).getTime() - fromKey(joined).getTime()) / 86400000);
 }
 
-export type SetUpKey = "moves" | "food" | "nudge";
+export type SetUpKey = "closes" | "moves" | "food" | "nudge";
 /** What the first-day card asks, in its order, each with whether it is done. */
-export function setUpItems(s: Pick<Settings, "moves" | "foodSetUp" | "nudge">): { key: SetUpKey; done: boolean }[] {
+export function setUpItems(s: Pick<Settings, "closes" | "moves" | "foodSetUp" | "nudge">): { key: SetUpKey; done: boolean }[] {
   return [
+    { key: "closes", done: s.closes.chosen },
     { key: "moves", done: s.moves.length > 0 },
     { key: "food", done: s.foodSetUp },
     { key: "nudge", done: s.nudge.on },
@@ -24,7 +25,7 @@ export function setUpItems(s: Pick<Settings, "moves" | "foodSetUp" | "nudge">): 
 }
 
 /** The first-day card: on day one and day two, until everything on it is done or it is put away. */
-export function showFirstDay(s: Pick<Settings, "joined" | "firstDayAway" | "moves" | "foodSetUp" | "nudge">, today: string): boolean {
+export function showFirstDay(s: Pick<Settings, "joined" | "firstDayAway" | "closes" | "moves" | "foodSetUp" | "nudge">, today: string): boolean {
   const d = daysIn(s.joined, today);
   return d !== null && d >= 0 && d <= 1 && !s.firstDayAway && setUpItems(s).some((x) => !x.done);
 }

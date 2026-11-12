@@ -16,6 +16,9 @@ import { IssueDetail, sevClass } from "./Issues";
 import { useOps } from "./OpsShell";
 import o from "./ops.module.css";
 
+/** A cell for something that doesn't close this person's day (they chose it, settings.closes): dimmed, and says so. */
+const notAsked = (counts: boolean, what: string) => (counts ? { title: undefined, style: undefined } : { title: `${what} doesn't close their day`, style: { opacity: 0.4 } });
+
 export function Person() {
   return <Suspense fallback={<p className={o.empty}>Loading…</p>}><PersonById /></Suspense>;
 }
@@ -108,11 +111,11 @@ function PersonInner({ id }: { id: string }) {
                 <div className={o.gridLabels}><span>Weight</span><span>Check-in</span><span>Journal</span><span>Food</span><span>Move</span><span /></div>
                 {[...data.days].reverse().map((d) => (
                   <div key={d.day} className={o.gridCol}>
-                    <span className={`${o.cell} ${d.weight ? o.cellWeight : ""}`} title={p.requireWeight ? undefined : "weight not asked of them"} style={p.requireWeight ? undefined : { opacity: 0.4 }} />
-                    <span className={`${o.cell} ${d.checkin ? o.cellJournal : ""}`} />
-                    <span className={`${o.cell} ${d.journal ? o.cellJournal : ""}`} />
-                    <span className={`${o.cell} ${d.meals === 4 ? o.cellFood : d.meals ? o.cellPart : ""}`} />
-                    <span className={`${o.cell} ${d.move ? o.cellMove : ""}`} />
+                    <span className={`${o.cell} ${d.weight ? o.cellWeight : ""}`} {...notAsked(p.counts.weight, "weight")} />
+                    <span className={`${o.cell} ${d.checkin ? o.cellJournal : ""}`} {...notAsked(p.counts.checkin, "the check-in")} />
+                    <span className={`${o.cell} ${d.journal ? o.cellJournal : ""}`} {...notAsked(p.counts.journal, "the journal")} />
+                    <span className={`${o.cell} ${d.food ? o.cellFood : d.meals ? o.cellPart : ""}`} {...notAsked(p.counts.food, "food")} title={p.counts.food && p.counts.meals < 4 ? `${p.counts.meals} meals count for them` : notAsked(p.counts.food, "food").title} />
+                    <span className={`${o.cell} ${d.move ? o.cellMove : ""}`} {...notAsked(p.counts.activity, "a move")} />
                     <span className={`${o.gridDay} ${d.closed ? o.gridDayClosed : ""}`}>{d.day.slice(8).replace(/^0/, "")}</span>
                   </div>
                 ))}
