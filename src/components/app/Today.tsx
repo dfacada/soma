@@ -208,7 +208,8 @@ export function Today() {
   const tapMeal = (m: Meal) => {
     const usual = settings.plan[m];
     if (!eaten[m] && !usual) return setMealSheet(m);
-    haptic(!eaten[m] && st.leftMeals.length === 1 ? "done" : "tap");
+    // "done" only when this is the last meal that counts.
+    haptic(!eaten[m] && st.leftMeals.length === 1 && st.leftMeals[0] === m ? "done" : "tap");
     change("day-logs", k, (d) => { d.log.meals[m] = d.log.meals[m] || !usual ? false : { ...usual }; });
   };
   const logMeal = (m: Meal, x: PlannedMeal, usual: boolean) => {
