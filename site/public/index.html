@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dayhub</title>
+<meta name="description" content="Close your day in a minute. A voice journal only you can open, beside your food, weight and moves, so you can see what your good days have in common. A small private beta.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0B0A09">
+<meta property="og:title" content="Dayhub">
+<meta property="og:description" content="Close your day in a minute. A voice journal only you can open, beside your food, weight and moves.">
+<meta property="og:type" content="website">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="apple-icon.png">
+<link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<!--
+  Dayhub's landing page. Every screen on it is the real app on the screenshot rig's made-up member
+  (scripts/shots/world.ts; site/tools/shots.mjs makes the images), and every claim says what the app does today.
+  The privacy words follow src/lib/privacy-view.ts and the app's /privacy page: change those, change this.
+  The app's address lives in one place, APP_URL at the top of site.js.
+-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8.5 10.5a4 4 0 0 1 7 0M12 10.5l1.6-2.2"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14ZM5 19l8-8"/></symbol>
+    <symbol id="i-run" viewBox="0 0 24 24"><circle cx="15.5" cy="4.5" r="2"/><path d="M14 8l-3 5.5M13.5 9l3 2 2.5-1.5M13.5 9H10l-2 2.5M11 13.5l3.5 2.5-1 4.5M11 13.5l-2 3.5H5"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-1.9"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+    <symbol id="i-pushup" viewBox="0 0 24 24"><path d="M3 17h18M5 13h10l3-3M8 13v4M13 13v4"/><circle cx="19.5" cy="7.5" r="1.6"/></symbol>
+    <symbol id="i-walker" viewBox="0 0 24 24"><circle cx="12.5" cy="4.5" r="1.8"/><path d="M12.5 8l-2 5.5 3 3 1 4.5M10.5 13.5L8 16M13 9.5l3 2.5"/></symbol>
+    <symbol id="i-steps" viewBox="0 0 24 24"><path d="M8 3c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5zM16 11c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5z"/></symbol>
+    <symbol id="i-cycle" viewBox="0 0 24 24"><circle cx="5.5" cy="16" r="3.5"/><circle cx="18.5" cy="16" r="3.5"/><path d="M5.5 16l4-7h5l4 7M9.5 9l3 7M13 6h3"/></symbol>
+    <symbol id="i-yoga" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M12 8v6M5 10.5c2 1.5 4.5 2.2 7 2.2s5-.7 7-2.2M6.5 19.5c1.6-2.2 3.4-3.3 5.5-3.3s3.9 1.1 5.5 3.3"/></symbol>
+    <symbol id="i-swim" viewBox="0 0 24 24"><circle cx="16.5" cy="6.5" r="1.8"/><path d="M5.5 12l4-3.5 3.5 2M2.5 15.5c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0M2.5 19.5c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/></symbol>
+    <symbol id="i-barbell" viewBox="0 0 24 24"><path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"/></symbol>
+    <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 2.6 14.6 0 17M12 3.5c-2.6 2.4-2.6 14.6 0 17"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-2.5-6.5L4 12zM11.5 13.5L20 4"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 5-8 4 3"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3.5h8l3.5 3.5v13.5H7zM10 11h6M10 14.5h6M10 18h3"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.4 2.3-5.3 3.6-7.6.4 1.8 1.4 2.9 2.6 3.4-.2-3.2 1.2-6 3.8-7.6-.3 3.4 3 5.6 3 10.3 0 4.1-2.8 7.7-6.5 7.7z"/></symbol>
+    <symbol id="i-today" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  </defs>
+</svg>
+
+<a class="skip" href="#main">Skip to the page</a>
+
+<header class="top" data-top>
+  <div class="wrap top-in">
+    <a class="brand" href="#top" aria-label="Dayhub, back to the top"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Dayhub</span></a>
+    <nav class="top-nav" aria-label="On this page">
+      <a href="#say">Say your day</a>
+      <a href="#today">Today</a>
+      <a href="#journal">Journal</a>
+      <a href="#food">Food</a>
+      <a href="#moves">Moves</a>
+      <a href="#insights">Insights</a>
+      <a href="#privacy">Privacy</a>
+    </nav>
+    <div class="top-end">
+      <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch to Light">
+        <svg class="ic ic-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+        <svg class="ic ic-moon" aria-hidden="true"><use href="#i-moon"/></svg>
+      </button>
+      <a class="btn btn-ink btn-sm" href="#join" data-app="/">Request an invite</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ── The opening: Today's orb, for real. Tap the beads to close the day. ── -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eb">Private beta · Journal · Food · Moves</p>
+        <h1 id="hero-title" class="d">Close your day in a minute.</h1>
+        <p class="lede">A voice journal only you can open, beside your food, weight and moves. Tap through the day or say it once, and see what your good days have in common.</p>
+        <div class="ctas">
+          <a class="btn btn-ink" href="#join" data-app="/">Request an invite</a>
+          <a class="btn btn-ghost" href="#say">See it work<svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></a>
+        </div>
+      </div>
+
+      <div class="hero-orb">
+        <div class="orb-stage hue-all" data-orb role="group" aria-label="Today's five things. Tap one to mark it done.">
+          <div class="orb-shadow" aria-hidden="true"></div>
+          <div class="orb-css" aria-hidden="true"><i class="o-j"></i><i class="o-f"></i><i class="o-a"></i><b></b></div>
+          <canvas class="orb-gl" aria-hidden="true"></canvas>
+          <div class="orb-track" aria-hidden="true"></div>
+          <svg class="orb-ring" viewBox="0 0 280 280" aria-hidden="true" data-ring></svg>
+          <div class="orb-glow" aria-hidden="true"></div>
+          <div class="orb-core" aria-hidden="true">
+            <span class="orb-open"><span class="dc orb-n" data-orb-n>3</span><span class="dc orb-of">/5</span></span>
+            <svg class="orb-tick" aria-hidden="true"><use href="#i-check"/></svg>
+            <span class="eb orb-word" data-orb-word>Done today</span>
+          </div>
+          <button class="bead food on" type="button" data-bead="weight" style="left:50%;top:7.86%" aria-pressed="true" aria-label="Weight"><svg aria-hidden="true"><use href="#i-scale"/></svg></button>
+          <button class="bead journal on" type="button" data-bead="checkin" style="left:90.07%;top:36.98%" aria-pressed="true" aria-label="Check-in"><svg aria-hidden="true"><use href="#i-heart"/></svg></button>
+          <button class="bead journal" type="button" data-bead="journal" style="left:74.77%;top:84.09%" aria-pressed="false" aria-label="Journal"><svg aria-hidden="true"><use href="#i-mic"/></svg></button>
+          <button class="bead food part" type="button" data-bead="food" style="left:25.23%;top:84.09%" aria-pressed="false" aria-label="All four meals"><svg aria-hidden="true"><use href="#i-leaf"/></svg></button>
+          <button class="bead activity on" type="button" data-bead="move" style="left:9.93%;top:36.98%" aria-pressed="true" aria-label="A move"><svg aria-hidden="true"><use href="#i-run"/></svg></button>
+        </div>
+        <p class="orb-line" data-orb-line aria-live="polite"><span class="muted">2 left to close the day.</span> Up next: your journal.</p>
+        <div class="orb-pills" data-orb-pills>
+          <button class="pill journal" type="button" data-pill="journal"><i></i>Journal</button>
+          <button class="pill food" type="button" data-pill="food"><i></i>Dinner</button>
+        </div>
+        <p class="orb-hint eb">Tap the five · drag the orb</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Say your day ── -->
+  <section class="chapter hue-journal" id="say" aria-labelledby="say-title">
+    <div class="wrap chapter-grid">
+      <div class="chapter-copy">
+        <p class="eb kicker"><i></i>Say your day</p>
+        <h2 id="say-title" class="d">Say your day in a minute.</h2>
+        <p class="body">Talk through your day once. Dayhub writes it down and picks out what you weighed, how you feel, what you ate and how you moved, and gives you a list to check. Nothing is logged until you tap Fill in my day. The recording itself is your journal entry.</p>
+
+        <div class="demo say" data-say>
+          <div class="demo-head">
+            <span class="eb" data-say-label>Your day · a made-up evening</span>
+            <span class="m say-clock" data-say-clock>0:00</span>
+          </div>
+          <div class="say-stage">
+            <div class="say-start" data-say-start>
+              <button class="say-mic" type="button" data-say-play aria-label="Play a made-up day">
+                <svg aria-hidden="true"><use href="#i-mic"/></svg>
+              </button>
+              <div>
+                <p class="say-cta">Play a made-up day</p>
+                <p class="say-note">Words from Dayhub's sample member, read as Say your day would hear them. No microphone, nothing sent.</p>
+              </div>
+            </div>
+            <div class="say-wave" data-say-wave aria-hidden="true"></div>
+            <p class="say-words" data-say-words></p>
+            <button class="btn btn-ghost btn-sm say-stop" type="button" data-say-stop>Stop and save</button>
+            <div class="say-skel" data-say-skel aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="say-list" data-say-list>
+              <p class="say-h d">Check your day</p>
+              <p class="say-sub">Untick anything that isn't right. Nothing is logged until you tap.</p>
+              <div class="say-rows" data-say-rows></div>
+              <div class="say-foot">
+                <button class="btn btn-ink" type="button" data-say-fill>Fill in my day · 3</button>
+                <button class="btn-link" type="button" data-say-again>Start over</button>
+              </div>
+            </div>
+            <div class="say-done" data-say-done>
+              <div class="say-beads" aria-hidden="true">
+                <span class="journal"><svg><use href="#i-mic"/></svg></span>
+                <span class="food"><svg><use href="#i-leaf"/></svg></span>
+                <span class="activity"><svg><use href="#i-run"/></svg></span>
+              </div>
+              <p class="say-h d" data-say-summary>Filled in.</p>
+              <p class="say-sub">The entry is already in your journal, sealed like every other.</p>
+              <button class="btn-link" type="button" data-say-again>Play it again</button>
+            </div>
+          </div>
+          <p class="sr-only" aria-live="polite" data-say-status></p>
+        </div>
+
+        <p class="fine">Say your day is off until you turn it on. That one recording goes to Groq to be written down, and its words go to Claude, which picks out your day. Dayhub sends both under its own key, with nothing about your account, and keeps neither. Your entry is stored sealed, like every other.</p>
+      </div>
+
+      <div class="stage">
+        <div class="device" id="dev-say" data-device data-side="right">
+          <div class="device-body">
+            <picture class="device-screen">
+              <source media="(prefers-color-scheme: light)" srcset="shots/say-check.light.webp">
+              <img src="shots/say-check.night.webp" data-shot="say-check" width="540" height="1169" loading="lazy" decoding="async" alt="Say your day's list to check: dinner, a glass of red wine and 100 push-ups, each ticked, above Fill in my day">
+            </picture>
+            <span class="device-glare" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="tabs" role="group" aria-label="Screens of Say your day" data-tabs="dev-say">
+          <button type="button" data-show="say-recording" aria-pressed="false" data-alt="Say your day recording: a microphone in the middle, with Dinner as what is still open">Recording</button>
+          <button type="button" data-show="say-check" aria-pressed="true" data-alt="Say your day's list to check: dinner, a glass of red wine and 100 push-ups, each ticked, above Fill in my day">Check it</button>
+          <button type="button" data-show="say-first" aria-pressed="false" data-alt="The first tap on Say your day: what it does and what leaves the phone, with Turn on and start">First time</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Today: the five things, and choosing which close the day ── -->
+  <section class="chapter flip hue-food" id="today" aria-labelledby="today-title">
+    <div class="wrap chapter-grid">
+      <div class="chapter-copy">
+        <p class="eb kicker kicker-all"><i></i>Today</p>
+        <h2 id="today-title" class="d">Five things close a day. You choose which.</h2>
+        <p class="body">Your weight, a check-in with your mood and habits, a journal entry, your meals and a move, each with its own card on Today. The orb fills with their colours as you go, and closed days make your streak. Switch off what doesn't matter to you: it stays on Today and still works, it just doesn't hold the day open.</p>
+
+        <div class="demo closes" data-closes>
+          <div class="closes-top">
+            <svg class="mini-ring" viewBox="0 0 120 120" aria-hidden="true" data-closes-ring></svg>
+            <div>
+              <p class="eb">What closes your day</p>
+              <p class="closes-line d" data-closes-line aria-live="polite">Five things close the day.</p>
+              <p class="closes-sum" data-closes-sum>All five things</p>
+            </div>
+          </div>
+          <div class="closes-rows" data-closes-rows></div>
+          <p class="toast" data-closes-toast role="status"></p>
+        </div>
+        <p class="fine">At least one thing always counts. For food, you choose which meals.</p>
+      </div>
+
+      <div class="stage">
+        <div class="device" id="dev-today" data-device data-side="left">
+          <div class="device-body">
+            <picture class="device-screen">
+              <source media="(prefers-color-scheme: light)" srcset="shots/today.light.webp">
+              <img src="shots/today.night.webp" data-shot="today" width="540" height="1169" loading="lazy" decoding="async" alt="Today in Dayhub: the orb at three of five done, Journal and Dinner left, and Say your day under it">
+            </picture>
+            <span class="device-glare" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="tabs" role="group" aria-label="Screens of Today" data-tabs="dev-today">
+          <button type="button" data-show="today" aria-pressed="true" data-alt="Today in Dayhub: the orb at three of five done, Journal and Dinner left, and Say your day under it">3 of 5</button>
+          <button type="button" data-show="today-closed" aria-pressed="false" data-alt="Today with all five done: the ring glows all the way round and the orb says Day closed">Closed</button>
+          <button type="button" data-show="closes" aria-pressed="false" data-alt="Settings, What closes your day: a switch each for weight, check-in and journal">Your choice</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Journal: sealed on the phone ── -->
+  <section class="chapter hue-journal" id="journal" aria-labelledby="journal-title">
+    <div class="wrap chapter-grid">
+      <div class="chapter-copy">
+        <p class="eb kicker"><i></i>Journal</p>
+        <h2 id="journal-title" class="d">A voice journal only you can open.</h2>
+        <p class="body">Tap the Journal card and talk. Before an entry is uploaded, your phone seals it with a key made from your passphrase, so Dayhub's server holds something it cannot read. Nobody else can open your journal, David included. If you forget the passphrase, the recovery code you were shown once lets you choose a new one. Without either, what it protected is gone.</p>
+
+        <div class="demo seal" data-seal>
+          <div class="demo-head"><span class="eb">Seal a line yourself</span><span class="eb seal-state" data-seal-state>Stays here</span></div>
+          <label class="field-label" for="seal-text">An entry</label>
+          <textarea id="seal-text" class="field" rows="3" maxlength="400" spellcheck="false">Grateful for an easy day. Took a long lunch outside and didn't look at my phone.</textarea>
+          <label class="field-label" for="seal-pass">Passphrase</label>
+          <input id="seal-pass" class="field" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="green kettle on the fifth floor">
+          <button class="btn btn-hue btn-block" type="button" data-seal-go><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Seal it</button>
+          <div class="sealed" data-sealed hidden>
+            <div class="sealed-head"><span class="eb">What Dayhub's server would hold</span><span class="eb m" data-seal-bytes></span></div>
+            <p class="cipher m" data-cipher></p>
+            <p class="sealed-took" data-seal-took></p>
+            <label class="field-label" for="open-pass">Open it with a passphrase</label>
+            <div class="open-row">
+              <input id="open-pass" class="field" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the passphrase">
+              <button class="btn btn-ghost" type="button" data-open-go><svg class="ic" aria-hidden="true"><use href="#i-unlock"/></svg>Open</button>
+            </div>
+            <p class="opened" data-opened aria-live="polite"></p>
+          </div>
+        </div>
+        <p class="fine">This runs in your browser with Dayhub's own recipe: a key made from the passphrase with PBKDF2-SHA256 at 310,000 rounds, then AES-256-GCM. Nothing you type here leaves this page. Want your words written down too? Switch on transcription: each recording goes to Groq, is deleted from Dayhub's server the moment Groq answers, and the words are sealed into your journal on your phone.</p>
+      </div>
+
+      <div class="stage">
+        <div class="device" id="dev-journal" data-device data-side="right">
+          <div class="device-body">
+            <picture class="device-screen">
+              <source media="(prefers-color-scheme: light)" srcset="shots/journal.light.webp">
+              <img src="shots/journal.night.webp" data-shot="journal" width="540" height="1169" loading="lazy" decoding="async" alt="The Journal, sealed on this phone: Say how today went with a microphone, an entry from a month ago, and yesterday's entry">
+            </picture>
+            <span class="device-glare" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="tabs" role="group" aria-label="Screens of the Journal" data-tabs="dev-journal">
+          <button type="button" data-show="journal" aria-pressed="true" data-alt="The Journal, sealed on this phone: Say how today went with a microphone, an entry from a month ago, and yesterday's entry">Journal</button>
+          <button type="button" data-show="journal-record" aria-pressed="false" data-alt="Recording a journal entry, full screen: Say how today went">Recording</button>
+          <button type="button" data-show="vault-code" aria-pressed="false" data-alt="The recovery code, shown once after making the vault, with Copy and I've saved it">Recovery code</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Food ── -->
+  <section class="chapter flip hue-food" id="food" aria-labelledby="food-title">
+    <div class="wrap chapter-grid">
+      <div class="chapter-copy">
+        <p class="eb kicker"><i></i>Food</p>
+        <h2 id="food-title" class="d">Food, said out loud or tapped.</h2>
+        <p class="body">Your usual meals are one tap each. Had something new? Say it or type it, and Dayhub looks it up: the foods you've logged before first, then an estimate you check before anything is saved. Keep it as your usual, and next time it's one tap. Calorie and protein targets are there if you want them.</p>
+
+        <div class="demo food-demo" data-food>
+          <div class="demo-head"><span class="eb">Meals</span><span class="eb m" data-food-count>2 of 4 eaten</span></div>
+          <div class="meals" data-meals></div>
+          <div class="food-sheet" data-food-sheet hidden>
+            <div class="demo-head"><span class="eb">Breakfast</span><button class="btn-link" type="button" data-food-close>Close</button></div>
+            <p class="food-ask d">What did you have?</p>
+            <div class="food-say">
+              <p class="field food-said" data-food-said aria-live="polite"><span class="muted">Say or type it</span></p>
+              <button class="say-mic small" type="button" data-food-mic aria-label="Say it: plays an example"><svg aria-hidden="true"><use href="#i-mic"/></svg></button>
+            </div>
+            <div class="food-found" data-food-found hidden>
+              <p class="eb">Estimated · check it</p>
+              <p class="food-name">Oats with berries and a coffee</p>
+              <p class="m food-macros">410 kcal · 14 P · 66 C · 9 F</p>
+              <label class="check-row"><input type="checkbox" data-food-keep checked><span class="tick-box" aria-hidden="true"><svg><use href="#i-check"/></svg></span>Keep as my usual breakfast</label>
+              <button class="btn btn-hue btn-block" type="button" data-food-log>Log breakfast</button>
+            </div>
+            <button class="btn-link" type="button" data-food-tick>Just tick it, no numbers</button>
+          </div>
+        </div>
+        <p class="fine">Estimates come from Claude, and what you say aloud is written down by Groq first. Estimates are on until you switch them off in Settings.</p>
+      </div>
+
+      <div class="stage">
+        <div class="device" id="dev-food" data-device data-side="left">
+          <div class="device-body">
+            <picture class="device-screen">
+              <source media="(prefers-color-scheme: light)" srcset="shots/food.light.webp">
+              <img src="shots/food.night.webp" data-shot="food" width="540" height="1169" loading="lazy" decoding="async" alt="Food: 1,824 of 2,100 kcal eaten, a box to say or type what you ate, and three meals ticked">
+            </picture>
+            <span class="device-glare" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="tabs" role="group" aria-label="Screens of Food" data-tabs="dev-food">
+          <button type="button" data-show="food" aria-pressed="true" data-alt="Food: 1,824 of 2,100 kcal eaten, a box to say or type what you ate, and three meals ticked">Food</button>
+          <button type="button" data-show="food-say" aria-pressed="false" data-alt="Saying what you ate, full screen, listening">Say it</button>
+          <button type="button" data-show="food-meal" aria-pressed="false" data-alt="Breakfast with no usual yet: say or type what it was, or just tick it">A new meal</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Moves and rounds ── -->
+  <section class="chapter hue-activity" id="moves" aria-labelledby="moves-title">
+    <div class="wrap chapter-grid">
+      <div class="chapter-copy">
+        <p class="eb kicker"><i></i>Moves</p>
+        <h2 id="moves-title" class="d">Moves of your own. Rounds with friends.</h2>
+        <p class="body">Choose what you do: push-ups, a run, a walk, yoga, a swim, a ride, steps, the gym, a sport, or one you name. Each has a daily goal and is logged the way it counts: reps, kilometres, minutes, steps or just done. Any one of them closes the day.</p>
+
+        <div class="demo moves-demo" data-moves>
+          <div class="demo-head"><span class="eb">Your moves</span><span class="eb m" data-moves-count>4 picked</span></div>
+          <p class="demo-sub">Pick what you do. Any of them closes your day, and one is your main move: Today and Activity lead with it.</p>
+          <div class="move-grid" data-move-grid></div>
+          <div class="move-main" data-move-main></div>
+          <p class="toast" data-moves-toast role="status"></p>
+        </div>
+
+        <div class="rounds">
+          <p class="eb">Private rounds</p>
+          <p>Start a round for one kind of move and send its link. Everyone keeps their own target. The other members see your name, your target and how many days you hit it, and nothing else you log.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="device" id="dev-moves" data-device data-side="right">
+          <div class="device-body">
+            <picture class="device-screen">
+              <source media="(prefers-color-scheme: light)" srcset="shots/moves.light.webp">
+              <img src="shots/moves.night.webp" data-shot="moves" width="540" height="1169" loading="lazy" decoding="async" alt="Activity: 60 of 100 push-ups, the last seven days, and steps">
+            </picture>
+            <span class="device-glare" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="tabs" role="group" aria-label="Screens of Activity" data-tabs="dev-moves">
+          <button type="button" data-show="moves" aria-pressed="true" data-alt="Activity: 60 of 100 push-ups, the last seven days, and steps">Activity</button>
+          <button type="button" data-show="round" aria-pressed="false" data-alt="A round: 100 push-ups a day for 30 days, each day hit, missed or rest, and the leaderboard against each member's own target">A round</button>
+          <button type="button" data-show="moves-choose" aria-pressed="false" data-alt="Your moves: push-ups, run, walk, steps, cycle, yoga, swim, gym, sport or your own">Your moves</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Insights and experiments ── -->
+  <section class="chapter flip hue-journal" id="insights" aria-labelledby="insights-title">
+    <div class="wrap chapter-grid">
+      <div class="chapter-copy">
+        <p class="eb kicker"><i></i>Insights</p>
+        <h2 id="insights-title" class="d">See what makes your good days.</h2>
+        <p class="body">Check in with how you feel, and Insights sets your great days beside the rest: on your great days, you more often… Pick one and try it for three days. Dayhub sets those days against your days without it in the two months before, and tells you how it went.</p>
+
+        <div class="demo trial" data-trial>
+          <div class="demo-head"><span class="eb">What makes a great day</span><span class="eb">Made-up days</span></div>
+          <div class="finding">
+            <p class="finding-name">Read</p>
+            <div class="bars">
+              <span>Did</span><span class="bar"><i style="width:58%"></i></span><span class="m">58%</span>
+              <span>Didn't</span><span class="bar didnt"><i style="width:33%"></i></span><span class="m">33%</span>
+            </div>
+            <p class="finding-note">Great on 14 of 24 days you did, 9 of 27 when you didn't.</p>
+          </div>
+          <div class="trial-days" data-trial-days></div>
+          <div class="verdict" data-verdict aria-live="polite"></div>
+          <p class="fine small">Three days is a small test. It shows how it went this time, not what causes what.</p>
+        </div>
+        <p class="fine">A great day is one you check in with a good mood. Great days and experiments are worked out on your phone.</p>
+      </div>
+
+      <div class="stage">
+        <div class="device" id="dev-insights" data-device data-side="left">
+          <div class="device-body">
+            <picture class="device-screen">
+              <source media="(prefers-color-scheme: light)" srcset="shots/insights.light.webp">
+              <img src="shots/insights.night.webp" data-shot="insights" width="540" height="1169" loading="lazy" decoding="async" alt="Insights: 12 great days of 30, and what they have in common, each with Try it for 3 days">
+            </picture>
+            <span class="device-glare" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="tabs" role="group" aria-label="Screens of Insights" data-tabs="dev-insights">
+          <button type="button" data-show="insights" aria-pressed="true" data-alt="Insights: 12 great days of 30, and what they have in common, each with Try it for 3 days">Great days</button>
+          <button type="button" data-show="experiment" aria-pressed="false" data-alt="An experiment on day two of three: Read, with each day and its mood">Day 2 of 3</button>
+          <button type="button" data-show="experiment-done" aria-pressed="false" data-alt="An experiment that ended: About the same as usual, with Try it again and Done">How it went</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── What Dayhub can see ── -->
+  <section class="chapter hue-food" id="privacy" aria-labelledby="privacy-title">
+    <div class="wrap chapter-grid">
+      <div class="chapter-copy">
+        <p class="eb kicker kicker-all"><i></i>What Dayhub can see</p>
+        <h2 id="privacy-title" class="d">Privacy you can see.</h2>
+        <p class="body">One screen in Settings says what is sealed so only you can open it, what Dayhub's server can read, and what goes out and to whom, with your own switches as they are right now. If an admin ever looks at your food, weight or activity, you see when, who, and the reason they wrote down before anything was shown.</p>
+
+        <div class="demo switches" data-out>
+          <div class="demo-head"><span class="eb">Goes out only with your switch on</span></div>
+          <p class="out-summary d" data-out-summary aria-live="polite">1 of 6 things that go out is on</p>
+          <div class="out-to" data-out-to></div>
+          <div class="out-rows" data-out-rows></div>
+          <p class="demo-sub">Dayhub sends these under its own key, with nothing about your account attached, and keeps none of what comes back in the clear.</p>
+        </div>
+
+        <div class="kept">
+          <div>
+            <p class="eb kept-h"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg>Sealed: only you can open it</p>
+            <div class="kept-list" data-kept="sealed"></div>
+          </div>
+          <div>
+            <p class="eb kept-h"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg>Readable by Dayhub's server</p>
+            <div class="kept-list" data-kept="readable"></div>
+          </div>
+        </div>
+        <p class="fine">No ads, no trackers, nothing sold. Dayhub is a small private beta run by one person, not a company. <a href="#" data-app="/privacy/">Read the privacy policy</a></p>
+      </div>
+
+      <div class="stage">
+        <div class="device" id="dev-privacy" data-device data-side="right">
+          <div class="device-body">
+            <picture class="device-screen">
+              <source media="(prefers-color-scheme: light)" srcset="shots/privacy-out.light.webp">
+              <img src="shots/privacy-out.night.webp" data-shot="privacy-out" width="540" height="1169" loading="lazy" decoding="async" alt="What goes out only with your switch on, each On or Off: food estimates to Claude, cloud transcription to Groq, Say your day to Groq and Claude">
+            </picture>
+            <span class="device-glare" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="tabs" role="group" aria-label="Screens of What Dayhub can see" data-tabs="dev-privacy">
+          <button type="button" data-show="privacy" aria-pressed="false" data-alt="What Dayhub can see, in Settings: sealed, only you can open it: your journal, your sleep, your week in review">Sealed</button>
+          <button type="button" data-show="privacy-out" aria-pressed="true" data-alt="What goes out only with your switch on, each On or Off: food estimates to Claude, cloud transcription to Groq, Say your day to Groq and Claude">Goes out</button>
+          <button type="button" data-show="privacy-ops" aria-pressed="false" data-alt="What an admin sees in Dayhub Ops, and every time an admin looked at your values, with the reason">Admin looks</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── The rest, briefly ── -->
+  <section class="more" aria-labelledby="more-title">
+    <div class="wrap">
+      <h2 id="more-title" class="eb">Also in Dayhub</h2>
+      <ul class="more-grid">
+        <li class="hue-activity"><svg class="ic" aria-hidden="true"><use href="#i-steps"/></svg><b>Steps and sleep</b><span>From Google Health, if you connect your Fitbit. Read only, and your sleep is sealed like your journal.</span></li>
+        <li class="hue-journal"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg><b>Tomorrow's brief</b><span>On Today from 6 pm: tomorrow's calendar and tasks from Morgen and Todoist, if you connect them.</span></li>
+        <li class="hue-journal"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg><b>Week in review</b><span>Your week read back to you, written by Claude, only if you switch it on. Sealed before it is stored.</span></li>
+        <li class="hue-food"><svg class="ic" aria-hidden="true"><use href="#i-today"/></svg><b>On your Home Screen</b><span>Dayhub runs in your browser. Add it to your Home Screen and it opens like an app, with an evening nudge if you want one.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ── Getting in ── -->
+  <section class="join" id="join" aria-labelledby="join-title">
+    <div class="wrap join-in">
+      <div class="join-orb" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p class="eb">Private beta</p>
+      <h2 id="join-title" class="d">Request an invite.</h2>
+      <p class="body">Dayhub is in a small private beta. Sign up with your email and David lets you in by hand. If a member sent you an invite link, open it and sign up, and you're in at once.</p>
+      <div class="ctas center">
+        <a class="btn btn-ink" href="#join" data-app="/">Request an invite</a>
+        <a class="btn btn-ghost" href="#join" data-app="/">I have an account</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <span class="brand small"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Dayhub</span></span>
+    <p>Every screen on this page is the real app, showing a made-up member.</p>
+    <nav aria-label="Legal"><a href="#" data-app="/privacy/">Privacy</a><a href="#" data-app="/terms/">Terms</a></nav>
+  </div>
+</footer>
+
+<script src="orb.js" defer></script>
+<script src="site.js" defer></script>
+</body>
+</html>

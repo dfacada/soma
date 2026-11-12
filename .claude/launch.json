@@ -12,6 +12,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["scripts/shots/status.mjs", "--port", "3100"],
       "port": 3100
+    },
+    {
+      "name": "dayhub-site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["site/tools/serve.mjs", "--port", "4400"],
+      "port": 4400
     }
   ]
 }
