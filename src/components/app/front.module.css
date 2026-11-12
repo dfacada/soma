@@ -1,0 +1,35 @@
+/* Dayhub's front page (Front.tsx): what a signed-out visitor sees at the address. One column on a phone, the same
+   column wider on a computer; the screens scroll sideways inside their own row, never the page. */
+
+.front { min-height: 100dvh; display: flex; flex-direction: column; gap: 28px; width: 100%; max-width: 640px; margin: 0 auto; padding: calc(16px + var(--inset-top)) 16px calc(28px + var(--inset-bottom)); }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mark { font-size: 26px; letter-spacing: -0.02em; }
+
+.hero { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding-top: 12px; }
+.orb { width: 64px; height: 64px; }
+.orb i { width: 56px; height: 56px; }
+.title { margin: 0; font-size: clamp(40px, 11vw, 56px); line-height: 1; letter-spacing: -0.03em; text-wrap: balance; }
+.lede { margin: 0; font-size: 17px; line-height: 1.5; color: var(--ink-2, var(--ink)); max-width: 34em; text-wrap: pretty; }
+.ctas { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 4px; }
+
+/* Three real screens. On a phone they sit in a row that scrolls sideways and snaps, bleeding to the screen's edges. */
+.shots { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 4px 16px 8px; scrollbar-width: none; }
+.shots::-webkit-scrollbar { display: none; }
+.shot { flex: 0 0 min(62%, 220px); scroll-snap-align: center; display: flex; flex-direction: column; gap: 10px; margin: 0; }
+.phone { position: relative; border-radius: 26px; overflow: hidden; border: 1px solid var(--hairline-strong); background: #0B0A09; box-shadow: var(--hero-shadow); aspect-ratio: 480 / 1039; }
+.phone img { display: block; width: 100%; height: auto; }
+.shot figcaption { font-size: 13px; line-height: 1.45; color: var(--muted); text-wrap: pretty; }
+.shot figcaption b { display: block; color: var(--ink); font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+@media (min-width: 720px) {
+  .shots { overflow: visible; margin: 0; padding: 4px 0 8px; }
+  .shot { flex: 1 1 0; }
+}
+
+.card { display: flex; flex-direction: column; gap: 14px; background: var(--surface); border: 1px solid var(--hairline-soft); border-radius: var(--r-card); box-shadow: var(--shadow-card); padding: 18px; }
+.points { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.points li { display: grid; grid-template-columns: 42px 1fr; gap: 12px; align-items: start; }
+.points p { font-size: 14px; line-height: 1.5; color: var(--muted); }
+.points p b { color: var(--ink); font-weight: 600; }
+.more { font-size: 13px; font-weight: 500; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; }
+.cardText { font-size: 14px; line-height: 1.55; color: var(--muted); text-wrap: pretty; }

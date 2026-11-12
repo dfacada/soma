@@ -268,9 +268,12 @@ async function main() {
           await page.goto(o.url + scene.path, { waitUntil: "load", timeout: 120_000 });
           // Ready: the tab bar is up (the desktop sidebar is a hidden nav at this size) and the opening overlay has gone.
           // An account waiting for approval has no tab bar: its screen is ready when its Check again button is.
-          const ready = scene.who === "pending" ? page.getByRole("button", { name: "Check again" }) : page.locator("nav:visible").first();
+          // A visitor has no tab bar either: the front page is ready when its Sign up button is.
+          const ready = scene.who === "pending" ? page.getByRole("button", { name: "Check again" })
+            : scene.who === "visitor" ? page.getByRole("button", { name: "Sign up" }).first() : page.locator("nav:visible").first();
           await ready.waitFor({ state: "visible", timeout: 60_000 });
-          if (await page.getByRole("button", { name: /^sign in/i }).count()) throw new Error("the dev server shows the sign-in: it must run as the test member (NEXT_PUBLIC_DEV_TEST_KEY in .env.development.local)");
+          // Signed out on purpose only for a visitor; anywhere else a sign-in means the dev server is not the test member.
+          if (scene.who !== "visitor" && await page.getByRole("button", { name: /^sign in/i }).count()) throw new Error("the dev server shows the sign-in: it must run as the test member (NEXT_PUBLIC_DEV_TEST_KEY in .env.development.local)");
           await settle(page);
           for (const [i, s] of (scene.steps || []).entries()) {
             try { await step(page, s); await page.waitForTimeout(250); }

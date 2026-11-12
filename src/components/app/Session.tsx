@@ -15,6 +15,7 @@ import { dayKey } from "@/lib/today";
 import { acceptInvite, cleanCode, forgetInvite, keptInvite } from "@/lib/invite";
 import { forgetVaultKeys } from "@/lib/vault-session";
 import { Button, Input, Toast, type StepProgress } from "@/components/ui";
+import { Front } from "./Front";
 import { Splash, type OpenStep } from "./Splash";
 import a from "./app.module.css";
 
@@ -70,11 +71,18 @@ async function applyKeptInvite(code: string): Promise<{ notice: string | null; k
   }
 }
 
+/** This browser has been signed in to Dayhub before: back signed out, it goes straight to signing in, not the front page. */
+const BEEN = "soma-been-here";
+const beenHere = () => { try { return localStorage.getItem(BEEN) === "1"; } catch { return false; } };
+/** Under the test identity only (npm run dev), `?signedout` shows what a signed-out visitor sees: the rig and localhost
+ *  have no way to sign out. Never in a real build, where the test key is not set. */
+const showSignedOut = () => isDevIdentity && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("signedout");
+
 /** Catalyst session → profile (approval) → settings. Plain async: no React state in here. */
 /** `step` hears each step of opening as it starts (the splash shows it): the sign-in SDK, then the account. */
 async function resolveSession(step: (at: OpenStep, progress: StepProgress) => void = () => undefined): Promise<Resolved> {
   try {
-    if (!isDevIdentity && !(await currentUser())) return { kind: "signedOut" };
+    if (showSignedOut() || (!isDevIdentity && !(await currentUser()))) return { kind: "signedOut" };
     step("Checking your account", 0);
     // An invite link opened on this device goes with the first call: a brand-new account it can let in starts active.
     const invite = keptInvite();
@@ -125,6 +133,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
       if (more) stored = { ...stored, ...more };
       if (fresh || more) void api("PUT", "/settings", { settings: stored }).catch((e) => report("app", fresh ? "joined_save_failed" : "invite_move_save_failed", e, undefined, "warn"));
       setSettings(mergeSettings(stored));
+      try { localStorage.setItem(BEEN, "1"); } catch { /* a private window: the front page shows again, which is fine */ }
       setDisplayName(r.displayName);
       setNotice(r.notice);
       setState({ kind: "ready", me: r.me });
@@ -265,12 +274,15 @@ function Blocked({ me, onRetry, onSignOut }: { me: Me; onRetry: () => void; onSi
 }
 
 function SignIn() {
-  const [mode, setMode] = useState<"in" | "up">("in");
   // An invite link opened on this device: say so, so a newcomer knows to sign up and that they won't wait.
   const [invited] = useState(() => (typeof window === "undefined" ? false : Boolean(keptInvite())));
+  // A visitor meets the front page first (Front.tsx). Someone holding an invite has read its page already, and someone
+  // back on a browser that has been signed in before wants to sign in: both go straight to it.
+  const [mode, setMode] = useState<"front" | "in" | "up">(() => (!showSignedOut() && (invited || beenHere()) ? "in" : "front"));
   const [form, setForm] = useState({ first: "", last: "", email: "" });
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const go = (next: "front" | "in" | "up") => { setMode(next); setNote(null); window.scrollTo(0, 0); };
 
   // The embedded login is an iframe Catalyst renders into this element, proxied through our own origin.
   useEffect(() => {
@@ -288,7 +300,7 @@ function SignIn() {
     try {
       const auth = await catalystAuth();
       const res = await auth.signUp({ first_name: form.first.trim(), last_name: form.last.trim(), email_id: form.email.trim(), platform_type: "web", redirect_url: window.location.origin + "/" });
-      if (res.status === 200) setNote({ ok: true, text: "Check your email for a confirmation link. Set your password there, then sign in here." });
+      if (res.status === 200) setNote({ ok: true, text: "Check your email for a confirmation link. Set your password there, then sign in here. The email comes from Zoho Catalyst, the platform Dayhub runs on, and may still say Soma, Dayhub's old name." });
       else setNote({ ok: false, text: res.status === 409 ? "That email already has an account. Sign in instead." : res.message || "Sign-up failed." });
     } catch (err) {
       const status = (err as { status?: number })?.status;
@@ -296,17 +308,18 @@ function SignIn() {
     } finally { setBusy(false); }
   }
 
+  if (mode === "front") return <Front onSignIn={() => go("in")} onSignUp={() => go("up")} />;
   return (
     <main className={a.signin}>
       <div className={a.signinHead}>
-        <span className="eb">Journal · Food · Activity</span>
+        <span className="eb">Journal · Food · Moves</span>
         <span className={`d ${a.wordmark}`}>Dayhub</span>
       </div>
       {invited && <p className={a.noteOk}>Your invite is saved on this device. Sign in, or sign up if you&apos;re new, and you&apos;re in.</p>}
       {mode === "in" ? (
         <>
           <div id="soma-login" className={a.login} />
-          <button type="button" className={a.link} onClick={() => { setMode("up"); setNote(null); }}>New here? Request access</button>
+          <button type="button" className={a.link} onClick={() => go("up")}>New here? Request access</button>
         </>
       ) : (
         <form className={a.signupForm} onSubmit={signUp}>
@@ -315,10 +328,11 @@ function SignIn() {
           <Input required type="email" placeholder="Email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <Button type="submit" block disabled={busy}>{busy ? "Sending…" : invited ? "Sign up" : "Request access"}</Button>
           <p className="muted" style={{ fontSize: 12 }}>{invited ? "Your invite lets you in as soon as you sign in." : "With an invite link you're in at once; without one, David lets new accounts in by hand."}</p>
-          <button type="button" className={a.link} onClick={() => { setMode("in"); setNote(null); }}>Have an account? Sign in</button>
+          <button type="button" className={a.link} onClick={() => go("in")}>Have an account? Sign in</button>
         </form>
       )}
       {note && <p role="status" className={note.ok ? a.noteOk : a.noteBad}>{note.text}</p>}
+      <button type="button" className={a.link} onClick={() => go("front")}>What is Dayhub?</button>
       <p className={a.legal}><Link href="/privacy/">Privacy</Link><Link href="/terms/">Terms</Link></p>
     </main>
   );

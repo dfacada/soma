@@ -44,7 +44,8 @@ export type Theme = "night" | "light";
 /** Whose screens these are: the settled member with two months behind them, someone on their first day (approved
  *  minutes ago: nothing logged, no vault, Fitbit not connected, settings as the app makes them), or someone who has
  *  just signed up and is waiting for approval. Everyone who joins Dayhub starts as the last two. */
-export type Who = "settled" | "new" | "pending";
+/** "visitor": nobody signed in, at the front page (`?signedout` under the test identity); it needs no account at all. */
+export type Who = "settled" | "new" | "pending" | "visitor";
 /** An experiment in hand (src/lib/experiment.ts): on its second day, or finished yesterday. */
 export type Trying = "running" | "finished";
 
@@ -139,7 +140,7 @@ function newcomer(now: Date, theme: Theme, who: "new" | "pending"): World {
 }
 
 export async function buildWorld({ now, theme, day, who = "settled", trying }: { now: Date; theme: Theme; day: DayShape; who?: Who; trying?: Trying }): Promise<World> {
-  if (who !== "settled") return newcomer(now, theme, who);
+  if (who !== "settled") return newcomer(now, theme, who === "visitor" ? "new" : who);
   const todayKey = dayKey(now);
   const r = rng(hash(todayKey));
   // The passphrase never leaves this function: only the key is kept, and only for this run.

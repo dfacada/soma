@@ -101,6 +101,9 @@ export const SCENES: Scene[] = [
 
   // Day one. Everyone who joins starts here, and Dayhub starts empty for all of them (no data is migrated): the account
   // is minutes old, nothing is logged, there is no vault yet and Fitbit is not connected. A round is under way and open.
+  // The address, signed out: what Dayhub is, three real screens, what stays private, and how to get in.
+  { id: "front", area: "welcome", who: "visitor", title: "The front page a signed-out visitor sees at the address: the wordmark and Sign in, one sentence (Close your day in a minute), three real screens with captions, What stays yours (four points that match the privacy page), Getting in (invite or by hand), Privacy and Terms", path: "/?signedout", frames: 3 },
+  { id: "front-signup", area: "welcome", who: "visitor", title: "Sign up tapped on the front page: first name, last name and email, Request access, and what happens without an invite", path: "/?signedout", steps: [{ click: "Sign up" }] },
   { id: "new-pending", area: "welcome", who: "pending", title: "Just signed up: the account waits for the admin to approve it", path: "/" },
   { id: "new-vault", area: "welcome", who: "new", title: "Day one: the Journal card tapped for the first time, which asks to create the vault", path: "/", steps: [{ click: "Record a journal entry" }] },
   { id: "new-vault-code", area: "welcome", who: "new", title: "Day one: the vault just made from the Journal card: its recovery code, shown once, with I've saved it", path: "/", steps: [{ click: "Record a journal entry" }, { fill: "Vault passphrase", value: "green kettle on the fifth floor" }, { fill: "Repeat the passphrase", value: "green kettle on the fifth floor" }, { click: "Create vault" }, { wait: 2500 }] },

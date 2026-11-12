@@ -58,7 +58,7 @@ export function JoinInvite() {
         <p className="muted" style={{ maxWidth: 340, textWrap: "balance", lineHeight: 1.5 }}>
           {round
             ? `${cap(kindOf(round.kind).round)}: ${round.lengthDays} days from ${when(round.startDate)}, everyone aiming at their own daily target. Dayhub also keeps your journal, food and weight, and closes your day in a few taps.`
-            : "Dayhub closes your day in a few taps: a voice journal only you can read, your meals, your weight and your push-ups."}
+            : "Dayhub closes your day in a few taps: a voice journal only you can read, your meals, your weight and how you move."}
         </p>
         <ButtonLink href="/">{round ? "Join the round" : "Join Dayhub"}</ButtonLink>
         <p className="muted" style={{ fontSize: 12, maxWidth: 320 }}>New to Dayhub? Sign up on the next screen; this invite lets you straight in.</p>

@@ -28,7 +28,7 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Dayhub",
-  description: "Journal, food and push-ups in one place.",
+  description: "Close your day in a minute: a voice journal only you can read, beside your food, weight and moves.",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, title: "Dayhub", statusBarStyle: "black" },
   robots: { index: false, follow: false },

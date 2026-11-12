@@ -15,7 +15,7 @@ export default function Privacy() {
       <h2>What Dayhub stores</h2>
       <ul>
         <li><strong>Your account:</strong> name, email address and sign-in, handled by Zoho Catalyst, the platform Dayhub runs on. Dayhub never sees your password.</li>
-        <li><strong>What you log:</strong> daily check-ins (mood and habits), meals and recipes, weight, push-ups and other activity, your settings, and your membership and daily target in a push-up round.</li>
+        <li><strong>What you log:</strong> daily check-ins (mood and habits), meals and recipes, weight, your moves (push-ups, runs, walks and the rest), your settings, and your membership and daily target in a round.</li>
         <li><strong>Your journal:</strong> recordings, transcripts, notes and photos.</li>
         <li><strong>From Google Health, only if you connect it:</strong> your daily step totals and, for each night, time asleep, awake and in bed, minutes in each sleep stage, and the times you fell asleep and woke.</li>
         <li><strong>Messages you send to David, his replies, and error reports</strong> the app files when something breaks (the error message, its technical detail and which screen it happened on).</li>
@@ -30,7 +30,7 @@ export default function Privacy() {
       <p>Food, weight and activity values are shown only for a support reason, which is written down before anything is shown. Every time an administrator opens your account is recorded, and nobody can change that record. Each time your values were shown, you can see when, by whom and the reason given in Settings &rarr; What Dayhub can see, alongside what is sealed, what the server can read and which of your switches send anything out.</p>
 
       <h2>What other members see</h2>
-      <p>If you join a push-up round, the other members of that round see your display name, your daily target and how many days you hit it. A private round, started by a member, is seen only by the people in it. Nothing else you log is visible to other members.</p>
+      <p>If you join a round, the other members of that round see your display name, your daily target and how many days you hit it. A private round, started by a member, is seen only by the people in it. Nothing else you log is visible to other members.</p>
       <p>If you join Dayhub or a round through someone&rsquo;s invite link, Dayhub notes whose link it was, and the administrator can see that. The person who invited you sees only what any member of the round sees.</p>
 
       <h2>Google Health and Fitbit</h2>
