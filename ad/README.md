@@ -49,6 +49,27 @@ The last two lines go once for each cut and shape. A 30-second cut takes about s
 - **Screen plates for a shoot:** add `--query plate=1`, with `--from`, `--to` and `--out`. A plate is the phone's
   screen alone, 1080 × 2330, with no hand, frame, words or taps.
 
+## A narrator's own voice
+
+Record the lines in `VOICEOVER.md` in one take, in order, with a pause of about two seconds between them. A stumbled
+line can simply be said again: the last take counts. Then:
+
+```bash
+python ad/voice.py <recording> ad/out/dayhub-30s-vertical.cues.json ad/out/voice/voice-30.wav
+python ad/sound.py ad/out/dayhub-30s-vertical.cues.json ad/out/voice/mix-30.wav --voice ad/out/voice/voice-30.wav
+node ad/render.mjs --mux ad/out/dayhub-30s-vertical-silent.mp4 --audio ad/out/voice/mix-30.wav --out ad/out/voice/Dayhub-ad-30s-9x16-voice.mp4
+```
+
+What each step does:
+- **`voice.py`** cleans the voice: rumble, noise and sibilance out, evened and given a little presence. It cuts the
+  recording at its pauses and asks Windows' speech recognizer (`recognize.ps1`, listening only for the script's lines)
+  which line each piece is. Each line then goes where its words come up on screen, sped up by at most 8% if it runs
+  long. It prints anything still too long, and the `&words=` that makes the member's words follow the real voice.
+- **When the member's line runs differently,** render again with `--query words=a,b` before muxing.
+- **`sound.py --voice`** lowers the music 9 dB under the voice and the screen's sounds 4 dB.
+
+Recordings and everything made from them stay in `ad/out/`, out of git.
+
 ## Keeping it true
 
 - **Every line on screen says what the app does today.**

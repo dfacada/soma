@@ -58,18 +58,28 @@
     said: "Salmon with rice and broccoli, a glass of red wine, and a hundred push-ups.",
     words: [2.65, 6.35], fine: [2.8, 6.55], check: 6.6, fillTap: 8.25, closed: 8.8, montage: null, end: 11.0,
   };
+  // A recorded voice can move when the member's words appear: &words=start,end, in seconds (voice.py says what to pass).
+  const wordsAt = (Q.get("words") || "").split(",").map(Number);
+  if (wordsAt.length === 2 && wordsAt.every((x) => Number.isFinite(x)) && wordsAt[1] > wordsAt[0]) T.words = wordsAt;
   const MARKS = [["salmon with rice and broccoli", "food"], ["a glass of red wine", "food"], ["a hundred push-ups", "activity"]];
   const BEATS = [
-    { key: "journal", kick: "Journal", hue: "journal", lines: [[["A voice journal"]], [["only you can open.", "hl"]]] },
-    { key: "food", kick: "Food", hue: "food", lines: [[["Food,"], ["said out loud", "hl"]], [["or tapped."]]] },
-    { key: "moves", kick: "Moves", hue: "activity", lines: [[["Moves of"], ["your own.", "hl"]], [["Rounds with friends."]]], delays: [0, 1.0] },
-    { key: "insights", kick: "Insights", hue: "journal", lines: [[["See what makes"]], [["your good days.", "all"]]] },
-    { key: "privacy", kick: "What Dayhub can see", hue: "journal", allhue: true, lines: [[["Privacy"]], [["you can see.", "hl"]]] },
+    { key: "journal", kick: "Journal", hue: "journal", vo: "A voice journal only you can open.", lines: [[["A voice journal"]], [["only you can open.", "hl"]]] },
+    { key: "food", kick: "Food", hue: "food", vo: "Food, said out loud or tapped.", lines: [[["Food,"], ["said out loud", "hl"]], [["or tapped."]]] },
+    { key: "moves", kick: "Moves", hue: "activity", vo: "Moves of your own. Rounds with friends.", lines: [[["Moves of"], ["your own.", "hl"]], [["Rounds with friends."]]], delays: [0, 1.0] },
+    { key: "insights", kick: "Insights", hue: "journal", vo: "See what makes your good days.", lines: [[["See what makes"]], [["your good days.", "all"]]] },
+    { key: "privacy", kick: "What Dayhub can see", hue: "journal", allhue: true, vo: "Privacy you can see.", lines: [[["Privacy"]], [["you can see.", "hl"]]] },
   ];
 
   // Sounds for sound.py, in seconds: what happens when.
   const cues = [];
   const cue = (t, kind, extra) => cues.push(Object.assign({ t: +t.toFixed(3), kind }, extra || {}));
+  // The voiceover's lines (VOICEOVER.md), each where its words come up on screen; voice.py sets a recording to them.
+  const VO = [[0.3, "Say your day in a minute."], [T.words[0] + 0.05, T.said, "member"]]
+    .concat(CUT === 30 ? [[T.check + 0.35, "Check it. Nothing is logged until you tap."]] : [[T.check + 0.3, "Check it, then tap."]])
+    .concat([[T.closed + 0.3, "That's the day."]])
+    .concat(T.montage != null ? BEATS.map((b, i) => [T.montage + i * BAR + 0.12, b.vo]) : [])
+    .concat([[T.end + 0.4, "Dayhub. Say your day in a minute. Request an invite."]]);
+  VO.forEach(([t, text, who], i) => cue(t, "vo", { i, text, who: who || "narrator" }));
 
   // ── Building blocks ──
   function el(tag, cls, parent, html) {

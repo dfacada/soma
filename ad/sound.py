@@ -5,6 +5,7 @@ light groove under the montage, and the screen's sounds on the picture's own cue
 the journal sealing, a chime when the day closes.
 
     python ad/sound.py ad/out/dayhub-30s-vertical.cues.json ad/out/dayhub-30s.wav [--spectrogram ad/out/x.png]
+    python ad/sound.py <cues> <out.wav> --voice ad/out/voice/voice-30.wav     with a narrator over it (voice.py)
 
 The cues come from `node ad/render.mjs --cut 30 --cues`. The result is 48 kHz stereo; render.mjs measures and sets
 its loudness when it lays it under the picture (two-pass loudnorm to -14 LUFS, peaks under -1.5 dBTP).
@@ -235,7 +236,7 @@ def limit(x, thr, look=0.005, release=0.08):
     return x * g[:, None]
 
 
-def build(cues_file, out_file, spectro=None):
+def build(cues_file, out_file, spectro=None, voice=None):
     with open(cues_file) as f:
         data = json.load(f)
     cut = int(data.get("cut", 30))
@@ -363,10 +364,41 @@ def build(cues_file, out_file, spectro=None):
     ir = impulse_response()
     send = pad * 0.45 + pluck_bus * 0.35 + m.bus("chime") * 0.55 + m.bus("drums") * 0.06
     wet = np.stack([fftconvolve(send[:, 0], ir[:, 0])[:n], fftconvolve(send[:, 1], ir[:, 1])[:n]], axis=1)
-    mix = pad + bass + pluck_bus + m.bus("drums") + m.bus("chime") + m.bus("sfx") * 1.0 + wet * 0.55
+    music = pad + bass + pluck_bus + m.bus("drums") + m.bus("chime") + wet * 0.55
+    sfx = m.bus("sfx")
+    vo = None
+    if voice is not None:
+        # A voice over it (voice.py's track): the music steps 9 dB down while it speaks, the screen's sounds 4 dB,
+        # quick to go down and slow to come back, so the bed breathes between lines instead of pumping.
+        sr, vo = wavfile.read(voice)
+        vo = vo.astype(np.float32) if vo.ndim == 1 else vo.mean(axis=1).astype(np.float32)
+        vo = np.pad(vo, (0, max(0, n - len(vo))))[:n]
+        hop = SR // 100
+        fr = len(vo) // hop
+        env = np.sqrt((vo[: fr * hop].reshape(fr, hop) ** 2).mean(axis=1))
+        db = 20 * np.log10(env + 1e-9)
+        act = np.clip((db - (db.max() - 40)) / 12, 0, 1)
+        sm = np.zeros(fr)
+        cur = 0.0
+        for i in range(fr):
+            cur = cur + (act[i] - cur) * (0.3 if act[i] > cur else 0.022)
+            sm[i] = cur
+        a = np.interp(np.arange(n) / hop, np.arange(fr), sm)
+        talk = a > 0.5
+        mus_rms = np.sqrt((music[talk] ** 2).mean()) if talk.any() else 0.05
+        vo_rms = np.sqrt((vo[talk] ** 2).mean()) if talk.any() else 0.05
+        # The voice sits 3 dB over the music before the music steps down: 12 dB clear of it while it speaks.
+        vo = vo * (mus_rms / max(vo_rms, 1e-9)) * 10 ** (3 / 20)
+        music = music * (10 ** (-9 * a / 20))[:, None]
+        sfx = sfx * (10 ** (-4 * a / 20))[:, None]
+    mix = music + sfx
     mix = hp(mix, 32)
     # A gentle lift in the presence range, for small speakers.
     mix = mix + bp(mix, 1800, 5000) * 0.35
+    if vo is not None:
+        # In the middle, with a breath of the same room as the music so it sits in it.
+        room = np.stack([fftconvolve(vo * 0.07, ir[:, 0])[:n], fftconvolve(vo * 0.07, ir[:, 1])[:n]], axis=1)
+        mix = mix + np.stack([vo, vo], axis=1) * 0.92 + room
     # Fade in the first breath and out at the end of the picture.
     fade = np.ones(n)
     fade[: int(0.25 * SR)] = np.linspace(0, 1, int(0.25 * SR))
@@ -415,9 +447,10 @@ def spectrogram(x, path, w=1400, h=500):
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    sp = None
-    if "--spectrogram" in args:
-        i = args.index("--spectrogram")
-        sp = args[i + 1]
-        args = args[:i] + args[i + 2:]
-    build(args[0], args[1], sp)
+    opt = {}
+    for name in ("--spectrogram", "--voice"):
+        if name in args:
+            i = args.index(name)
+            opt[name] = args[i + 1]
+            args = args[:i] + args[i + 2:]
+    build(args[0], args[1], opt.get("--spectrogram"), opt.get("--voice"))
