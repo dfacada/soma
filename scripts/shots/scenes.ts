@@ -8,7 +8,7 @@ import type { DayShape, Trying, Who } from "./world";
 
 export type Step =
   | { click: string; role?: "button" | "link" | "tab" | "switch" | "checkbox"; exact?: boolean; nth?: number }
-  /** Types into the text field with this accessible name. */
+  /** Types into the field with this label (its aria-label). */
   | { fill: string; value: string }
   | { text: string }
   | { scroll: number }
@@ -103,6 +103,8 @@ export const SCENES: Scene[] = [
   // is minutes old, nothing is logged, there is no vault yet and Fitbit is not connected. A round is under way and open.
   { id: "new-pending", area: "welcome", who: "pending", title: "Just signed up: the account waits for the admin to approve it", path: "/" },
   { id: "new-vault", area: "welcome", who: "new", title: "Day one: the Journal card tapped for the first time, which asks to create the vault", path: "/", steps: [{ click: "Record a journal entry" }] },
+  { id: "new-vault-code", area: "welcome", who: "new", title: "Day one: the vault just made from the Journal card: its recovery code, shown once, with I've saved it", path: "/", steps: [{ click: "Record a journal entry" }, { fill: "Vault passphrase", value: "green kettle on the fifth floor" }, { fill: "Repeat the passphrase", value: "green kettle on the fifth floor" }, { click: "Create vault" }, { wait: 2500 }] },
+  { id: "new-vault-record", area: "moments", who: "new", title: "Day one: I've saved it tapped on the new vault's recovery code, and the recording starts at once (no second tap on the Journal card)", path: "/", steps: [{ click: "Record a journal entry" }, { fill: "Vault passphrase", value: "green kettle on the fifth floor" }, { fill: "Repeat the passphrase", value: "green kettle on the fifth floor" }, { click: "Create vault" }, { wait: 2500 }, { click: "I've saved it" }, { wait: 1500 }] },
   { id: "new-today", area: "today", who: "new", title: "Today on day one, minutes after approval: nothing logged, no streak yet, no vault, Fitbit not connected", path: "/", frames: 1 },
   { id: "new-journal", area: "journal", who: "new", title: "Journal on day one: no vault made yet and no entries", path: "/journal/" },
   { id: "new-food", area: "food", who: "new", title: "Food on day one: no plan and no targets (never David's), a Your food card asking for optional calorie and protein targets or a ready-made plan, four meals saying Tap to log it, nothing logged yet", path: "/food/", frames: 1 },

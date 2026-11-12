@@ -319,6 +319,7 @@ export function answer(w: World, method: string, path: string, body: unknown): {
   // An experiment on sleep rests on what the vault seals, so it must only ever reach settings sealed (experiment.ts).
   if (method === "PUT" && route === "/settings" && /"key":"sleep"/.test(JSON.stringify(body))) return { ...ok(), leak: "a sleep experiment reached settings in the clear" };
   // Saves succeed and change nothing: a scene that taps sees the app's own optimistic state.
-  const known = /^\/(checkins|day-logs|weight|activity)\/\d{4}-\d{2}-\d{2}$/.test(route) || /^\/(entries|jobs|drafts)\/[\w-]+$/.test(route) || ["/settings"].includes(route);
+  const known = /^\/(checkins|day-logs|weight|activity)\/\d{4}-\d{2}-\d{2}$/.test(route) || /^\/(entries|jobs|drafts)\/[\w-]+$/.test(route)
+    || ["/settings", "/vault-meta", "/vault-meta/recovery"].includes(route);
   return known ? ok() : { ...ok(), unknown: true };
 }

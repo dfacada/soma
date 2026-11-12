@@ -65,7 +65,8 @@ type Journal = {
   busy: boolean;
   /** Entries on a local day, including ones still waiting to upload. Null while the vault is closed. */
   countOn: (day: string) => number | null;
-  /** Start or stop recording. `day` (YYYY-MM-DD) files the entry under an earlier day, marked added later. */
+  /** Start or stop recording. `day` (YYYY-MM-DD) files the entry under an earlier day, marked added later. With the
+   *  vault closed, its sheet opens first and the recording starts once it is open (after a new vault's recovery code). */
   toggleRecording: (mood: string | null, day?: string) => void;
   /** Say your day (src/lib/say-day.ts): record an entry like any other and, when it stops, have its words written
    *  down and handed back, under the person's Say your day switch and whatever cloud transcription is set to.
@@ -80,7 +81,8 @@ type Journal = {
   writeEntry: (text: string, mood: string | null, day?: string) => Promise<void>;
   openVault: () => void;
   /** Open the vault sheet, and once this vault is unlocked from it, go on with what the person was doing. Dropped
-   *  if the sheet is closed instead, and never run after making a new vault (the recovery code comes first). */
+   *  if the sheet is closed instead. After making a new vault it waits for the recovery code to be saved, and runs
+   *  from that tap; closing the code's sheet drops it. */
   openVaultThen: (then: () => void) => void;
   lock: () => void;
   saveText: (id: string, text: string) => Promise<void>;
@@ -158,8 +160,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [dayWriting, setDayWriting] = useState(false);
   // Whoever asked for the Say your day recording in progress: told how it ended, whichever way it ends.
   const dayDone = useRef<((take: DayTake | null) => void) | null>(null);
-  // What to go on with once the vault sheet has unlocked the vault (openVaultThen).
+  // What to go on with once the vault sheet has unlocked the vault (openVaultThen, and a tap on the Journal card).
   const afterUnlock = useRef<(() => void) | null>(null);
+  // The same for a vault just made: it waits until its recovery code is saved, then starts from that tap (2026-11-11,
+  // one tap less on day one), because nothing may start on top of the code.
+  const afterCode = useRef<(() => void) | null>(null);
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -535,7 +540,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   const toggleRecording = useCallback((mood: string | null, day?: string) => {
     if (recording) return void stop();
-    if (vault !== "open") return setSheet(true);
+    // A closed vault is opened first and the recording follows straight on, as the card says (2026-11-11); a vault
+    // made here shows its recovery code first, and the recording starts when it is saved.
+    if (vault !== "open") { afterUnlock.current = () => void start(mood, day); setSheet(true); return; }
     void start(mood, day);
   }, [recording, vault, start, stop]);
 
@@ -595,6 +602,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       meta.current = { ...meta.current, ...wrap };
       sessionStorage.setItem(SESSION_KEY + userId, await exportKey(k));
       setSheet(false);
+      // Someone who just reset their passphrase is not dropped into a recording: they tap again when ready.
+      afterUnlock.current = null;
       await opened(k);
       say("Your new passphrase is set");
       return null;
@@ -616,22 +625,25 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         return null;
       }
       const made = await createVault(pass);
-      // A new vault shows its recovery code next: nothing else starts on top of that.
-      afterUnlock.current = null;
       try { await api("PUT", "/vault-meta", made.meta); }
       catch (e) {
-        // Another device made the vault first: fall back to unlocking it.
+        // Another device made the vault first: fall back to unlocking it, which goes on with whatever the tap was for.
         if (!(e instanceof ApiError && e.status === 409)) throw e;
         meta.current = await fetchMeta();
         setVault("locked");
         return "A vault already exists for this account. Enter its passphrase.";
       }
       meta.current = made.meta;
+      // A new vault shows its recovery code next and nothing starts on top of that: what the tap was for (a recording,
+      // Say your day) waits until the code is saved.
+      afterCode.current = afterUnlock.current;
+      afterUnlock.current = null;
       sessionStorage.setItem(SESSION_KEY + userId, await exportKey(made.key));
       setSheet(false);
       await opened(made.key);
-      // A new vault gets its recovery code straight away, while the person is here and paying attention.
-      void makeRecoveryCode();
+      // A new vault gets its recovery code straight away, while the person is here and paying attention. Without a
+      // code on the screen there is nothing to go on from: they tap again.
+      void makeRecoveryCode().then((shown) => { if (!shown) afterCode.current = null; });
       return null;
     } catch (e) {
       report("vault", meta.current ? "unlock_failed" : "create_failed", e);
@@ -790,6 +802,10 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const openVault = useCallback(() => { afterUnlock.current = null; setSheet(true); }, []);
   const openVaultThen = useCallback((then: () => void) => { afterUnlock.current = then; setSheet(true); }, []);
   const closeSheet = useCallback(() => { afterUnlock.current = null; setSheet(false); }, []);
+  // The recovery code saved: go on with what made the vault (in this tap, so the microphone may start). Closed
+  // without saving it: nothing starts.
+  const codeSaved = useCallback(() => { setShownCode(null); const then = afterCode.current; afterCode.current = null; then?.(); }, []);
+  const codeClosed = useCallback(() => { afterCode.current = null; setShownCode(null); }, []);
 
   const passkey = useMemo(() => ({ supported: pkSupported, name: passkeyName(), here: pkHere }), [pkSupported, pkHere]);
 
@@ -806,8 +822,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           passkeyName={vault === "locked" && pkSupported && pkHere ? passkey.name : null} onPasskey={submitPasskey}
           canRecover={recovery.made} onRecover={submitRecovery} />
       </Sheet>
-      <Sheet open={shownCode !== null} title="Your recovery code" onClose={() => setShownCode(null)}>
-        {shownCode && <RecoveryCode code={shownCode} onDone={() => setShownCode(null)} />}
+      <Sheet open={shownCode !== null} title="Your recovery code" onClose={codeClosed}>
+        {shownCode && <RecoveryCode code={shownCode} onDone={codeSaved} />}
       </Sheet>
       <Toast message={toast} />
     </Ctx.Provider>
