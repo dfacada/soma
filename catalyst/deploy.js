@@ -9,8 +9,14 @@
 //   node deploy.js soma_api                 one function
 //   node deploy.js soma_api --to dayhub     to another project in targets.js (default: soma until move day)
 //
-// secrets.json shape: { "soma_api": { "KEY": "value" }, "soma_jobs": { ... } }
+// secrets.json shape: { "soma_api": { "KEY": "value" }, "soma_jobs": { ... }, "migrate": { "MIGRATE_KEY": "..." } }
 // Each function also gets where it runs (targets.js functionEnv): its app's addresses, bucket and push subject.
+//
+// Move day only (routes/migrate.js): MIGRATE_FROM and/or MIGRATE_TO in this shell's env name the account soma_api
+// may be read from or written to, and the deploy then carries secrets.json's migrate.MIGRATE_KEY. Without them the
+// key is never deployed and the migration routes answer 404.
+//   MIGRATE_FROM=<user id> node deploy.js soma_api            the source
+//   MIGRATE_TO=<user id> node deploy.js soma_api --to dayhub  the target
 
 'use strict';
 
@@ -42,6 +48,15 @@ const RELEASE = new Date().toISOString().slice(5, 16).replace('T', '.').replace(
 const names = only ? [only] : targets;
 const originals = new Map();
 
+function migrateEnv(name) {
+  const from = process.env.MIGRATE_FROM || '', to = process.env.MIGRATE_TO || '';
+  if (name !== 'soma_api' || (!from && !to)) return {};
+  if ((from && !/^\d{1,19}$/.test(from)) || (to && !/^\d{1,19}$/.test(to))) throw new Error('MIGRATE_FROM and MIGRATE_TO are user ids (digits)');
+  const key = (secrets.migrate || {}).MIGRATE_KEY || '';
+  if (key.length < 32) throw new Error('secrets.json has no migrate.MIGRATE_KEY of 32+ characters');
+  return Object.assign({ MIGRATE_KEY: key }, from ? { MIGRATE_FROM: from } : {}, to ? { MIGRATE_TO: to } : {});
+}
+
 function restore() {
   for (const [file, text] of originals) fs.writeFileSync(file, text);
   originals.clear();
@@ -55,7 +70,7 @@ try {
     const text = fs.readFileSync(file, 'utf8');
     originals.set(file, text);
     const config = JSON.parse(text);
-    const merged = Object.assign({}, config.deployment.env_variables, secrets[name], functionEnv(target), { SOMA_RELEASE: RELEASE });
+    const merged = Object.assign({}, config.deployment.env_variables, secrets[name], functionEnv(target), migrateEnv(name), { SOMA_RELEASE: RELEASE });
     const empty = Object.keys(merged).filter((k) => merged[k] === '');
     if (empty.length) throw new Error(`${name}: empty values for ${empty.join(', ')}`);
     config.deployment.env_variables = merged;

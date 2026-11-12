@@ -74,6 +74,8 @@ app.use(require('./routes/logs'));
 app.use(require('./routes/messages'));
 app.use(require('./routes/admin'));
 app.use(require('./routes/ops'));
+// Move day only (2026-11-18): off unless deploy.js gave this deploy a migration key and an account. Remove after.
+app.use(require('./routes/migrate'));
 
 app.use((_req, res) => res.status(404).json({ error: 'no such route' }));
 // Anything that ends as a 5xx goes into the log: a crash (500) and the 502/503s this API raises on purpose when
