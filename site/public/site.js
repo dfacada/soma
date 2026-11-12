@@ -173,6 +173,9 @@
       if (changed === t.key && v >= 1 && !calm()) { bead.classList.remove("popped"); void bead.offsetWidth; bead.classList.add("popped"); }
     });
     stage.classList.toggle("closed", closed);
+    // Say your day sits under the orb only while something is still open, as on Today.
+    const sayJump = $("[data-say-jump]");
+    if (sayJump) sayJump.hidden = closed;
     $("[data-orb-n]", stage).textContent = String(TASKS.length - left.length);
     $("[data-orb-word]", stage).textContent = closed ? "Day closed" : "Done today";
     // The line under the orb, as Today words it.
@@ -335,8 +338,12 @@
     beads[2].hidden = !rows.some((r) => r.cls === "activity");
     sayPhase("done", "Your day · filled in", `Filled in ${plural(rows.length, "thing")}.`);
   });
-  // "See it work" in the opening plays it as it arrives.
+  // "See it work" in the opening plays it as it arrives, and so does the Say your day button under the orb.
   for (const a of $$('a[href="#say"]')) a.addEventListener("click", () => { if (!say.dataset.phase) setTimeout(() => void playDay(), calm() ? 0 : 650); });
+  $("[data-say-jump]").addEventListener("click", () => {
+    document.getElementById("say").scrollIntoView({ behavior: calm() ? "auto" : "smooth", block: "start" });
+    if (!say.dataset.phase || say.dataset.phase === "done") setTimeout(() => void playDay(), calm() ? 0 : 650);
+  });
 
   // ── What closes your day (Settings → What closes your day, Closing.tsx) ──
   const CLOSES = [

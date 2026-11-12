@@ -105,6 +105,7 @@ body {
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); background: var(--page); z-index: 40; }
 p { margin: 0; }
 img { max-width: 100%; }
+[hidden] { display: none !important; }
 a { color: var(--hue-ink, var(--ink)); }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
@@ -267,6 +268,15 @@ svg { display: block; flex-shrink: 0; }
 .pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--hue, var(--ink)); box-shadow: 0 0 10px color-mix(in srgb, var(--hue, var(--ink)) var(--glow), transparent); }
 .pill.journal { border-color: color-mix(in srgb, var(--journal) 55%, var(--hairline-strong)); background: color-mix(in srgb, var(--journal) 12%, var(--surface)); }
 .pill:active { transform: scale(0.95); }
+/* Say your day, under the orb while anything is still open, as on Today (SayDay.tsx). */
+.say-pill {
+  display: inline-flex; align-items: center; gap: 12px; min-height: 54px; margin-top: 16px; padding: 0 28px; border-radius: 999px;
+  font: 600 18px/1 var(--font-body); color: var(--ink);
+  background: color-mix(in srgb, var(--journal) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--journal) 55%, var(--hairline-strong));
+  box-shadow: 0 12px 30px -16px color-mix(in srgb, var(--journal) var(--glow), transparent); transition: transform 0.3s var(--spring);
+}
+.say-pill .ic { width: 21px; height: 21px; color: var(--journal); }
+.say-pill:active { transform: scale(0.96); }
 .orb-hint { margin-top: 14px; color: var(--faint); }
 
 /* ── Chapters ── */
