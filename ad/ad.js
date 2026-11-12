@@ -58,10 +58,22 @@
     said: "Salmon with rice and broccoli, a glass of red wine, and a hundred push-ups.",
     words: [2.65, 6.35], fine: [2.8, 6.55], check: 6.6, fillTap: 8.25, closed: 8.8, montage: null, end: 11.0,
   };
-  // A recorded voice can move when the member's words appear: &words=start,end, in seconds (voice.py says what to pass).
+  // A recorded voice can retime the cut around it: &T=phoneIn:1.2/2.05,sayTap:2.25,check:8.45 (seconds; a pair is a/b).
+  for (const part of (Q.get("T") || "").split(",").filter(Boolean)) {
+    const [k, v] = part.split(":");
+    if (!(k in T) || v == null) continue;
+    const nums = v.split("/").map(Number);
+    if (nums.every((x) => Number.isFinite(x))) T[k] = Array.isArray(T[k]) ? nums : nums[0];
+  }
+  // And move when the member's words appear: &words=start,end, in seconds (voice.py says what to pass).
   const wordsAt = (Q.get("words") || "").split(",").map(Number);
   if (wordsAt.length === 2 && wordsAt.every((x) => Number.isFinite(x)) && wordsAt[1] > wordsAt[0]) T.words = wordsAt;
   const MARKS = [["salmon with rice and broccoli", "food"], ["a glass of red wine", "food"], ["a hundred push-ups", "activity"]];
+  // A recorded voice can also lengthen one montage beat and shorten another: &beats=2.2,2.2,2.75,2.2,1.65 (seconds,
+  // five of them, summing to the montage's 11 s so the end card stays put). Cuts then fall on the beat, not the bar.
+  const beatLens = (Q.get("beats") || "").split(",").map(Number);
+  const BEAT_LEN = beatLens.length === 5 && beatLens.every((x) => x > 0.8) ? beatLens : [2.2, 2.2, 2.2, 2.2, 2.2];
+  const beatAt = (i) => T.montage + BEAT_LEN.slice(0, i).reduce((a, b) => a + b, 0);
   const BEATS = [
     { key: "journal", kick: "Journal", hue: "journal", vo: "A voice journal only you can open.", lines: [[["A voice journal"]], [["only you can open.", "hl"]]] },
     { key: "food", kick: "Food", hue: "food", vo: "Food, said out loud or tapped.", lines: [[["Food,"], ["said out loud", "hl"]], [["or tapped."]]] },
@@ -77,7 +89,7 @@
   const VO = [[0.3, "Say your day in a minute."], [T.words[0] + 0.05, T.said, "member"]]
     .concat(CUT === 30 ? [[T.check + 0.35, "Check it. Nothing is logged until you tap."]] : [[T.check + 0.3, "Check it, then tap."]])
     .concat([[T.closed + 0.3, "That's the day."]])
-    .concat(T.montage != null ? BEATS.map((b, i) => [T.montage + i * BAR + 0.12, b.vo]) : [])
+    .concat(T.montage != null ? BEATS.map((b, i) => [beatAt(i) + 0.12, b.vo]) : [])
     .concat([[T.end + 0.4, "Dayhub. Say your day in a minute. Request an invite."]]);
   VO.forEach(([t, text, who], i) => cue(t, "vo", { i, text, who: who || "narrator" }));
 
@@ -606,7 +618,7 @@
   const beats = [];
   if (T.montage != null) {
     BEATS.forEach((b, i) => {
-      const t0 = T.montage + i * BAR, t1 = t0 + BAR;
+      const t0 = beatAt(i), t1 = t0 + BEAT_LEN[i];
       const root = el("div", "scene");
       const bg = el("div", "", root);
       const bt = { b, t0, t1, root, bg };
@@ -738,7 +750,7 @@
         change(ph, "ins", "tried", prog(lt, 1.08, 1.5), "swap");
       } else if (key === "privacy") {
         ph.screens({ p: 1 });
-        ph.scroll("p", 500 + E.io3(prog(lt, 0.45, 1.9)) * 1500);
+        ph.scroll("p", 500 + E.io3(prog(lt, 0.45, Math.min(1.9, t1 - t0 - 0.15))) * 1500);
       }
       ph.place(px, py, ps, pr, lerp(-10, 10, drift));
     });

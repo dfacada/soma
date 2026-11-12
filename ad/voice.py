@@ -1,15 +1,22 @@
 """Puts a narrator's own recording under the ad.
 
-One recording of the script's lines (VOICEOVER.md), read in order with a pause between them, retakes allowed. This
-cleans the voice up, finds each line, places each where its words come up on screen, and writes a voice track the
-length of the cut. sound.py then mixes it in over the music, lowered under it.
+A recording of the script's lines (VOICEOVER.md), read in order with a pause between them, retakes allowed, becomes a
+bank: each line cleaned up and kept as its own file. A cut's voice track is then made from one bank or several (a
+later one's lines replace an earlier one's, so a few lines can be redone in a second memo), each line where its words
+come up on screen. sound.py mixes the track in over the music, lowered under it.
 
-    python ad/voice.py <recording> ad/out/dayhub-30s-vertical.cues.json ad/out/voice/voice-30.wav
+    python ad/voice.py bank <recording> ad/out/voice/bank1 --cues <cues-30> --cues <cues-15>
+    python ad/voice.py bank <recording> ad/out/voice/bank1 --takes lines.json     where each line is, by hand
+    python ad/voice.py place <cues-30> ad/out/voice/voice-30.wav ad/out/voice/bank1 [ad/out/voice/bank2]
 
-To tell a retake from the take before it, Windows' own speech recognizer listens to each piece for the script's lines
-(ad/recognize.ps1). Nothing leaves this computer. The script prints where each line landed and any line it had to
-speed up. If the member's line runs differently from the cut, it prints the `&words=` to give the page, and
-render.mjs takes that as `--query`.
+Reading order for a bank: the first cut's lines, then the lines later cuts add (for both cuts, the 30-second lines,
+then the two only the 15-second one has). To tell a retake from the take before it, Windows' own speech recognizer
+listens to each piece for the script's lines (ad/recognize.ps1). Nothing leaves this computer. If a noise hides the
+pauses, give the lines' rough places by hand (`--takes`, a JSON of line text to [from, to] seconds).
+
+`place` prints where each line landed, any it had to speed up (at most 8%), anything still too long, and the
+`words=` that makes the member's words on screen follow the voice (render.mjs takes it in `--query`). A cut can be
+retimed around a voice with `--query T=...&beats=...` (ad.js).
 
 The recording and everything made from it stay in ad/out/, out of git.
 """
@@ -86,6 +93,46 @@ def speech_pieces(x, merge=1.0, least=0.2):
     return out, thr
 
 
+def denoise(x, floor_db=-18.0):
+    """Lowers steady background noise (a fan, an engine, a room): a Wiener filter whose noise estimate follows the
+    quietest moments of each frequency over the last second and a half, so it adapts when a noise starts or stops,
+    with a floor so the voice never turns watery."""
+    from scipy.ndimage import minimum_filter1d, uniform_filter1d
+    from scipy.signal import istft, stft
+    n, hop = 1024, 256
+    _, _, X = stft(x, fs=SR, window="hann", nperseg=n, noverlap=n - hop)
+    P = np.abs(X) ** 2
+    Ps = uniform_filter1d(P, size=5, axis=1)
+    N = minimum_filter1d(Ps, size=int(1.5 * SR / hop), axis=1, mode="nearest") * 2.0
+    N = uniform_filter1d(N, size=int(0.3 * SR / hop), axis=1)
+    gmin = 10 ** (floor_db / 20)
+    G = np.empty(P.shape, dtype=np.float32)
+    prev = np.ones(P.shape[0])
+    for k in range(P.shape[1]):
+        post = P[:, k] / np.maximum(N[:, k], 1e-14)
+        prio = 0.98 * prev + 0.02 * np.maximum(post - 1, 0)
+        g = np.maximum(prio / (1 + prio), gmin)
+        G[:, k] = g
+        prev = g * g * post
+    _, y = istft(X * G, fs=SR, window="hann", nperseg=n, noverlap=n - hop)
+    return y[: len(x)].astype(np.float32)
+
+
+def refine(x, a, b):
+    """The speech inside a window given by hand: from where the voice band first rises clear of the background to
+    where it last does, with a little room either side."""
+    from scipy.signal import butter, sosfilt
+    seg = x[int(a * SR):int(b * SR)]
+    band = sosfilt(butter(4, [900, 4000], "band", fs=SR, output="sos"), seg)
+    hop = int(0.01 * SR)
+    m = len(band) // hop
+    db = 20 * np.log10(np.sqrt((band[: m * hop].reshape(m, hop) ** 2).mean(axis=1)) + 1e-9)
+    on = np.nonzero(db > np.percentile(db, 10) + 12)[0]
+    if not len(on):
+        return a, b
+    return max(a, a + on[0] * 0.01 - 0.08), min(b, a + (on[-1] + 1) * 0.01 + 0.18)
+
+
 def plain(text):
     t = text.lower().replace("push-ups", "push ups").replace("dayhub", "day hub").replace("…", " ")
     return re.sub(r"\s+", " ", re.sub(r"[^a-z' ]", " ", t)).strip()
@@ -154,67 +201,35 @@ def tempo(a, factor, work, k):
     return load(dst)
 
 
-def main(recording, cues_file, out):
-    with open(cues_file) as f:
-        cues = json.load(f)
+def place(cues, lines, work, out, tag):
+    """One cut's voice track: each of its lines from the bank, where its words come up on screen."""
     dur = float(cues["dur"])
     vo = [c for c in cues["cues"] if c["kind"] == "vo"]
     stop = next((c["t"] for c in cues["cues"] if c["kind"] == "rec-stop"), None)
     close = next((c["t"] for c in cues["cues"] if c["kind"] == "close"), None)
-    lines = [c["text"] for c in vo]
-    n = len(lines)
-    work = tempfile.mkdtemp(prefix="dayhub-voice-")
-    raw = os.path.join(work, "raw.wav")
-    decode(recording, raw)
-    x = load(raw)
-    # Bring the speech to a working level, then clean it: rumble out, noise down, sibilance tamed, evened out, a
-    # little presence and air, peaks held.
-    pieces, thr = speech_pieces(x)
-    if not pieces:
-        raise SystemExit("no speech found in the recording")
-    sp = np.concatenate([x[int(a * SR):int(b * SR)] for a, b in pieces])
-    gain = -20 - 20 * np.log10(np.sqrt((sp ** 2).mean()) + 1e-9)
-    chain = (f"volume={gain:.1f}dB,highpass=f=75,afftdn=nr=12:nf=-50:tn=1,deesser=i=0.35,"
-             "acompressor=threshold=0.1:ratio=3:attack=6:release=120:makeup=2,"
-             "equalizer=f=200:t=q:w=1:g=-1.5,equalizer=f=3200:t=q:w=1.2:g=2.5,equalizer=f=9500:t=h:w=1:g=1.5,alimiter=limit=0.89")
-    clean = os.path.join(work, "clean.wav")
-    decode(raw, clean, chain)
-    y = load(clean)
-    audio = [y[int(a * SR):int(b * SR)] for a, b in pieces]
-    phrases = phrases_for(lines)
-    heard = recognize(audio, phrases, work)
-    labels = [phrases.get(t) if t else None for t, _ in heard]
-    taken = assign(pieces, labels, n)
-    missing = [i for i in range(n) if i not in taken]
-    print(f"recording: {len(x) / SR:.1f} s, {len(pieces)} pieces of speech")
-    for (a, b), (t, c) in zip(pieces, heard):
-        print(f"  {a:6.2f}-{b:6.2f}  heard: {t or '(nothing)'} {f'({c:.2f})' if t else ''}")
-    if missing:
-        print("missing lines:", ", ".join(f"{i + 1} ({lines[i][:30]}…)" for i in missing))
-
     track = np.zeros(int(dur * SR) + SR, dtype=np.float32)
-    report, prev_end, words = [], 0.0, None
-    for i in range(n):
-        if i not in taken:
+    report, prev_end, words, missing = [], 0.0, None, []
+    for i, c in enumerate(vo):
+        text = c["text"]
+        if text not in lines:
+            missing.append(text)
             continue
-        a, b = taken[i]
-        seg = y[int(a * SR):int(b * SR)].copy()
-        cue = vo[i]["t"]
-        nxt = vo[i + 1]["t"] if i + 1 < n else dur - 0.5
-        # Where the line must end: before the next line, and for the member's line before the screen moves on to
-        # the list; the check-it line ends by the time the day closes.
+        seg = lines[text].copy()
+        nxt = vo[i + 1]["t"] if i + 1 < len(vo) else dur - 0.5
+        # Where the line must end: before the next line; the member's line before the screen moves on to the list;
+        # the check-it line just after the day closes.
         end_by = nxt - 0.1
-        if vo[i]["who"] == "member" and stop is not None:
+        if c["who"] == "member" and stop is not None:
             end_by = min(end_by, stop - 0.05)
-        if "logged" in lines[i] or "then tap" in lines[i]:
-            end_by = min(end_by, (close or nxt) - 0.05)
-        start = max(cue - 0.15, prev_end + 0.08) if vo[i]["who"] != "member" else cue
+        if "logged" in text or "then tap" in text:
+            end_by = min(end_by, (close or nxt) + 0.2)
+        start = max(c["t"] - 0.15, prev_end + 0.08) if c["who"] != "member" else c["t"]
         slot = end_by - start
         length = len(seg) / SR
         factor = 1.0
         if length > slot:
             factor = min(FAST, length / slot)
-            seg = tempo(seg, factor, work, i)
+            seg = tempo(seg, factor, work, f"{tag}{i}")
             length = len(seg) / SR
         over = max(0.0, length - slot)
         fade_in, fade_out = int(0.012 * SR), int(0.05 * SR)
@@ -223,25 +238,115 @@ def main(recording, cues_file, out):
         s0 = int(round(start * SR))
         track[s0:s0 + len(seg)] += seg[: len(track) - s0]
         prev_end = start + length
-        if vo[i]["who"] == "member":
+        if c["who"] == "member":
             # The words on screen follow the voice: from its first syllable to its last.
-            words = (round(start + 0.09 - 0.05, 2), round(start + length - 0.2, 2))
-        report.append({"line": i + 1, "text": lines[i], "start": round(start, 2), "end": round(start + length, 2), "faster": round(factor, 3), "over": round(over, 2)})
-    track = track[: int(dur * SR)]
+            words = (round(start + 0.04, 2), round(start + length - 0.2, 2))
+        report.append({"line": i + 1, "text": text, "start": round(start, 2), "end": round(start + length, 2), "faster": round(factor, 3), "over": round(over, 2)})
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
-    wavfile.write(out, SR, track)
+    wavfile.write(out, SR, track[: int(dur * SR)])
+    print(f"{os.path.basename(out)} ({dur:.0f} s):")
     for r in report:
         flag = f", {r['faster']:.0%} speed" if r["faster"] > 1.001 else ""
         flag += f", OVER by {r['over']:.2f} s" if r["over"] > 0.02 else ""
-        print(f"line {r['line']:2d} at {r['start']:5.2f}-{r['end']:5.2f} s{flag}: {r['text'][:48]}")
-    base = next((c for c in cues["cues"] if c["kind"] == "vo" and c["who"] == "member"), None)
-    if words and base:
-        print(f"words on screen: &words={words[0]},{words[1]}")
+        print(f"  line {r['line']:2d} at {r['start']:5.2f}-{r['end']:5.2f} s{flag}: {r['text'][:48]}")
+    if missing:
+        print("  missing:", " | ".join(m[:40] for m in missing))
+    if words:
+        print(f"  member's words on screen: words={words[0]},{words[1]}")
     with open(os.path.splitext(out)[0] + ".json", "w") as f:
-        json.dump({"lines": report, "missing": [i + 1 for i in missing], "words": words}, f, indent=1)
+        json.dump({"lines": report, "missing": missing, "words": words}, f, indent=1)
+
+
+def clean(recording, work):
+    """The recording decoded, brought to a working level and cleaned: background noise lowered (adaptively, so a
+    noise that starts part-way is followed), rumble and sibilance out, evened, a little presence and air, peaks
+    held. Returns it, with where its speech is."""
+    raw = os.path.join(work, "raw.wav")
+    decode(recording, raw)
+    x = load(raw)
+    pieces, _ = speech_pieces(x)
+    if not pieces:
+        raise SystemExit("no speech found in " + recording)
+    sp = np.concatenate([x[int(a * SR):int(b * SR)] for a, b in pieces])
+    gain = -20 - 20 * np.log10(np.sqrt((sp ** 2).mean()) + 1e-9)
+    level = os.path.join(work, "level.wav")
+    wavfile.write(level, SR, denoise(x * 10 ** (gain / 20)))
+    chain = ("highpass=f=85,deesser=i=0.35,acompressor=threshold=0.1:ratio=3:attack=6:release=120:makeup=2,"
+             "equalizer=f=200:t=q:w=1:g=-1.5,equalizer=f=3200:t=q:w=1.2:g=2.5,equalizer=f=9500:t=h:w=1:g=1.5,alimiter=limit=0.89")
+    out = os.path.join(work, "clean.wav")
+    decode(level, out, chain)
+    return x, load(out), pieces
+
+
+def lines_in_order(cues_files):
+    """Every distinct line of these cuts, in the order a recording of them reads: the first cut's, then each later
+    cut's that the earlier ones didn't have."""
+    order = []
+    for cf in cues_files:
+        with open(cf) as f:
+            for c in json.load(f)["cues"]:
+                if c["kind"] == "vo" and c["text"] not in order:
+                    order.append(c["text"])
+    return order
+
+
+def bank(recording, bank_dir, order, takes_file=None):
+    """Cuts a recording into its lines, one cleaned file each, into bank_dir (index.json says which is which)."""
+    work = tempfile.mkdtemp(prefix="dayhub-voice-")
+    x, y, pieces = clean(recording, work)
+    if takes_file:
+        # Where each line is, given by hand (a recording whose pauses a noise hides): refined to its speech.
+        with open(takes_file) as f:
+            given = json.load(f)
+        takes = {t: refine(y, *w) for t, w in given.items()}
+        print(f"{os.path.basename(recording)}: {len(x) / SR:.1f} s, {len(takes)} lines given by hand")
+    else:
+        phrases = phrases_for(order)
+        heard = recognize([y[int(a * SR):int(b * SR)] for a, b in pieces], phrases, work)
+        labels = [phrases.get(t) if t else None for t, _ in heard]
+        taken = assign(pieces, labels, len(order))
+        print(f"{os.path.basename(recording)}: {len(x) / SR:.1f} s, {len(pieces)} pieces of speech, {len(order)} lines expected")
+        for (a, b), (t, c) in zip(pieces, heard):
+            print(f"  {a:6.2f}-{b:6.2f}  heard: {t or '(nothing)'} {f'({c:.2f})' if t else ''}")
+        takes = {order[i]: p for i, p in taken.items()}
+    os.makedirs(bank_dir, exist_ok=True)
+    index = {}
+    for k, (text, (a, b)) in enumerate(takes.items()):
+        name = f"line{k:02d}.wav"
+        wavfile.write(os.path.join(bank_dir, name), SR, y[int(a * SR):int(b * SR)])
+        index[text] = {"file": name, "from": round(a, 2), "to": round(b, 2)}
+    with open(os.path.join(bank_dir, "index.json"), "w") as f:
+        json.dump(index, f, indent=1)
+    missing = [t for t in order if t not in takes]
+    print(f"  bank: {len(index)} lines" + (f"; not in it: {' | '.join(m[:36] for m in missing)}" if missing else ""))
+
+
+def place_from(cues_file, out, banks):
+    """A cut's voice track from one or more banks; a line in a later bank replaces the same line in an earlier one."""
+    lines = {}
+    for b in banks:
+        with open(os.path.join(b, "index.json")) as f:
+            for text, e in json.load(f).items():
+                lines[text] = load(os.path.join(b, e["file"]))
+    with open(cues_file) as f:
+        cues = json.load(f)
+    place(cues, lines, tempfile.mkdtemp(prefix="dayhub-place-"), out, "p")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
+    a = sys.argv[1:]
+    if a[:1] == ["bank"] and len(a) >= 3:
+        opts, rest, i = {}, [], 1
+        while i < len(a):
+            if a[i] in ("--takes", "--cues"):
+                opts.setdefault(a[i], []).append(a[i + 1])
+                i += 2
+            else:
+                rest.append(a[i])
+                i += 1
+        recording, bank_dir = rest
+        bank(recording, bank_dir, lines_in_order(opts.get("--cues", [])), (opts.get("--takes") or [None])[0])
+    elif a[:1] == ["place"] and len(a) >= 4:
+        place_from(a[1], a[2], a[3:])
+    else:
         raise SystemExit(__doc__)
-    main(*sys.argv[1:])

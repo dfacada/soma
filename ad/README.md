@@ -51,21 +51,29 @@ The last two lines go once for each cut and shape. A 30-second cut takes about s
 
 ## A narrator's own voice
 
-Record the lines in `VOICEOVER.md` in one take, in order, with a pause of about two seconds between them. A stumbled
-line can simply be said again: the last take counts. Then:
+Record the lines in `VOICEOVER.md` in one take, in order, with a pause of about two seconds between them. For both
+cuts, read the 30-second lines, then the two only the 15-second cut has. A stumbled line can simply be said again: the
+last take counts. Somewhere quiet: a fan or an engine behind the voice can be lowered, not removed.
 
 ```bash
-python ad/voice.py <recording> ad/out/dayhub-30s-vertical.cues.json ad/out/voice/voice-30.wav
+python ad/voice.py bank <recording> ad/out/voice/bank1 --cues ad/out/dayhub-30s-vertical.cues.json --cues ad/out/dayhub-15s-vertical.cues.json
+python ad/voice.py place ad/out/dayhub-30s-vertical.cues.json ad/out/voice/voice-30.wav ad/out/voice/bank1
 python ad/sound.py ad/out/dayhub-30s-vertical.cues.json ad/out/voice/mix-30.wav --voice ad/out/voice/voice-30.wav
-node ad/render.mjs --mux ad/out/dayhub-30s-vertical-silent.mp4 --audio ad/out/voice/mix-30.wav --out ad/out/voice/Dayhub-ad-30s-9x16-voice.mp4
+node ad/render.mjs --cut 30 --shape vertical --query "words=a,b" --out ad/out/voice/voice-30-silent.mp4
+node ad/render.mjs --mux ad/out/voice/voice-30-silent.mp4 --audio ad/out/voice/mix-30.wav --out ad/out/voice/Dayhub-ad-30s-9x16-voice.mp4
 ```
 
 What each step does:
-- **`voice.py`** cleans the voice: rumble, noise and sibilance out, evened and given a little presence. It cuts the
-  recording at its pauses and asks Windows' speech recognizer (`recognize.ps1`, listening only for the script's lines)
-  which line each piece is. Each line then goes where its words come up on screen, sped up by at most 8% if it runs
-  long. It prints anything still too long, and the `&words=` that makes the member's words follow the real voice.
-- **When the member's line runs differently,** render again with `--query words=a,b` before muxing.
+- **`voice.py bank`** cleans the voice. It lowers background noise, following it as it changes, takes rumble and
+  sibilance out, evens the level and adds a little presence. Then it cuts the recording at its pauses and asks
+  Windows' speech recognizer (`recognize.ps1`, listening only for the script's lines) which line each piece is.
+  - When a noise hides the pauses, give the lines' rough places with `--takes`.
+  - A second memo of a few redone lines makes a second bank. Pass both to `place`, later last, and its lines replace
+    the first's.
+- **`voice.py place`** puts each line where its words come up on screen, sped up by at most 8% if it runs long. It
+  prints anything still too long, and the `words=` that makes the member's words follow the real voice.
+- **When a voice runs long,** retime the cut with `--query T=check:8.45,…&beats=…` (see `ad.js`). Export the cues
+  with the same query (`--cues --query`), so `place` and `sound.py` follow it.
 - **`sound.py --voice`** lowers the music 9 dB under the voice and the screen's sounds 4 dB.
 
 Recordings and everything made from them stay in `ad/out/`, out of git.
