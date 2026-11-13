@@ -172,25 +172,52 @@ def recognize(pieces_audio, phrases, work):
     return [(h.get("text") or "", float(h.get("conf") or 0)) for h in heard]
 
 
-def assign(pieces, labels, n):
-    """Pieces in the order they were said, to lines 0..n-1 read in order. A piece heard as the line just placed is a
-    retake and replaces it; one heard as nothing is taken as the next line (a stumble then gets replaced by its
-    retake, which is heard as that line)."""
-    taken, k = {}, 0
-    for p, lab in zip(pieces, labels):
-        if lab and (k - 1) in lab and k not in lab and (k - 1) in taken:
-            taken[k - 1] = p
-            continue
-        if lab and k not in lab:
-            ahead = sorted(j for j in lab if j > k)
-            if ahead:
-                k = ahead[0]
-        if k >= n:
-            if lab and (n - 1) in lab:
-                taken[n - 1] = p
-            continue
-        taken[k] = p
-        k += 1
+def assign(pieces, labels, texts):
+    """Pieces in the order they were said, to the lines in the order they were read. The best monotonic alignment:
+    each piece is a line at or after the one before it, or nothing (a cough, a false start). It is scored by what the
+    recognizer heard and by how long each piece runs against its line's expected length, with a cost for every line
+    left out. A line said more than once keeps its last take."""
+    n, m = len(texts), len(pieces)
+    expect = [max(0.8, 0.068 * len(plain(t))) for t in texts]
+
+    def fit(i, j):
+        lab, d = labels[i], pieces[i][1] - pieces[i][0]
+        s = (4.0 if j in lab else -3.0) if lab else 0.0
+        return s - 1.5 * abs(np.log(max(d, 0.1) / expect[j]))
+
+    def junk(i):
+        return -2.5 if labels[i] else -0.8
+
+    SKIP = 3.0
+    NEG = -1e18
+    # best[i][j + 1]: the best score once pieces 0..i are placed, the last line used being j (-1: none yet).
+    best = np.full((m + 1, n + 1), NEG)
+    back = {}
+    best[0][0] = 0.0
+    for i in range(m):
+        for j in range(-1, n):
+            here = best[i][j + 1]
+            if here <= NEG / 2:
+                continue
+            # This piece is nothing.
+            v = here + junk(i)
+            if v > best[i + 1][j + 1]:
+                best[i + 1][j + 1] = v
+                back[(i + 1, j)] = (j, None)
+            # This piece is line k: a retake of j (k == j) or a later line, the ones between left out.
+            for k in range(max(j, 0), n):
+                v = here + fit(i, k) - SKIP * max(0, k - j - 1)
+                if v > best[i + 1][k + 1]:
+                    best[i + 1][k + 1] = v
+                    back[(i + 1, k)] = (j, k)
+    ends = [best[m][j + 1] - SKIP * (n - 1 - j) for j in range(-1, n)]
+    j = int(np.argmax(ends)) - 1
+    taken = {}
+    for i in range(m, 0, -1):
+        prev, line = back[(i, j)]
+        if line is not None and line not in taken:
+            taken[line] = pieces[i - 1]
+        j = prev
     return taken
 
 
@@ -304,7 +331,7 @@ def bank(recording, bank_dir, order, takes_file=None):
         phrases = phrases_for(order)
         heard = recognize([y[int(a * SR):int(b * SR)] for a, b in pieces], phrases, work)
         labels = [phrases.get(t) if t else None for t, _ in heard]
-        taken = assign(pieces, labels, len(order))
+        taken = assign(pieces, labels, order)
         print(f"{os.path.basename(recording)}: {len(x) / SR:.1f} s, {len(pieces)} pieces of speech, {len(order)} lines expected")
         for (a, b), (t, c) in zip(pieces, heard):
             print(f"  {a:6.2f}-{b:6.2f}  heard: {t or '(nothing)'} {f'({c:.2f})' if t else ''}")
