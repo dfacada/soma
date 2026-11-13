@@ -93,10 +93,12 @@ def speech_pieces(x, merge=1.0, least=0.2):
     return out, thr
 
 
-def denoise(x, floor_db=-18.0):
+def denoise(x, floor_db=-18.0, rt60=None):
     """Lowers steady background noise (a fan, an engine, a room): a Wiener filter whose noise estimate follows the
     quietest moments of each frequency over the last second and a half, so it adapts when a noise starts or stops,
-    with a floor so the voice never turns watery."""
+    with a floor so the voice never turns watery. Given the room's reverberation time (rt60, seconds), it also takes
+    out the room's late echo: what each frequency held 50 ms earlier, decayed as that room decays, counts as
+    interference too (late reverberation suppression, after Lebart, Boucher and Denbigh)."""
     from scipy.ndimage import minimum_filter1d, uniform_filter1d
     from scipy.signal import istft, stft
     n, hop = 1024, 256
@@ -105,6 +107,12 @@ def denoise(x, floor_db=-18.0):
     Ps = uniform_filter1d(P, size=5, axis=1)
     N = minimum_filter1d(Ps, size=int(1.5 * SR / hop), axis=1, mode="nearest") * 2.0
     N = uniform_filter1d(N, size=int(0.3 * SR / hop), axis=1)
+    if rt60:
+        d = max(1, int(round(0.05 * SR / hop)))
+        decay = np.exp(-2 * (3 * np.log(10) / rt60) * d * hop / SR)
+        late = np.zeros_like(Ps)
+        late[:, d:] = decay * Ps[:, :-d]
+        N = N + late
     gmin = 10 ** (floor_db / 20)
     G = np.empty(P.shape, dtype=np.float32)
     prev = np.ones(P.shape[0])
@@ -116,6 +124,27 @@ def denoise(x, floor_db=-18.0):
         prev = g * g * post
     _, y = istft(X * G, fs=SR, window="hann", nperseg=n, noverlap=n - hop)
     return y[: len(x)].astype(np.float32)
+
+
+def expand(y, below=28.0, ratio=2.0, open_s=0.002, close_s=0.08):
+    """Downward expansion: whatever falls more than `below` dB under the voice's own level (the room's tail after a
+    word, a breath) goes down further, `ratio` dB for each dB, so the voice sounds close. It opens at once for a
+    word and closes gently after it, so nothing chatters."""
+    hop = SR // 1000
+    m = len(y) // hop
+    env = 20 * np.log10(np.sqrt((y[: m * hop].reshape(m, hop) ** 2).mean(axis=1)) + 1e-9)
+    ref = np.percentile(env[env > env.max() - 50], 90)
+    want = np.minimum(0.0, (env - (ref - below)) * (ratio - 1))
+    want = np.maximum(want, -30.0)
+    g = np.empty(m)
+    cur = 0.0
+    a_open, a_close = np.exp(-1 / (open_s * 1000)), np.exp(-1 / (close_s * 1000))
+    for i in range(m):
+        k = a_open if want[i] > cur else a_close
+        cur = want[i] + (cur - want[i]) * k
+        g[i] = cur
+    gain = np.interp(np.arange(len(y)) / hop, np.arange(m), 10 ** (g / 20))
+    return (y * gain).astype(np.float32)
 
 
 def refine(x, a, b):
@@ -285,9 +314,10 @@ def place(cues, lines, work, out, tag):
 
 
 def clean(recording, work):
-    """The recording decoded, brought to a working level and cleaned: background noise lowered (adaptively, so a
-    noise that starts part-way is followed), rumble and sibilance out, evened, a little presence and air, peaks
-    held. Returns it, with where its speech is."""
+    """The recording decoded, brought to a working level and cleaned for a voice that sounds close: background
+    noise and the room's echo lowered (adaptively, so a noise that starts part-way is followed), rumble and
+    sibilance out, a warm tone, evened, the tail between words pushed back down. Returns it, with where its speech
+    is."""
     raw = os.path.join(work, "raw.wav")
     decode(recording, raw)
     x = load(raw)
@@ -297,12 +327,16 @@ def clean(recording, work):
     sp = np.concatenate([x[int(a * SR):int(b * SR)] for a, b in pieces])
     gain = -20 - 20 * np.log10(np.sqrt((sp ** 2).mean()) + 1e-9)
     level = os.path.join(work, "level.wav")
-    wavfile.write(level, SR, denoise(x * 10 ** (gain / 20)))
-    chain = ("highpass=f=85,deesser=i=0.35,acompressor=threshold=0.1:ratio=3:attack=6:release=120:makeup=2,"
-             "equalizer=f=200:t=q:w=1:g=-1.5,equalizer=f=3200:t=q:w=1.2:g=2.5,equalizer=f=9500:t=h:w=1:g=1.5,alimiter=limit=0.89")
+    wavfile.write(level, SR, denoise(x * 10 ** (gain / 20), rt60=0.5))
+    # Close and warm: a little chest, the boxy room around 400 Hz down, presence for the words, a breath of air.
+    chain = ("highpass=f=75,equalizer=f=140:t=q:w=0.9:g=2,equalizer=f=420:t=q:w=1.3:g=-3,"
+             "equalizer=f=2800:t=q:w=1:g=2.5,equalizer=f=10500:t=h:w=0.8:g=1.5,deesser=i=0.4,"
+             "acompressor=threshold=0.063:ratio=3:attack=4:release=90:makeup=3")
     out = os.path.join(work, "clean.wav")
     decode(level, out, chain)
-    return x, load(out), pieces
+    # The compressor lifts the room's tail along with the quiet words; the expander takes the tail back down.
+    y = expand(load(out))
+    return x, (y / max(1e-6, np.abs(y).max()) * 0.89).astype(np.float32), pieces
 
 
 def lines_in_order(cues_files):
@@ -325,7 +359,7 @@ def bank(recording, bank_dir, order, takes_file=None):
         # Where each line is, given by hand (a recording whose pauses a noise hides): refined to its speech.
         with open(takes_file) as f:
             given = json.load(f)
-        takes = {t: refine(y, *w) for t, w in given.items()}
+        takes = {t: (w[0], w[1]) if len(w) > 2 and w[2] == "exact" else refine(y, *w[:2]) for t, w in given.items()}
         print(f"{os.path.basename(recording)}: {len(x) / SR:.1f} s, {len(takes)} lines given by hand")
     else:
         phrases = phrases_for(order)

@@ -368,7 +368,7 @@ def build(cues_file, out_file, spectro=None, voice=None):
     sfx = m.bus("sfx")
     vo = None
     if voice is not None:
-        # A voice over it (voice.py's track): the music steps 9 dB down while it speaks, the screen's sounds 4 dB,
+        # A voice over it (voice.py's track): the music steps 11 dB down while it speaks, the screen's sounds 5 dB,
         # quick to go down and slow to come back, so the bed breathes between lines instead of pumping.
         sr, vo = wavfile.read(voice)
         vo = vo.astype(np.float32) if vo.ndim == 1 else vo.mean(axis=1).astype(np.float32)
@@ -387,18 +387,17 @@ def build(cues_file, out_file, spectro=None, voice=None):
         talk = a > 0.5
         mus_rms = np.sqrt((music[talk] ** 2).mean()) if talk.any() else 0.05
         vo_rms = np.sqrt((vo[talk] ** 2).mean()) if talk.any() else 0.05
-        # The voice sits 3 dB over the music before the music steps down: 12 dB clear of it while it speaks.
-        vo = vo * (mus_rms / max(vo_rms, 1e-9)) * 10 ** (3 / 20)
-        music = music * (10 ** (-9 * a / 20))[:, None]
-        sfx = sfx * (10 ** (-4 * a / 20))[:, None]
+        # The voice sits 5 dB over the music before the music steps down: 16 dB clear of it while it speaks.
+        vo = vo * (mus_rms / max(vo_rms, 1e-9)) * 10 ** (5 / 20)
+        music = music * (10 ** (-11 * a / 20))[:, None]
+        sfx = sfx * (10 ** (-5 * a / 20))[:, None]
     mix = music + sfx
     mix = hp(mix, 32)
     # A gentle lift in the presence range, for small speakers.
     mix = mix + bp(mix, 1800, 5000) * 0.35
     if vo is not None:
-        # In the middle, with a breath of the same room as the music so it sits in it.
-        room = np.stack([fftconvolve(vo * 0.07, ir[:, 0])[:n], fftconvolve(vo * 0.07, ir[:, 1])[:n]], axis=1)
-        mix = mix + np.stack([vo, vo], axis=1) * 0.92 + room
+        # In the middle and dry, as if said right to you: no reverb on it at all.
+        mix = mix + np.stack([vo, vo], axis=1) * 0.92
     # Fade in the first breath and out at the end of the picture.
     fade = np.ones(n)
     fade[: int(0.25 * SR)] = np.linspace(0, 1, int(0.25 * SR))
