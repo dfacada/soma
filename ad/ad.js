@@ -20,6 +20,10 @@
   if (PLATE) document.documentElement.classList.add("plate");
   const SHOTS = Q.get("shots") || "../shots/site/";
   const TALL = Q.get("tall") || "../shots/ad/";
+  // ?hands=real: the hands are Blender renders of a real hand (ad/blender/hands.py), one per skin tone, in place of
+  // the drawn ones. Each render covers the drawn hand's own box round the phone.
+  const REAL = Q.get("hands") === "real";
+  const HANDS = Q.get("handdir") || "out/blender/";
   const ART = window.AdArt;
   const LONG = (() => { try { const x = new XMLHttpRequest(); x.open("GET", TALL + "long.json", false); x.send(); return JSON.parse(x.responseText); } catch { return {}; } })();
 
@@ -172,9 +176,11 @@
   const K = 374 / 780; // a screenshot pixel on the phone's screen
   function makePhone(parent, screens, hand) {
     const root = el("div", "phone", parent);
-    root.innerHTML = `<div class="ph-shadow"></div>` + (hand ? ART.hand("back", hand.skin, hand.sleeve, hand) : "") +
+    const realHand = hand && REAL ? `<img class="hand real" src="${HANDS}hand-${hand.skin}.png" decoding="sync" alt="" style="left:-300px;top:-120px;width:1000px;height:1900px">` : "";
+    root.innerHTML = `<div class="ph-shadow"></div>` + (hand && !REAL ? ART.hand("back", hand.skin, hand.sleeve, hand) : "") +
       `<div class="ph-btn" style="left:-4px;top:172px;height:58px"></div><div class="ph-btn" style="left:-4px;top:246px;height:58px"></div><div class="ph-btn" style="left:399px;top:214px;height:92px"></div>` +
-      `<div class="ph-body"><div class="ph-screen"></div></div><div class="ph-glare"></div>` + (hand ? ART.hand("front", hand.skin, hand.sleeve, hand) : "");
+      `<div class="ph-body"><div class="ph-screen"></div></div><div class="ph-glare"></div>` +
+      (realHand || (hand ? ART.hand("front", hand.skin, hand.sleeve, hand) : ""));
     const screen = root.querySelector(".ph-screen");
     const layers = {};
     for (const [k, f] of Object.entries(screens)) {
