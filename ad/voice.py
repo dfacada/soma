@@ -93,7 +93,7 @@ def speech_pieces(x, merge=1.0, least=0.2):
     return out, thr
 
 
-def denoise(x, floor_db=-18.0, rt60=None):
+def denoise(x, floor_db=-18.0, rt60=None, late_delay=0.05, late_gain=1.0):
     """Lowers steady background noise (a fan, an engine, a room): a Wiener filter whose noise estimate follows the
     quietest moments of each frequency over the last second and a half, so it adapts when a noise starts or stops,
     with a floor so the voice never turns watery. Given the room's reverberation time (rt60, seconds), it also takes
@@ -108,10 +108,10 @@ def denoise(x, floor_db=-18.0, rt60=None):
     N = minimum_filter1d(Ps, size=int(1.5 * SR / hop), axis=1, mode="nearest") * 2.0
     N = uniform_filter1d(N, size=int(0.3 * SR / hop), axis=1)
     if rt60:
-        d = max(1, int(round(0.05 * SR / hop)))
+        d = max(1, int(round(late_delay * SR / hop)))
         decay = np.exp(-2 * (3 * np.log(10) / rt60) * d * hop / SR)
         late = np.zeros_like(Ps)
-        late[:, d:] = decay * Ps[:, :-d]
+        late[:, d:] = late_gain * decay * Ps[:, :-d]
         N = N + late
     gmin = 10 ** (floor_db / 20)
     G = np.empty(P.shape, dtype=np.float32)
@@ -126,13 +126,16 @@ def denoise(x, floor_db=-18.0, rt60=None):
     return y[: len(x)].astype(np.float32)
 
 
-def expand(y, below=28.0, ratio=2.0, open_s=0.002, close_s=0.08):
+def expand(y, below=24.0, ratio=2.5, open_s=0.002, close_s=0.06):
     """Downward expansion: whatever falls more than `below` dB under the voice's own level (the room's tail after a
-    word, a breath) goes down further, `ratio` dB for each dB, so the voice sounds close. It opens at once for a
-    word and closes gently after it, so nothing chatters."""
+    word, a breath) goes down further, `ratio` dB for each dB, so the voice sounds close. It listens through a
+    filter that favours the highs, so soft consonants count as speech. It opens at once for a word and closes
+    gently after it, so nothing chatters."""
+    from scipy.signal import butter, sosfilt
     hop = SR // 1000
     m = len(y) // hop
-    env = 20 * np.log10(np.sqrt((y[: m * hop].reshape(m, hop) ** 2).mean(axis=1)) + 1e-9)
+    side = y + 3.0 * sosfilt(butter(2, 2500, "high", fs=SR, output="sos"), y)
+    env = 20 * np.log10(np.sqrt((side[: m * hop].reshape(m, hop) ** 2).mean(axis=1)) + 1e-9)
     ref = np.percentile(env[env > env.max() - 50], 90)
     want = np.minimum(0.0, (env - (ref - below)) * (ratio - 1))
     want = np.maximum(want, -30.0)
@@ -145,6 +148,17 @@ def expand(y, below=28.0, ratio=2.0, open_s=0.002, close_s=0.08):
         g[i] = cur
     gain = np.interp(np.arange(len(y)) / hop, np.arange(m), 10 ** (g / 20))
     return (y * gain).astype(np.float32)
+
+
+def warm(y, drive=0.12):
+    """A gentle saturation, as a good preamp gives: a touch of second harmonic (warmth) and rounded peaks (density),
+    with the level kept and nothing heard as distortion."""
+    from scipy.signal import butter, sosfilt
+    peak = max(1e-6, np.abs(y).max())
+    u = y / peak
+    sat = np.tanh(u * (1 + 2 * drive)) / np.tanh(1 + 2 * drive) + drive * 0.25 * (u * u - np.mean(u * u))
+    sat = sosfilt(butter(1, 20, "high", fs=SR, output="sos"), sat)
+    return (sat * peak).astype(np.float32)
 
 
 def refine(x, a, b):
@@ -327,15 +341,26 @@ def clean(recording, work):
     sp = np.concatenate([x[int(a * SR):int(b * SR)] for a, b in pieces])
     gain = -20 - 20 * np.log10(np.sqrt((sp ** 2).mean()) + 1e-9)
     level = os.path.join(work, "level.wav")
-    wavfile.write(level, SR, denoise(x * 10 ** (gain / 20), rt60=0.5))
-    # Close and warm: a little chest, the boxy room around 400 Hz down, presence for the words, a breath of air.
-    chain = ("highpass=f=75,equalizer=f=140:t=q:w=0.9:g=2,equalizer=f=420:t=q:w=1.3:g=-3,"
-             "equalizer=f=2800:t=q:w=1:g=2.5,equalizer=f=10500:t=h:w=0.8:g=1.5,deesser=i=0.4,"
-             "acompressor=threshold=0.063:ratio=3:attack=4:release=90:makeup=3")
+    # Noise and the room's echo out first, hard: the late echo taken to start 35 ms after the sound, as a room of
+    # 0.7 s would carry it, and taken out half again as strongly as that estimate.
+    wavfile.write(level, SR, denoise(x * 10 ** (gain / 20), floor_db=-22.0, rt60=0.7, late_delay=0.035, late_gain=1.5))
+    # A voice-over chain:
+    #  - rumble out, a little chest at 150 Hz, the muddy 300 and the boxy room at 450 down a little;
+    #  - a fast compressor for the peaks (4:1, 1 ms), then a slow one that keeps the level even (2.5:1, 15 ms);
+    #  - sibilance tamed lightly after the compression has brought it up;
+    #  - presence at 3.5 kHz and air above 11 kHz for the words;
+    #  - a light exciter above 5 kHz for crisp consonants.
+    chain = ("highpass=f=75:poles=2,equalizer=f=150:t=q:w=0.8:g=3.5,equalizer=f=300:t=q:w=1:g=-1.5,"
+             "equalizer=f=450:t=q:w=1.3:g=-2,"
+             "acompressor=threshold=0.05:ratio=4:attack=1:release=60:knee=2:makeup=2,"
+             "acompressor=threshold=0.079:ratio=2.5:attack=15:release=180:knee=4:makeup=2,"
+             "deesser=i=0.25:m=0.5:f=0.5,"
+             "equalizer=f=3500:t=q:w=0.9:g=3.5,equalizer=f=11000:t=h:w=0.7:g=3,"
+             "aexciter=amount=0.6:drive=6:blend=0:freq=5000:ceil=16000")
     out = os.path.join(work, "clean.wav")
     decode(level, out, chain)
-    # The compressor lifts the room's tail along with the quiet words; the expander takes the tail back down.
-    y = expand(load(out))
+    # The compressors lift the room's tail along with the quiet words; the expander takes the tail back down.
+    y = warm(expand(load(out)))
     return x, (y / max(1e-6, np.abs(y).max()) * 0.89).astype(np.float32), pieces
 
 
@@ -382,13 +407,72 @@ def bank(recording, bank_dir, order, takes_file=None):
     print(f"  bank: {len(index)} lines" + (f"; not in it: {' | '.join(m[:36] for m in missing)}" if missing else ""))
 
 
+def ltas(segs, n=4096):
+    """The long-term average spectrum of some speech (its voiced moments), in dB per FFT bin."""
+    acc, k = np.zeros(n // 2 + 1), 0
+    for a in segs:
+        for i in range(0, len(a) - n, n // 2):
+            f = a[i:i + n] * np.hanning(n)
+            if np.sqrt((f ** 2).mean()) > 10 ** (-40 / 20):
+                acc += np.abs(np.fft.rfft(f)) ** 2
+                k += 1
+    return 10 * np.log10(acc / max(k, 1) + 1e-12)
+
+
+def match_tone(groups):
+    """Lines recorded on different days, places or distances sound like one session: each memo's average spectrum
+    is pulled toward the average of all of them, smoothed to half an octave and held within 4 dB (the broad balance a mic and a distance change, not the words), by a
+    linear-phase filter (so nothing smears in time)."""
+    from scipy.signal import firwin2, fftconvolve
+    n = 4096
+    freqs = np.fft.rfftfreq(n, 1 / SR)
+    spectra = {g: ltas(list(segs.values())) for g, segs in groups.items() if segs}
+    weights = {g: len(segs) for g, segs in groups.items() if segs}
+    target = sum(spectra[g] * weights[g] for g in spectra) / sum(weights.values())
+    out = {}
+    for g, segs in groups.items():
+        if not segs:
+            continue
+        corr = target - spectra[g]
+        band = (freqs >= 90) & (freqs <= 12000)
+        corr = corr - np.median(corr[band])
+        sm = np.empty_like(corr)
+        for i, f in enumerate(freqs):
+            lo, hi = f / 2 ** (1 / 4), f * 2 ** (1 / 4)
+            sel = (freqs >= lo) & (freqs <= hi)
+            sm[i] = corr[sel].mean() if sel.any() else corr[i]
+        sm[~band] = np.interp(freqs[~band], freqs[band], sm[band])
+        sm = np.clip(sm, -4, 4)
+        taps = firwin2(1025, freqs / (SR / 2), 10 ** (sm / 20))
+        out[g] = {t: fftconvolve(a, taps)[512:512 + len(a)].astype(np.float32) for t, a in segs.items()}
+        print(f"  tone match for {os.path.basename(g)}: up to {sm[band].max():+.1f} / {sm[band].min():+.1f} dB")
+    return out
+
+
+def level_line(a, target=-18.0):
+    """Every line at the same loudness: its voiced moments (within 30 dB of its loudest) brought to `target` dBFS."""
+    hop = SR // 100
+    m = len(a) // hop
+    db = 20 * np.log10(np.sqrt((a[: m * hop].reshape(m, hop) ** 2).mean(axis=1)) + 1e-9)
+    v = db[db > db.max() - 30]
+    now = 10 * np.log10(np.mean(10 ** (v / 10))) if len(v) else -60
+    return (a * 10 ** ((target - now) / 20)).astype(np.float32)
+
+
 def place_from(cues_file, out, banks):
-    """A cut's voice track from one or more banks; a line in a later bank replaces the same line in an earlier one."""
-    lines = {}
+    """A cut's voice track from one or more banks; a line in a later bank replaces the same line in an earlier one.
+    The banks' tone is matched to one another and every line set to the same loudness first."""
+    # Which bank each line comes from (the last that has it), so the tone is matched across the lines in use only.
+    source = {}
     for b in banks:
         with open(os.path.join(b, "index.json")) as f:
             for text, e in json.load(f).items():
-                lines[text] = load(os.path.join(b, e["file"]))
+                source[text] = (b, e["file"])
+    groups = {}
+    for text, (b, name) in source.items():
+        groups.setdefault(b, {})[text] = load(os.path.join(b, name))
+    groups = match_tone(groups)
+    lines = {text: level_line(a) for g in groups.values() for text, a in g.items()}
     with open(cues_file) as f:
         cues = json.load(f)
     place(cues, lines, tempfile.mkdtemp(prefix="dayhub-place-"), out, "p")
