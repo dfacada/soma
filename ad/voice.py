@@ -338,14 +338,20 @@ if __name__ == "__main__":
     if a[:1] == ["bank"] and len(a) >= 3:
         opts, rest, i = {}, [], 1
         while i < len(a):
-            if a[i] in ("--takes", "--cues"):
+            if a[i] in ("--takes", "--cues", "--order"):
                 opts.setdefault(a[i], []).append(a[i + 1])
                 i += 2
             else:
                 rest.append(a[i])
                 i += 1
         recording, bank_dir = rest
-        bank(recording, bank_dir, lines_in_order(opts.get("--cues", [])), (opts.get("--takes") or [None])[0])
+        # A memo of a few redone lines reads them in its own order: --order, a JSON list of the lines as said.
+        if opts.get("--order"):
+            with open(opts["--order"][0], encoding="utf-8") as f:
+                order = json.load(f)
+        else:
+            order = lines_in_order(opts.get("--cues", []))
+        bank(recording, bank_dir, order, (opts.get("--takes") or [None])[0])
     elif a[:1] == ["place"] and len(a) >= 4:
         place_from(a[1], a[2], a[3:])
     else:
