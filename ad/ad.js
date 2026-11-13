@@ -176,7 +176,7 @@
   const K = 374 / 780; // a screenshot pixel on the phone's screen
   function makePhone(parent, screens, hand) {
     const root = el("div", "phone", parent);
-    const realHand = hand && REAL ? `<img class="hand real" src="${HANDS}hand-${hand.skin}.png" decoding="sync" alt="" style="left:-300px;top:-120px;width:1000px;height:1900px">` : "";
+    const realHand = hand && REAL ? `<img class="hand real" src="${HANDS}hand-${hand.look || hand.skin}.png" decoding="sync" alt="" style="left:-300px;top:-120px;width:1000px;height:1900px">` : "";
     root.innerHTML = `<div class="ph-shadow"></div>` + (hand && !REAL ? ART.hand("back", hand.skin, hand.sleeve, hand) : "") +
       `<div class="ph-btn" style="left:-4px;top:172px;height:58px"></div><div class="ph-btn" style="left:-4px;top:246px;height:58px"></div><div class="ph-btn" style="left:399px;top:214px;height:92px"></div>` +
       `<div class="ph-body"><div class="ph-screen"></div></div><div class="ph-glare"></div>` +
@@ -388,7 +388,7 @@
   const heroOrb = makeOrb(sHook, L.orbHero.size);
 
   const sWalk = el("div", "scene");
-  const walkPhone = makePhone(sWalk, { today: "today.night.png", rec: "moment-day.night.png", check: "moment-day-check.night.png" }, { skin: "brown", sleeve: "#2E3A55" });
+  const walkPhone = makePhone(sWalk, { today: "today.night.png", rec: "moment-day.night.png", check: "moment-day-check.night.png" }, { skin: "brown", sleeve: "#2E3A55", look: "walk" });
   const recClock = makeClock(walkPhone.on("rec"), [640, 52, 110, 54], "#0B0A09", 32);
   const checkClock = makeClock(walkPhone.on("check"), [640, 52, 110, 54], "#0B0A09", 32);
   const entryClock = makeClock(walkPhone.on("check"), [626, 396, 92, 44], "#161513", 30);
@@ -630,14 +630,14 @@
       const bt = { b, t0, t1, root, bg };
       if (b.key === "journal") {
         bg.innerHTML = ART.nightRoom(W, H);
-        bt.phone = makePhone(root, { j: { tall: "journal" } }, { skin: "deep", sleeve: "#3B3357" });
+        bt.phone = makePhone(root, { j: { tall: "journal" } }, { skin: "deep", sleeve: "#3B3357", look: "journal" });
         bt.card = el("div", "sealcard", root, `<div class="top"><span class="lbl">A month ago</span><span class="lk">${ICON("unlock")}</span></div><div class="txt">Grateful for an easy day.</div>`);
         bt.card.style.setProperty("--w", (WIDE ? 560 : 600) + "px");
         bt.card.style.setProperty("--fs", (WIDE ? 32 : 34) + "px");
         cue(t0 + 1.2, "seal");
       } else if (b.key === "food") {
         bg.innerHTML = ART.table(W, H);
-        bt.phone = makePhone(root, { food: "food.night.png", say: "moment-food.night.png" }, { skin: "tan", sleeve: "#3D4A3F" });
+        bt.phone = makePhone(root, { food: "food.night.png", say: "moment-food.night.png" }, { skin: "tan", sleeve: "#3D4A3F", look: "food" });
         bt.tap = makeTap(bt.phone.ovl, 662, 802);
         bt.clock = makeClock(bt.phone.on("say"), [640, 52, 110, 54], "#0B0A09", 32);
         bt.speech = el("div", "chip food", root, `<i></i><span class="sp"></span>`);
@@ -646,19 +646,19 @@
       } else if (b.key === "moves") {
         bg.innerHTML = ART.floor(W, H);
         bt.fig = el("div", "", root);
-        bt.phone = makePhone(root, { act: { tall: "activity" } }, { skin: "light", sleeve: "#2F2F33" });
+        bt.phone = makePhone(root, { act: { tall: "activity" } }, { skin: "light", sleeve: "#2F2F33", look: "moves" });
         bt.chips = ["pushup", "run", "walker", "yoga", "swim", "barbell"].map((ic) => { const c = el("div", "movechip", root, ICON(ic)); c.style.setProperty("--mc", (WIDE ? 70 : 76) + "px"); return c; });
         cue(t0 + 1.15, "whoosh", { len: 0.5, soft: true });
       } else if (b.key === "insights") {
         bg.innerHTML = ART.morning(W, H);
         bt.steam = el("div", "", root, `<svg width="120" height="200" viewBox="0 0 120 200"><g fill="none" stroke="#F5F2EB" stroke-width="5" stroke-linecap="round" opacity="0.32"><path/><path transform="translate(28 12)"/></g></svg>`);
         bt.mug = el("div", "", root, `<svg width="150" height="140" viewBox="0 0 150 140"><path d="M10 20 h100 v70 a40 40 0 0 1 -40 40 h-20 a40 40 0 0 1 -40 -40 z" fill="#E9E1D2"/><path d="M110 40 h12 a18 18 0 0 1 0 36 h-12" fill="none" stroke="#E9E1D2" stroke-width="10"/><ellipse cx="60" cy="22" rx="50" ry="8" fill="#5A3A26"/></svg>`);
-        bt.phone = makePhone(root, { ins: "insights.night.png", tried: "insights-try-sleep.night.png" }, { skin: "olive", sleeve: "#5A2F36" });
+        bt.phone = makePhone(root, { ins: "insights.night.png", tried: "insights-try-sleep.night.png" }, { skin: "olive", sleeve: "#5A2F36", look: "insights" });
         bt.tap = makeTap(bt.phone.ovl, 195, 1161);
         cue(t0 + 1.0, "tap");
       } else if (b.key === "privacy") {
         bg.innerHTML = ART.vault(W, H);
-        bt.phone = makePhone(root, { p: { tall: "settings-privacy" } }, { skin: "brown", sleeve: "#2E3A55" });
+        bt.phone = makePhone(root, { p: { tall: "settings-privacy" } }, { skin: "brown", sleeve: "#2E3A55", look: "privacy" });
         cue(t0 + 0.6, "whoosh", { len: 0.9, soft: true });
       }
       bt.sup = makeSuper(root, b.lines, { width: WIDE ? 800 : 940, size: WIDE ? 98 : 92, kick: b.kick, hue: b.hue, allhue: b.allhue, gap: 0.04, delays: b.delays });

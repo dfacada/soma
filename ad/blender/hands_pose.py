@@ -331,3 +331,27 @@ def thumb_to(rig, path_u, depths):
     millimetres in front of (negative) or behind the phone's middle plane."""
     pts = [unit_to_world(x, y) + Vector((0, d / 1000, 0)) for (x, y), d in zip(path_u, depths)]
     aim_chain(rig, ["RightHandThumb1", "RightHandThumb2", "RightHandThumb3", "RightHandThumb4"], pts)
+
+
+def hold(rig):
+    """The pose the ad uses (2026-11-13): the hand behind the phone's lower half, its knuckles just inside the left
+    edge, the forearm dropping away down and to the right, the fingertips on the left edge from 560 to 830 units
+    down, the little finger under the corner, and the thumb up the right edge, its tip just over the screen."""
+    reset_pose(rig)
+    place(rig, up_deg=18, at_u=(80, 640), pitch_deg=0, depth=0.015, scale=0.86)
+    bend_wrist(rig, (0, 1, 0), 40)
+    mw = rig.matrix_world
+    across = (mw @ rig.pose.bones["RightHandIndex1"].head) - (mw @ rig.pose.bones["RightHandPinky1"].head)
+    bend_wrist(rig, across, -40)
+    for f, uy in zip(("Index", "Middle", "Ring", "Pinky"), (560, 650, 740, 830)):
+        r = RADIUS[f] * 0.93
+        t = unit_to_world(16, uy) + Vector((0, -PD / 2 - r - 0.0005, 0))
+        s = solve_finger(rig, f, t, radius=r, hug=0.5)
+        apply_finger(rig, f, s["spread"], s["bends"])
+    thumb_to(rig, [(462, 545), (418, 400), (378, 318)], [0, -7.5, -10.5])
+
+
+# The whole build, in a fresh Blender (each MCP call runs in a fresh namespace, so exec both files first):
+#   clear(); ph = phone(); camera(); rig, mesh = arms(); trim(mesh); hold(rig)
+#   skin(mesh); contact(mesh, ph); lights(); cycles()
+#   (move the contact modifier above the smoothing one), then render_look(name) for each scene.

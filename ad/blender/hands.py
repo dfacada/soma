@@ -205,3 +205,70 @@ def contact(mesh, phone_obj):
     sw.wrap_mode = "OUTSIDE"
     sw.offset = 0.0003
     return sw
+
+
+# The five skin tones the drawn hands had (art.js SKINS), made from the one photographed skin: hue (0.5 keeps it,
+# above 0.5 leans yellow), saturation and value of the colour map, and how far light travels under the skin (darker
+# skin holds more of it near the surface).
+TONES = {
+    "light": (0.500, 1.00, 0.95, 1.00),
+    "tan": (0.493, 1.18, 0.70, 0.90),
+    "olive": (0.508, 1.10, 0.66, 0.90),
+    "brown": (0.490, 1.28, 0.44, 0.75),
+    "deep": (0.487, 1.32, 0.27, 0.65),
+}
+
+# Each scene's light, matched to its drawing (ad.js beats): the key light's place and colour, then the fill, the rim
+# behind, the screen's own glow, the exposure. Places are in metres round the phone, the camera at -Y.
+LOOKS = {
+    # an evening street: a warm street lamp up on the left, the moon's cool fill, a lilac rim; the screen lilac
+    "walk": dict(tone="brown", key=((-0.4, -0.35, 0.45), 3.6, (1.0, 0.72, 0.45)), fill=((0.5, -0.4, 0.1), 0.8, (0.62, 0.66, 1.0)),
+                 rim=((0.35, 0.4, 0.25), 9.0, (0.72, 0.62, 1.0)), screen=(0.75, (0.6, 0.55, 1.0)), exposure=-0.8),
+    # a dark bedroom: moonlight from the window up on the right, a faint warm lamp low on the left; the screen bright
+    "journal": dict(tone="deep", key=((0.45, -0.3, 0.45), 3.0, (0.7, 0.75, 1.0)), fill=((-0.5, -0.4, -0.1), 1.0, (1.0, 0.7, 0.45)),
+                    rim=((-0.3, 0.4, 0.3), 7.0, (0.62, 0.6, 1.0)), screen=(1.0, (0.62, 0.58, 1.0)), exposure=-0.7),
+    # dinner: a warm pendant straight above the table, the room's warm bounce, a soft rim; the screen green
+    "food": dict(tone="tan", key=((0.0, -0.2, 0.6), 5.0, (1.0, 0.78, 0.55)), fill=((0.45, -0.45, -0.2), 1.1, (1.0, 0.85, 0.7)),
+                 rim=((0.3, 0.4, 0.2), 6.0, (1.0, 0.8, 0.6)), screen=(0.6, (0.5, 0.95, 0.7)), exposure=-0.6),
+    # an evening workout at home: warm room light from the left, orange floor bounce from below; the screen orange
+    "moves": dict(tone="light", key=((-0.45, -0.35, 0.35), 3.6, (1.0, 0.76, 0.52)), fill=((0.2, -0.4, -0.5), 1.4, (1.0, 0.62, 0.35)),
+                  rim=((0.35, 0.4, 0.2), 6.0, (1.0, 0.75, 0.5)), screen=(0.6, (1.0, 0.7, 0.45)), exposure=-0.8),
+    # morning: low sun through the window on the left, a cool room fill, a peach rim; the screen neutral
+    "insights": dict(tone="olive", key=((-0.55, -0.15, 0.3), 6.0, (1.0, 0.78, 0.6)), fill=((0.45, -0.5, 0.0), 1.6, (0.82, 0.86, 1.0)),
+                     rim=((-0.35, 0.45, 0.2), 9.0, (1.0, 0.75, 0.6)), screen=(0.5, (0.8, 0.82, 1.0)), exposure=-0.5),
+    # the vault: dark blue all round, a cool key from the upper right, the screen the brightest thing
+    "privacy": dict(tone="brown", key=((0.4, -0.35, 0.45), 2.6, (0.6, 0.66, 1.0)), fill=((-0.5, -0.4, 0.0), 0.6, (0.55, 0.55, 1.0)),
+                    rim=((-0.35, 0.4, 0.25), 8.0, (0.55, 0.6, 1.0)), screen=(1.0, (0.62, 0.6, 1.0)), exposure=-0.8),
+}
+
+
+def look(name):
+    """Sets the skin tone and the lights for one scene."""
+    lk = LOOKS[name]
+    h, s_, v, sss = TONES[lk["tone"]]
+    for m in bpy.data.materials:
+        if m.use_nodes and "Tone" in m.node_tree.nodes:
+            t = m.node_tree.nodes["Tone"]
+            t.inputs["Hue"].default_value, t.inputs["Saturation"].default_value, t.inputs["Value"].default_value = h, s_, v
+            for n in m.node_tree.nodes:
+                if n.type == "BSDF_PRINCIPLED":
+                    n.inputs["Subsurface Scale"].default_value = 0.0018 * sss
+    aim = Vector((0.0, 0.0, -0.03))
+    for k in ("key", "fill", "rim"):
+        (loc, energy, rgb) = lk[k]
+        o = bpy.data.objects[k.capitalize()]
+        o.location = loc
+        o.rotation_euler = (aim - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
+        o.data.energy, o.data.color = energy, rgb
+    scr = bpy.data.objects["Screen"].data
+    scr.energy, scr.color = lk["screen"]
+    bpy.context.scene.view_settings.exposure = lk["exposure"]
+
+
+def render_look(name, pct=100, samples=256):
+    look(name)
+    s = bpy.context.scene
+    s.cycles.samples, s.render.resolution_percentage = samples, pct
+    s.render.filepath = os.path.join(OUT, f"hand-{name}.png" if pct == 100 else f"try-{name}.png")
+    bpy.ops.render.render(write_still=True)
+    return s.render.filepath

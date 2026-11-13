@@ -49,6 +49,27 @@ The last two lines go once for each cut and shape. A 30-second cut takes about s
 - **Screen plates for a shoot:** add `--query plate=1`, with `--from`, `--to` and `--out`. A plate is the phone's
   screen alone, 1080 × 2330, with no hand, frame, words or taps.
 
+## Real hands (Blender)
+
+The hands round the phone can be renders of a real hand instead of drawings: `--query hands=real` on any render, or
+the page itself with `?hands=real`. Each phone scene has its own render, `ad/out/blender/hand-<scene>.png` (walk,
+journal, food, moves, insights, privacy), lit to match its drawing and in that scene's skin tone. A render covers
+the drawn hand's own box round the phone, so it lines up wherever the phone is placed.
+
+To make them:
+- **What it needs:** Blender 5 with the Blender MCP connector, and the free FPS Arms Pack (commercial use allowed,
+  no credit needed, not to be resold) unpacked into `ad/out/blender/arms`. The pack stays out of git.
+- **`blender/hands.py`** builds the scene:
+  - the phone at real size, as a shadow catcher, so it never shows but the fingers' shadows on it do;
+  - an orthographic camera on the hand's box;
+  - the photographed skin with light scattering under it, and a contact that presses skin flat on the phone;
+  - the six scenes' lights and the five skin tones (`LOOKS`, `TONES`), and `render_look(name)`.
+- **`blender/hands_pose.py`** poses the hand:
+  - the wrist bends so the forearm drops away;
+  - a small solver bends each finger until its tip rests on the phone's left edge without passing through it;
+  - the thumb is aimed joint by joint (`thumb_to`).
+- **One full-size scene** (2000 × 3800) takes about four minutes on a GTX 1660 Super.
+
 ## A narrator's own voice
 
 Record the lines in `VOICEOVER.md` in one take, in order, with a pause of about two seconds between them. For both
