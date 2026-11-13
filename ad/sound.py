@@ -409,8 +409,9 @@ def build(cues_file, out_file, spectro=None, voice=None):
     # A look-ahead limiter takes the loudest few transients down 3 dB, so loudness can be set to -14 LUFS without
     # squashing anything, then the peak sits at -1 dBFS.
     mix = mix / max(np.abs(mix).max(), 1e-9)
-    # A voice's plosives stand out further: 5 dB for them, so the mix still reaches -14 LUFS without compression.
-    mix = limit(mix, 10 ** ((-5 if vo is not None else -3) / 20))
+    # Under a voice the limiter barely touches anything (2 dB, the rare peak), so the voice keeps its own dynamics;
+    # the loudness step afterwards is one plain volume change.
+    mix = limit(mix, 10 ** ((-2 if vo is not None else -3) / 20))
     mix = mix / max(np.abs(mix).max(), 1e-9) * 10 ** (-1 / 20)
     wavfile.write(out_file, SR, mix.astype(np.float32))
     rms = lambda a, b: 20 * np.log10(np.sqrt((mix[int(a * SR):int(b * SR)] ** 2).mean()) + 1e-12)

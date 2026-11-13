@@ -8,6 +8,7 @@ come up on screen. sound.py mixes the track in over the music, lowered under it.
     python ad/voice.py bank <recording> ad/out/voice/bank1 --cues <cues-30> --cues <cues-15>
     python ad/voice.py bank <recording> ad/out/voice/bank1 --takes lines.json     where each line is, by hand
     python ad/voice.py place <cues-30> ad/out/voice/voice-30.wav ad/out/voice/bank1 [ad/out/voice/bank2]
+    --raw (on both)    the voice as recorded: cut, placed and levelled only, no processing at all
 
 Reading order for a bank: the first cut's lines, then the lines later cuts add (for both cuts, the 30-second lines,
 then the two only the 15-second one has). To tell a retake from the take before it, Windows' own speech recognizer
@@ -267,7 +268,7 @@ def assign(pieces, labels, texts):
 def tempo(a, factor, work, k):
     src, dst = os.path.join(work, f"t{k}a.wav"), os.path.join(work, f"t{k}b.wav")
     wavfile.write(src, SR, a.astype(np.float32))
-    decode(src, dst, f"atempo={factor:.4f}")
+    decode(src, dst, f"rubberband=tempo={factor:.4f}:transients=mixed:detector=compound:phase=laminar:window=standard:pitchq=quality")
     return load(dst)
 
 
@@ -327,7 +328,7 @@ def place(cues, lines, work, out, tag):
         json.dump({"lines": report, "missing": missing, "words": words}, f, indent=1)
 
 
-def clean(recording, work):
+def clean(recording, work, raw=False):
     """The recording decoded, brought to a working level and cleaned for a voice that sounds close: background
     noise and the room's echo lowered (adaptively, so a noise that starts part-way is followed), rumble and
     sibilance out, a warm tone, evened, the tail between words pushed back down. Returns it, with where its speech
@@ -340,6 +341,10 @@ def clean(recording, work):
         raise SystemExit("no speech found in " + recording)
     sp = np.concatenate([x[int(a * SR):int(b * SR)] for a, b in pieces])
     gain = -20 - 20 * np.log10(np.sqrt((sp ** 2).mean()) + 1e-9)
+    if raw:
+        # The voice exactly as recorded: no noise filter, EQ, compression or anything else, one volume change only.
+        y = x * 10 ** (gain / 20)
+        return x, (y / max(1e-6, np.abs(y).max()) * 0.89).astype(np.float32), pieces
     level = os.path.join(work, "level.wav")
     # Noise and the room's echo out first, hard: the late echo taken to start 35 ms after the sound, as a room of
     # 0.7 s would carry it, and taken out half again as strongly as that estimate.
@@ -376,10 +381,10 @@ def lines_in_order(cues_files):
     return order
 
 
-def bank(recording, bank_dir, order, takes_file=None):
+def bank(recording, bank_dir, order, takes_file=None, raw=False):
     """Cuts a recording into its lines, one cleaned file each, into bank_dir (index.json says which is which)."""
     work = tempfile.mkdtemp(prefix="dayhub-voice-")
-    x, y, pieces = clean(recording, work)
+    x, y, pieces = clean(recording, work, raw)
     if takes_file:
         # Where each line is, given by hand (a recording whose pauses a noise hides): refined to its speech.
         with open(takes_file) as f:
@@ -459,7 +464,7 @@ def level_line(a, target=-18.0):
     return (a * 10 ** ((target - now) / 20)).astype(np.float32)
 
 
-def place_from(cues_file, out, banks):
+def place_from(cues_file, out, banks, raw=False):
     """A cut's voice track from one or more banks; a line in a later bank replaces the same line in an earlier one.
     The banks' tone is matched to one another and every line set to the same loudness first."""
     # Which bank each line comes from (the last that has it), so the tone is matched across the lines in use only.
@@ -471,7 +476,8 @@ def place_from(cues_file, out, banks):
     groups = {}
     for text, (b, name) in source.items():
         groups.setdefault(b, {})[text] = load(os.path.join(b, name))
-    groups = match_tone(groups)
+    if not raw:
+        groups = match_tone(groups)
     lines = {text: level_line(a) for g in groups.values() for text, a in g.items()}
     with open(cues_file) as f:
         cues = json.load(f)
@@ -483,7 +489,10 @@ if __name__ == "__main__":
     if a[:1] == ["bank"] and len(a) >= 3:
         opts, rest, i = {}, [], 1
         while i < len(a):
-            if a[i] in ("--takes", "--cues", "--order"):
+            if a[i] == "--raw":
+                opts["--raw"] = True
+                i += 1
+            elif a[i] in ("--takes", "--cues", "--order"):
                 opts.setdefault(a[i], []).append(a[i + 1])
                 i += 2
             else:
@@ -496,8 +505,10 @@ if __name__ == "__main__":
                 order = json.load(f)
         else:
             order = lines_in_order(opts.get("--cues", []))
-        bank(recording, bank_dir, order, (opts.get("--takes") or [None])[0])
+        bank(recording, bank_dir, order, (opts.get("--takes") or [None])[0], raw=bool(opts.get("--raw")))
     elif a[:1] == ["place"] and len(a) >= 4:
-        place_from(a[1], a[2], a[3:])
+        raw = "--raw" in a
+        rest = [x for x in a[1:] if x != "--raw"]
+        place_from(rest[0], rest[1], rest[2:], raw=raw)
     else:
         raise SystemExit(__doc__)
