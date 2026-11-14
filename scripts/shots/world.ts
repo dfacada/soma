@@ -35,11 +35,22 @@ const DAY_HEARD: Heard = {
   ],
   moves: [{ key: "pushups", n: 100, u: "reps", label: "" }],
 };
+// The promo's Say your day (scenes ad-*, day "ad" only): what Alex says at 6:47 pm walking out of work, and what Dayhub's real reader
+// (POST /day/describe, routes/day.js) answered for exactly these words when it was run for real. Used verbatim.
+const AD_SAID = "Gym this morning, new PR on deadlifts. Tacos for lunch with the team. Weighed in at one sixty-two. Feeling great. And Sam finally called.";
+const AD_HEARD: Heard = {
+  weight: 162, mood: "Great", habits: [], counts: [],
+  food: [{ meal: "lunch", name: "Tacos", kcal: 500, protein: 22, carbs: 45, fat: 24, note: "Assumed two tacos, typical portion" }],
+  moves: [{ key: "gym", n: null, u: "session", label: "" }],
+};
 /** Where signed Stratus URLs point in the fixture. The page asks for them; shoot.ts answers from `blobs`. */
 export const STRATUS = "https://stratus.fixture.test";
 
-/** How today looks: part done (the usual evening), all but dinner (one tap from closing), or closed (all five). */
-export type DayShape = "open" | "last" | "closed";
+/** How today looks: part done (the usual evening), all but dinner (one tap from closing), or closed (all five).
+ *  "ad" (the promo, opt-in scenes only): breakfast and the snack logged and nothing else (no lunch, no dinner, no
+ *  weight, no check-in, no move, no journal entry), with Say your day switched on and food closing on breakfast and
+ *  lunch only (dinner is still to come at 6:47 pm), so one recording that names lunch closes all five. */
+export type DayShape = "open" | "last" | "closed" | "ad";
 export type Theme = "night" | "light";
 /** Whose screens these are: the settled member with two months behind them, someone on their first day (approved
  *  minutes ago: nothing logged, no vault, Fitbit not connected, settings as the app makes them), or someone who has
@@ -67,6 +78,11 @@ export type World = {
   board: { round: Round; members: Member[]; logs: Record<string, Log> };
   /** Stratus objects by path ("entries/e_1.enc"). */
   blobs: Map<string, Uint8Array>;
+  /** What POST /day/describe answers. Absent: DAY_HEARD. */
+  dayHeard?: Heard;
+  /** Journal saves are kept (the encrypted files and the entry's index row), so an entry recorded in the scene is
+   *  still there when the page reloads its journal. Only the promo's world; shoot.ts builds it fresh for each scene. */
+  keeps?: true;
 };
 
 // mulberry32: small, fast and the same everywhere.
@@ -166,27 +182,31 @@ export async function buildWorld({ now, theme, day, who = "settled", trying }: {
     const date = addDays(now, -back), k = dayKey(date), isToday = back === 0;
     // The last twelve days before today were all closed, so the streak reads like someone who keeps it up.
     const full = back > 0 && back <= CLOSED_RUN;
-    const closedToday = isToday && day === "closed", lastToday = isToday && day === "last";
+    const closedToday = isToday && day === "closed", lastToday = isToday && day === "last", adToday = isToday && day === "ad";
 
-    if (full || isToday || r() > 0.12) weight.push({ day: k, value: Math.round((187.6 - 0.085 * (SPAN - back) + (r() - 0.5) * 1.1) * 10) / 10 });
+    // The generator is drawn the same way whatever the shape, so the days before today never change; "ad" only
+    // leaves today's weight, check-in and moves out.
+    if ((full || isToday || r() > 0.12) && !adToday) weight.push({ day: k, value: Math.round((187.6 - 0.085 * (SPAN - back) + (r() - 0.5) * 1.1) * 10) / 10 });
     const mood = pick(r, MOODS);
-    checkins.push({
+    const checkin: Checkin = {
       day: k, mood,
       habits: { meditate: r() < 0.6, read: r() < 0.5, early: r() < 0.55, water: r() < 0.8 },
       counts: { drinks: r() < 0.7 ? 0 : 1 + Math.floor(r() * 3) },
-    });
+    };
+    if (!adToday) checkins.push(checkin);
 
     const ate = (p: number) => full || r() < p;
-    const meals = isToday
+    const meals = adToday ? { breakfast: true, lunch: false, snack: true, dinner: false }
+      : isToday
       ? { breakfast: true, lunch: true, snack: true, dinner: closedToday }
       : { breakfast: ate(0.95), lunch: ate(0.93), snack: ate(0.9), dinner: ate(0.94) };
     const snack = SNACK_PRESETS[Math.floor(r() * SNACK_PRESETS.length)];
     dayLogs.push({ day: k, meals, extras: !isToday && r() < 0.25 && snack ? [{ name: snack.name, kcal: snack.kcal, protein: snack.protein, carbs: snack.carbs, fat: snack.fat }] : [] });
 
-    const pushups = isToday ? (closedToday || lastToday ? 100 : 60) : full || r() < 0.85 ? 100 + Math.round((r() - 0.35) * 30) : 0;
+    const pushups = adToday ? 0 : isToday ? (closedToday || lastToday ? 100 : 60) : full || r() < 0.85 ? 100 + Math.round((r() - 0.35) * 30) : 0;
     activity.push({
       day: k, pushups: pushups || null,
-      types: isToday ? { walk: true } : { walk: r() < 0.6, gym: r() < 0.4, run: r() < 0.15 },
+      types: adToday ? {} : isToday ? { walk: true } : { walk: r() < 0.6, gym: r() < 0.4, run: r() < 0.15 },
       steps: isToday ? 6420 : Math.round(4800 + r() * 8200),
     });
 
@@ -214,7 +234,7 @@ export async function buildWorld({ now, theme, day, who = "settled", trying }: {
     nights[k] = night;
   }
   entries.sort((a, b) => b.createdMs - a.createdMs);
-  blobs.set("drafts/" + DAY_RESULT, new TextEncoder().encode(JSON.stringify({ text: DAY_SAID })));
+  blobs.set("drafts/" + DAY_RESULT, new TextEncoder().encode(JSON.stringify({ text: day === "ad" ? AD_SAID : DAY_SAID })));
 
   const months = [...new Set(Object.keys(nights).map((d) => d.slice(0, 7)))].sort();
   const sealedMonths = await Promise.all(months.map(async (month) => ({ month, ciphertext: await seal(Object.fromEntries(Object.entries(nights).filter(([d]) => d.startsWith(month)))) })));
@@ -246,6 +266,9 @@ export async function buildWorld({ now, theme, day, who = "settled", trying }: {
       seenChanges: seenMark(), seenInstall: true, bestStreak: 21, cloudTranscription: true,
       // The opening words and the unlock prompt are once-a-day moments with their own scenes; off for the rest.
       opening: { on: false, source: "both", phrases: [] }, unlockOnOpen: false,
+      // The promo: Say your day already on, so its tap starts recording straight away (SayDay.tsx).
+      // Food closes on breakfast and lunch here; the other four things count as everyone's do.
+      ...(day === "ad" ? { sayDay: true, closes: { checkin: true, journal: true, food: true, activity: true, meals: ["breakfast", "lunch"], chosen: true } } : {}),
       // Reading, tried for three days: begun yesterday (today is its second day), or ended yesterday.
       ...(trying ? { experiment: {
         key: "habit:read", ask: "Read", label: "Read",
@@ -261,6 +284,7 @@ export async function buildWorld({ now, theme, day, who = "settled", trying }: {
     rounds: [{ ...round, me: { userId: USER_ID, dailyTarget: 100, startDay: 1, joinSeq: 1, status: "active" } }],
     board: { round, members, logs },
     blobs,
+    ...(day === "ad" ? { dayHeard: AD_HEARD, keeps: true as const } : {}),
   };
 }
 
@@ -322,11 +346,19 @@ export function answer(w: World, method: string, path: string, body: unknown): {
   if (method === "POST" && route === "/logs") return { status: 201, json: {} };
   // Say your day: the transcription job is done as soon as it is queued, and the words are read as DAY_HEARD.
   if (method === "POST" && route === "/jobs") return { status: 201, json: { id: "1", type: "transcribe", status: "done", error: null, result: DAY_RESULT } };
-  if (method === "POST" && route === "/day/describe") return ok(DAY_HEARD);
+  if (method === "POST" && route === "/day/describe") return ok(w.dayHeard ?? DAY_HEARD);
   // One food typed on Food or in a meal's sheet, as the estimator would answer it (routes/food.js).
   if (method === "POST" && route === "/food/estimate") return ok({ name: "Oats with berries and a coffee", kcal: 410, protein: 14, carbs: 66, fat: 9, note: "estimated" });
   // An experiment on sleep rests on what the vault seals, so it must only ever reach settings sealed (experiment.ts).
   if (method === "PUT" && route === "/settings" && /"key":"sleep"/.test(JSON.stringify(body))) return { ...ok(), leak: "a sleep experiment reached settings in the clear" };
+  // A world that keeps saves files a journal entry's index row, as routes/entries.js would.
+  const put = /^\/entries\/([\w-]+)$/.exec(route);
+  if (w.keeps && method === "PUT" && put) {
+    const b = (body || {}) as Partial<EntryMeta>;
+    const meta: EntryMeta = { id: put[1], createdMs: Number(b.createdMs), hasAudio: !!b.hasAudio, hasPhoto: false, transcriptStatus: b.transcriptStatus ?? "none" };
+    w.entries = [meta, ...w.entries.filter((e) => e.id !== meta.id)].sort((a, b) => b.createdMs - a.createdMs);
+    return ok();
+  }
   // Saves succeed and change nothing: a scene that taps sees the app's own optimistic state.
   const known = /^\/(checkins|day-logs|weight|activity)\/\d{4}-\d{2}-\d{2}$/.test(route) || /^\/(entries|jobs|drafts)\/[\w-]+$/.test(route)
     || ["/settings", "/vault-meta", "/vault-meta/recovery"].includes(route);

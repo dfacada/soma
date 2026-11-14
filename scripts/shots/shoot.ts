@@ -17,6 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
 import { answer, buildWorld, STRATUS, USER_ID, type DayShape, type Theme, type Trying, type Who, type World } from "./world";
 import { AREAS, SCENES, SYSTEM_FILES, type Scene, type Step } from "./scenes";
@@ -67,10 +68,18 @@ function refsFor(area: string) {
 }
 
 function select(only: string[]) {
-  if (!only.length) return SCENES;
+  // An opt-in scene (the promo's) is shot only when its own id is named.
+  if (!only.length) return SCENES.filter((s) => !s.optIn);
   const unknown = only.filter((o) => !SCENES.some((s) => s.id === o) && !AREAS.some((a) => a.id === o));
   if (unknown.length) throw new Error(`no scene or area called ${unknown.join(", ")}. Try --list.`);
-  return SCENES.filter((s) => only.includes(s.id) || only.includes(s.area));
+  return SCENES.filter((s) => only.includes(s.id) || (only.includes(s.area) && !s.optIn));
+}
+
+/** The scene's own time of day on the run's date, or the run's moment. */
+function sceneAt(at: Date, hhmm?: string) {
+  if (!hhmm) return at;
+  const [h, m] = hhmm.split(":").map(Number);
+  return new Date(at.getFullYear(), at.getMonth(), at.getDate(), h, m);
 }
 
 async function serverUp(url: string) {
@@ -83,7 +92,7 @@ async function serverUp(url: string) {
 
 /** The page's own store, set before any script runs: the look (so the first paint is right), today's opening words
  *  already shown, a fresh health sync (so none starts), the vault key unless the scene wants it locked. */
-async function prime(ctx: BrowserContext, w: World, theme: Theme, scene: Scene) {
+export async function prime(ctx: BrowserContext, w: World, theme: Theme, scene: Scene) {
   await ctx.addInitScript((p) => {
     try {
       localStorage.setItem("soma-look", JSON.stringify({ theme: p.theme, palette: "soma", motion: "lively" }));
@@ -103,7 +112,7 @@ async function prime(ctx: BrowserContext, w: World, theme: Theme, scene: Scene) 
 
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "*" };
 
-async function serve(ctx: BrowserContext, w: World, origin: string, note: (kind: string, detail: string) => void) {
+export async function serve(ctx: BrowserContext, w: World, origin: string, note: (kind: string, detail: string) => void) {
   await ctx.route("**/*", async (route) => {
     const req = route.request(), url = req.url(), method = req.method();
     if (url.startsWith(origin)) return route.continue();
@@ -120,7 +129,11 @@ async function serve(ctx: BrowserContext, w: World, origin: string, note: (kind:
     }
     if (url.startsWith(STRATUS)) {
       const key = new URL(url).pathname.slice(1);
-      if (method !== "GET") return route.fulfill({ status: 200, headers: CORS, body: "" });
+      if (method !== "GET") {
+        const bytes = req.postDataBuffer();
+        if (w.keeps && method === "PUT" && bytes) w.blobs.set(key, new Uint8Array(bytes));
+        return route.fulfill({ status: 200, headers: CORS, body: "" });
+      }
       const blob = w.blobs.get(key);
       return blob ? route.fulfill({ status: 200, headers: { ...CORS, "content-type": "application/octet-stream" }, body: Buffer.from(blob) }) : route.fulfill({ status: 404, headers: CORS, body: "" });
     }
@@ -129,8 +142,9 @@ async function serve(ctx: BrowserContext, w: World, origin: string, note: (kind:
   });
 }
 
-async function step(page: Page, s: Step) {
+async function step(page: Page, s: Step, at: Date) {
   if ("wait" in s) return page.waitForTimeout(s.wait);
+  if ("clock" in s) return page.clock.setFixedTime(new Date(at.getTime() + s.clock * 1000));
   if ("scroll" in s) return scrollBy(page, s.scroll);
   if ("text" in s) return page.getByText(s.text, { exact: false }).first().click({ timeout: 10_000 });
   // By its label, so a password field (which has no textbox role) can be filled too.
@@ -198,7 +212,7 @@ async function diff(browser: Browser, before: string, after: string) {
   return out;
 }
 
-async function settle(page: Page) {
+export async function settle(page: Page) {
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await page.waitForTimeout(500);
@@ -208,7 +222,7 @@ async function main() {
   const o = args(process.argv.slice(2));
   if (o.list) {
     console.log(JSON.stringify({
-      areas: AREAS.map((a) => ({ ...a, scenes: SCENES.filter((s) => s.area === a.id).map(({ id, title, frames }) => ({ id, title, frames: 1 + (frames || 0) })), refs: refsFor(a.id) })),
+      areas: AREAS.map((a) => ({ ...a, scenes: SCENES.filter((s) => s.area === a.id && !s.optIn).map(({ id, title, frames }) => ({ id, title, frames: 1 + (frames || 0) })), refs: refsFor(a.id) })),
       systemFiles: SYSTEM_FILES,
     }, null, 2));
     return;
@@ -235,9 +249,10 @@ async function main() {
   fs.mkdirSync(o.out, { recursive: true });
   const shots: Shot[] = [], problems: Problem[] = [];
   const worlds = new Map<string, Promise<World>>();
-  const world = (theme: Theme, day: DayShape, who: Who, trying?: Trying) => {
-    const k = theme + day + who + (trying || "");
-    if (!worlds.has(k)) worlds.set(k, buildWorld({ now: o.at, theme, day, who, trying }));
+  // A world that keeps what a scene saves (the promo's) is built fresh for each scene, so one never sees another's.
+  const world = (theme: Theme, day: DayShape, who: Who, trying?: Trying, at = o.at, scene = "") => {
+    const k = theme + day + who + (trying || "") + (at === o.at ? "" : at.toISOString()) + (day === "ad" ? scene : "");
+    if (!worlds.has(k)) worlds.set(k, buildWorld({ now: at, theme, day, who, trying }));
     return worlds.get(k)!;
   };
 
@@ -252,7 +267,8 @@ async function main() {
     for (const scene of scenes) {
       for (const theme of o.themes) {
         const note = (kind: string, detail: string) => { if (!problems.some((p) => p.scene === scene.id && p.theme === theme && p.detail === detail)) problems.push({ scene: scene.id, theme, kind, detail }); };
-        const w = await world(theme, scene.day || "open", scene.who || "settled", scene.experiment);
+        const at = sceneAt(o.at, scene.at);
+        const w = await world(theme, scene.day || "open", scene.who || "settled", scene.experiment, at, scene.id);
         const ctx = await browser.newContext({
           viewport: scene.view || VIEW, deviceScaleFactor: scene.view ? 1 : 2, isMobile: !scene.view, hasTouch: !scene.view, locale: "en-US",
           colorScheme: theme === "night" ? "dark" : "light", reducedMotion: scene.reduced ? "reduce" : "no-preference",
@@ -264,7 +280,7 @@ async function main() {
           const page = await ctx.newPage();
           page.on("console", (m) => { if (m.type() === "error") note("console", m.text().slice(0, 200)); });
           page.on("pageerror", (e) => note("pageerror", String(e.message).slice(0, 200)));
-          await page.clock.setFixedTime(o.at);
+          await page.clock.setFixedTime(at);
           await page.goto(o.url + scene.path, { waitUntil: "load", timeout: 120_000 });
           // Ready: the tab bar is up (the desktop sidebar is a hidden nav at this size) and the opening overlay has gone.
           // An account waiting for approval has no tab bar: its screen is ready when its Check again button is.
@@ -276,7 +292,7 @@ async function main() {
           if (scene.who !== "visitor" && await page.getByRole("button", { name: /^sign in/i }).count()) throw new Error("the dev server shows the sign-in: it must run as the test member (NEXT_PUBLIC_DEV_TEST_KEY in .env.development.local)");
           await settle(page);
           for (const [i, s] of (scene.steps || []).entries()) {
-            try { await step(page, s); await page.waitForTimeout(250); }
+            try { await step(page, s, at); await page.waitForTimeout(250); }
             catch (e) { throw new Error(`step ${i + 1} (${JSON.stringify(s)}) failed: ${(e as Error).message.split("\n")[0]}`); }
           }
           await settle(page);
@@ -318,4 +334,7 @@ async function main() {
   if (problems.some((p) => p.kind === "failed")) process.exit(1);
 }
 
-main().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });
+// Run as the script (npm run shots), not when film.ts borrows prime, serve and settle from it.
+if (process.argv[1] && path.resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase()) {
+  main().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });
+}

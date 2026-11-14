@@ -12,7 +12,10 @@ export type Step =
   | { fill: string; value: string }
   | { text: string }
   | { scroll: number }
-  | { wait: number };
+  | { wait: number }
+  /** Moves the page's clock to this many seconds after the scene's moment (time stays still in between), so a
+   *  recording's timer reads what it would after that long without waiting for it. */
+  | { clock: number };
 
 export type Scene = {
   id: string;
@@ -34,6 +37,10 @@ export type Scene = {
   experiment?: Trying;
   /** A window size other than the phone's, for screens made for a computer first (Dayhub Ops). */
   view?: { width: number; height: number };
+  /** The time of day the scene is shot at ("18:47"), on the run's date; absent: the run's moment (--at). */
+  at?: string;
+  /** Shot only when named by id in --only: never in a full run, an area, --list or the polish loop. */
+  optIn?: true;
 };
 
 export type Area = {
@@ -134,4 +141,25 @@ export const SCENES: Scene[] = [
   { id: "ops-people", area: "ops", view: DESK, title: "Ops people: one waiting for approval, everyone, the sign-up invites", path: "/ops/people/" },
   { id: "ops-audit", area: "ops", view: DESK, title: "Ops audit: values shown with a reason, a message, a mute, an approval", path: "/ops/audit/" },
   { id: "ops-phone", area: "ops", title: "Ops overview on a phone: the nav is a row of tabs", path: "/ops/", frames: 1 },
+
+  // The 30-second promo (opt-in: npm run shots -- --only ad-today,ad-recording,…): at 6:47 pm, walking out of work,
+  // Alex has logged breakfast and the snack and nothing else (food closes on breakfast and lunch for her), says her
+  // day once for 48 seconds, checks the list and fills it in.
+  ...AD_SCENES(),
 ];
+
+function AD_SCENES(): Scene[] {
+  const base = { day: "ad" as const, at: "18:47", optIn: true as const, path: "/" };
+  const record: Step[] = [{ click: "Say your day" }, { wait: 1200 }];
+  const check: Step[] = [...record, { clock: 48 }, { wait: 1200 }, { click: "Stop and save" }, { wait: 4000 }];
+  const filled: Step[] = [...check, { click: "Fill in my day" }, { wait: 2500 }];
+  const after: Step[] = [...filled, { click: "Lovely" }, { wait: 1500 }];
+  return [
+    { ...base, id: "ad-today", area: "today", title: "Promo: Today at 6:47 pm, Good evening, Alex: breakfast and the snack logged, nothing else; the ring open and Say your day under it" },
+    { ...base, id: "ad-recording", area: "moments", title: "Promo: Say your day recording, twenty seconds in", steps: [...record, { clock: 20 }, { wait: 1200 }] },
+    { ...base, id: "ad-check", area: "moments", title: "Promo: Check your day after 48 seconds: Journal entry saved 0:48 (the lock), Weight 162 lb, Check-in Great, Food Tacos 500 kcal · 22 P under Lunch, Activity Gym Done", steps: check },
+    { ...base, id: "ad-closed", area: "moments", title: "Promo: Fill in my day tapped: the day closes, the orb's check and the streak turning 12 to 13", steps: filled },
+    { ...base, id: "ad-today-closed", area: "today", title: "Promo: Today after Lovely: the day closed, all five done", steps: after },
+    { ...base, id: "ad-journal", area: "journal", title: "Promo: the Journal tab after the day closed: today's new entry, sealed", frames: 1, steps: [...after, { click: "Journal", exact: true }, { wait: 2500 }] },
+  ];
+}
